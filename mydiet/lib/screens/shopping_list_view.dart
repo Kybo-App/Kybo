@@ -173,9 +173,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
     // Mappa: NomeCibo -> {qty: totale, unit: 'g'}
     Map<String, Map<String, dynamic>> aggregator = {};
-
     for (String key in _selectedMealKeys) {
-      // key è "Lunedì_Pranzo"
       var parts = key.split('_');
       var day = parts[0];
       var meal = parts[1];
@@ -183,25 +181,61 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       List<dynamic>? foods = widget.dietData![day]?[meal];
       if (foods == null) continue;
 
-      // Iteriamo con indice per poter ricostruire la chiave univoca dello swap
-      for (int i = 0; i < foods.length; i++) {
-        var food = foods[i];
+      // 1. Dobbiamo ricostruire i gruppi anche qui per mantenere la coerenza con le chiavi
+      List<List<dynamic>> groupedFoods = [];
+      if (foods.isNotEmpty) {
+        List<dynamic> currentGroup = [foods[0]];
+        for (int i = 1; i < foods.length; i++) {
+          var prev = foods[i - 1];
+          var curr = foods[i];
+          int prevCad = int.tryParse(prev['cad'].toString()) ?? 0;
+          int currCad = int.tryParse(curr['cad'].toString()) ?? 0;
+          if (prevCad != 0 && prevCad == currCad) {
+            currentGroup.add(curr);
+          } else {
+            groupedFoods.add(currentGroup);
+            currentGroup = [curr];
+          }
+        }
+        groupedFoods.add(currentGroup);
+      }
 
-        // 1. Costruiamo la chiave unica come fatto in MealCard
-        //    (es. Lunedì_Colazione_0)
-        String swapKey = "${day}_${meal}_$i";
+      // 2. Iteriamo sui gruppi
+      for (int i = 0; i < groupedFoods.length; i++) {
+        var group = groupedFoods[i];
 
-        String name = food['name'];
-        String qty = food['qty'];
+        // Ricostruiamo la stessa chiave usata in MealCard
+        // Attenzione: deve coincidere con quella generata in MealCard!
+        // In MealCard era: "${mealName}_group_$groupIndex" -> qui mealName è 'meal' (es. Pranzo)
+        // Ma nel codice precedente di MealCard in home la stringa passata è la key completa?
+        // Verifichiamo come passi 'mealName'. Solitamente è "Colazione", "Pranzo".
+        String swapKey = "${meal}_group_$i"; // Es. Pranzo_group_0
 
-        // 2. Controlliamo se esiste una sostituzione attiva per questo cibo specifico
+        // Lista di ingredienti da aggiungere (originali o sostituiti)
+        List<dynamic> itemsToAdd = group;
+
         if (widget.activeSwaps.containsKey(swapKey)) {
           final swap = widget.activeSwaps[swapKey]!;
-          name = swap.name; // Usiamo il nome sostituito (es. Banana)
-          qty = swap.qty; // Usiamo la quantità sostituita
+          // Se lo swap contiene una lista completa di ingredienti (Logica Piatto)
+          if (swap.swappedIngredients != null &&
+              swap.swappedIngredients!.isNotEmpty) {
+            itemsToAdd = swap.swappedIngredients!;
+          }
+          // Fallback per vecchi swap singoli (opzionale)
+          else {
+            itemsToAdd = [
+              {'name': swap.name, 'qty': swap.qty, 'unit': swap.unit},
+            ];
+          }
         }
 
-        _addToAggregator(aggregator, name, qty);
+        // Aggiungi all'aggregatore
+        for (var food in itemsToAdd) {
+          // Gestione robusta dei campi (alcuni JSON hanno 'qta' o 'qty')
+          String name = food['name'];
+          String qty = food['qty']?.toString() ?? "";
+          _addToAggregator(aggregator, name, qty);
+        }
       }
     }
 

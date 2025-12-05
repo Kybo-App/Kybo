@@ -479,15 +479,23 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showSubstitutions(
-    String day,
-    String mealName,
-    int index,
-    String currentName,
-    String cadCode,
-  ) {
-    var subData = substitutions![cadCode];
+  // --- NUOVA LOGICA SOSTITUZIONI ---
+  void _showSubstitutions(String swapKey, int cadCode) {
+    // 1. Convertiamo il codice in stringa per cercare nel JSON
+    String cadKey = cadCode.toString();
+
+    if (substitutions == null || !substitutions!.containsKey(cadKey)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Nessuna alternativa trovata per questo piatto."),
+        ),
+      );
+      return;
+    }
+
+    var subData = substitutions![cadKey];
     List<dynamic> options = subData['options'] ?? [];
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -497,9 +505,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              "Alternative",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              "Alternative per ${subData['name'] ?? 'Piatto'}",
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -509,14 +517,36 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                 itemCount: options.length,
                 itemBuilder: (context, i) {
                   var opt = options[i];
+                  // Controllo: l'opzione ha ingredienti o è semplice?
+                  // Se il JSON delle sostituzioni ha una lista "ingredients", la usiamo.
+                  // Altrimenti usiamo l'oggetto stesso come unico ingrediente.
+                  List<dynamic> newIngredients = [];
+                  if (opt['ingredients'] != null) {
+                    newIngredients = opt['ingredients'];
+                  } else {
+                    newIngredients = [opt]; // Fallback compatibile
+                  }
+
                   return ListTile(
-                    title: Text(opt['name']),
-                    trailing: Text(opt['qty']),
+                    title: Text(
+                      opt['name'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      newIngredients.map((e) => "${e['name']}").join(", "),
+                    ),
+                    trailing: const Icon(Icons.check_circle_outline),
                     onTap: () {
-                      setState(
-                        () => activeSwaps["${day}_${mealName}_$index"] =
-                            ActiveSwap(name: opt['name'], qty: opt['qty']),
-                      );
+                      setState(() {
+                        // Creiamo lo swap "Composito"
+                        activeSwaps[swapKey] = ActiveSwap(
+                          name:
+                              opt['name'], // Nome del piatto (es. "Riso e Pollo")
+                          qty: "", // Non serve più per i gruppi
+                          swappedIngredients:
+                              newIngredients, // TUTTA LA LISTA NUOVA
+                        );
+                      });
                       _saveLocalData();
                       Navigator.pop(context);
                     },
@@ -528,10 +558,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
+  } // --- COSTRUZIONE UI ---
 
-  // --- COSTRUZIONE UI ---
-  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(

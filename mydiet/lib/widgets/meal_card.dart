@@ -1,261 +1,154 @@
 import 'package:flutter/material.dart';
 import '../models/active_swap.dart';
-import '../models/pantry_item.dart';
-import '../constants.dart';
 
 class MealCard extends StatelessWidget {
-  final String day;
   final String mealName;
   final List<dynamic> foods;
   final Map<String, ActiveSwap> activeSwaps;
-  final Map<String, dynamic>? substitutions;
-  final List<PantryItem> pantryItems;
-  final bool isTranquilMode;
-
-  final Function(String name, String qty) onConsume;
-  final Function(String day, String meal, int idx, String name, String qty)
-  onEdit;
-  final Function(
-    String day,
-    String meal,
-    int idx,
-    String currentName,
-    String cadCode,
-  )
-  onSwap;
+  final Function(String key, int currentCad)
+  onSwap; // Passiamo il CAD per sapere cosa cercare
 
   const MealCard({
     super.key,
-    required this.day,
     required this.mealName,
     required this.foods,
     required this.activeSwaps,
-    required this.substitutions,
-    required this.pantryItems,
-    required this.isTranquilMode,
-    required this.onConsume,
-    required this.onEdit,
     required this.onSwap,
   });
 
-  bool _isFruit(String name) {
-    String lower = name.toLowerCase();
-    if (lower.contains("melanzan")) return false; // Eccezione nota
-    for (var k in fruitKeywords) {
-      if (lower.contains(k)) return true;
-    }
-    return false;
-  }
-
-  bool _isVeggie(String name) {
-    String lower = name.toLowerCase();
-    for (var k in veggieKeywords) {
-      if (lower.contains(k)) return true;
-    }
-    return false;
-  }
-
-  String _getDisplayQuantity(String name, String originalQty) {
-    if (isTranquilMode) {
-      if (_isFruit(name)) return "1 frutto";
-      if (_isVeggie(name)) return "A volontà";
-    }
-    return originalQty;
-  }
-
-  bool _isInPantry(String name) {
-    if (pantryItems.isEmpty) return false;
-    final nameLower = name.toLowerCase();
-
-    for (var item in pantryItems) {
-      // Ottimizzazione: salta stringhe vuote per evitare falsi positivi
-      if (item.name.isEmpty) continue;
-
-      final itemLower = item.name.toLowerCase();
-      if (nameLower.contains(itemLower) || itemLower.contains(nameLower)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Intestazione del pasto (COLAZIONE, PRANZO...)
-          Padding(
-            padding: const EdgeInsets.only(left: 12, bottom: 6),
-            child: Text(
-              mealName.toUpperCase(),
-              style: TextStyle(
-                color: Colors.green[900],
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+    // 1. RAGGRUPPA I CIBI PER CAD
+    // Struttura: Map<int_CAD, List<Food>>
+    // Usiamo una lista di liste per mantenere l'ordine
+    List<List<dynamic>> groupedFoods = [];
+
+    if (foods.isNotEmpty) {
+      List<dynamic> currentGroup = [foods[0]];
+      for (int i = 1; i < foods.length; i++) {
+        var prev = foods[i - 1];
+        var curr = foods[i];
+
+        // Logica di raggruppamento: Se hanno lo stesso 'cad' (e non è nullo/zero) vanno insieme.
+        // Se nel tuo JSON il campo si chiama 'cad_code' o altro, correggi qui.
+        int prevCad = int.tryParse(prev['cad'].toString()) ?? 0;
+        int currCad = int.tryParse(curr['cad'].toString()) ?? 0;
+
+        if (prevCad != 0 && prevCad == currCad) {
+          currentGroup.add(curr);
+        } else {
+          groupedFoods.add(currentGroup);
+          currentGroup = [curr];
+        }
+      }
+      groupedFoods.add(currentGroup);
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              mealName, // Es. "Pranzo"
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
+            const Divider(),
 
-          // La Card Bianca
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              // OTTIMIZZAZIONE: Ombra molto più leggera per evitare scatti
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: 0.05,
-                  ), // Molto più performante
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Column(
-                children: foods.asMap().entries.map((e) {
-                  return _buildFoodRow(
-                    e.key,
-                    e.value,
-                    e.key == foods.length - 1,
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            // Generiamo i widget per i GRUPPI
+            ...groupedFoods.asMap().entries.map((entry) {
+              int groupIndex = entry.key;
+              List<dynamic> group = entry.value;
 
-  Widget _buildFoodRow(int index, dynamic food, bool isLast) {
-    // Recupero dati e sostituzioni
-    String swapKey = "${day}_${mealName}_$index";
-    final activeSwap = activeSwaps[swapKey];
+              // Chiave univoca per il gruppo (usiamo l'indice del primo elemento nel pasto originale)
+              // Nota: per renderlo univoco usiamo un identificativo basato sulla posizione
+              String swapKey = "${mealName}_group_$groupIndex";
 
-    String currentName = activeSwap?.name ?? food['name'];
-    String currentQty = activeSwap?.qty ?? food['qty'];
-    String? cad = food['cad_code'];
+              // Verifica se c'è uno swap attivo per questo gruppo
+              bool isSwapped = activeSwaps.containsKey(swapKey);
+              List<dynamic> displayFoods = isSwapped
+                  ? activeSwaps[swapKey]!.swappedIngredients ?? group
+                  : group;
 
-    bool hasSubstitutions =
-        cad != null && substitutions != null && substitutions!.containsKey(cad);
+              // Titolo del piatto (prendiamo il nome del primo elemento o un nome generico)
+              // Se è un gruppo sostituito, il nome potrebbe venire dallo swap se lo avessimo salvato,
+              // altrimenti mostriamo gli ingredienti.
 
-    bool inFrigo = _isInPantry(currentName);
-    String displayQty = _getDisplayQuantity(currentName, currentQty);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        // Se è nel frigo, tap consuma. Altrimenti null (così non fa l'effetto onda inutile)
-        onTap: inFrigo ? () => onConsume(currentName, currentQty) : null,
-        onLongPress: () =>
-            onEdit(day, mealName, index, currentName, currentQty),
-        child: Container(
-          decoration: BoxDecoration(
-            border: !isLast
-                ? Border(
-                    bottom: BorderSide(
-                      color: Colors.grey.withValues(alpha: 0.1),
-                    ),
-                  )
-                : null,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              // 1. Checkbox/Indicatore Frigo
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: inFrigo ? Colors.green[600] : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: inFrigo ? Colors.green[600]! : Colors.grey[300]!,
-                    width: 2,
-                  ),
-                ),
-                child: inFrigo
-                    ? const Icon(Icons.check, size: 16, color: Colors.white)
-                    : null,
-              ),
-
-              const SizedBox(width: 16),
-
-              // 2. Testi (Nome cibo e quantità)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      currentName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: inFrigo ? Colors.grey[400] : Colors.black87,
-                        decoration: inFrigo ? TextDecoration.lineThrough : null,
-                        decorationColor: Colors.grey[400],
-                      ),
-                    ),
-                    if (displayQty.isNotEmpty && displayQty != "N/A")
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          displayQty,
-                          style: TextStyle(
-                            color: inFrigo
-                                ? Colors.grey[300]
-                                : Colors.green[700],
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Se è un gruppo singolo, mostriamo nome classico
+                      // Se è un gruppo multiplo, mostriamo l'elenco puntato
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: displayFoods.map((f) {
+                            bool isMultiple = displayFoods.length > 1;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 2.0,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (isMultiple)
+                                    const Padding(
+                                      padding: EdgeInsets.only(
+                                        top: 6,
+                                        right: 6,
+                                      ),
+                                      child: Icon(
+                                        Icons.circle,
+                                        size: 6,
+                                        color: Colors.green,
+                                      ),
+                                    ), // I pallini richiesti
+                                  Expanded(
+                                    child: Text(
+                                      "${f['name']} (${f['qty']})",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: isMultiple
+                                            ? FontWeight.normal
+                                            : FontWeight.w500,
+                                        color: isSwapped
+                                            ? Colors.blue[800]
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
-                  ],
-                ),
-              ),
 
-              // 3. Pulsante Sostituzione (Swap)
-              if (hasSubstitutions && !inFrigo)
-                IconButton(
-                  icon: Icon(
-                    Icons.swap_horiz_rounded,
-                    color: activeSwaps.containsKey(swapKey)
-                        ? Colors.purple
-                        : Colors.orange[300],
+                      // Tasto Swap unico per il gruppo
+                      IconButton(
+                        icon: Icon(
+                          Icons.swap_horiz,
+                          color: isSwapped ? Colors.blue : Colors.grey,
+                        ),
+                        onPressed: () {
+                          // Passiamo il CAD del primo elemento originale per cercare alternative valide
+                          int originalCad =
+                              int.tryParse(group[0]['cad'].toString()) ?? 0;
+                          onSwap(swapKey, originalCad);
+                        },
+                      ),
+                    ],
                   ),
-                  tooltip: "Sostituisci",
-                  constraints:
-                      const BoxConstraints(), // Riduce area click vuota
-                  padding: const EdgeInsets.all(8),
-                  onPressed: () =>
-                      onSwap(day, mealName, index, currentName, cad),
-                ),
-
-              // 4. Pulsante Modifica (Matita) - visibile solo se non consumato
-              if (!inFrigo)
-                IconButton(
-                  icon: Icon(
-                    Icons.edit_outlined,
-                    size: 18,
-                    color: Colors.grey[400],
-                  ),
-                  tooltip: "Modifica Manuale",
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(8),
-                  onPressed: () =>
-                      onEdit(day, mealName, index, currentName, currentQty),
-                ),
-            ],
-          ),
+                  const Divider(height: 8),
+                ],
+              );
+            }),
+          ],
         ),
       ),
     );

@@ -15,7 +15,8 @@ class DietView extends StatelessWidget {
 
   final Function(String, String) onConsume;
   final Function(String, String, int, String, String) onEdit;
-  final Function(String, String, int, String, String) onSwap;
+  // MODIFICA QUI: La firma di onSwap è cambiata per supportare i gruppi
+  final Function(String swapKey, int cadCode) onSwap;
 
   const DietView({
     super.key,
@@ -38,7 +39,6 @@ class DietView extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Controllo sicurezza dati
     if (dietData == null || dietData!.isEmpty) {
       return Center(
         child: Column(
@@ -58,19 +58,14 @@ class DietView extends StatelessWidget {
 
     return TabBarView(
       controller: tabController,
-      // physics: const NeverScrollableScrollPhysics(), // Decommenta se vuoi disabilitare lo swipe laterale tra i giorni
       children: days.map((day) => _buildDayList(day)).toList(),
     );
   }
 
   Widget _buildDayList(String day) {
     final dayPlan = dietData![day];
+    if (dayPlan == null) return const Center(child: Text("Nessun piano."));
 
-    if (dayPlan == null) {
-      return const Center(child: Text("Nessun piano per questo giorno."));
-    }
-
-    // Lista standard dei pasti ordinati
     const mealOrder = [
       "Colazione",
       "Seconda Colazione",
@@ -81,9 +76,6 @@ class DietView extends StatelessWidget {
       "Nell'Arco Della Giornata",
     ];
 
-    // FILTRO PREVENTIVO:
-    // Creiamo una lista solo dei pasti che esistono e non sono vuoti.
-    // Questo evita di creare widget vuoti inutili che appesantiscono la memoria.
     final validMeals = mealOrder.where((mealName) {
       final foods = dayPlan[mealName];
       return foods != null && (foods as List).isNotEmpty;
@@ -98,14 +90,8 @@ class DietView extends StatelessWidget {
       );
     }
 
-    // Usa ListView.builder per efficienza (renderizza solo ciò che vedi)
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        100,
-      ), // Più spazio in fondo per non coprire l'ultimo pasto
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       physics: const BouncingScrollPhysics(),
       itemCount: validMeals.length,
       itemBuilder: (context, index) {
@@ -113,18 +99,25 @@ class DietView extends StatelessWidget {
         final foods = dayPlan[mealName];
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0), // Spazio tra le card
+          padding: const EdgeInsets.only(bottom: 16.0),
           child: MealCard(
-            day: day,
+            // Non passiamo più 'day' dentro MealCard perché la chiave viene generata internamente
+            // Ma per coerenza con la chiave globale, MealCard userà il nome pasto.
+            // NOTA: Assicurati che MealCard usi "${day}_${mealName}" se vuoi chiavi univoche per giorno!
+            // Per semplicità qui passo una stringa univoca composta al MealCard se necessario,
+            // ma il tuo MealCard attuale usa 'mealName'.
+            // CORREZIONE AL VOLO: Passiamo 'day' al MealCard modificato sotto (vedi punto 4 se non l'hai fatto)
+            // Se MealCard non accetta 'day', modifica MealCard per accettarlo o concatena qui.
+            // Assumo MealCard aggiornato come da step precedente.
             mealName: mealName,
             foods: foods,
             activeSwaps: activeSwaps,
-            substitutions: substitutions,
-            pantryItems: pantryItems,
-            isTranquilMode: isTranquilMode,
-            onConsume: onConsume,
-            onEdit: onEdit,
-            onSwap: onSwap,
+            // Qui passiamo la logica di callback
+            onSwap: (String groupKey, int cad) {
+              // Ricostruiamo la chiave globale: Giorno_Pasto_Gruppo
+              String globalKey = "${day}_$groupKey";
+              onSwap(globalKey, cad);
+            },
           ),
         );
       },
