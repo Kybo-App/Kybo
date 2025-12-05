@@ -71,6 +71,9 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time, // Ripeti ogni giorno
     );
     debugPrint("✅ Notifica impostata: $title alle $hour:$minute");
+    final scheduledTime = _nextInstanceOfTime(hour, minute);
+    debugPrint("🕒 TENTO DI PROGRAMMARE PER: $scheduledTime");
+    debugPrint("🌍 TIMEZONE RILEVATA: ${tz.local.name}");
   }
 
   // Cancella una notifica specifica
@@ -108,8 +111,6 @@ class NotificationService {
           channelDescription: 'Serve per testare se le notifiche funzionano',
           importance: Importance.max,
           priority: Priority.high,
-          icon:
-              'icon', // Assicurati che corrisponda al nome file in res/drawable
         );
 
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
