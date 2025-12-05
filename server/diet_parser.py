@@ -6,12 +6,10 @@ import pdfplumber
 
 # --- SCHEMI DATI PER GEMINI (Input/Output Strutturato) ---
 
-# 1. Schema per gli ingredienti dei piatti composti
 class Ingrediente(typing.TypedDict):
     nome: str
     quantita: str
 
-# 2. Schema per il Piatto (Singolo o Composto)
 class Piatto(typing.TypedDict):
     nome_piatto: str
     tipo: str  # "composto" o "singolo"
@@ -19,12 +17,10 @@ class Piatto(typing.TypedDict):
     quantita_totale: str # Solo se è singolo
     ingredienti: list[Ingrediente] # Solo se è composto
 
-# 3. Schema per il Pasto (Colazione, Pranzo, etc.)
 class Pasto(typing.TypedDict):
     tipo_pasto: str # Es: "Colazione", "Spuntino", "Pranzo", "Cena"
     elenco_piatti: list[Piatto]
 
-# 4. Schema per il Giorno
 class GiornoDieta(typing.TypedDict):
     giorno: str 
     pasti: list[Pasto]
@@ -46,11 +42,12 @@ class OutputDietaCompleto(typing.TypedDict):
 
 class DietParser:
     def __init__(self):
-        # Configurazione API Key robusta
+        # Configurazione API Key
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             print("❌ ERRORE CRITICO: GOOGLE_API_KEY non trovata!")
         else:
+            # Pulizia chiave per evitare errori di copia-incolla
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             genai.configure(api_key=clean_key)
 
@@ -61,7 +58,7 @@ class DietParser:
 
         1. **IL PIANO SETTIMANALE**:
            - Analizza giorno per giorno (Lunedì, Martedì...).
-           - Estrai TUTTI i pasti presenti: "Prima colazione", "Seconda colazione", "Pranzo", "Merenda", "Cena", "Spuntino serale" , "Nell'Arco della giornata".
+           - Estrai TUTTI i pasti presenti: "Prima colazione", "Seconda colazione", "Pranzo", "Merenda", "Cena", "Spuntino serale"... .
            - **Codici CAD**: Se accanto a un piatto c'è scritto "CAD" seguito da un numero (es. "Pane... CAD 1770"), estrai quel numero nel campo 'cad_code'.
            - **Tipologia Piatto**:
              - "composto": Se è un titolo di ricetta senza quantità (es. "Pasta e fagioli") seguito da ingredienti con pallino (•).
@@ -95,40 +92,39 @@ class DietParser:
         if not diet_text:
             raise ValueError("PDF vuoto o illeggibile.")
 
-        # Usiamo il modello Pro che ha una finestra di contesto più ampia per leggere tutto il file
-        model_name = "gemini-1.5-pro"
+        # LISTA DI PRIORITÀ MODELLI
+        # Abbiamo visto dai log che gemini-2.5-flash è disponibile per te.
+        models_to_try = [
+            "gemini-2.5-flash", 
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+            "gemini-pro"
+        ]
         
-        try:
-            print(f"🤖 Richiesta a Gemini ({model_name}) per analisi completa...")
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=self.system_instruction,
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "response_schema": OutputDietaCompleto
-                }
-            )
+        last_error = None
 
-            prompt = f"Analizza questa dieta completa (Piano Settimanale + Tabelle CAD):\n{diet_text}"
-
-            response = model.generate_content(prompt)
-            return json.loads(response.text)
-
-        except Exception as e:
-            print(f"⚠️ Errore con {model_name}: {e}")
-            # Tentativo di fallback con Flash se Pro fallisce o non è disponibile
+        for model_name in models_to_try:
             try:
-                print("🔄 Provo fallback con gemini-1.5-flash...")
+                print(f"🤖 Richiesta a Gemini ({model_name})...")
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
+                    model_name=model_name,
                     system_instruction=self.system_instruction,
                     generation_config={
                         "response_mime_type": "application/json",
                         "response_schema": OutputDietaCompleto
                     }
                 )
+
+                prompt = f"Analizza questa dieta completa (Piano Settimanale + Tabelle CAD):\n{diet_text}"
+
                 response = model.generate_content(prompt)
                 return json.loads(response.text)
-            except Exception as e2:
-                print(f"❌ Fallito anche il fallback: {e2}")
-                raise e2
+
+            except Exception as e:
+                print(f"⚠️ Errore con {model_name}: {e}")
+                last_error = e
+                continue # Prova il prossimo modello
+        
+        # Se arriviamo qui, nessun modello ha funzionato
+        print("❌ Tutti i modelli hanno fallito.")
+        raise last_error
