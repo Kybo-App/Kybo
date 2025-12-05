@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import '../models/active_swap.dart'; // <--- Import necessario per gestire le sostituzioni
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
   final Map<String, dynamic>? dietData; // La dieta serve per l'importazione
+  final Map<String, ActiveSwap>
+  activeSwaps; // <--- Nuova variabile: le tue sostituzioni
   final Function(List<String>) onUpdateList; // Per salvare le modifiche
 
   const ShoppingListView({
     super.key,
     required this.shoppingList,
     required this.dietData,
+    required this.activeSwaps, // <--- Richiesto nel costruttore
     required this.onUpdateList,
   });
 
@@ -163,7 +167,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     );
   }
 
-  // --- LOGICA AGGREGAZIONE ---
+  // --- LOGICA AGGREGAZIONE MODIFICATA ---
   void _generateListFromSelection() {
     if (_selectedMealKeys.isEmpty) return;
 
@@ -179,8 +183,25 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       List<dynamic>? foods = widget.dietData![day]?[meal];
       if (foods == null) continue;
 
-      for (var food in foods) {
-        _addToAggregator(aggregator, food['name'], food['qty']);
+      // Iteriamo con indice per poter ricostruire la chiave univoca dello swap
+      for (int i = 0; i < foods.length; i++) {
+        var food = foods[i];
+
+        // 1. Costruiamo la chiave unica come fatto in MealCard
+        //    (es. Lunedì_Colazione_0)
+        String swapKey = "${day}_${meal}_$i";
+
+        String name = food['name'];
+        String qty = food['qty'];
+
+        // 2. Controlliamo se esiste una sostituzione attiva per questo cibo specifico
+        if (widget.activeSwaps.containsKey(swapKey)) {
+          final swap = widget.activeSwaps[swapKey]!;
+          name = swap.name; // Usiamo il nome sostituito (es. Banana)
+          qty = swap.qty; // Usiamo la quantità sostituita
+        }
+
+        _addToAggregator(aggregator, name, qty);
       }
     }
 

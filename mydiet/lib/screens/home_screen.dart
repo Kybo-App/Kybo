@@ -754,6 +754,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       return ShoppingListView(
         shoppingList: shoppingList,
         dietData: dietData,
+        activeSwaps: activeSwaps,
         onUpdateList: (newList) {
           setState(() => shoppingList = newList);
           _saveLocalData();
