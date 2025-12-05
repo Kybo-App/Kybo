@@ -1,6 +1,8 @@
 import google.generativeai as genai
 import typing_extensions as typing
 import os
+import json
+import pdfplumber
 
 # --- DEFINIZIONE DELLA STRUTTURA DATI (Schema) ---
 class Ingrediente(typing.TypedDict):
@@ -23,7 +25,7 @@ class GiornoDieta(typing.TypedDict):
 
 class DietParser:
     def __init__(self):
-        # Configura la tua API Key qui se non è nelle variabili d'ambiente
+        # Configura la tua API Key (se non è già impostata nelle variabili d'ambiente di Render)
         # genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
         
         self.system_instruction = """
@@ -43,10 +45,32 @@ class DietParser:
         Restituisci solo il JSON strutturato secondo lo schema fornito.
         """
 
-    def parse(self, text: str):
+    def _extract_text_from_pdf(self, pdf_path: str) -> str:
+        """Estrae il testo grezzo dal PDF."""
+        text = ""
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for page in pdf.pages:
+                    text += page.extract_text() + "\n"
+        except Exception as e:
+            print(f"Errore lettura PDF: {e}")
+            return ""
+        return text
+
+    def parse_complex_diet(self, file_path: str):
         """
-        Metodo principale chiamato dal server per analizzare il testo.
+        Metodo principale chiamato dal server.
+        1. Estrae il testo dal PDF.
+        2. Chiama Gemini per il parsing strutturato.
+        3. Restituisce un DIZIONARIO (non un oggetto Pydantic).
         """
+        
+        # 1. Estrazione Testo
+        diet_text = self._extract_text_from_pdf(file_path)
+        if not diet_text:
+            return []
+
+        # 2. Configurazione Gemini
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=self.system_instruction,
@@ -60,13 +84,14 @@ class DietParser:
         Analizza il seguente testo estratto da una dieta e applica RIGOROSAMENTE le regole sui piatti composti vs alimenti singoli.
         
         TESTO DIETA:
-        {text}
+        {diet_text}
         """
 
+        # 3. Generazione e Parsing
         try:
             response = model.generate_content(prompt)
-            return response.text
+            # Gemini restituisce una stringa JSON, la convertiamo in oggetti Python (list/dict)
+            return json.loads(response.text)
         except Exception as e:
             print(f"Errore durante la generazione con Gemini: {e}")
-            # Restituisce un JSON vuoto o un errore gestibile in caso di fallimento
-            return "[]"
+            return []

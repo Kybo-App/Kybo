@@ -27,22 +27,24 @@ async def upload_diet(file: UploadFile = File(...)):
         with open(DIET_PDF_PATH, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 1. Inizializza Parser Gemini
-        # NOTA: serve la variabile GOOGLE_API_KEY
+        # 1. Inizializza Parser
         parser = DietParser() 
         
-        # 2. Ottieni oggetto Pydantic
-        dieta_model = parser.parse_complex_diet(DIET_PDF_PATH)
+        # 2. Ottieni i dati (Ora restituisce direttamente una lista/dict, non un modello Pydantic)
+        final_data = parser.parse_complex_diet(DIET_PDF_PATH)
         
-        # 3. Converti in JSON
-        final_data = dieta_model.model_dump()
-        
-        # 4. Salva su disco
+        # 3. Salva su disco (per debug o uso futuro)
+        # Nota: final_data è già un oggetto Python, possiamo dumpare direttamente
         with open(DIET_JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(final_data, f, indent=2, ensure_ascii=False)
             
         print("✅ Dieta elaborata da Gemini e salvata.")
-        return JSONResponse(content=final_data)
+        
+        # 4. Restituisci al frontend
+        # Avvolgiamo in un oggetto "plan" per compatibilità con il frontend se necessario
+        # Se il tuo frontend si aspetta direttamente la lista dei giorni, usa: return JSONResponse(content=final_data)
+        # Se il frontend si aspetta {"plan": ...}, usa questo:
+        return JSONResponse(content={"plan": final_data})
 
     except Exception as e:
         print(f"❌ Errore: {e}")
@@ -50,9 +52,6 @@ async def upload_diet(file: UploadFile = File(...)):
 
 @app.post("/scan-receipt")
 async def scan_receipt(file: UploadFile = File(...)):
-    # ... (CODICE IDENTICO A PRIMA PER LO SCONTRINO) ...
-    # Copia la parte scan_receipt dallo snippet precedente se serve, 
-    # ma non è cambiata rispetto alla tua versione.
     try:
         print(f"📥 Ricevuto scontrino: {file.filename}")
         if not os.path.exists(DIET_JSON_PATH):
