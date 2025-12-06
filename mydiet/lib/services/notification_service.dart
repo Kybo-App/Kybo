@@ -64,7 +64,7 @@ class NotificationService {
       _nextInstanceOfTime(hour, minute),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'meal_channel_id', // ID Canale
+          'meal_channel_id_v2', // ID Canale
           'Promemoria Pasti', // Nome Canale visibile all'utente
           channelDescription: 'Ti ricorda quando mangiare',
           importance: Importance.max,
