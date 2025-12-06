@@ -184,7 +184,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                     title: Text(opt['name']),
                     subtitle: Text(opt['qty'].toString()),
                     onTap: () {
-                      // [FIX] Ensure unit is passed so MealCard can display "100 g"
                       provider.swapMeal(
                         swapKey,
                         ActiveSwap(
@@ -302,7 +301,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           onAddManual: provider.addPantryItem,
           onRemove: provider.removePantryItem,
           onScanTap: () async {
-            // [FIX] Implemented Receipt Scanning logic
             FilePickerResult? result = await FilePicker.platform.pickFiles(
               type: FileType.custom,
               allowedExtensions: ['jpg', 'png', 'jpeg', 'pdf'],
@@ -334,8 +332,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           shoppingList: provider.shoppingList,
           dietData: provider.dietData,
           activeSwaps: provider.activeSwaps,
+          pantryItems: provider.pantryItems, // Added parameter
           onUpdateList: (list) {
-            // [FIX] Connected callback to provider
             provider.updateShoppingList(list);
           },
         );

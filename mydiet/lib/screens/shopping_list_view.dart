@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/active_swap.dart';
+import '../models/pantry_item.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
   final Map<String, dynamic>? dietData;
   final Map<String, ActiveSwap> activeSwaps;
+  final List<PantryItem> pantryItems;
   final Function(List<String>) onUpdateList;
 
   const ShoppingListView({
@@ -12,6 +14,7 @@ class ShoppingListView extends StatefulWidget {
     required this.shoppingList,
     required this.dietData,
     required this.activeSwaps,
+    required this.pantryItems,
     required this.onUpdateList,
   });
 
@@ -160,9 +163,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   void _generateListFromSelection() {
     if (_selectedMealKeys.isEmpty) return;
 
-    Map<String, Map<String, dynamic>> aggregator = {};
+    // Map structure: Name -> {qty: double, unit: String}
+    Map<String, Map<String, dynamic>> neededItems = {};
 
     try {
+      // 1. Aggregate all needed items from the Diet Plan
       for (String key in _selectedMealKeys) {
         var parts = key.split('_');
         var day = parts[0];
@@ -171,35 +176,30 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         List<dynamic>? foods = widget.dietData![day]?[meal];
         if (foods == null) continue;
 
-        // --- LOGICA IDENTICA A MEAL CARD (Single vs Groups) ---
+        // Grouping logic (headers handling)
         List<List<dynamic>> groupedFoods = [];
         List<dynamic> currentGroup = [];
 
         for (var food in foods) {
           String qty = food['qty']?.toString() ?? "";
           bool isHeader = qty == "N/A";
-
           if (isHeader) {
-            if (currentGroup.isNotEmpty) {
+            if (currentGroup.isNotEmpty)
               groupedFoods.add(List.from(currentGroup));
-            }
             currentGroup = [food];
           } else {
-            if (currentGroup.isNotEmpty) {
+            if (currentGroup.isNotEmpty)
               currentGroup.add(food);
-            } else {
-              groupedFoods.add([food]); // Elemento singolo
-            }
+            else
+              groupedFoods.add([food]);
           }
         }
         if (currentGroup.isNotEmpty) groupedFoods.add(List.from(currentGroup));
-        // -----------------------------------------------------------
 
+        // Process Groups and Swaps
         for (int i = 0; i < groupedFoods.length; i++) {
           var group = groupedFoods[i];
-
           String swapKey = "${day}_${meal}_group_$i";
-
           List<dynamic> itemsToAdd = group;
 
           if (widget.activeSwaps.containsKey(swapKey)) {
@@ -215,43 +215,56 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           }
 
           for (var food in itemsToAdd) {
-            String name = food['name'];
             String qtyStr = food['qty']?.toString() ?? "";
-
             // Ignoriamo gli header (qty N/A) a meno che non siano piatti unici sostituiti
             if (qtyStr == "N/A" && itemsToAdd.length > 1) continue;
-
-            _addToAggregator(aggregator, name, qtyStr);
+            _addToAggregator(neededItems, food['name'], qtyStr);
           }
         }
       }
     } catch (e) {
-      debugPrint("Errore durante la generazione della lista: $e");
+      debugPrint("Error generating list: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Errore interno nella generazione dei dati."),
-        ),
+        const SnackBar(content: Text("Errore interno nella generazione dati.")),
       );
       return;
     }
 
+    // 2. Subtract Pantry Items
     List<String> newList = List.from(widget.shoppingList);
-    aggregator.forEach((name, data) {
-      double total = data['qty'];
+    int addedCount = 0;
+
+    neededItems.forEach((name, data) {
+      double neededQty = data['qty'];
       String unit = data['unit'];
-      String entry = "";
+      String cleanNameLower = name.trim().toLowerCase();
 
-      if (total == 0) {
-        entry = name;
-      } else {
-        String numDisplay = total % 1 == 0
-            ? total.toInt().toString()
-            : total.toStringAsFixed(1);
-        entry = "$name ($numDisplay $unit)";
-      }
+      // Find in Pantry
+      // Logic: Matches name AND unit.
+      var pantryMatch = widget.pantryItems
+          .where(
+            (p) =>
+                p.name.toLowerCase().trim() == cleanNameLower &&
+                p.unit.toLowerCase() == unit.toLowerCase(),
+          )
+          .firstOrNull;
 
-      if (!newList.contains(entry)) {
-        newList.add(entry);
+      double existingQty = pantryMatch?.quantity ?? 0.0;
+      double finalQty = neededQty - existingQty;
+
+      if (finalQty > 0) {
+        String displayQty = finalQty % 1 == 0
+            ? finalQty.toInt().toString()
+            : finalQty.toStringAsFixed(1);
+
+        String entry = (finalQty == 0 || unit.isEmpty)
+            ? name
+            : "$name ($displayQty $unit)";
+
+        if (!newList.contains(entry)) {
+          newList.add(entry);
+          addedCount++;
+        }
       }
     });
 
@@ -260,7 +273,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Aggiunti ${aggregator.length} prodotti alla lista!"),
+        content: Text("Aggiunti $addedCount prodotti (sottratto dispensa)!"),
         backgroundColor: Colors.green[700],
       ),
     );
@@ -286,17 +299,13 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     }
 
     String cleanName = name.trim();
-    String key = unit.isEmpty ? cleanName : "$cleanName ($unit)";
-
+    // Use name as key to aggregate same items, store unit
     if (agg.containsKey(cleanName) && agg[cleanName]!['unit'] == unit) {
       agg[cleanName]!['qty'] += qty;
     } else {
-      if (agg.containsKey(key)) {
-        agg[key]!['qty'] += qty;
-      } else {
-        String finalKey = unit.isEmpty ? cleanName : key;
-        agg[finalKey] = {'qty': qty, 'unit': unit};
-      }
+      // Handle simple case: if unit mismatch or new item, just overwrite or add.
+      // For a robust app, you'd need unit conversion.
+      agg[cleanName] = {'qty': qty, 'unit': unit};
     }
   }
 
