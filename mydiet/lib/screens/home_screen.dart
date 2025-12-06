@@ -10,7 +10,6 @@ import '../constants.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
 import 'shopping_list_view.dart';
-import 'notification_settings_view.dart'; // <--- 1. IMPORT NUOVO
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -105,7 +104,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   Future<void> _loadAssetDiet() async {
     try {
       final String response = await rootBundle.loadString('assets/dieta.json');
-      debugPrint("📄 JSON Letto: $response"); // <--- AGGIUNGI QUESTA RIGA
+      debugPrint("📄 JSON Letto: $response");
       final data = json.decode(response);
       setState(() {
         dietData = data['plan'];
@@ -609,25 +608,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                 floating: true,
                 pinned: true,
                 actions: [
-                  // --- 2. MODIFICA: ICONA NOTIFICHE ---
-                  // Visibile solo nella Tab 0 (Dieta)
                   if (_currentIndex == 0) ...[
-                    IconButton(
-                      icon: const Icon(
-                        Icons.notifications_active_outlined,
-                        color: Colors.black87,
-                      ),
-                      tooltip: "Impostazioni Notifiche",
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const NotificationSettingsView(),
-                          ),
-                        );
-                      },
-                    ),
                     IconButton(
                       icon: Icon(
                         isTranquilMode ? Icons.spa : Icons.spa_outlined,
