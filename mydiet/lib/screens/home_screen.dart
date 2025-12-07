@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
-import '../services/api_client.dart'; // For error types
+import '../services/api_client.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
-import 'notifications_screen.dart'; // [ADDED]
+// [IMPORTANT] Ensure this file exists in lib/screens/
+import 'notifications_screen.dart';
 import 'shopping_list_view.dart';
 
 class MainScreen extends StatefulWidget {
@@ -39,8 +40,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  // --- ACTIONS ---
-
   void _uploadDiet(BuildContext context) async {
     final provider = context.read<DietProvider>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -67,7 +66,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           } else if (e is NetworkException) {
             errorMessage = "Errore di rete. Controlla la connessione.";
           }
-
           scaffoldMessenger.showSnackBar(
             SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
           );
@@ -80,11 +78,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     BuildContext context,
     DietProvider provider,
     String name,
-    String dietQtyString,
+    String qty,
   ) {
-    // [FIX] Logic moved to provider
-    provider.consumeSmart(name, dietQtyString);
-
+    provider.consumeSmart(name, qty);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("Hai mangiato $name! 😋"),
@@ -206,8 +202,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  // --- BUILD UI ---
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DietProvider>();
@@ -227,12 +221,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               title: const Text("Carica Dieta PDF"),
               onTap: () => _uploadDiet(context),
             ),
-            // [ADDED] Notifications Link
+            // [FIX] Correctly links to the NotificationsScreen class
             ListTile(
               leading: const Icon(Icons.notifications),
               title: const Text("Impostazioni Notifiche"),
               onTap: () {
-                Navigator.pop(context); // Close drawer
+                Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -322,9 +316,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               type: FileType.custom,
               allowedExtensions: ['jpg', 'png', 'jpeg', 'pdf'],
             );
-
             if (!mounted) return;
-
             if (result != null) {
               try {
                 int count = await provider.scanReceipt(
@@ -351,7 +343,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           activeSwaps: provider.activeSwaps,
           pantryItems: provider.pantryItems,
           onUpdateList: provider.updateShoppingList,
-          // Callback for adding to pantry
           onAddToPantry: provider.addPantryItem,
         );
       default:

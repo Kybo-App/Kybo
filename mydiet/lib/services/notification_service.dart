@@ -1,134 +1,58 @@
-import 'dart:io';
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz_data;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  static const MethodChannel _platform = MethodChannel(
-    'com.example.mydiet/timezone',
-  );
-
-  bool _isInitialized = false;
-
   Future<void> init() async {
-    if (_isInitialized) return;
-
-    tz_data.initializeTimeZones();
-
-    try {
-      final String timeZoneName = await _platform.invokeMethod(
-        'getLocalTimezone',
-      );
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-      debugPrint("Timezone initialized (Native): $timeZoneName");
-    } catch (e) {
-      debugPrint("Could not get local timezone: $e");
-      tz.setLocalLocation(tz.UTC);
-    }
-
-    // [FIX] Changed to 'icon' to match 'src/main/res/drawable/icon.png'.
-    // This avoids the 'resource not found' error and XML adaptive icon crashes.
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('icon');
-
-    const DarwinInitializationSettings iosSettings =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-        );
-
-    const InitializationSettings initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
+    await AwesomeNotifications().initialize(
+      // [IMPORTANT] Ensure 'icon' exists in android/app/src/main/res/drawable
+      // If using flutter_launcher_icons, you might need 'resource://mipmap/launcher_icon'
+      'resource://drawable/icon',
+      [
+        NotificationChannel(
+          channelGroupKey: 'meal_group',
+          channelKey: 'meal_channel',
+          channelName: 'Pasti e Promemoria',
+          channelDescription: 'Notifiche per i pasti',
+          defaultColor: const Color(0xFF2E7D32),
+          ledColor: Colors.white,
+          importance: NotificationImportance.Max,
+          channelShowBadge: true,
+          criticalAlerts: true,
+          playSound: true,
+        ),
+      ],
+      channelGroups: [
+        NotificationChannelGroup(
+          channelGroupKey: 'meal_group',
+          channelGroupName: 'Diet Notifications',
+        ),
+      ],
+      debug: true,
     );
-
-    await _notificationsPlugin.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: (details) {
-        debugPrint("Notification clicked: ${details.payload}");
-      },
-    );
-
-    if (Platform.isAndroid) {
-      await _createNotificationChannel();
-    }
-
-    _isInitialized = true;
   }
 
-  Future<void> _createNotificationChannel() async {
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'meal_channel_v7',
-      'Pasti e Promemoria',
-      description: 'Notifiche per i pasti',
-      importance: Importance.max,
-      playSound: true,
-      enableVibration: true,
-    );
+  /// Call this on the Notification Screen to force the permission dialog
+  Future<void> checkPermissions(BuildContext context) async {
+    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
 
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
-  }
-
-  Future<bool> requestPermissions() async {
-    if (Platform.isIOS) {
-      final bool? result = await _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-      return result ?? false;
-    } else if (Platform.isAndroid) {
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >();
-
-      final bool? notifications = await androidImplementation
-          ?.requestNotificationsPermission();
-
-      final bool? alarms = await androidImplementation
-          ?.requestExactAlarmsPermission();
-
-      return (notifications ?? false) && (alarms ?? false);
+    if (!isAllowed) {
+      await AwesomeNotifications().requestPermissionToSendNotifications();
     }
-    return false;
   }
 
   Future<void> showInstantNotification() async {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'meal_channel_v7',
-          'Pasti e Promemoria',
-          channelDescription: 'Notifiche per i pasti',
-          importance: Importance.max,
-          priority: Priority.high,
-        );
-
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(),
-    );
-
-    await _notificationsPlugin.show(
-      999,
-      'Test Notifica',
-      'Se leggi questo, le notifiche funzionano!',
-      details,
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 999,
+        channelKey: 'meal_channel',
+        title: 'Test Notifica',
+        body: 'Se leggi questo, Awesome Notifications funziona!',
+        notificationLayout: NotificationLayout.Default,
+      ),
     );
   }
 
@@ -138,77 +62,43 @@ class NotificationService {
     required String body,
     required TimeOfDay time,
   }) async {
-    final scheduledDate = _nextInstanceOfTime(time);
+    // Automatically gets the device timezone
+    String localTimeZone = await AwesomeNotifications()
+        .getLocalTimeZoneIdentifier();
 
-    if (Platform.isAndroid) {
-      final canSchedule =
-          await _notificationsPlugin
-              .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin
-              >()
-              ?.canScheduleExactNotifications() ??
-          false;
-
-      if (!canSchedule) {
-        debugPrint("⚠️ WARNING: Exact Alarms permission NOT granted.");
-      }
-    }
-
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'meal_channel_v7',
-          'Pasti e Promemoria',
-          channelDescription: 'Notifiche per i pasti',
-          importance: Importance.max,
-          priority: Priority.high,
-          visibility: NotificationVisibility.public,
-          styleInformation: BigTextStyleInformation(''),
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-        ),
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: id,
+        channelKey: 'meal_channel',
+        title: title,
+        body: body,
+        category: NotificationCategory.Reminder,
+        wakeUpScreen: true,
+        fullScreenIntent: true,
+        notificationLayout: NotificationLayout.Default,
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
+      schedule: NotificationCalendar(
+        hour: time.hour,
+        minute: time.minute,
+        second: 0,
+        millisecond: 0,
+        timeZone: localTimeZone,
+        repeats: true, // Daily repetition
+        preciseAlarm: true, // Handles Exact Alarm permission automatically
+        allowWhileIdle: true,
+      ),
     );
 
     debugPrint(
-      "✅ SCHEDULED (v7) '$title' per: $scheduledDate (${tz.local.name})",
+      "✅ Scheduled ID:$id at ${time.hour}:${time.minute} ($localTimeZone)",
     );
   }
 
   Future<void> cancelNotification(int id) async {
-    await _notificationsPlugin.cancel(id);
+    await AwesomeNotifications().cancel(id);
   }
 
   Future<void> cancelAll() async {
-    await _notificationsPlugin.cancelAll();
-  }
-
-  tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    return scheduledDate;
+    await AwesomeNotifications().cancelAll();
   }
 }

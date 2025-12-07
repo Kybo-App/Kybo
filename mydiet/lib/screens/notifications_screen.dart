@@ -27,12 +27,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
+    // [FIX] Uses the correct method for Awesome Notifications
+    _service.checkPermissions(context);
     _loadPreferences();
-    _checkPermissions();
-  }
-
-  Future<void> _checkPermissions() async {
-    await _service.requestPermissions();
   }
 
   Future<void> _loadPreferences() async {
@@ -140,7 +137,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         title: const Text("Notifiche Pasti"),
         actions: [
-          // [ADDED] Test Button
           IconButton(
             icon: const Icon(Icons.notification_important),
             tooltip: "Test Immediato",
