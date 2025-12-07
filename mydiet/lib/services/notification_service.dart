@@ -35,9 +35,10 @@ class NotificationService {
       tz.setLocalLocation(tz.UTC);
     }
 
-    // [FIX] Changed icon to 'ic_launcher' (PNG) to avoid XML Adaptive Icon issues
+    // [FIX] Changed to 'icon' to match 'src/main/res/drawable/icon.png'.
+    // This avoids the 'resource not found' error and XML adaptive icon crashes.
     const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('icon');
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
@@ -67,7 +68,7 @@ class NotificationService {
 
   Future<void> _createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'meal_channel_v7', // [CHANGED] New ID
+      'meal_channel_v7',
       'Pasti e Promemoria',
       description: 'Notifiche per i pasti',
       importance: Importance.max,
@@ -99,7 +100,7 @@ class NotificationService {
 
       final bool? notifications = await androidImplementation
           ?.requestNotificationsPermission();
-      // We still ask for exact alarms to ensure scheduling precision
+
       final bool? alarms = await androidImplementation
           ?.requestExactAlarmsPermission();
 
@@ -139,6 +140,20 @@ class NotificationService {
   }) async {
     final scheduledDate = _nextInstanceOfTime(time);
 
+    if (Platform.isAndroid) {
+      final canSchedule =
+          await _notificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.canScheduleExactNotifications() ??
+          false;
+
+      if (!canSchedule) {
+        debugPrint("⚠️ WARNING: Exact Alarms permission NOT granted.");
+      }
+    }
+
     await _notificationsPlugin.zonedSchedule(
       id,
       title,
@@ -146,15 +161,13 @@ class NotificationService {
       scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'meal_channel_v7', // Match Channel ID
+          'meal_channel_v7',
           'Pasti e Promemoria',
           channelDescription: 'Notifiche per i pasti',
           importance: Importance.max,
           priority: Priority.high,
-          // [FIX] Removed 'fullScreenIntent' (caused permissions issues)
-          // [FIX] Removed 'category: alarm' (caused persistent icon issues)
           visibility: NotificationVisibility.public,
-          styleInformation: BigTextStyleInformation(''), // Ensures expansion
+          styleInformation: BigTextStyleInformation(''),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
@@ -163,8 +176,6 @@ class NotificationService {
           interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
-      // [FIX] Switched to exactAllowWhileIdle.
-      // It's robust but behaves like a Notification, not an Alarm Clock.
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
