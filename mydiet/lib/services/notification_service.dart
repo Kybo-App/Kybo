@@ -1,8 +1,10 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart'; // NEW IMPORT
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'storage_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -17,13 +19,23 @@ class NotificationService {
   Future<void> init() async {
     if (_isInitialized) return;
 
+    // 1. Initialize Timezone Database
     tz.initializeTimeZones();
 
-    // Android Settings
+    // 2. AUTO-DETECT DEVICE TIMEZONE
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint("✅ Timezone detected: $timeZoneName");
+    } catch (e) {
+      debugPrint("⚠️ Timezone Error: $e");
+      // Fallback only if detection fails
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
+
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/launcher_icon');
 
-    // iOS Settings
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
           requestSoundPermission: false,
@@ -40,7 +52,6 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // Handle logic when user taps notification
         debugPrint("Notification Tapped: ${details.payload}");
       },
     );
@@ -70,38 +81,105 @@ class NotificationService {
     return false;
   }
 
-  Future<void> scheduleDailyNotification({
-    required int id,
-    required String title,
-    required String body,
-    required int hour,
-    required int minute,
-  }) async {
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      _nextInstanceOfTime(hour, minute),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_meal_channel',
+  // --- DYNAMIC SCHEDULING ---
+
+  Future<void> scheduleAllMeals() async {
+    await cancelMealReminders();
+
+    final storage = StorageService();
+    final times = await storage.loadMealTimes();
+
+    await _scheduleMeal(
+      10,
+      "Colazione ☕",
+      "È ora di fare il pieno di energia!",
+      times["colazione"] ?? "08:00",
+    );
+    await _scheduleMeal(
+      11,
+      "Pranzo 🥗",
+      "Buon appetito! Segui il piano.",
+      times["pranzo"] ?? "13:00",
+    );
+    await _scheduleMeal(
+      12,
+      "Cena 🍽️",
+      "Chiudi la giornata con gusto.",
+      times["cena"] ?? "20:00",
+    );
+  }
+
+  Future<void> _scheduleMeal(
+    int id,
+    String title,
+    String body,
+    String timeStr,
+  ) async {
+    try {
+      final parts = timeStr.split(":");
+      final int hour = int.parse(parts[0]);
+      final int minute = int.parse(parts[1]);
+
+      await _scheduleDaily(id, title, body, hour, minute);
+    } catch (e) {
+      debugPrint("⚠️ Error parsing time $timeStr: $e");
+    }
+  }
+
+  Future<void> cancelMealReminders() async {
+    await flutterLocalNotificationsPlugin.cancel(10);
+    await flutterLocalNotificationsPlugin.cancel(11);
+    await flutterLocalNotificationsPlugin.cancel(12);
+  }
+
+  Future<void> _scheduleDaily(
+    int id,
+    String title,
+    String body,
+    int hour,
+    int minute,
+  ) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'meal_reminders_v2',
           'Meal Reminders',
           channelDescription: 'Reminders for your daily meals',
           importance: Importance.max,
           priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents:
-          DateTimeComponents.time, // Matches time to repeat daily
-    );
-  }
+        );
 
-  Future<void> cancelAll() async {
-    await flutterLocalNotificationsPlugin.cancelAll();
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstanceOfTime(hour, minute),
+        const NotificationDetails(
+          android: androidDetails,
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint("⚠️ Exact Alarm Failed, using Inexact: $e");
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstanceOfTime(hour, minute),
+        const NotificationDetails(
+          android: androidDetails,
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    }
   }
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {

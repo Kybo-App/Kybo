@@ -7,6 +7,7 @@ class StorageService {
   static const String _dietKey = 'dietData';
   static const String _pantryKey = 'pantryItems';
   static const String _swapsKey = 'activeSwaps';
+  static const String _mealTimesKey = 'mealTimes';
 
   Future<Map<String, dynamic>?> loadDiet() async {
     final prefs = await SharedPreferences.getInstance();
@@ -51,6 +52,22 @@ class StorageService {
       _swapsKey,
       json.encode(swaps.map((k, v) => MapEntry(k, v.toJson()))),
     );
+  }
+
+  // --- NEW: MEAL TIMES ---
+  Future<Map<String, String>> loadMealTimes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? jsonStr = prefs.getString(_mealTimesKey);
+    if (jsonStr != null) {
+      return Map<String, String>.from(json.decode(jsonStr));
+    }
+    // Default Defaults
+    return {"colazione": "08:00", "pranzo": "13:00", "cena": "20:00"};
+  }
+
+  Future<void> saveMealTimes(Map<String, String> times) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_mealTimesKey, json.encode(times));
   }
 
   Future<void> clearAll() async {
