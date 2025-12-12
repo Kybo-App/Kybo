@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../services/api_client.dart';
+import '../services/notification_service.dart';
+import '../services/storage_service.dart'; // Added Import
 import 'diet_view.dart';
 import 'pantry_view.dart';
 import 'shopping_list_view.dart';
@@ -200,6 +203,133 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
+  // --- TIME SETTINGS LOGIC ---
+  void _openTimeSettings(BuildContext context) async {
+    final storage = StorageService();
+    // 1. Load current times
+    Map<String, String> times = await storage.loadMealTimes();
+
+    // Helper vars to track changes in Dialog state
+    TimeOfDay tColazione = _parseTime(times["colazione"]!);
+    TimeOfDay tPranzo = _parseTime(times["pranzo"]!);
+    TimeOfDay tCena = _parseTime(times["cena"]!);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Orari Pasti ⏰"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTimeRow(context, "Colazione", tColazione, (newTime) {
+                    setDialogState(() => tColazione = newTime);
+                  }),
+                  _buildTimeRow(context, "Pranzo", tPranzo, (newTime) {
+                    setDialogState(() => tPranzo = newTime);
+                  }),
+                  _buildTimeRow(context, "Cena", tCena, (newTime) {
+                    setDialogState(() => tCena = newTime);
+                  }),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Annulla"),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+
+                    // 2. Save new times
+                    final newTimes = {
+                      "colazione": _formatTime(tColazione),
+                      "pranzo": _formatTime(tPranzo),
+                      "cena": _formatTime(tCena),
+                    };
+                    await storage.saveMealTimes(newTimes);
+
+                    // 3. Reschedule Notifications
+                    final notifs = NotificationService();
+                    await notifs.init();
+                    bool granted = await notifs.requestPermissions();
+                    if (granted) {
+                      await notifs.scheduleAllMeals();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Orari aggiornati e attivati! ✅"),
+                          ),
+                        );
+                      }
+                    } else {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Permesso negato. Impossibile attivare.",
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text("Salva"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTimeRow(
+    BuildContext context,
+    String label,
+    TimeOfDay time,
+    Function(TimeOfDay) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          TextButton(
+            onPressed: () async {
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: time,
+              );
+              if (picked != null) {
+                onChanged(picked);
+              }
+            },
+            child: Text(
+              "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  TimeOfDay _parseTime(String s) {
+    final parts = s.split(":");
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
+
+  String _formatTime(TimeOfDay t) {
+    return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DietProvider>();
@@ -218,6 +348,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               leading: const Icon(Icons.upload_file),
               title: const Text("Carica Dieta PDF"),
               onTap: () => _uploadDiet(context),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.access_time_filled, color: Colors.blue),
+              title: const Text("Imposta Orari Pasti"),
+              subtitle: const Text("Configura notifiche"),
+              onTap: () {
+                Navigator.pop(context);
+                _openTimeSettings(context);
+              },
             ),
             const Divider(),
             ListTile(
