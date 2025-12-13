@@ -59,15 +59,24 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # FIX: Force iOS 14.0 in Podfile to satisfy workmanager_apple requirement
       - name: Update Podfile Platform
         run: |
           cd ios
-          # Uncomment or replace the platform line to set iOS 14.0
+          # Force platform :ios to 14.0 to support workmanager_apple
           sed -i '' "s/^# platform :ios, '.*'/platform :ios, '14.0'/" Podfile
-          # Fallback: if line is already uncommented but old version, update it
           sed -i '' "s/^platform :ios, '.*'/platform :ios, '14.0'/" Podfile
           cd ..
+
+      # FIX: Disable Automatic Signing in project.pbxproj
+      # This prevents Xcode from failing when no Development Team is found.
+      - name: Disable Automatic Signing
+        run: |
+          cd ios/Runner.xcodeproj
+          # Disable Automatic Signing
+          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/' project.pbxproj
+          # Clear Development Team (if any)
+          sed -i '' 's/DevelopmentTeam = .*/DevelopmentTeam = "";/' project.pbxproj
+          cd ../..
 
       - name: Install Pods
         run: |
@@ -76,8 +85,11 @@ jobs:
           cd ..
 
       - name: Build iOS (No Codesign)
+        # We pass extra arguments to force xcodebuild to ignore signing
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --build-name=1.0.0 --build-number=1 --no-pub \
+            --extra-gen-snapshot-options=--strip \
+            --dart-define=FLUTTER_WEB_USE_SKIA=true
 
       - name: Create IPA Payload
         run: |
