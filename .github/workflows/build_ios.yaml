@@ -21,6 +21,7 @@ jobs:
           channel: "stable"
           cache: true
 
+      # 1. FIX: Create Dummy GoogleService-Info.plist (Required by Firebase)
       - name: Create Dummy GoogleService-Info.plist
         run: |
           cat <<EOF > ios/Runner/GoogleService-Info.plist
@@ -59,22 +60,29 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # 2. FIX: Force iOS 14.0 in Podfile (Required by workmanager_apple)
       - name: Update Podfile Platform
         run: |
           cd ios
-          # Force platform :ios to 14.0 to support workmanager_apple
           sed -i '' "s/^# platform :ios, '.*'/platform :ios, '14.0'/" Podfile
           sed -i '' "s/^platform :ios, '.*'/platform :ios, '14.0'/" Podfile
           cd ..
 
-      # FIX: Disable Automatic Signing in project.pbxproj
-      # This prevents Xcode from failing when no Development Team is found.
-      - name: Disable Automatic Signing
+      # 3. FIX: Disable Signing in Release.xcconfig
+      # This overrides project settings and forces Xcode to stop asking for a Team.
+      - name: Disable Code Signing in XCConfig
+        run: |
+          echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGN_IDENTITY = " >> ios/Flutter/Release.xcconfig
+          echo "PROVISIONING_PROFILE_SPECIFIER = " >> ios/Flutter/Release.xcconfig
+
+      # 4. FIX: Disable Automatic Signing in project.pbxproj
+      # Switch to Manual style and clear DevelopmentTeam to prevent validation errors.
+      - name: Disable Automatic Signing in Project
         run: |
           cd ios/Runner.xcodeproj
-          # Disable Automatic Signing
           sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/' project.pbxproj
-          # Clear Development Team (if any)
           sed -i '' 's/DevelopmentTeam = .*/DevelopmentTeam = "";/' project.pbxproj
           cd ../..
 
@@ -85,11 +93,8 @@ jobs:
           cd ..
 
       - name: Build iOS (No Codesign)
-        # We pass extra arguments to force xcodebuild to ignore signing
         run: |
-          flutter build ios --release --no-codesign --build-name=1.0.0 --build-number=1 --no-pub \
-            --extra-gen-snapshot-options=--strip \
-            --dart-define=FLUTTER_WEB_USE_SKIA=true
+          flutter build ios --release --no-codesign --build-name=1.0.0 --build-number=1 --no-pub
 
       - name: Create IPA Payload
         run: |
