@@ -9,6 +9,8 @@ class MealCard extends StatelessWidget {
   final Map<String, ActiveSwap> activeSwaps;
   final bool isTranquilMode;
   final Function(String key, int currentCad) onSwap;
+  // NEW: Callback for editing
+  final Function(int index, String name, String qty)? onEdit;
 
   const MealCard({
     super.key,
@@ -18,6 +20,7 @@ class MealCard extends StatelessWidget {
     required this.activeSwaps,
     required this.isTranquilMode,
     required this.onSwap,
+    this.onEdit,
   });
 
   @override
@@ -48,9 +51,12 @@ class MealCard extends StatelessWidget {
     }
     // -----------------------------------------------------------
 
+    // Track the index in the original 'foods' list
+    int globalIndex = 0;
+
     return Card(
-      // The shape and elevation are handled by the main Theme,
-      // but we ensure it inherits correctly.
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -72,6 +78,11 @@ class MealCard extends StatelessWidget {
               int groupIndex = entry.key;
               List<dynamic> group = entry.value;
 
+              // Capture start index for this group
+              int currentGroupStart = globalIndex;
+              // Advance global index for next iteration
+              globalIndex += group.length;
+
               if (group.isEmpty) return const SizedBox.shrink();
 
               var header = group[0];
@@ -91,7 +102,6 @@ class MealCard extends StatelessWidget {
                   itemsToShow = swap.swappedIngredients!;
                 } else {
                   // Fallback: It's a single item swap (e.g., Banana)
-                  // Construct a list so the UI can render it
                   String qtyDisplay = swap.qty;
                   if (swap.unit.isNotEmpty) {
                     qtyDisplay = "$qtyDisplay ${swap.unit}";
@@ -112,7 +122,13 @@ class MealCard extends StatelessWidget {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: itemsToShow.map((item) {
+                        children: itemsToShow.asMap().entries.map((itemEntry) {
+                          int itemIndex = itemEntry.key;
+                          var item = itemEntry.value;
+
+                          // Calculate exact index in original list for editing
+                          int originalIndex = currentGroupStart + itemIndex;
+
                           bool isHeaderItem = (item['qty'] == "N/A");
                           bool isBold =
                               (isHeaderItem && !isSwapped) ||
@@ -139,7 +155,7 @@ class MealCard extends StatelessWidget {
                               ? name
                               : "$name ($qty)";
 
-                          return Padding(
+                          Widget content = Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Row(
                               children: [
@@ -171,6 +187,16 @@ class MealCard extends StatelessWidget {
                               ],
                             ),
                           );
+
+                          // Enable Edit Tap only for unswapped items
+                          if (!isSwapped && onEdit != null) {
+                            return InkWell(
+                              onTap: () => onEdit!(originalIndex, name, qty),
+                              child: content,
+                            );
+                          } else {
+                            return content;
+                          }
                         }).toList(),
                       ),
                     ),

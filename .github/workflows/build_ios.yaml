@@ -8,29 +8,76 @@ on:
 jobs:
   build_ios:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./mydiet
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+          cache: true
+
+      # FIX: Create a dummy GoogleService-Info.plist to prevent build errors.
+      # (The app will launch, but Firebase features won't work until you provide a real one)
+      - name: Create Dummy GoogleService-Info.plist
+        run: |
+          cat <<EOF > ios/Runner/GoogleService-Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>API_KEY</key>
+              <string>dummy_api_key</string>
+              <key>GCM_SENDER_ID</key>
+              <string>dummy_gcm_sender_id</string>
+              <key>PLIST_VERSION</key>
+              <string>1</string>
+              <key>BUNDLE_ID</key>
+              <string>com.example.dietApp</string>
+              <key>PROJECT_ID</key>
+              <string>dummy_project_id</string>
+              <key>STORAGE_BUCKET</key>
+              <string>dummy_storage_bucket</string>
+              <key>IS_ADS_ENABLED</key>
+              <false/>
+              <key>IS_ANALYTICS_ENABLED</key>
+              <false/>
+              <key>IS_APPINVITE_ENABLED</key>
+              <true/>
+              <key>IS_GCM_ENABLED</key>
+              <true/>
+              <key>IS_SIGNIN_ENABLED</key>
+              <true/>
+              <key>GOOGLE_APP_ID</key>
+              <string>1:1234567890:ios:dummyid</string>
+          </dict>
+          </plist>
+          EOF
 
       - name: Install dependencies
+        run: flutter pub get
+
+      - name: Install Pods
         run: |
-          cd mydiet
-          flutter pub get
+          cd ios
+          pod install --repo-update
+          cd ..
 
       - name: Build iOS (No Codesign)
+        # We explicitly disable signing requirements to ensure it builds on CI
         run: |
-          cd mydiet
           flutter build ios --release --no-codesign
 
       - name: Create IPA Payload
         run: |
-          cd mydiet
           mkdir Payload
+          # Move the built app into the Payload folder
           mv build/ios/iphoneos/Runner.app Payload/
+          # Zip it to create the IPA
           zip -r MyDiet_Unsigned.ipa Payload
 
       - name: Upload IPA
