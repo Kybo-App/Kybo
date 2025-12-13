@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../repositories/diet_repository.dart';
@@ -195,13 +196,37 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Method stubs to satisfy existing calls if any
+  // UPDATED: Now actually updates the diet plan
   void updateDietMeal(
     String day,
     String meal,
     int idx,
     String name,
     String qty,
-  ) {}
-  void swapMeal(String key, ActiveSwap swap) {}
+  ) {
+    if (_dietData != null &&
+        _dietData![day] != null &&
+        _dietData![day][meal] != null) {
+      // Clone the list to trigger notifyListeners correctly after modification
+      var currentMeals = List<dynamic>.from(_dietData![day][meal]);
+
+      if (idx >= 0 && idx < currentMeals.length) {
+        var oldItem = currentMeals[idx];
+        currentMeals[idx] = {...oldItem, 'name': name, 'qty': qty};
+
+        _dietData![day][meal] = currentMeals;
+
+        // Persist changes
+        _storage.saveDiet({'plan': _dietData, 'substitutions': _substitutions});
+        notifyListeners();
+      }
+    }
+  }
+
+  // UPDATED: Now actually saves the swap
+  void swapMeal(String key, ActiveSwap swap) {
+    _activeSwaps[key] = swap;
+    _storage.saveSwaps(_activeSwaps);
+    notifyListeners();
+  }
 }

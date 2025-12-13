@@ -15,7 +15,6 @@ class DietView extends StatelessWidget {
 
   final Function(String, String) onConsume;
   final Function(String, String, int, String, String) onEdit;
-  // MODIFICA QUI: La firma di onSwap è cambiata per supportare i gruppi
   final Function(String swapKey, int cadCode) onSwap;
 
   const DietView({
@@ -101,16 +100,17 @@ class DietView extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
           child: MealCard(
-            day: day, // <--- PASSAGGIO DEL GIORNO AGGIUNTO
-            isTranquilMode:
-                isTranquilMode, // <--- PASSAGGIO MODALITÀ RELAX AGGIUNTO
+            day: day,
+            isTranquilMode: isTranquilMode,
             mealName: mealName,
             foods: foods,
             activeSwaps: activeSwaps,
             onSwap: (String fullKey, int cad) {
-              // La chiave arriva già completa dalla MealCard (es. Lunedì_Pranzo_group_0)
-              // La passiamo direttamente alla logica principale
               onSwap(fullKey, cad);
+            },
+            // CONNECTED EDIT CALLBACK
+            onEdit: (int itemIndex, String name, String qty) {
+              onEdit(day, mealName, itemIndex, name, qty);
             },
           ),
         );
