@@ -15,14 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Setup Java (Required for some Flutter tools/Gradle)
+      # 1. Setup Environment
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "zulu"
           java-version: "17"
 
-      # 2. Setup Ruby (Required for CocoaPods)
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -35,7 +34,7 @@ jobs:
           channel: "stable"
           cache: true
 
-      # 3. Create Dummy GoogleService-Info.plist (Required for Firebase)
+      # 2. Create Dummy GoogleService-Info.plist
       - name: Create Dummy GoogleService-Info.plist
         run: |
           cat <<EOF > ios/Runner/GoogleService-Info.plist
@@ -74,22 +73,28 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 4. FIX: Disable Signing in Xcode Project & Configs
+      # 3. CRITICAL FIX: Aggressively Nuke Signing Settings in Project File
       - name: Disable Signing
         run: |
           cd ios
 
-          # A. Modify project.pbxproj
-          # Change CODE_SIGN_STYLE from Automatic to Manual
+          # A. Force Manual Signing Style
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' Runner.xcodeproj/project.pbxproj
-          # Remove Development Team
+
+          # B. Clear Development Team & Profile
           sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' Runner.xcodeproj/project.pbxproj
-          # Remove Provisioning Profile Specifier
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' Runner.xcodeproj/project.pbxproj
-          # Remove Entitlements
+
+          # C. REMOVE IDENTITY OVERRIDES (The main culprit)
+          # Replaces "CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer"; with empty string
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' Runner.xcodeproj/project.pbxproj
+          # Just in case a generic one exists too
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' Runner.xcodeproj/project.pbxproj
+
+          # D. Remove Entitlements (Prevents signing validation errors)
           sed -i '' '/CODE_SIGN_ENTITLEMENTS/d' Runner.xcodeproj/project.pbxproj
 
-          # B. Force settings in Release.xcconfig (This effectively passes the args to Xcode)
+          # E. Force XCConfig Overrides (Fail-safe)
           echo "" >> Flutter/Release.xcconfig
           echo "CODE_SIGNING_ALLOWED=NO" >> Flutter/Release.xcconfig
           echo "CODE_SIGNING_REQUIRED=NO" >> Flutter/Release.xcconfig
@@ -98,27 +103,24 @@ jobs:
 
           cd ..
 
-      # 5. FIX: Force iOS 14.0 in Podfile (Fixes workmanager_apple error)
+      # 4. Fix Podfile Platform (Fixes workmanager_apple)
       - name: Update Pods
         run: |
           cd ios
-          # Remove lockfile to force re-evaluation
           rm -f Podfile.lock
-
-          # Force set platform to 14.0 (handles commented or uncommented lines)
           sed -i '' "s/^#* *platform :ios.*/platform :ios, '14.0'/" Podfile
-
-          # Install Pods
           pod install --repo-update
           cd ..
 
-      # 6. Build iOS (Unsigned)
-      # Removed the invalid --xcargs flag. The settings are now handled by step 4 via xcconfig.
+      # 5. Build iOS (Unsigned) with Environment Overrides
       - name: Build iOS App
         run: |
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
           flutter build ios --release --no-codesign --no-pub
 
-      # 7. Package IPA
+      # 6. Package IPA
       - name: Create IPA Payload
         run: |
           mkdir -p Payload
