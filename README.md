@@ -1,82 +1,142 @@
-NutriScan
-Sistema digitale per la gestione della dieta e della dispensa. Converte i piani nutrizionali PDF in programmi interattivi e automatizza la lista della spesa tramite la scansione degli scontrini.
+# 🥗 MyDiet
 
-Funzionalità
-Parsing Dieta PDF: Estrae pasti, quantità e giorni da file PDF non strutturati utilizzando l'IA di Gemini.
+**MyDiet** is a digital system for diet and pantry management.  
+It converts nutritional plans from PDF into interactive schedules and automates shopping lists by scanning receipts.
 
-Scanner Scontrini: Aggiunge prodotti al "Frigo Virtuale" tramite OCR e corrispondenza fuzzy delle stringhe (fuzzy matching).
+---
 
-Lista Spesa Intelligente: Calcola gli articoli necessari sottraendo l'inventario della dispensa dal piano dietetico.
+## ✨ Features
 
-Sostituzione Pasti: Suggerisce alternative basate sui codici di composizione degli alimenti (CAD).
+- **PDF Diet Parsing**  
+  Extracts meals, quantities, and days from unstructured PDF files using **Google Gemini AI**.
 
-Modalità Relax: Attiva o disattiva la visibilità delle grammature specifiche per ridurre lo stress.
+- **Receipt Scanner**  
+  Adds products to the *Virtual Fridge* via **OCR** and **fuzzy string matching**.
 
-Multipiattaforma: Sviluppato con Flutter (Mobile/Web/Desktop) e Python (FastAPI).
+- **Smart Shopping List**  
+  Automatically calculates necessary items by subtracting pantry inventory from the diet plan.
 
-Stack Tecnologico
-Frontend: Flutter, Provider (Gestione dello Stato), HTTP.
+- **Meal Substitution**  
+  Suggests alternatives based on food composition codes (**CAD**).
 
-Backend: Python, FastAPI, Uvicorn.
+- **Inventory Management**  
+  Tracks pantry items and expiration dates.
 
-AI/OCR: Google Gemini (Parsing PDF), Tesseract OCR (Scontrini), TheFuzz (Matching stringhe).
+- **Cross-Platform**  
+  Built with **Flutter** (Mobile / Web / Desktop) and **Python** (FastAPI).
 
-Installazione
-1. Backend (Server)
-Naviga nella cartella server/.
+---
 
-Requisiti:
+## 🛠 Tech Stack
 
-Python 3.9+
+### Frontend
+- Flutter  
+- Provider (State Management)  
+- HTTP  
 
-Tesseract OCR installato sul sistema host.
+### Backend
+- Python  
+- FastAPI  
+- Uvicorn  
 
-Setup:
+### Hosting
+- Render (Backend)
 
-Bash
+### AI / OCR
+- Google Gemini (PDF Parsing)  
+- Tesseract OCR (Receipts)  
+- TheFuzz (String Matching)
 
+### Infrastructure
+- Firebase (Notifications)
+
+---
+
+## ✅ Prerequisites
+
+- **Flutter SDK**
+- *(Optional – for local backend)*  
+  - Python 3.9+  
+  - Tesseract OCR  
+
+---
+
+## 🚀 Installation
+
+### 1️⃣ Backend
+
+#### Live Environment (Render)
+The backend is deployed on **Render**.  
+No local installation is required for the client app to function.
+
+#### Local Development (Optional)
+
+```bash
 cd server
 pip install -r requirements.txt
-Configurazione: Crea un file .env nella cartella server/:
+```
 
-Ini, TOML
+Create a `.env` file inside `server/`:
 
-GOOGLE_API_KEY=la_tua_chiave_api_gemini
-Esecuzione:
+```ini
+GOOGLE_API_KEY=your_gemini_api_key
+```
 
-Bash
+Run the server:
 
+```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-2. Frontend (App)
-Naviga nella cartella mydiet/.
+```
 
-Setup:
+---
 
-Bash
+### 2️⃣ Frontend (App)
 
+```bash
 cd mydiet
 flutter pub get
-Configurazione: Assicurati che lib/core/env.dart (o il file .env lato client) punti all'indirizzo IP corretto del backend (default: http://10.0.2.2:8000 per l'emulatore Android o il tuo IP locale).
+```
 
-Esecuzione:
+Create a `.env` file in `mydiet/assets/`:
 
-Bash
+```ini
+API_URL=https://<your-app-name>.onrender.com
+```
 
+#### Firebase Setup
+
+- **Android**: `mydiet/android/app/google-services.json`  
+- **iOS**: `mydiet/ios/Runner/GoogleService-Info.plist`
+
+Run:
+
+```bash
 flutter run
-Utilizzo
-Carica Dieta: Apri il menu laterale, seleziona "Carica Dieta PDF". Carica il file fornito dal nutrizionista.
+```
 
-Riempi la Dispensa: Vai su "Dispensa". Aggiungi articoli manualmente o tocca l'icona Fotocamera per scansionare uno scontrino (Immagine o PDF).
+---
 
-Genera Lista: Vai su "Lista". Seleziona i giorni o i pasti desiderati. Il sistema controlla la dispensa ed elenca solo ciò che manca.
+## 📖 Usage
 
-Gestisci Pasti: Tocca le frecce per sostituire i pasti con alternative valide. Tieni premuto su un piatto per modificarne i dettagli. Tocca la casella di controllo per segnarlo come consumato.
+1. Upload a PDF diet plan  
+2. Add pantry items manually or by scanning receipts  
+3. Generate a shopping list for selected days
 
-Struttura del Progetto
-mydiet/: Codice dell'applicazione Flutter.
+---
 
-server/: Backend Python FastAPI.
+## 📌 Project Status
 
-app/services/diet_service.py: Interazione con LLM per il parsing del PDF.
+Personal project — **under active development**.
 
-app/services/receipt_service.py: Logica OCR e algoritmo di matching fuzzy.
+---
+
+## 👤 Author
+
+**Riccardo Leone**
+
+---
+
+## 📄 License
+
+**All Rights Reserved**  
+Intended for personal use only.
