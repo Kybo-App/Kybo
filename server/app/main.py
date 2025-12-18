@@ -16,17 +16,14 @@ from app.services.normalization import normalize_meal_name
 
 # --- FIREBASE SETUP ---
 if not firebase_admin._apps:
-    # In produzione (Render/Cloud Run) le credenziali sono automatiche
-    # In locale, assicurati di avere GOOGLE_APPLICATION_CREDENTIALS impostato
     cred = credentials.ApplicationDefault()
     firebase_admin.initialize_app(cred)
 
 app = FastAPI()
 
-# Initialize Services
+# Initialize Services Globali (Quelli che non dipendono dai dati dell'utente)
 notification_service = NotificationService()
 diet_parser = DietParser()
-receipt_scanner = ReceiptScanner() # Nota: ReceiptScanner viene istanziato qui, ma usato stateless dopo
 
 # --- SECURITY DEPENDENCY ---
 async def verify_token(authorization: str = Header(...)):
@@ -51,7 +48,7 @@ async def verify_token(authorization: str = Header(...)):
 async def upload_diet(
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
-    user_id: str = Depends(verify_token) # <--- PROTEZIONE
+    user_id: str = Depends(verify_token) 
 ):
     temp_filename = f"{uuid.uuid4()}.pdf"
     
@@ -61,7 +58,6 @@ async def upload_diet(
             shutil.copyfileobj(file.file, buffer)
             
         # 2. Parse PDF
-        # Nota: Usiamo l'istanza globale o ne creiamo una nuova se serve
         raw_data = diet_parser.parse_complex_diet(temp_filename)
         
         # 3. Normalize Data
@@ -84,7 +80,7 @@ async def upload_diet(
 async def scan_receipt(
     file: UploadFile = File(...),
     allowed_foods: str = Form(...), # Expecting JSON string of list[str]
-    user_id: str = Depends(verify_token) # <--- PROTEZIONE
+    user_id: str = Depends(verify_token) 
 ):
     temp_filename = f"{uuid.uuid4()}{os.path.splitext(file.filename)[1]}"
     
@@ -98,10 +94,8 @@ async def scan_receipt(
         with open(temp_filename, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # 3. Initialize Scanner with explicit list (Stateless logic)
-        # Nota: Se il tuo ReceiptScanner richiede la lista nel costruttore,
-        # creane uno nuovo qui. Se ha un metodo scan che accetta la lista, usa quello.
-        # Basandomi sul tuo codice precedente:
+        # 3. Initialize Scanner LOCALLY with the user's food list
+        # CORREZIONE: Creiamo l'istanza qui, non a livello globale
         current_scanner = ReceiptScanner(allowed_foods_list=food_list)
         found_items = current_scanner.scan_receipt(temp_filename)
         
