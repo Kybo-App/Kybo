@@ -9,7 +9,8 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   Future<String?> getToken() async {
-    return await currentUser?.getIdToken();
+    // Force refresh true to ensure token is fresh
+    return await currentUser?.getIdToken(true);
   }
 
   Future<UserCredential> signInWithGoogle() async {
@@ -35,14 +36,16 @@ class AuthService {
   }
 
   Future<void> signUp(String email, String password) async {
-    await _auth.createUserWithEmailAndPassword(
+    final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
+    // Modification 1: Send verification email immediately
+    await credential.user?.sendEmailVerification();
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut(); // Disconnette anche da Google
+    await _googleSignIn.signOut();
     await _auth.signOut();
   }
 }

@@ -21,7 +21,7 @@ if not firebase_admin._apps:
 
 app = FastAPI()
 
-# Initialize Services Globali (Quelli che non dipendono dai dati dell'utente)
+# Initialize Services Globali
 notification_service = NotificationService()
 diet_parser = DietParser()
 
@@ -37,7 +37,15 @@ async def verify_token(authorization: str = Header(...)):
     token = authorization.split("Bearer ")[1]
     try:
         decoded_token = auth.verify_id_token(token)
-        return decoded_token['uid'] # Ritorna lo User ID (uid)
+        
+        # Modification 2: Active & Secure Mode
+        # Enforce that the user has verified their email address
+        if not decoded_token.get('email_verified', False):
+            raise HTTPException(status_code=403, detail="Email verification required")
+            
+        return decoded_token['uid'] 
+    except ValueError as e:
+         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         print(f"Auth Error: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
@@ -95,7 +103,6 @@ async def scan_receipt(
             shutil.copyfileobj(file.file, buffer)
             
         # 3. Initialize Scanner LOCALLY with the user's food list
-        # CORREZIONE: Creiamo l'istanza qui, non a livello globale
         current_scanner = ReceiptScanner(allowed_foods_list=food_list)
         found_items = current_scanner.scan_receipt(temp_filename)
         
