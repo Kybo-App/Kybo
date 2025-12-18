@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart'; // Import necessario
+import 'package:firebase_auth/firebase_auth.dart';
 import '../core/env.dart';
 
 class ApiException implements Exception {
@@ -37,7 +37,8 @@ class ApiClient {
       // --- SECURITY: Aggiungi Token Firebase ---
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final token = await user.getIdToken();
+        // Modification 2: Force refresh to fix 401 errors
+        final token = await user.getIdToken(true);
         request.headers['Authorization'] = 'Bearer $token';
       }
       // ----------------------------------------

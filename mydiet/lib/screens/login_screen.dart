@@ -38,11 +38,36 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       if (_isLogin) {
+        // LOGIN FLOW
         await _auth.signIn(_emailCtrl.text.trim(), _passCtrl.text.trim());
+
+        // Modification 1: Security Check
+        final user = _auth.currentUser;
+        if (user != null && !user.emailVerified) {
+          await _auth.signOut(); // Logout immediately
+          throw Exception(
+            "Email non verificata. Controlla la tua casella di posta.",
+          );
+        }
+
+        if (mounted) Navigator.pop(context); // Close only if verified
       } else {
+        // REGISTRATION FLOW
         await _auth.signUp(_emailCtrl.text.trim(), _passCtrl.text.trim());
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Registrazione avvenuta! Controlla la posta per verificare l'email.",
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          // Switch to login mode instead of closing
+          setState(() => _isLogin = true);
+        }
       }
-      if (mounted) Navigator.pop(context); // Close dialog/screen on success
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,10 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
-              icon: const Icon(
-                Icons.g_mobiledata,
-                size: 28,
-              ), // Icona Google generica o usa un asset
+              icon: const Icon(Icons.g_mobiledata, size: 28),
               label: const Text("Accedi con Google"),
               onPressed: _isLoading ? null : _googleLogin,
             ),
