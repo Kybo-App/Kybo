@@ -6,6 +6,7 @@ import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
+import '../services/api_client.dart'; // [NEW] Needed for Exception types
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -13,15 +14,19 @@ class DietProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
   final AuthService _auth = AuthService();
 
+  // Data States
   Map<String, dynamic>? _dietData;
   Map<String, dynamic>? _substitutions;
   List<PantryItem> _pantryItems = [];
   Map<String, ActiveSwap> _activeSwaps = {};
   List<String> _shoppingList = [];
 
+  // UI States
   bool _isLoading = false;
   bool _isTranquilMode = false;
+  String? _error; // [NEW] Error tracking
 
+  // Getters
   Map<String, dynamic>? get dietData => _dietData;
   Map<String, dynamic>? get substitutions => _substitutions;
   List<PantryItem> get pantryItems => _pantryItems;
@@ -29,32 +34,46 @@ class DietProvider extends ChangeNotifier {
   List<String> get shoppingList => _shoppingList;
   bool get isLoading => _isLoading;
   bool get isTranquilMode => _isTranquilMode;
+  String? get error => _error;
+  bool get hasError => _error != null;
 
   DietProvider(this._repository) {
     _init();
   }
 
   Future<void> _init() async {
-    final savedDiet = await _storage.loadDiet();
-    if (savedDiet != null) {
-      _dietData = savedDiet['plan'];
-      _substitutions = savedDiet['substitutions'];
+    try {
+      final savedDiet = await _storage.loadDiet();
+      if (savedDiet != null) {
+        _dietData = savedDiet['plan'];
+        _substitutions = savedDiet['substitutions'];
+      }
+      _pantryItems = await _storage.loadPantry();
+      _activeSwaps = await _storage.loadSwaps();
+    } catch (e) {
+      debugPrint("Init Load Error: $e");
     }
-    _pantryItems = await _storage.loadPantry();
-    _activeSwaps = await _storage.loadSwaps();
+    notifyListeners();
+  }
+
+  void clearError() {
+    _error = null;
     notifyListeners();
   }
 
   Future<void> uploadDiet(String path) async {
     _setLoading(true);
+    clearError();
+
     try {
       String? token;
       try {
         token = await FirebaseMessaging.instance.getToken();
       } catch (e) {
-        debugPrint("FCM Error: $e");
+        debugPrint("FCM Warning: $e");
       }
 
+      // Repository uses the improved ApiClient with retries
       final result = await _repository.uploadDiet(path, fcmToken: token);
 
       _dietData = result.plan;
@@ -70,40 +89,37 @@ class DietProvider extends ChangeNotifier {
       if (_auth.currentUser != null) {
         await _firestore.saveDietToHistory(_dietData!, _substitutions!);
       }
+
+      // Reset swaps on new diet
+      _activeSwaps = {};
+      await _storage.saveSwaps({});
     } catch (e) {
-      rethrow;
+      _error = _mapError(e);
+      rethrow; // Pass to UI for SnackBar
     } finally {
       _setLoading(false);
     }
   }
 
-  // --- NEW: Load from History ---
-  void loadHistoricalDiet(Map<String, dynamic> dietData) {
-    _dietData = dietData['plan'];
-    _substitutions = dietData['substitutions'];
-
-    // Save as current local diet
-    _storage.saveDiet({'plan': _dietData, 'substitutions': _substitutions});
-
-    // Clear old swaps since they might not match
-    _activeSwaps = {};
-    _storage.saveSwaps({});
-
-    notifyListeners();
-  }
-
   Future<int> scanReceipt(String path) async {
     _setLoading(true);
+    clearError();
     int count = 0;
     try {
       List<String> allowedFoods = _extractAllowedFoods();
+
+      // Pass list to repository (which now handles JSON encoding)
       final items = await _repository.scanReceipt(path, allowedFoods);
 
       for (var item in items) {
-        addPantryItem(item['name'], 1.0, 'pz');
-        count++;
+        // [FIX] Ensure item['name'] exists
+        if (item is Map && item.containsKey('name')) {
+          addPantryItem(item['name'], 1.0, 'pz');
+          count++;
+        }
       }
     } catch (e) {
+      _error = _mapError(e);
       rethrow;
     } finally {
       _setLoading(false);
@@ -111,33 +127,44 @@ class DietProvider extends ChangeNotifier {
     return count;
   }
 
+  // --- Helper to map Exceptions to User Friendly messages ---
+  String _mapError(Object e) {
+    if (e is ApiException) return "Server Error: ${e.message}";
+    if (e is NetworkException) return "Problema di connessione. Riprova.";
+    return "Errore imprevisto: $e";
+  }
+
+  // --- EXISTING LOGIC PRESERVED BELOW ---
+
+  void loadHistoricalDiet(Map<String, dynamic> dietData) {
+    _dietData = dietData['plan'];
+    _substitutions = dietData['substitutions'];
+    _storage.saveDiet({'plan': _dietData, 'substitutions': _substitutions});
+    _activeSwaps = {};
+    _storage.saveSwaps({});
+    notifyListeners();
+  }
+
   List<String> _extractAllowedFoods() {
     final Set<String> foods = {};
-
     if (_dietData != null) {
       _dietData!.forEach((day, meals) {
         if (meals is Map) {
           meals.forEach((mealType, dishes) {
             if (dishes is List) {
-              for (var d in dishes) {
-                foods.add(d['name']);
-              }
+              for (var d in dishes) foods.add(d['name']);
             }
           });
         }
       });
     }
-
     if (_substitutions != null) {
       _substitutions!.forEach((key, group) {
         if (group['options'] is List) {
-          for (var opt in group['options']) {
-            foods.add(opt['name']);
-          }
+          for (var opt in group['options']) foods.add(opt['name']);
         }
       });
     }
-
     return foods.toList();
   }
 
@@ -155,9 +182,11 @@ class DietProvider extends ChangeNotifier {
   }
 
   void removePantryItem(int index) {
-    _pantryItems.removeAt(index);
-    _storage.savePantry(_pantryItems);
-    notifyListeners();
+    if (index >= 0 && index < _pantryItems.length) {
+      _pantryItems.removeAt(index);
+      _storage.savePantry(_pantryItems);
+      notifyListeners();
+    }
   }
 
   void consumeSmart(String name, String rawQtyString) {
@@ -224,13 +253,10 @@ class DietProvider extends ChangeNotifier {
         _dietData![day] != null &&
         _dietData![day][meal] != null) {
       var currentMeals = List<dynamic>.from(_dietData![day][meal]);
-
       if (idx >= 0 && idx < currentMeals.length) {
         var oldItem = currentMeals[idx];
         currentMeals[idx] = {...oldItem, 'name': name, 'qty': qty};
-
         _dietData![day][meal] = currentMeals;
-
         _storage.saveDiet({'plan': _dietData, 'substitutions': _substitutions});
         notifyListeners();
       }
