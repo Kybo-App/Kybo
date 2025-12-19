@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:retry/retry.dart';
 import '../core/env.dart';
 
 class ApiException implements Exception {
@@ -28,6 +30,32 @@ class ApiClient {
     String filePath, {
     Map<String, String>? fields,
   }) async {
+    // [NEW] Retry Logic
+    final r = RetryOptions(
+      maxAttempts: 3,
+      delayFactor: const Duration(seconds: 1),
+    );
+
+    try {
+      return await r.retry(
+        () async {
+          return await _performUpload(endpoint, filePath, fields);
+        },
+        // Retry on Network errors or Server 500 errors
+        retryIf: (e) =>
+            e is NetworkException || (e is ApiException && e.statusCode >= 500),
+      );
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw NetworkException('Operation failed after retries: $e');
+    }
+  }
+
+  Future<dynamic> _performUpload(
+    String endpoint,
+    String filePath,
+    Map<String, String>? fields,
+  ) async {
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -46,10 +74,11 @@ class ApiClient {
         request.fields.addAll(fields);
       }
 
-      var streamedResponse = await request.send();
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
-      // [FIX] Safe decoding to handle non-JSON errors (like Nginx 500 HTML)
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) return {};
         try {
@@ -61,15 +90,23 @@ class ApiClient {
           );
         }
       } else {
-        // [FIX] Truncate error message if it's too long (e.g. HTML dump)
         String errorMsg = response.body;
-        if (errorMsg.length > 200) {
-          errorMsg = errorMsg.substring(0, 200) + "...";
+        try {
+          final errorJson = json.decode(utf8.decode(response.bodyBytes));
+          if (errorJson is Map && errorJson.containsKey('detail')) {
+            final detail = errorJson['detail'];
+            errorMsg = detail is String ? detail : detail.toString();
+          }
+        } catch (_) {
+          if (errorMsg.length > 200) {
+            errorMsg = "${errorMsg.substring(0, 200)}...";
+          }
         }
-        throw ApiException('Server error: $errorMsg', response.statusCode);
+        throw ApiException(errorMsg, response.statusCode);
       }
     } catch (e) {
       if (e is ApiException) rethrow;
+      if (e is TimeoutException) throw NetworkException('Connection timed out');
       throw NetworkException('Network error: $e');
     }
   }

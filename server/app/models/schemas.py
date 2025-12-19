@@ -1,53 +1,27 @@
+from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
-from typing import List, Optional
-
-# --- Gemini/LLM Raw Output Models ---
 
 class Ingredient(BaseModel):
-    nome: str
-    quantita: str
-
-class Dish(BaseModel):
-    nome_piatto: str
-    tipo: Optional[str] = None
-    cad_code: int = 0
-    quantita_totale: str = ""
-    ingredienti: List[Ingredient] = []
-
-class Meal(BaseModel):
-    tipo_pasto: str
-    elenco_piatti: List[Dish]
-
-class DietDay(BaseModel):
-    giorno: str
-    pasti: List[Meal]
-
-class SubstitutionOption(BaseModel):
-    nome: str
-    quantita: str
-
-class SubstitutionGroup(BaseModel):
-    cad_code: int
-    titolo: str
-    opzioni: List[SubstitutionOption]
-
-class DietResponseRaw(BaseModel):
-    piano_settimanale: List[DietDay]
-    tabella_sostituzioni: List[SubstitutionGroup]
-
-# --- App Internal/API Response Models ---
-
-class AppDishItem(BaseModel):
     name: str
     qty: str
-    cad_code: int
-    is_composed: bool
-    ingredients: List[Ingredient]
 
-class AppSubstitution(BaseModel):
+class Dish(BaseModel):
     name: str
-    options: List[dict]  # [{"name": "x", "qty": "y"}]
+    qty: str
+    cad_code: int = Field(default=0)
+    is_composed: bool = Field(default=False)
+    ingredients: List[Ingredient] = Field(default_factory=list)
 
-class AppDietPlan(BaseModel):
-    plan: dict  # { "Monday": { "Lunch": [AppDishItem...] } }
-    substitutions: dict # { "123": AppSubstitution }
+class SubstitutionOption(BaseModel):
+    name: str
+    qty: str
+
+class SubstitutionGroup(BaseModel):
+    name: str
+    options: List[SubstitutionOption]
+
+class DietResponse(BaseModel):
+    # Structure: { "Lunedì": { "Pranzo": [Dish, Dish] } }
+    plan: Dict[str, Dict[str, List[Dish]]]
+    # Structure: { "1": SubstitutionGroup }
+    substitutions: Dict[str, SubstitutionGroup]

@@ -1,8 +1,9 @@
-# Use official lightweight Python image
-FROM python:3.9-slim
+# Use newer, faster Python version
+FROM python:3.11-slim
 
-# [CRITICAL] Install Tesseract OCR and GL libraries required by computer vision tools
-RUN apt-get update && apt-get install -y \
+# Install system dependencies and Tesseract in a single layer to reduce image size
+# Added --no-install-recommends to keep image small
+RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-ita \
     libgl1-mesa-glx \
@@ -12,8 +13,10 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy requirements first for cache optimization
 COPY requirements.txt .
+
+# Install python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code

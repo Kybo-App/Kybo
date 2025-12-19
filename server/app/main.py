@@ -1,9 +1,9 @@
 import os
 import uuid
-import logging
+import structlog
 import aiofiles
 import json
-from typing import Optional
+from typing import Optional, List, Dict
 
 import firebase_admin
 from firebase_admin import credentials, auth
@@ -14,37 +14,44 @@ from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from pydantic import Json
 
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name
 from app.core.config import settings
+from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
 
 # --- CONFIGURATION ---
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
-# --- LOGGING ---
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("mydiet_api")
+# --- LOGGING (Structlog) ---
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.JSONRenderer()
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+)
+logger = structlog.get_logger()
 
 # --- FIREBASE SETUP ---
 if not firebase_admin._apps:
     try:
-        # Prioritize Environment Variables for Security
         if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred)
-            logger.info("🔥 Firebase initialized via Env Vars")
+            logger.info("firebase_init", method="env_vars")
         elif os.path.exists("serviceAccountKey.json"):
             cred = credentials.Certificate("serviceAccountKey.json")
             firebase_admin.initialize_app(cred)
-            logger.info("🔥 Firebase initialized via File")
+            logger.info("firebase_init", method="file")
         else:
-            logger.warning("⚠️ No Firebase credentials found. Auth will fail.")
+            logger.warning("firebase_init_fail", reason="no_credentials")
     except Exception as e:
-        logger.error(f"❌ Critical Firebase Init Error: {e}")
+        logger.error("firebase_init_critical_error", error=str(e))
 
 # --- RATE LIMITER ---
 limiter = Limiter(key_func=get_remote_address)
@@ -91,17 +98,24 @@ async def verify_token(authorization: str = Header(...)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     
-    token = authorization.split("Bearer ")[1]
+    parts = authorization.split("Bearer ")
+    if len(parts) < 2:
+        raise HTTPException(status_code=401, detail="Invalid token format")
+        
+    token = parts[1].strip()
+    if not token:
+         raise HTTPException(status_code=401, detail="Empty token")
+
     try:
         decoded_token = await run_in_threadpool(auth.verify_id_token, token)
         return decoded_token['uid'] 
     except Exception:
-        logger.warning("Auth token verification failed")
+        logger.warning("auth_failed", reason="invalid_token")
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # --- ENDPOINTS ---
 
-@app.post("/upload-diet")
+@app.post("/upload-diet", response_model=DietResponse)
 @limiter.limit("5/minute")
 async def upload_diet(
     request: Request,
@@ -113,25 +127,27 @@ async def upload_diet(
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
     temp_filename = f"{uuid.uuid4()}.pdf"
+    log = logger.bind(user_id=user_id, filename=file.filename)
     
     try:
         await save_upload_file(file, temp_filename)
+        log.info("file_upload_success")
         
         # Parse safely
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, temp_filename)
         
-        # Convert data 
+        # Convert data (Validates via Pydantic)
         final_data = _convert_to_app_format(raw_data)
         
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
             
-        return JSONResponse(content=final_data)
+        return final_data
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Diet Upload Error: {e}")
+        log.error("diet_process_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Processing failed")
     finally:
         if os.path.exists(temp_filename):
@@ -142,37 +158,34 @@ async def upload_diet(
 async def scan_receipt(
     request: Request,
     file: UploadFile = File(...),
-    allowed_foods: str = Form(...),
+    allowed_foods: Json[List[str]] = Form(...),
     user_id: str = Depends(verify_token) 
 ):
     ext = validate_extension(file.filename)
     temp_filename = f"{uuid.uuid4()}{ext}"
+    log = logger.bind(user_id=user_id, task="receipt_scan")
     
     try:
-        try:
-            food_list = json.loads(allowed_foods)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON format")
-
         await save_upload_file(file, temp_filename)
         
-        current_scanner = ReceiptScanner(allowed_foods_list=food_list)
+        current_scanner = ReceiptScanner(allowed_foods_list=allowed_foods)
         found_items = await run_in_threadpool(current_scanner.scan_receipt, temp_filename)
         
+        log.info("scan_success", items_found=len(found_items))
         return JSONResponse(content=found_items)
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Receipt Scan Error: {e}")
+        log.error("scan_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Scanning failed")
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
-def _convert_to_app_format(gemini_output):
+def _convert_to_app_format(gemini_output) -> DietResponse:
     if not gemini_output:
-        return {"plan": {}, "substitutions": {}}
+        return DietResponse(plan={}, substitutions={})
 
     app_plan = {}
     app_substitutions = {}
@@ -190,29 +203,43 @@ def _convert_to_app_format(gemini_output):
             
             options = []
             for opt in group.get('opzioni', []):
-                options.append({
-                    "name": opt.get('nome', 'Unknown'),
-                    "qty": opt.get('quantita', '')
-                })
+                options.append(SubstitutionOption(
+                    name=opt.get('nome', 'Unknown'),
+                    qty=opt.get('quantita', '')
+                ))
             
             if not options: 
-                options.append({"name": titolo, "qty": ""})
+                options.append(SubstitutionOption(name=titolo, qty=""))
 
-            app_substitutions[cad_key] = {
-                "name": titolo,
-                "options": options
-            }
+            app_substitutions[cad_key] = SubstitutionGroup(
+                name=titolo,
+                options=options
+            )
 
     raw_plan = gemini_output.get('piano_settimanale', [])
     
-    for giorno in raw_plan:
-        day_name = giorno.get('giorno', 'Sconosciuto').strip().capitalize()
-        # Normalize Day Names
-        for eng, it in [("lun", "Lunedì"), ("mar", "Martedì"), ("mer", "Mercoledì"), 
-                        ("gio", "Giovedì"), ("ven", "Venerdì"), ("sab", "Sabato"), ("dom", "Domenica")]:
-            if eng in day_name.lower(): day_name = it
+    DAY_MAPPING = {
+        "lun": "Lunedì", "mon": "Lunedì",
+        "mar": "Martedì", "tue": "Martedì",
+        "mer": "Mercoledì", "wed": "Mercoledì",
+        "gio": "Giovedì", "thu": "Giovedì",
+        "ven": "Venerdì", "fri": "Venerdì",
+        "sab": "Sabato", "sat": "Sabato",
+        "dom": "Domenica", "sun": "Domenica"
+    }
 
-        app_plan[day_name] = {}
+    for giorno in raw_plan:
+        raw_day_name = giorno.get('giorno', 'Sconosciuto').strip().lower()
+        day_name = "Sconosciuto"
+        
+        if len(raw_day_name) >= 3:
+            prefix = raw_day_name[:3]
+            day_name = DAY_MAPPING.get(prefix, raw_day_name.capitalize())
+        else:
+            day_name = raw_day_name.capitalize()
+
+        if day_name not in app_plan:
+            app_plan[day_name] = {}
 
         for pasto in giorno.get('pasti', []):
             meal_name = normalize_meal_name(pasto.get('tipo_pasto', ''))
@@ -226,25 +253,25 @@ def _convert_to_app_format(gemini_output):
 
                 formatted_ingredients = []
                 for ing in piatto.get('ingredienti', []):
-                    formatted_ingredients.append({
-                        "name": str(ing.get('nome') or ''),
-                        "qty": str(ing.get('quantita') or '')
-                    })
+                    formatted_ingredients.append(Ingredient(
+                        name=str(ing.get('nome') or ''),
+                        qty=str(ing.get('quantita') or '')
+                    ))
 
-                items.append({
-                    "name": dish_name,
-                    "qty": str(piatto.get('quantita_totale') or ''),
-                    "cad_code": final_cad,
-                    "is_composed": piatto.get('tipo') == 'composto',
-                    "ingredients": formatted_ingredients
-                })
+                items.append(Dish(
+                    name=dish_name,
+                    qty=str(piatto.get('quantita_totale') or ''),
+                    cad_code=final_cad,
+                    is_composed=(piatto.get('tipo') == 'composto'),
+                    ingredients=formatted_ingredients
+                ))
             
             if meal_name in app_plan[day_name]:
                 app_plan[day_name][meal_name].extend(items)
             else:
                 app_plan[day_name][meal_name] = items
 
-    return {
-        "plan": app_plan,
-        "substitutions": app_substitutions
-    }
+    return DietResponse(
+        plan=app_plan,
+        substitutions=app_substitutions
+    )

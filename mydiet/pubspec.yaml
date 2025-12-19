@@ -18,6 +18,8 @@ dependencies:
   file_picker: ^10.3.7
   shared_preferences: ^2.5.3
   intl: ^0.18.1
+  # [NEW] Robust network retries
+  retry: ^3.1.2
 
   # Firebase (Versioni aggiornate per risolvere errore Pigeon)
   firebase_core: ^3.6.0
