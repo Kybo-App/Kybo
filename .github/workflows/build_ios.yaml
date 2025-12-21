@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Setup Environment
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -34,14 +33,13 @@ jobs:
           channel: "stable"
           cache: true
 
-      # 2. Inject REAL GoogleService-Info.plist
+      # 1. Inject Secret (If missing, app will crash, but build continues)
       - name: Create GoogleService-Info.plist
         env:
           GOOGLE_SERVICE_INFO: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
         run: |
           if [ -z "$GOOGLE_SERVICE_INFO" ]; then
-            echo "::error::Secret IOS_GOOGLE_SERVICE_INFO_PLIST is MISSING. The app will crash on launch."
-            # Create dummy to allow build to proceed, but warn user
+            echo "::error::Secret IOS_GOOGLE_SERVICE_INFO_PLIST is MISSING. Using dummy (App will crash)."
             cat <<EOF > ios/Runner/GoogleService-Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -56,37 +54,8 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 3. CRITICAL FIX: Use Ruby for Robust Regex Replacement
-      - name: Disable Signing (Ruby)
-        run: |
-          ruby -e '
-            path = "ios/Runner.xcodeproj/project.pbxproj"
-            content = File.read(path)
-            
-            # 1. Force Manual Signing (Matches any whitespace/tabs)
-            content.gsub!(/CODE_SIGN_STYLE\s*=\s*"?Automatic"?;/, "CODE_SIGN_STYLE = Manual;")
-            
-            # 2. Remove Team & Profile
-            content.gsub!(/DEVELOPMENT_TEAM\s*=\s*[^;]*;/, "DEVELOPMENT_TEAM = \"\";")
-            content.gsub!(/PROVISIONING_PROFILE_SPECIFIER\s*=\s*[^;]*;/, "PROVISIONING_PROFILE_SPECIFIER = \"\";")
-            
-            # 3. Remove Identity
-            content.gsub!(/CODE_SIGN_IDENTITY\s*=\s*[^;]*;/, "CODE_SIGN_IDENTITY = \"\";")
-            content.gsub!(/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]"\s*=\s*[^;]*;/, "\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";")
-            
-            File.write(path, content)
-            puts "Successfully patched project.pbxproj for unsigned build."
-          '
-
-      # 4. Force XCConfig Overrides
-      - name: Override XCConfig
-        run: |
-          echo "CODE_SIGNING_ALLOWED=NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGNING_REQUIRED=NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGN_STYLE=Manual" >> ios/Flutter/Release.xcconfig
-
-      # 5. Fix Podfile Platform
+      # 2. RUN POD INSTALL FIRST (Before patching)
+      # This generates the Xcode workspace. We must do this before hacking the project file.
       - name: Update Pods
         run: |
           cd ios
@@ -95,15 +64,43 @@ jobs:
           pod install --repo-update
           cd ..
 
-      # 6. Build iOS (Unsigned)
+      # 3. NUCLEAR PATCHING (Runs LAST to overwrite Pods changes)
+      - name: Force Disable Signing (Ruby)
+        run: |
+          ruby -e '
+            path = "ios/Runner.xcodeproj/project.pbxproj"
+            content = File.read(path)
+
+            puts "Patching project file..."
+
+            # 1. Force Manual Signing
+            content.gsub!(/CODE_SIGN_STYLE\s*=\s*"?Automatic"?;/, "CODE_SIGN_STYLE = Manual;")
+
+            # 2. Remove Team & Profile
+            content.gsub!(/DEVELOPMENT_TEAM\s*=\s*[^;]*;/, "DEVELOPMENT_TEAM = \"\";")
+            content.gsub!(/PROVISIONING_PROFILE_SPECIFIER\s*=\s*[^;]*;/, "PROVISIONING_PROFILE_SPECIFIER = \"\";")
+
+            # 3. Remove Identity
+            content.gsub!(/CODE_SIGN_IDENTITY\s*=\s*[^;]*;/, "CODE_SIGN_IDENTITY = \"\";")
+            content.gsub!(/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]"\s*=\s*[^;]*;/, "\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";")
+
+            # 4. INJECT Build Settings (The Final Override)
+            # This forces CODE_SIGNING_ALLOWED = NO into every build configuration block found
+            content.gsub!(/buildSettings\s*=\s*\{/, "buildSettings = { CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO; CODE_SIGN_IDENTITY = \"\";")
+
+            File.write(path, content)
+            puts "Successfully patched project.pbxproj with forced settings."
+          '
+
+      # 4. Build with Command-Line Overrides
       - name: Build iOS App
         run: |
-          export CODE_SIGNING_ALLOWED=NO
-          export CODE_SIGNING_REQUIRED=NO
-          export CODE_SIGN_IDENTITY=""
-          flutter build ios --release --no-codesign --no-pub
+          flutter build ios --release --no-codesign --no-pub -- \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_STYLE=Manual
 
-      # 7. Package IPA
       - name: Create IPA Payload
         run: |
           mkdir -p Payload
