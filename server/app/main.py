@@ -109,9 +109,10 @@ async def verify_token(authorization: str = Header(...)):
     try:
         decoded_token = await run_in_threadpool(auth.verify_id_token, token)
         return decoded_token['uid'] 
-    except Exception:
-        logger.warning("auth_failed", reason="invalid_token")
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        # [FIX] Enhanced Error Logging
+        logger.warning("auth_failed", error=str(e), error_type=type(e).__name__)
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 # --- ENDPOINTS ---
 

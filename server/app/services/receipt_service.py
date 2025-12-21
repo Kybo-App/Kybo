@@ -1,42 +1,46 @@
 import pytesseract
 from PIL import Image, UnidentifiedImageError
 import pdfplumber
-import re
 import os
-from thefuzz import process, fuzz
+import json
+import typing_extensions as typing
+from google import genai
+from google.genai import types
+from app.core.config import settings
+
+# --- DATA SCHEMAS ---
+class ReceiptItem(typing.TypedDict):
+    name: str
+    quantity: str # Kept as string to allow "1kg", "2pz", etc.
+
+class ReceiptAnalysis(typing.TypedDict):
+    items: list[ReceiptItem]
 
 class ReceiptScanner:
     def __init__(self, allowed_foods_list: list[str]):
-        self.allowed_foods = set()
-        self.corrections = {
-            "YOG": "YOGURT",
-            "NAURALE": "NATURALE",
-            "S/G": "PROSCIUTTO",
-            "COTTO": "PROSCIUTTO COTTO",
-            "FESA": "AFFETTATO DI TACCHINO",
-            "PETTO": "PETTO DI POLLO",
-            "FILETTI": "FILETTI",
-            "MACINATO": "CARNE MACINATA",
-            "NODINI": "MOZZARELLA",
-            "FIOCCHI": "FIOCCHI DI LATTE"
-        }
-        self._load_from_list(allowed_foods_list)
+        # [INIT] Setup Gemini Client (The "Diet Way")
+        api_key = settings.GOOGLE_API_KEY
+        if not api_key:
+            print("❌ CRITICAL ERROR: GOOGLE_API_KEY not found!")
+            self.client = None
+        else:
+            clean_key = api_key.strip().replace('"', '').replace("'", "")
+            self.client = genai.Client(api_key=clean_key)
 
-    def _load_from_list(self, food_list):
-        self.allowed_foods.add("filetti") 
-        for name in food_list:
-            if isinstance(name, str):
-                clean = self._clean_diet_name(name)
-                if len(clean) > 2:
-                    self.allowed_foods.add(clean)
-                
-        print(f"[INFO] Receipt Context: {len(self.allowed_foods)} allowed foods loaded.")
+        # Optimize list for Prompt Context
+        self.allowed_foods_str = ", ".join([str(f).lower().strip() for f in allowed_foods_list if f])
+        print(f"[INFO] Receipt Context: {len(allowed_foods_list)} allowed foods loaded for AI context.")
 
-    def _clean_diet_name(self, raw_name):
-        name = raw_name.lower().strip()
-        name = re.sub(r'^[\W_]+', '', name)
-        name = re.sub(r'\s+(?:gr|g)\s*\d+.*', '', name)
-        return name.strip()
+        self.system_instruction = """
+        You are an AI assistant for a diet app. Your task is to analyze receipt text and extract purchased food items.
+        
+        CRITICAL RULES:
+        1. **Filter by Context**: match the extracted items against the provided 'ALLOWED FOODS LIST'.
+           - If an item on the receipt closely matches a food in the list (semantically or by name), include it using the name FROM THE LIST.
+           - If an item is NOT in the allowed list, IGNORE IT.
+        2. **Ignore Non-Food**: Ignore taxes, totals, discounts, store info, payment details.
+        3. **Output Format**: Return a strictly structured JSON with a list of items.
+        """
 
     def extract_text_from_file(self, file_path):
         text = ""
@@ -49,23 +53,17 @@ class ReceiptScanner:
             if file_path.lower().endswith('.pdf'):
                 print("  📄 Mode: Digital PDF")
                 with pdfplumber.open(file_path) as pdf:
-                    # DoS Protection: Limit pages
                     if len(pdf.pages) > 20:
                         print("❌ PDF exceeds page limit (20)")
                         return ""
-                        
                     for page in pdf.pages:
                         extracted = page.extract_text()
                         if extracted: text += extracted + "\n"
             else:
                 print("  📷 Mode: Image OCR")
-                # Security: Verify image integrity
                 with Image.open(file_path) as img:
                     img.verify()
-
-                # Re-open for processing
                 with Image.open(file_path) as img:
-                    # Protection against decompression bombs
                     Image.MAX_IMAGE_PIXELS = 20000000
                     text = pytesseract.image_to_string(img, lang='ita')
         except UnidentifiedImageError:
@@ -74,77 +72,70 @@ class ReceiptScanner:
             print(f"[FILE ERROR] {e}")
         return text
 
-    def clean_receipt_line(self, line):
-        line = re.sub(r'\s*\*VI.*', '', line)
-        line = re.sub(r'\s+\d+[,.]\d+.*', '', line)
-        words = line.split()
-        fixed_words = []
-        for w in words:
-            replaced = False
-            for abbr, full in self.corrections.items():
-                if abbr in w:
-                    fixed_words.append(full)
-                    replaced = True
-                    break
-            if not replaced:
-                fixed_words.append(w)
-        return " ".join(fixed_words)
-
     def scan_receipt(self, file_path):
-        print(f"\n--- Receipt Analysis (Stateless): {file_path} ---")
-        full_text = self.extract_text_from_file(file_path)
-        if not full_text: return []
-
-        lines = full_text.split('\n')
-        found_items = []
+        print(f"\n--- Receipt Analysis (Gemini Powered): {file_path} ---")
         
-        BLACKLIST = [
-            "TOTALE", "CASSA", "IVA", "EURO", "SCONTRINO", "RESTO", "PAGAMENTO", 
-            "TRENTO", "VIA", "TEL", "PARTITA", "DOC", "VENDITA", "PREZZO", "DESCRIZIONE",
-            "FIRMA", "ELETTRONICA", "SERVER", "RT", "DUPLICARD", "CUORI", "TERRITORIO",
-            "ASSOCIAZIONI", "RISPARMIATO", "SALDO", "PRECEDENTE", "MOVIMENTATI", "UTILIZZATI",
-            "SACCHETTO", "BIO", "BORSA", "SPESA", "SCONTO", "UNISPESA", "IPER", "POLIS",
-            "BRENNERO", "DOCUMENTO", "COMMERCIALE"
-        ]
+        # 1. Extract Raw Text (OCR)
+        full_text = self.extract_text_from_file(file_path)
+        if not full_text: 
+            return []
+        
+        # 2. Prepare Prompt
+        if not self.client:
+            print("⚠️ Gemini Client missing. Returning empty.")
+            return []
 
-        for line in lines:
-            original_line = line.strip().upper()
-            if len(original_line) < 4: continue 
-            if any(bad_word in original_line for bad_word in BLACKLIST): continue
+        prompt = f"""
+        <allowed_foods_list>
+        {self.allowed_foods_str}
+        </allowed_foods_list>
 
-            cleaned_line = self.clean_receipt_line(original_line)
-            if len(cleaned_line) < 3: continue
+        <receipt_text>
+        {full_text}
+        </receipt_text>
+        """
 
-            # Fuzzy Match Logic
-            candidates = process.extract(cleaned_line.lower(), self.allowed_foods, scorer=fuzz.token_set_ratio, limit=5)
-            
-            best_match = None
-            best_score = 0
-            
-            for candidate, score in candidates:
-                if score < 75: continue 
-                if len(candidate) < 5 and score < 90: continue
+        try:
+            model_name = settings.GEMINI_MODEL
+            print(f"🤖 Sending to Gemini ({model_name})...")
 
-                if best_match is None:
-                    best_match = candidate
-                    best_score = score
-                else:
-                    diff_old = abs(len(cleaned_line) - len(best_match))
-                    diff_new = abs(len(cleaned_line) - len(candidate))
+            # 3. Call Gemini
+            response = self.client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.system_instruction,
+                    response_mime_type="application/json",
+                    response_schema=ReceiptAnalysis
+                )
+            )
+
+            # 4. Parse Response
+            found_items = []
+            if hasattr(response, 'parsed') and response.parsed:
+                # The SDK automatically parses into the TypedDict structure
+                data = response.parsed
+                # data is expected to be a dict matching ReceiptAnalysis or the object directly
+                # Adjusting based on SDK behavior (usually returns a Pydantic model or dict)
+                items_list = data.get('items', []) if isinstance(data, dict) else data.items
+                
+                for item in items_list:
+                    # Normalize for Frontend
+                    # item might be a dict or object depending on Pydantic/TypedDict handling
+                    name = item.get('name') if isinstance(item, dict) else item.name
+                    qty = item.get('quantity') if isinstance(item, dict) else item.quantity
                     
-                    if score > best_score:
-                        best_match = candidate
-                        best_score = score
-                    elif score == best_score and diff_new < diff_old:
-                        best_match = candidate
-                        best_score = score
+                    if name:
+                        print(f"  ✅ MATCH: {name}")
+                        found_items.append({
+                            "name": name,
+                            "quantity": 1.0, # Default to 1 for fridge logic, or parse 'qty' if needed
+                            "original_scan": name # We don't have the raw line anymore, using name
+                        })
+            
+            print(f"[SUCCESS] Extracted {len(found_items)} items.")
+            return found_items
 
-            if best_match:
-                print(f"  ✅ MATCH: '{cleaned_line}' -> '{best_match.title()}' ({best_score}%)")
-                found_items.append({
-                    "name": best_match.title(), 
-                    "quantity": 1.0, 
-                    "original_scan": original_line
-                })
-
-        return found_items
+        except Exception as e:
+            print(f"⚠️ Gemini Error: {e}")
+            return []

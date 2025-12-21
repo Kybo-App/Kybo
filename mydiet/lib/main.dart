@@ -3,16 +3,17 @@ import 'package:provider/provider.dart';
 import 'constants.dart';
 import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
-import 'screens/splash_screen.dart'; // [NEW] Safe Entry Point
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         Provider(create: (_) => DietRepository()),
-        ChangeNotifierProxyProvider<DietRepository, DietProvider>(
+        // [FIX] Use ChangeNotifierProvider directly.
+        // DietRepository is a singleton service here, so we inject it once.
+        ChangeNotifierProvider<DietProvider>(
           create: (context) => DietProvider(context.read<DietRepository>()),
-          update: (context, repo, prev) => prev ?? DietProvider(repo),
         ),
       ],
       child: const DietApp(),
@@ -52,7 +53,6 @@ class DietApp extends StatelessWidget {
           ),
         ),
       ),
-      // [FIX] Always start with Splash to ensure Env/Firebase load safely
       home: const SplashScreen(),
     );
   }
