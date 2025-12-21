@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mydiet/models/diet_models.dart'; // Ensure this import path is correct based on your project structure
+// Ensure this import path is correct based on your project structure
 
 void main() {
   group('Diet Model Parsing', () {
     test('Should parse valid backend response correctly', () {
+      // ignore: unused_local_variable
       final Map<String, dynamic> jsonResponse = {
         "plan": {
           "Lunedì": {

@@ -30,7 +30,7 @@ class ApiClient {
     String filePath, {
     Map<String, String>? fields,
   }) async {
-    // Retry only on network errors, not on timeouts (since we removed the timeout)
+    // Retry only on network errors, not on timeouts (timeouts are final)
     final r = RetryOptions(
       maxAttempts: 3,
       delayFactor: const Duration(seconds: 1),
@@ -76,8 +76,14 @@ class ApiClient {
         request.fields.addAll(fields);
       }
 
-      // [CHANGE] No timeout. Waits forever for the server.
-      var streamedResponse = await request.send();
+      // [FIX] Added generous timeout (5 min) to prevent infinite hangs
+      // while allowing time for AI processing.
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 300),
+        onTimeout: () {
+          throw NetworkException("Timeout: Server took too long to respond.");
+        },
+      );
 
       var response = await http.Response.fromStream(streamedResponse);
 
