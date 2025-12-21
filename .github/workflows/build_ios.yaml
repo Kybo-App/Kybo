@@ -39,7 +39,6 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
         run: |
-          # If secret is missing, create a dummy to prevent immediate crash (but app won't connect)
           if [ -z "$GOOGLE_SERVICE_INFO" ]; then
             echo "WARNING: Secret IOS_GOOGLE_SERVICE_INFO_PLIST is missing. Using dummy."
             cat <<EOF > ios/Runner/GoogleService-Info.plist
@@ -56,24 +55,21 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      # 3. NUCLEAR SIGNING FIX (Updates project.pbxproj directly)
+      # 3. CRITICAL FIX: Inject 'Manual' Signing Mode
       - name: Disable Signing
         run: |
           cd ios
 
-          # A. Force Manual Signing Style (Replaces any line with CODE_SIGN_STYLE)
-          sed -i '' 's/.*CODE_SIGN_STYLE.*/CODE_SIGN_STYLE = Manual;/g' Runner.xcodeproj/project.pbxproj
+          # A. INJECT 'Manual' mode into ALL build configurations
+          # This inserts CODE_SIGN_STYLE = Manual; into every buildSettings block
+          sed -i '' 's/buildSettings = {/buildSettings = { CODE_SIGN_STYLE = Manual; /g' Runner.xcodeproj/project.pbxproj
 
-          # B. Remove Team and Profile (Replaces any line with these keys)
+          # B. Delete any conflicting Identity/Team settings that might remain
+          sed -i '' 's/.*CODE_SIGN_IDENTITY.*/CODE_SIGN_IDENTITY = "";/g' Runner.xcodeproj/project.pbxproj
           sed -i '' 's/.*DEVELOPMENT_TEAM.*/DEVELOPMENT_TEAM = "";/g' Runner.xcodeproj/project.pbxproj
           sed -i '' 's/.*PROVISIONING_PROFILE_SPECIFIER.*/PROVISIONING_PROFILE_SPECIFIER = "";/g' Runner.xcodeproj/project.pbxproj
 
-          # C. REMOVE IDENTITY (The Critical Fix)
-          # This replaces "CODE_SIGN_IDENTITY[sdk=iphoneos*]" and "CODE_SIGN_IDENTITY" with empty string
-          sed -i '' 's/.*CODE_SIGN_IDENTITY.*/CODE_SIGN_IDENTITY = "";/g' Runner.xcodeproj/project.pbxproj
-
-          # D. Force XCConfig Overrides (Fail-safe)
-          echo "" >> Flutter/Release.xcconfig
+          # C. Disable signing in XCConfigs as a backup
           echo "CODE_SIGNING_ALLOWED=NO" >> Flutter/Release.xcconfig
           echo "CODE_SIGNING_REQUIRED=NO" >> Flutter/Release.xcconfig
           echo "CODE_SIGN_IDENTITY=" >> Flutter/Release.xcconfig
