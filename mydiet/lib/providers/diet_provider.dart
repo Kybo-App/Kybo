@@ -113,7 +113,7 @@ class DietProvider extends ChangeNotifier {
         if (item is Map && item.containsKey('name')) {
           String rawQty = item['quantity']?.toString() ?? "1";
 
-          // [FIX] Smart Parsing for Receipts to prevent "600 pz" instead of "600 g"
+          // [FIX] Smart Parsing for Receipts
           double qty = _parseQty(rawQty);
           String unit = 'pz';
           String lowerRaw = rawQty.toLowerCase();
@@ -175,7 +175,7 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- [FIX] Correct Consumption of Swapped Meals ---
+  // --- [FIX] Consumes ingredients without deleting the dish ---
   void consumeMeal(String day, String mealType, int dishIndex) {
     if (_dietData == null || _dietData![day] == null) return;
 
@@ -187,7 +187,6 @@ class DietProvider extends ChangeNotifier {
     int currentGId = 0;
     List<int> currentGroup = [];
 
-    // Grouping logic matching MealCard
     List<dynamic> allDishes = List.from(meals);
     for (int i = 0; i < allDishes.length; i++) {
       final d = allDishes[i];
@@ -214,7 +213,7 @@ class DietProvider extends ChangeNotifier {
       groupIndex = currentGId;
     }
 
-    // 2. Check for Active Swap
+    // 2. Consume Ingredients (Swap or Original)
     String swapKey = "${day}_${mealType}_group_$groupIndex";
 
     if (_activeSwaps.containsKey(swapKey)) {
@@ -243,6 +242,9 @@ class DietProvider extends ChangeNotifier {
         consumeSmart(dish['name'], dish['qty'] ?? '1');
       }
     }
+
+    // UI Update triggered by pantry change in consumeSmart -> notifyListeners
+    // No deletion of dish from _dietData.
   }
 
   void consumeSmart(String name, String rawQtyString) {
@@ -250,7 +252,7 @@ class DietProvider extends ChangeNotifier {
     String unit = 'pz';
     String lower = rawQtyString.toLowerCase();
 
-    // [FIX] Enhanced parsing to catch units before falling back to 'pz'
+    // Normalize input to base units where possible for matching
     if (lower.contains('kg')) {
       qtyToEat *= 1000;
       unit = 'g';
@@ -274,7 +276,7 @@ class DietProvider extends ChangeNotifier {
     consumeItem(name, qtyToEat, unit);
   }
 
-  // --- [FIX] Smart Unit Matching & Quantity Logic ---
+  // --- [FIX] Correct Unit Conversion Logic ---
   void consumeItem(String name, double qty, String unit) {
     final searchName = name.trim().toLowerCase();
     final searchUnit = unit.trim().toLowerCase();
@@ -300,30 +302,33 @@ class DietProvider extends ChangeNotifier {
 
       double qtyToSubtract = qty;
 
-      // [FIX] Unit Compatibility Logic
-      bool isWeight =
+      bool pIsWeight =
           (pUnit == 'g' || pUnit == 'kg' || pUnit == 'ml' || pUnit == 'l');
-      bool targetIsWeight =
+      bool sIsWeight =
           (searchUnit == 'g' ||
           searchUnit == 'kg' ||
           searchUnit == 'ml' ||
           searchUnit == 'l');
 
-      if (pUnit != searchUnit) {
-        if (isWeight && targetIsWeight) {
-          // Basic gram/ml matching. If units differ (e.g. g vs ml), fallback to 1.0.
-          // Usually consumeSmart normalizes kg->g, l->ml, so this is rare.
-          qtyToSubtract = 1.0;
+      if (pUnit == searchUnit) {
+        qtyToSubtract = qty;
+      } else if (pIsWeight && sIsWeight) {
+        // Normalize search qty to grams/ml if needed (though consumeSmart usually passes g/ml)
+        double searchQtyInBase = qty;
+        if (searchUnit == 'kg' || searchUnit == 'l') searchQtyInBase *= 1000;
+
+        // Convert base to pantry unit
+        if (pUnit == 'kg' || pUnit == 'l') {
+          qtyToSubtract = searchQtyInBase / 1000.0;
+        } else {
+          // pUnit is g or ml
+          qtyToSubtract = searchQtyInBase;
         }
-        // [FIX] If BOTH are Countable (pz, vasetto, cucchiaini, fette), TRUST THE QTY
-        // This fixes: "2 cucchiaini" removing 1. "2 fette" removing 1.
-        else if (!isWeight && !targetIsWeight) {
-          qtyToSubtract = qty;
-        }
-        // Mixed (1 pz vs 100g). Fallback to 1.0 (Safety)
-        else {
-          qtyToSubtract = 1.0;
-        }
+      } else {
+        // Units are incompatible or mixed (e.g. 1 pz vs 100g)
+        // Fallback to 1.0 is risky but previous logic did it.
+        // Ideally we stick to what we know.
+        qtyToSubtract = 1.0;
       }
 
       item.quantity -= qtyToSubtract;
@@ -347,12 +352,24 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
+  // --- [FIX] Enhanced Simulation with Unit Normalization ---
   void _recalcAvailability() {
     if (_dietData == null) return;
 
+    // Build Normalized Fridge (Everything in g/ml if weight)
     Map<String, double> simulatedFridge = {};
     for (var item in _pantryItems) {
-      simulatedFridge[item.name.trim().toLowerCase()] = item.quantity;
+      String iName = item.name.trim().toLowerCase();
+      double iQty = item.quantity;
+      String iUnit = item.unit.toLowerCase();
+
+      if (iUnit == 'kg' || iUnit == 'l') {
+        iQty *= 1000; // Normalize to g/ml
+      }
+      // Note: We lose the specific unit 'g' vs 'ml' distinction here,
+      // but usually solids are g and liquids ml, so overlap is rare/acceptable.
+
+      simulatedFridge[iName] = iQty;
     }
 
     Map<String, bool> newMap = {};
@@ -388,7 +405,7 @@ class DietProvider extends ChangeNotifier {
 
         List<dynamic> dishes = List.from(mealsOfDay[mType]);
 
-        // Grouping to identify Swaps
+        // Grouping logic
         List<List<int>> groups = [];
         List<int> currentGroupIndices = [];
 
@@ -470,8 +487,13 @@ class DietProvider extends ChangeNotifier {
     Map<String, double> fridge,
   ) {
     String iName = item['name'].toString().trim().toLowerCase();
-    double iQty = _parseQty(item['qty'].toString());
-    bool isGramRequest = iQty > 20;
+    String iRawQty = item['qty'].toString().toLowerCase();
+    double iQty = _parseQty(iRawQty);
+
+    // Normalize required qty
+    if (iRawQty.contains('kg') || iRawQty.contains('l')) {
+      iQty *= 1000;
+    }
 
     String? foundKey;
     for (var key in fridge.keys) {
@@ -482,15 +504,12 @@ class DietProvider extends ChangeNotifier {
     }
 
     if (foundKey != null && fridge[foundKey]! > 0) {
-      double sub = iQty;
-      // Simulation fallback for grams vs pz
-      if (fridge[foundKey]! < 10 && isGramRequest) sub = 1.0;
-
-      if (fridge[foundKey]! >= sub) {
-        fridge[foundKey] = fridge[foundKey]! - sub;
+      // Precise subtraction, no cheats
+      if (fridge[foundKey]! >= iQty) {
+        fridge[foundKey] = fridge[foundKey]! - iQty;
         return true;
       } else {
-        fridge[foundKey] = 0;
+        fridge[foundKey] = 0; // Consumed what was left
         return false;
       }
     }
@@ -512,7 +531,6 @@ class DietProvider extends ChangeNotifier {
     return "Errore imprevisto: $e";
   }
 
-  // --- Boilerplate Preserved ---
   void loadHistoricalDiet(Map<String, dynamic> dietData) {
     _dietData = dietData['plan'];
     _substitutions = dietData['substitutions'];
