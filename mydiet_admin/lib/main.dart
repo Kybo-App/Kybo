@@ -188,6 +188,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AdminRepository _repo = AdminRepository();
   String _filterRole = 'All'; // All, nutritionist, user
 
+  // 1. Add Loading State
+  bool _isUploading = false;
+
   void _showCreateUserDialog() {
     final emailCtrl = TextEditingController();
     final passCtrl = TextEditingController();
@@ -265,22 +268,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _uploadDiet(String uid) async {
+    // 1. Pick File (No loading yet, system dialog)
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
-      withData: true, // Critical for Web
+      withData: true,
     );
 
     if (result != null) {
+      // 2. Start Global Loading
+      setState(() => _isUploading = true);
+
       try {
+        // 3. Perform Upload (Wait for Server & JSON)
         await _repo.uploadDietForUser(uid, result.files.single);
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Diet Injected Successfully!")),
+          const SnackBar(
+            content: Text("Diet Injected & Saved Successfully!"),
+            backgroundColor: Colors.green,
+          ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Upload Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Upload Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        // 4. Stop Global Loading regardless of success/fail
+        setState(() => _isUploading = false);
       }
     }
   }
@@ -289,7 +307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("MyDiet God Mode ⚡"),
+        title: const Text("MyDiet God Mode"),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -302,132 +320,178 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showCreateUserDialog,
+        onPressed: _isUploading
+            ? null
+            : _showCreateUserDialog, // Disable when uploading
         icon: const Icon(Icons.add),
         label: const Text("Add User"),
       ),
-      body: Column(
+      // 5. Wrap Body in Stack for Overlay
+      body: Stack(
         children: [
-          // Filters
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                const Text(
-                  "Filter: ",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 10),
-                ToggleButtons(
-                  isSelected: [
-                    _filterRole == 'All',
-                    _filterRole == 'nutritionist',
-                    _filterRole == 'user',
-                  ],
-                  onPressed: (idx) {
-                    setState(() {
-                      if (idx == 0) _filterRole = 'All';
-                      if (idx == 1) _filterRole = 'nutritionist';
-                      if (idx == 2) _filterRole = 'user';
-                    });
-                  },
-                  children: const [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text("All"),
+          // A. Main Content
+          Column(
+            children: [
+              // Filters
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    const Text(
+                      "Filter: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text("Nutritionists"),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text("Clients"),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // List
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _repo.getAllUsers(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return const Center(child: CircularProgressIndicator());
-
-                var users = snapshot.data!;
-                if (_filterRole != 'All') {
-                  users = users.where((u) => u['role'] == _filterRole).toList();
-                }
-
-                return ListView.builder(
-                  itemCount: users.length,
-                  itemBuilder: (ctx, i) {
-                    final user = users[i];
-                    final bool isActive = user['is_active'] ?? true;
-                    final String role = user['role'] ?? 'user';
-                    final String email = user['email'] ?? 'No Email';
-                    final String uid = user['uid'];
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: isActive ? Colors.green : Colors.red,
-                          child: Icon(
-                            role == 'admin'
-                                ? Icons.security
-                                : (role == 'nutritionist'
-                                      ? Icons.medical_services
-                                      : Icons.person),
-                            color: Colors.white,
-                          ),
+                    const SizedBox(width: 10),
+                    ToggleButtons(
+                      isSelected: [
+                        _filterRole == 'All',
+                        _filterRole == 'nutritionist',
+                        _filterRole == 'user',
+                      ],
+                      onPressed: (idx) {
+                        setState(() {
+                          if (idx == 0) _filterRole = 'All';
+                          if (idx == 1) _filterRole = 'nutritionist';
+                          if (idx == 2) _filterRole = 'user';
+                        });
+                      },
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text("All"),
                         ),
-                        title: Text(
-                          email,
-                          style: TextStyle(
-                            decoration: isActive
-                                ? null
-                                : TextDecoration.lineThrough,
-                          ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text("Nutritionists"),
                         ),
-                        subtitle: Text("Role: $role | UID: $uid"),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (role == 'user' || role == 'independent')
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.upload_file,
-                                  color: Colors.blue,
-                                ),
-                                tooltip: "Inject Diet",
-                                onPressed: () => _uploadDiet(uid),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text("Clients"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // List
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _repo.getAllUsers(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    var users = snapshot.data!;
+                    if (_filterRole != 'All') {
+                      users = users
+                          .where((u) => u['role'] == _filterRole)
+                          .toList();
+                    }
+
+                    return ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (ctx, i) {
+                        final user = users[i];
+                        final bool isActive = user['is_active'] ?? true;
+                        final String role = user['role'] ?? 'user';
+                        final String email = user['email'] ?? 'No Email';
+                        final String uid = user['uid'];
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isActive
+                                  ? Colors.green
+                                  : Colors.red,
+                              child: Icon(
+                                role == 'admin'
+                                    ? Icons.security
+                                    : (role == 'nutritionist'
+                                          ? Icons.medical_services
+                                          : Icons.person),
+                                color: Colors.white,
                               ),
-                            IconButton(
-                              icon: Icon(
-                                isActive ? Icons.block : Icons.check_circle,
-                                color: isActive ? Colors.red : Colors.green,
-                              ),
-                              tooltip: isActive ? "Ban User" : "Unban User",
-                              onPressed: () =>
-                                  _repo.toggleUserStatus(uid, isActive),
                             ),
-                          ],
-                        ),
-                      ),
+                            title: Text(
+                              email,
+                              style: TextStyle(
+                                decoration: isActive
+                                    ? null
+                                    : TextDecoration.lineThrough,
+                              ),
+                            ),
+                            subtitle: Text("Role: $role | UID: $uid"),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (role == 'user' || role == 'independent')
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.upload_file,
+                                      color: Colors.blue,
+                                    ),
+                                    tooltip: "Inject Diet",
+                                    // Disable button while uploading
+                                    onPressed: _isUploading
+                                        ? null
+                                        : () => _uploadDiet(uid),
+                                  ),
+                                IconButton(
+                                  icon: Icon(
+                                    isActive ? Icons.block : Icons.check_circle,
+                                    color: isActive ? Colors.red : Colors.green,
+                                  ),
+                                  tooltip: isActive ? "Ban User" : "Unban User",
+                                  onPressed: () =>
+                                      _repo.toggleUserStatus(uid, isActive),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
+
+          // B. Loading Overlay (Visible only when _isUploading is true)
+          if (_isUploading)
+            Container(
+              color: Colors.black54, // Semi-transparent background
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 6,
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      "Processing Diet PDF...",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Wait for Server Response",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
