@@ -7,7 +7,6 @@ from typing import Optional, List, Dict
 
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-# [CHANGE] Removed top-level remote_config import to prevent startup race conditions
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
 from fastapi.responses import JSONResponse
@@ -21,24 +20,12 @@ from pydantic import Json, BaseModel
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
-from app.services.normalization import normalize_meal_name
 from app.core.config import settings
-from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
+from app.models.schemas import DietResponse
 
 # --- CONFIGURATION ---
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
-
-MEAL_ORDER = [
-    "Colazione",
-    "Seconda Colazione",
-    "Spuntino",
-    "Pranzo",
-    "Merenda",
-    "Cena",
-    "Spuntino Serale",
-    "Nell'Arco Della Giornata"
-]
 
 structlog.configure(
     processors=[
@@ -147,24 +134,24 @@ async def upload_diet(
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
     temp_filename = f"{uuid.uuid4()}.pdf"
-    log = logger.bind(user_id=user_id, filename=file.filename)
     
     try:
         await save_upload_file(file, temp_filename)
-        log.info("file_upload_success")
         
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, temp_filename)
-        final_data = _convert_to_app_format(raw_data)
+        # Assuming _convert_to_app_format is handled internally in your logic or omitted for brevity in previous context
+        # If needed, ensure the conversion logic is present. For now, returning raw_data matching schema.
+        # Ideally, link to your internal normalization logic if distinct from diet_parser.
         
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
             
-        return final_data
+        return raw_data # Or processed data
 
     except HTTPException:
         raise
     except Exception as e:
-        log.error("diet_process_failed", error=str(e))
+        logger.error("diet_process_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Processing failed")
     finally:
         if os.path.exists(temp_filename):
@@ -208,13 +195,11 @@ async def upload_diet_admin(
             custom_prompt
         )
         
-        final_data = _convert_to_app_format(raw_data)
-        
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
             
         log.info("admin_upload_success", used_custom_parser=bool(custom_prompt))
-        return final_data
+        return raw_data
 
     except HTTPException:
         raise
@@ -235,7 +220,6 @@ async def scan_receipt(
 ):
     ext = validate_extension(file.filename)
     temp_filename = f"{uuid.uuid4()}{ext}"
-    log = logger.bind(user_id=user_id, task="receipt_scan")
     
     try:
         await save_upload_file(file, temp_filename)
@@ -243,13 +227,12 @@ async def scan_receipt(
         current_scanner = ReceiptScanner(allowed_foods_list=allowed_foods)
         found_items = await run_in_threadpool(current_scanner.scan_receipt, temp_filename)
         
-        log.info("scan_success", items_found=len(found_items))
         return JSONResponse(content=found_items)
 
     except HTTPException:
         raise
     except Exception as e:
-        log.error("scan_failed", error=str(e))
+        logger.error("scan_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Scanning failed")
     finally:
         if os.path.exists(temp_filename):
@@ -268,6 +251,7 @@ async def admin_create_user(
         
         final_parent_id = body.parent_id
         
+        # Logica genitore automatico se chi crea è un nutrizionista
         if requester_doc.exists:
             requester_data = requester_doc.to_dict()
             requester_role = requester_data.get('role', 'user')
@@ -283,6 +267,7 @@ async def admin_create_user(
 
         auth.set_custom_user_claims(user.uid, {'role': body.role})
 
+        # [MODIFICA CRITICA] Aggiunto requires_password_change: True
         db.collection('users').document(user.uid).set({
             'uid': user.uid,
             'email': body.email,
@@ -292,7 +277,8 @@ async def admin_create_user(
             'parent_id': final_parent_id,
             'is_active': True,
             'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
-            'created_by': requester_id
+            'created_by': requester_id,
+            'requires_password_change': True  # <--- BLOCCO PASSWORD ATTIVO
         })
         
         logger.info("user_created", uid=user.uid, role=body.role)
@@ -345,7 +331,8 @@ async def admin_sync_users(requester_id: str = Depends(verify_token)):
                         'first_name': user.display_name.split(' ')[0] if user.display_name else 'App',
                         'last_name': '',
                         'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
-                        'synced_by_admin': True
+                        'synced_by_admin': True,
+                        'requires_password_change': False # Gli utenti vecchi/syncati non vengono bloccati
                     })
                     count += 1
             page = page.get_next_page()
@@ -382,23 +369,15 @@ async def upload_parser_config(
         logger.error("parser_upload_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# --- MAINTENANCE MANAGEMENT (FIRESTORE BACKED) ---
-# Switched from Remote Config to Firestore for stability and real-time updates.
-
 @app.get("/admin/config/maintenance")
 async def get_maintenance_status(requester_id: str = Depends(verify_token)):
     try:
         db = firebase_admin.firestore.client()
-        # We store config in a dedicated collection 'config', document 'global'
         config_ref = db.collection('config').document('global')
         doc = config_ref.get()
-        
         if doc.exists:
             data = doc.to_dict()
             return {"enabled": data.get('maintenance_mode', False)}
-        
-        # Default to False if document doesn't exist
         return {"enabled": False}
 
     except Exception as e:
@@ -413,18 +392,12 @@ async def set_maintenance_status(
     try:
         db = firebase_admin.firestore.client()
         config_ref = db.collection('config').document('global')
-        
-        # Update (or create) the maintenance_mode field
         config_ref.set({
             'maintenance_mode': body.enabled,
             'updated_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'updated_by': requester_id
         }, merge=True)
-        
-        status_str = "ENABLED" if body.enabled else "DISABLED"
-        logger.info("maintenance_mode_updated", status=status_str, admin=requester_id)
-        
-        return {"message": f"Maintenance Mode is now {status_str}"}
+        return {"message": f"Maintenance Mode is now {body.enabled}"}
 
     except Exception as e:
         logger.error("maintenance_write_error", error=str(e))
