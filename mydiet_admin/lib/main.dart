@@ -188,6 +188,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   bool _isUploading = false;
 
+  // [NEW] Maintenance State
+  bool _maintenanceMode = false;
+
   String? _myUid;
   String? _myRole;
 
@@ -195,6 +198,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+    // [NEW] Check Maintenance Status on Startup
+    _checkMaintenance();
   }
 
   Future<void> _loadCurrentUser() async {
@@ -209,6 +214,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _myUid = user.uid;
           _myRole = doc.data()?['role'] ?? 'user';
         });
+        // Re-check maintenance if we just confirmed we are admin
+        if (_myRole == 'admin') _checkMaintenance();
+      }
+    }
+  }
+
+  // [NEW] Check Status from Backend
+  Future<void> _checkMaintenance() async {
+    // Only check if we are admin (or we don't know role yet, safe to fail silently)
+    try {
+      bool status = await _repo.getMaintenanceStatus();
+      if (mounted) setState(() => _maintenanceMode = status);
+    } catch (e) {
+      debugPrint("Maintenance Check Error: $e");
+    }
+  }
+
+  // [NEW] Toggle Status Logic
+  Future<void> _toggleMaintenance(bool value) async {
+    // Optimistic Update (Switch visual updates immediately)
+    setState(() => _maintenanceMode = value);
+
+    try {
+      await _repo.setMaintenanceStatus(value);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value ? "🚨 SYSTEM IN MAINTENANCE MODE" : "✅ System Live",
+            ),
+            backgroundColor: value ? Colors.red : Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert switch if backend fails
+      if (mounted) {
+        setState(() => _maintenanceMode = !value);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }
@@ -393,6 +440,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Text(_myRole == 'admin' ? "God Mode" : "Nutritionist Panel"),
         actions: [
+          // [NEW] MAINTENANCE TOGGLE (Admin Only)
+          if (_myRole == 'admin') ...[
+            const Text(
+              "Maint: ",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            Switch(
+              value: _maintenanceMode,
+              activeColor: Colors.red,
+              // Use MaterialStateProperty to show icon only when selected (Red Alert)
+              thumbIcon: MaterialStateProperty.resolveWith<Icon?>((states) {
+                if (states.contains(MaterialState.selected)) {
+                  return const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.white,
+                  );
+                }
+                return null;
+              }),
+              onChanged: _isUploading ? null : _toggleMaintenance,
+            ),
+            const SizedBox(width: 12), // Spacer
+          ],
+
           if (_myRole == 'admin')
             IconButton(
               icon: const Icon(Icons.cloud_sync, color: Colors.blue),
@@ -603,7 +674,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // [NEW] UPLOAD PARSER BUTTON (Only for Nutritionists, Visible to Admin)
+                                // UPLOAD PARSER (Nutritionist + Admin only)
                                 if (role == 'nutritionist' &&
                                     _myRole == 'admin')
                                   IconButton(
@@ -755,9 +826,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-}
+} // SCREEN: History of Diets
 
-// SCREEN: History of Diets
 class HistoryScreen extends StatelessWidget {
   final String uid;
   final String userName;
