@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase_options.dart';
+
 import 'constants.dart';
 import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
 import 'screens/splash_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(
     MultiProvider(
       providers: [
         Provider(create: (_) => DietRepository()),
-        // [FIX] Use ChangeNotifierProvider directly.
-        // DietRepository is a singleton service here, so we inject it once.
         ChangeNotifierProvider<DietProvider>(
           create: (context) => DietProvider(context.read<DietRepository>()),
         ),
@@ -54,6 +58,11 @@ class DietApp extends StatelessWidget {
           ),
         ),
       ),
+      // [CORRETTO] Il builder avvolge ogni singola rotta dell'app col Guard
+      builder: (context, child) {
+        return MaintenanceGuard(child: child!);
+      },
+      // [CORRETTO] Rimosso il Guard da qui, ci pensa il builder sopra
       home: const SplashScreen(),
     );
   }
@@ -70,66 +79,67 @@ class MaintenanceGuard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
-      // Listening to the 'global' config document in Firestore
       stream: FirebaseFirestore.instance
           .collection('config')
           .doc('global')
           .snapshots(),
       builder: (context, snapshot) {
-        // 1. If loading, show a blank or loading screen
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+        // Gestione stati di caricamento/errore silenziosi
+        if (snapshot.hasError) {
+          print("🔴 Maintenance Error: ${snapshot.error}");
+          return child;
         }
 
-        // 2. Check the flag
-        bool isMaintenance = false;
-        if (snapshot.data!.exists) {
-          final data = snapshot.data!.data() as Map<String, dynamic>?;
-          isMaintenance = data?['maintenance_mode'] ?? false;
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          // Se il documento non esiste, assumiamo che non ci sia manutenzione
+          return child;
         }
 
-        // 3. If Maintenance is ON -> Show Blocking Screen
+        final data = snapshot.data!.data() as Map<String, dynamic>?;
+        bool isMaintenance = data?['maintenance_mode'] ?? false;
+
         if (isMaintenance) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: Scaffold(
-              backgroundColor: Colors.white,
-              body: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        size: 80,
-                        color: Colors.orange,
+          // [CORRETTO] Restituiamo Scaffold, NON un'altra MaterialApp
+          return const Scaffold(
+            backgroundColor: Colors.white,
+            body: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 80,
+                      color: Colors.orange,
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      "Under Maintenance",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        decoration: TextDecoration.none,
                       ),
-                      SizedBox(height: 24),
-                      Text(
-                        "Under Maintenance",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "We are updating the system. Please wait.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 16,
+                        decoration: TextDecoration.none,
                       ),
-                      SizedBox(height: 16),
-                      Text(
-                        "We are currently updating the servers to serve you better.\nPlease try again in a few minutes.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           );
         }
 
-        // 4. If Maintenance is OFF -> Show the actual App
         return child;
       },
     );
