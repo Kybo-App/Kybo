@@ -8,6 +8,7 @@ import 'constants.dart';
 import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
 import 'screens/splash_screen.dart';
+import 'guards/password_guard.dart'; // <--- IMPORT NUOVO
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,11 +59,10 @@ class DietApp extends StatelessWidget {
           ),
         ),
       ),
-      // [CORRETTO] Il builder avvolge ogni singola rotta dell'app col Guard
+      // [MODIFICA] Builder con catena di controlli: Manutenzione -> Password
       builder: (context, child) {
-        return MaintenanceGuard(child: child!);
+        return MaintenanceGuard(child: PasswordGuard(child: child!));
       },
-      // [CORRETTO] Rimosso il Guard da qui, ci pensa il builder sopra
       home: const SplashScreen(),
     );
   }
@@ -84,14 +84,11 @@ class MaintenanceGuard extends StatelessWidget {
           .doc('global')
           .snapshots(),
       builder: (context, snapshot) {
-        // Gestione stati di caricamento/errore silenziosi
         if (snapshot.hasError) {
-          print("🔴 Maintenance Error: ${snapshot.error}");
           return child;
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          // Se il documento non esiste, assumiamo che non ci sia manutenzione
           return child;
         }
 
@@ -99,7 +96,6 @@ class MaintenanceGuard extends StatelessWidget {
         bool isMaintenance = data?['maintenance_mode'] ?? false;
 
         if (isMaintenance) {
-          // [CORRETTO] Restituiamo Scaffold, NON un'altra MaterialApp
           return const Scaffold(
             backgroundColor: Colors.white,
             body: Padding(

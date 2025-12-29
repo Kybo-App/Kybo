@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'firebase_options.dart';
 import 'admin_repository.dart';
 import 'package:file_picker/file_picker.dart';
+import 'screens/change_password_screen.dart';
+import 'guards/admin_password_guard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +42,9 @@ class AuthGate extends StatelessWidget {
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
-        return const RoleCheckScreen();
+
+        // [MODIFICA] Applichiamo il Guard per il cambio password qui
+        return AdminPasswordGuard(child: const RoleCheckScreen());
       },
     );
   }
