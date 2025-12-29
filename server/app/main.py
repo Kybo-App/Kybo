@@ -6,7 +6,7 @@ import json
 from typing import Optional, List, Dict
 
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials, auth, firestore
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from pydantic import Json
+from pydantic import Json, BaseModel # [Updated] Added BaseModel
 
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
@@ -27,7 +27,6 @@ from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
-# [FIX 2] Standard Order for Meals to enforce frontend sorting
 MEAL_ORDER = [
     "Colazione",
     "Seconda Colazione",
@@ -72,13 +71,23 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS", "DELETE"], # [Updated] Added DELETE
     allow_headers=["Authorization", "Content-Type"],
 )
 
 notification_service = NotificationService()
 diet_parser = DietParser()
 
+# --- NEW SCHEMAS ---
+class CreateUserRequest(BaseModel):
+    email: str
+    password: str
+    role: str
+    first_name: str  # [NEW]
+    last_name: str   # [NEW]
+    parent_id: Optional[str] = None
+
+# --- UTILS ---
 async def save_upload_file(file: UploadFile, filename: str) -> None:
     size = 0
     try:
@@ -117,6 +126,8 @@ async def verify_token(authorization: str = Header(...)):
     except Exception as e:
         logger.warning("auth_failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(status_code=401, detail="Authentication failed")
+
+# --- ENDPOINTS ---
 
 @app.post("/upload-diet", response_model=DietResponse)
 @limiter.limit("5/minute")
@@ -162,25 +173,19 @@ async def upload_diet_admin(
     fcm_token: Optional[str] = Form(None),
     requester_id: str = Depends(verify_token) 
 ):
-    """
-    Admin Endpoint: Uploads a diet for a specific target_uid.
-    """
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
     temp_filename = f"{uuid.uuid4()}.pdf"
-    # Log both the Admin (requester) and the Target (client)
     log = logger.bind(admin_id=requester_id, target_uid=target_uid, filename=file.filename)
     
     try:
         await save_upload_file(file, temp_filename)
         log.info("admin_upload_start")
         
-        # Parse logic is identical, just triggered by Admin
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, temp_filename)
         final_data = _convert_to_app_format(raw_data)
         
-        # If the target user has a token registered (passed by Admin or retrieved via DB in future)
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
             
@@ -195,7 +200,7 @@ async def upload_diet_admin(
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
-            
+
 @app.post("/scan-receipt")
 @limiter.limit("10/minute")
 async def scan_receipt(
@@ -225,6 +230,92 @@ async def scan_receipt(
     finally:
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
+
+# --- ADMIN USER MANAGEMENT ENDPOINTS ---
+
+@app.post("/admin/create-user")
+async def admin_create_user(
+    body: CreateUserRequest,
+    requester_id: str = Depends(verify_token)
+):
+    """
+    Creates a user via Admin SDK:
+    1. Sets email_verified = True (Bypasses verification)
+    2. Sets Custom Claims (Role)
+    3. Creates Firestore User Document
+    4. Auto-assigns parent_id if requester is a Nutritionist
+    """
+    try:
+        # A. Determine who is creating this user
+        db = firebase_admin.firestore.client()
+        requester_doc = db.collection('users').document(requester_id).get()
+        
+        final_parent_id = body.parent_id
+        
+        if requester_doc.exists:
+            requester_data = requester_doc.to_dict()
+            requester_role = requester_data.get('role', 'user')
+            
+            # IF requester is Nutritionist, they MUST be the parent
+            if requester_role == 'nutritionist':
+                final_parent_id = requester_id
+        
+        # B. Create in Firebase Auth
+        user = auth.create_user(
+            email=body.email,
+            password=body.password,
+            display_name=f"{body.first_name} {body.last_name}",
+            email_verified=True # FORCE VERIFIED
+        )
+
+        # C. Set Custom Claims (Role)
+        auth.set_custom_user_claims(user.uid, {'role': body.role})
+
+        # D. Create Firestore Document
+        db.collection('users').document(user.uid).set({
+            'uid': user.uid,
+            'email': body.email,
+            'role': body.role,
+            'first_name': body.first_name, 
+            'last_name': body.last_name,   
+            'parent_id': final_parent_id,
+            'is_active': True,
+            'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
+            'created_by': requester_id
+        })
+        
+        logger.info("user_created", uid=user.uid, role=body.role, parent=final_parent_id)
+        return {"uid": user.uid, "message": "User created and verified"}
+
+    except Exception as e:
+        logger.error("create_user_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/admin/delete-user/{target_uid}")
+async def admin_delete_user(
+    target_uid: str,
+    requester_id: str = Depends(verify_token)
+):
+    """
+    Deletes a user completely:
+    1. Removes from Firebase Auth
+    2. Deletes Firestore Document
+    """
+    try:
+        # 1. Delete from Auth
+        auth.delete_user(target_uid)
+
+        # 2. Delete from Firestore
+        db = firebase_admin.firestore.client()
+        db.collection('users').document(target_uid).delete()
+
+        logger.info("user_deleted", uid=target_uid, admin=requester_id)
+        return {"message": "User deleted successfully"}
+
+    except Exception as e:
+        logger.error("delete_user_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
     if not gemini_output:
@@ -314,18 +405,12 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             else:
                 app_plan[day_name][meal_name] = items
 
-    # [FIX 2] Sort Meals chronologically before returning
-    # This prevents the "scrambled meals" issue in Flutter without hardcoding strings there.
     for day, meals in app_plan.items():
         ordered_meals = {}
-        # 1. Add known meals in order
         for standard_meal in MEAL_ORDER:
-            # We look for fuzzy matches or exact matches in keys
-            # Ideally normalize_meal_name already maps to these standard keys
             if standard_meal in meals:
                 ordered_meals[standard_meal] = meals[standard_meal]
         
-        # 2. Add any leftovers (custom meals not in standard list)
         for k, v in meals.items():
             if k not in ordered_meals:
                 ordered_meals[k] = v

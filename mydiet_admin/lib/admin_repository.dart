@@ -24,47 +24,67 @@ class AdminRepository {
     });
   }
 
-  // 3. Create User (God Mode)
+  // 3. Create User (Via Python Backend)
   Future<void> createUser({
     required String email,
     required String password,
     required String role,
+    required String firstName, // [NEW]
+    required String lastName, // [NEW]
     String? parentId,
   }) async {
-    FirebaseApp secondaryApp = await Firebase.initializeApp(
-      name: 'SecondaryApp',
-      options: Firebase.app().options,
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Admin not logged in");
+    final token = await user.getIdToken();
+
+    // [IMPORTANT] Ensure this matches your live Render URL
+    const String backendUrl = "https://mydiet-74rg.onrender.com";
+
+    final response = await http.post(
+      Uri.parse('$backendUrl/admin/create-user'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'role': role,
+        'first_name': firstName, // [NEW]
+        'last_name': lastName, // [NEW]
+        'parent_id': parentId,
+      }),
     );
 
-    try {
-      UserCredential cred = await FirebaseAuth.instanceFor(
-        app: secondaryApp,
-      ).createUserWithEmailAndPassword(email: email, password: password);
-
-      await _db.collection('users').doc(cred.user!.uid).set({
-        'uid': cred.user!.uid,
-        'email': email,
-        'role': role,
-        'parent_id': parentId,
-        'is_active': true,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      await FirebaseAuth.instanceFor(app: secondaryApp).signOut();
-    } catch (e) {
-      rethrow;
+    if (response.statusCode != 200) {
+      throw Exception("Failed to create user: ${response.body}");
     }
   }
 
-  // 4. Upload Diet (Inject PDF & Save to Firestore)
+  // 4. Delete User (Via Python Backend)
+  Future<void> deleteUser(String uid) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Admin not logged in");
+    final token = await user.getIdToken();
+
+    const String backendUrl = "https://mydiet-74rg.onrender.com";
+
+    final response = await http.delete(
+      Uri.parse('$backendUrl/admin/delete-user/$uid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to delete user: ${response.body}");
+    }
+  }
+
+  // 5. Upload Diet (Inject PDF & Save to Firestore)
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
-    // A. Get the Admin's ID Token
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
 
     final token = await user.getIdToken();
-
-    // [IMPORTANT] Ensure this matches your live Render URL
     const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     var request = http.MultipartRequest(
@@ -72,28 +92,22 @@ class AdminRepository {
       Uri.parse('$backendUrl/upload-diet/$targetUid'),
     );
 
-    // B. Attach Authorization
     request.headers['Authorization'] = 'Bearer $token';
-
     request.files.add(
       http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
     );
 
-    // C. Send Request to Python Backend
     var response = await request.send();
 
     if (response.statusCode == 200) {
-      // D. Parse the JSON response from the server
       final respStr = await response.stream.bytesToString();
       final Map<String, dynamic> dietData = jsonDecode(respStr);
 
-      // E. Write the parsed data to the TARGET USER'S Firestore
-      // The user app listens to 'users/{uid}/diets', so we write there.
       await _db.collection('users').doc(targetUid).collection('diets').add({
         'plan': dietData['plan'],
         'substitutions': dietData['substitutions'],
         'uploadedAt': FieldValue.serverTimestamp(),
-        'uploadedBy': 'admin', // Optional: audit trail
+        'uploadedBy': 'admin',
       });
     } else {
       final respStr = await response.stream.bytesToString();
