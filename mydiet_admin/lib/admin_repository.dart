@@ -4,10 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AdminRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  // [FIX] Trim the URL to prevent "Scheme not starting..." errors
+  static const String _backendUrl = "https://mydiet-74rg.onrender.com";
+  String get backendUrl => _backendUrl.trim();
 
   // 1. Fetch All Users
   Stream<List<Map<String, dynamic>>> getAllUsers() {
@@ -16,7 +19,7 @@ class AdminRepository {
     });
   }
 
-  // 2. Fetch Diet History for a specific User [NEW]
+  // 2. Fetch Diet History
   Stream<List<Map<String, dynamic>>> getDietHistory(String uid) {
     return _db
         .collection('users')
@@ -27,20 +30,13 @@ class AdminRepository {
         .map((snapshot) {
           return snapshot.docs.map((doc) {
             final data = doc.data();
-            data['id'] = doc.id; // Attach Doc ID
+            data['id'] = doc.id;
             return data;
           }).toList();
         });
   }
 
-  // 3. Toggle Ban/Active
-  Future<void> toggleUserStatus(String uid, bool currentStatus) async {
-    await _db.collection('users').doc(uid).update({
-      'is_active': !currentStatus,
-    });
-  }
-
-  // 4. Create User
+  // 3. Create User (Backend - Auto Verified)
   Future<void> createUser({
     required String email,
     required String password,
@@ -52,8 +48,6 @@ class AdminRepository {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
     final token = await user.getIdToken();
-
-    const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     final response = await http.post(
       Uri.parse('$backendUrl/admin/create-user'),
@@ -76,13 +70,11 @@ class AdminRepository {
     }
   }
 
-  // 5. Delete User
+  // 4. Delete User (Backend - Force Delete)
   Future<void> deleteUser(String uid) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
     final token = await user.getIdToken();
-
-    const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     final response = await http.delete(
       Uri.parse('$backendUrl/admin/delete-user/$uid'),
@@ -94,13 +86,11 @@ class AdminRepository {
     }
   }
 
-  // 6. Sync Users
+  // 5. Sync Users (Restore Ghost Accounts)
   Future<String> syncUsers() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
     final token = await user.getIdToken();
-
-    const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     final response = await http.post(
       Uri.parse('$backendUrl/admin/sync-users'),
@@ -115,13 +105,12 @@ class AdminRepository {
     }
   }
 
-  // 7. Upload Diet (Updated with fileName)
+  // 6. Upload Diet (With FileName)
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
 
     final token = await user.getIdToken();
-    const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     var request = http.MultipartRequest(
       'POST',
@@ -139,13 +128,12 @@ class AdminRepository {
       final respStr = await response.stream.bytesToString();
       final Map<String, dynamic> dietData = jsonDecode(respStr);
 
-      // [UPDATED] Save fileName to Firestore for history
       await _db.collection('users').doc(targetUid).collection('diets').add({
         'plan': dietData['plan'],
         'substitutions': dietData['substitutions'],
         'uploadedAt': FieldValue.serverTimestamp(),
         'uploadedBy': 'admin',
-        'fileName': file.name, // <--- SAVED HERE
+        'fileName': file.name,
       });
     } else {
       final respStr = await response.stream.bytesToString();
@@ -153,16 +141,14 @@ class AdminRepository {
     }
   }
 
-  // 8. Upload Custom Parser (.txt) [NEW]
+  // 7. Upload Custom Parser Config (The Logic You Requested)
   Future<void> uploadParserConfig(String targetUid, PlatformFile file) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
 
     final token = await user.getIdToken();
-    // [CHANGE TO YOUR RENDER URL]
-    const String backendUrl =
-        "[https://mydiet-74rg.onrender.com](https://mydiet-74rg.onrender.com)";
 
+    // [FIX] Use trimmed backendUrl to avoid FormatException
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('$backendUrl/admin/upload-parser/$targetUid'),

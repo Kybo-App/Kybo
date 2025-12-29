@@ -183,13 +183,35 @@ async def upload_diet_admin(
         await save_upload_file(file, temp_filename)
         log.info("admin_upload_start")
         
-        raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, temp_filename)
+        # [NEW LOGIC] Check for Custom Parser Instructions
+        db = firebase_admin.firestore.client()
+        custom_prompt = None
+        
+        # 1. Check Target User
+        user_doc = db.collection('users').document(target_uid).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            parent_id = user_data.get('parent_id')
+            
+            # 2. If user has a Nutritionist (parent), use THEIR parser settings
+            if parent_id:
+                parent_doc = db.collection('users').document(parent_id).get()
+                if parent_doc.exists:
+                    custom_prompt = parent_doc.to_dict().get('custom_parser_prompt')
+
+        # 3. Parse with dynamic prompt
+        raw_data = await run_in_threadpool(
+            diet_parser.parse_complex_diet, 
+            temp_filename, 
+            custom_prompt
+        )
+        
         final_data = _convert_to_app_format(raw_data)
         
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
             
-        log.info("admin_upload_success")
+        log.info("admin_upload_success", used_custom_parser=bool(custom_prompt))
         return final_data
 
     except HTTPException:
@@ -231,7 +253,7 @@ async def scan_receipt(
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
 
-# --- ADMIN USER MANAGEMENT ENDPOINTS ---
+# --- ADMIN MANAGEMENT ENDPOINTS ---
 
 @app.post("/admin/create-user")
 async def admin_create_user(
@@ -244,6 +266,7 @@ async def admin_create_user(
         
         final_parent_id = body.parent_id
         
+        # If created by Nutritionist, force parent_id link
         if requester_doc.exists:
             requester_data = requester_doc.to_dict()
             requester_role = requester_data.get('role', 'user')
@@ -271,29 +294,26 @@ async def admin_create_user(
             'created_by': requester_id
         })
         
-        logger.info("user_created", uid=user.uid, role=body.role, parent=final_parent_id)
+        logger.info("user_created", uid=user.uid, role=body.role)
         return {"uid": user.uid, "message": "User created and verified"}
 
     except Exception as e:
         logger.error("create_user_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-# [FIX] Force Delete + Sync Endpoint
 @app.delete("/admin/delete-user/{target_uid}")
 async def admin_delete_user(
     target_uid: str,
     requester_id: str = Depends(verify_token)
 ):
     try:
-        # Try to delete from Auth, but ignore if already gone (Ghost User)
         try:
             auth.delete_user(target_uid)
         except auth.UserNotFoundError:
-            logger.warning("delete_user_ghost_found", uid=target_uid)
+            logger.warning("ghost_user_deletion", uid=target_uid)
         except Exception as e:
             raise e
 
-        # Always delete from Firestore
         db = firebase_admin.firestore.client()
         db.collection('users').document(target_uid).delete()
 
@@ -306,10 +326,6 @@ async def admin_delete_user(
 
 @app.post("/admin/sync-users")
 async def admin_sync_users(requester_id: str = Depends(verify_token)):
-    """
-    Iterates over ALL Auth users. If a user has no Firestore doc, creates one.
-    Useful for 'invisible' users in God Mode.
-    """
     try:
         db = firebase_admin.firestore.client()
         page = auth.list_users()
@@ -319,13 +335,11 @@ async def admin_sync_users(requester_id: str = Depends(verify_token)):
             for user in page.users:
                 doc_ref = db.collection('users').document(user.uid)
                 doc = doc_ref.get()
-                
                 if not doc.exists:
-                    # Create default doc for invisible user
                     doc_ref.set({
                         'uid': user.uid,
                         'email': user.email,
-                        'role': 'independent', # Default for self-registered
+                        'role': 'independent',
                         'is_active': True,
                         'first_name': user.display_name.split(' ')[0] if user.display_name else 'App',
                         'last_name': '',
@@ -333,14 +347,41 @@ async def admin_sync_users(requester_id: str = Depends(verify_token)):
                         'synced_by_admin': True
                     })
                     count += 1
-            
             page = page.get_next_page()
             
-        logger.info("sync_users_complete", created=count)
         return {"message": f"Sync complete. Restored {count} users."}
 
     except Exception as e:
         logger.error("sync_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/admin/upload-parser/{target_uid}")
+async def upload_parser_config(
+    target_uid: str,
+    file: UploadFile = File(...),
+    requester_id: str = Depends(verify_token)
+):
+    """
+    Saves a custom AI System Instruction (.txt) for a specific Nutritionist.
+    """
+    if not file.filename.lower().endswith(".txt"):
+        raise HTTPException(status_code=400, detail="Parser must be a .txt file")
+
+    try:
+        content_bytes = await file.read()
+        custom_instructions = content_bytes.decode("utf-8")
+
+        db = firebase_admin.firestore.client()
+        db.collection('users').document(target_uid).update({
+            'custom_parser_prompt': custom_instructions,
+            'has_custom_parser': True
+        })
+
+        logger.info("parser_updated", uid=target_uid, admin=requester_id)
+        return {"message": "Custom Parser instructions saved successfully."}
+
+    except Exception as e:
+        logger.error("parser_upload_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
@@ -436,11 +477,9 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         for standard_meal in MEAL_ORDER:
             if standard_meal in meals:
                 ordered_meals[standard_meal] = meals[standard_meal]
-        
         for k, v in meals.items():
             if k not in ordered_meals:
                 ordered_meals[k] = v
-        
         app_plan[day] = ordered_meals
 
     return DietResponse(
