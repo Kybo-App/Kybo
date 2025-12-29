@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // [NEW]
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../services/notification_service.dart';
@@ -26,8 +26,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   final AuthService _auth = AuthService();
 
-  // [NEW] User Role State
-  String _userRole = 'independent';
+  // [FIX 1] FAIL SAFE: Default to 'user' (Restricted) so we don't accidentally show buttons
+  String _userRole = 'user';
+  bool _isLoadingRole = true;
 
   final List<String> days = [
     "Lunedì",
@@ -48,27 +49,44 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       initialIndex: today < 0 ? 0 : today,
       vsync: this,
     );
-    _fetchUserRole();
+
+    // [FIX 2] Listen for Auth Changes to fetch role reliability
+    // This ensures we fetch data even if the user isn't ready the exact millisecond initState runs.
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _fetchUserRole(user.uid);
+      } else {
+        if (mounted) setState(() => _userRole = 'user'); // Reset on logout
+      }
+    });
   }
 
-  // [NEW] Fetch role to determine UI
-  Future<void> _fetchUserRole() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists && mounted) {
-          setState(() {
-            // Default to 'independent' if field is missing
-            _userRole = doc.data()?['role'] ?? 'independent';
-          });
-        }
-      } catch (e) {
-        debugPrint("Role Fetch Error: $e");
+  Future<void> _fetchUserRole(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          if (doc.exists && doc.data() != null) {
+            _userRole = (doc.data()!['role'] ?? 'user')
+                .toString()
+                .toLowerCase();
+          } else {
+            // If doc missing, assume 'user' (safe) or 'independent' depending on your pref.
+            // Safe bet is 'user' until fixed by admin.
+            _userRole = 'user';
+          }
+          _isLoadingRole = false;
+        });
+        debugPrint("User Role Fetched: $_userRole");
       }
+    } catch (e) {
+      debugPrint("Role Fetch Error: $e");
+      // On error, keep 'user' (safe)
+      if (mounted) setState(() => _isLoadingRole = false);
     }
   }
 
@@ -427,7 +445,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     DietProvider provider,
     ColorScheme colors,
   ) {
-    // [NEW] Check role to toggle Upload Button
+    // [LOGIC] Only Independent or Admin can upload. User (Client) cannot.
     final bool canUpload = _userRole == 'independent' || _userRole == 'admin';
 
     return Drawer(
@@ -436,7 +454,10 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         children: [
           UserAccountsDrawerHeader(
             accountName: const Text("MyDiet"),
-            accountEmail: Text(user?.email ?? "Ospite"),
+            // Debug: Show role so we know what's happening
+            accountEmail: Text(
+              "${user?.email ?? "Ospite"}\n(Role: $_userRole)",
+            ),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white,
               child: Icon(Icons.person, size: 40, color: colors.primary),
@@ -478,7 +499,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           ],
           const Divider(),
 
-          // [NEW] Conditionally Render Upload
+          // Conditional Upload Button
           if (canUpload)
             ListTile(
               leading: const Icon(Icons.upload_file),

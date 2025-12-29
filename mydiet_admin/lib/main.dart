@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'firebase_options.dart';
 import 'admin_repository.dart';
 import 'package:file_picker/file_picker.dart';
@@ -65,11 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passCtrl.text.trim(),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -202,14 +204,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .collection('users')
           .doc(user.uid)
           .get();
-      setState(() {
-        _myUid = user.uid;
-        _myRole = doc.data()?['role'] ?? 'user';
-      });
+      if (mounted) {
+        setState(() {
+          _myUid = user.uid;
+          _myRole = doc.data()?['role'] ?? 'user';
+        });
+      }
     }
   }
 
-  // [NEW] Sync Button Logic
   Future<void> _performSync() async {
     setState(() => _isUploading = true);
     try {
@@ -229,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -287,6 +290,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text("Client (User)"),
                     ),
                     DropdownMenuItem(
+                      value: 'independent',
+                      child: Text("Independent"),
+                    ),
+                    DropdownMenuItem(
                       value: 'nutritionist',
                       child: Text("Nutritionist"),
                     ),
@@ -316,14 +323,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           lastName: lastCtrl.text.trim(),
                         );
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("User Created!")),
-                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("User Created!")),
+                          );
+                        }
                       } catch (e) {
                         setState(() => isLoading = false);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                        }
                       }
                     },
               child: isLoading
@@ -347,20 +358,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => _isUploading = true);
       try {
         await _repo.uploadDietForUser(uid, result.files.single);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Diet Saved!"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Diet Saved!"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+          );
+        }
       } finally {
-        setState(() => _isUploading = false);
+        if (mounted) setState(() => _isUploading = false);
       }
     }
+  }
+
+  void _openHistory(String uid, String userName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => HistoryScreen(uid: uid, userName: userName),
+      ),
+    );
   }
 
   @override
@@ -369,7 +393,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Text(_myRole == 'admin' ? "God Mode" : "Nutritionist Panel"),
         actions: [
-          // [NEW] Sync Button
           if (_myRole == 'admin')
             IconButton(
               icon: const Icon(Icons.cloud_sync, color: Colors.blue),
@@ -395,7 +418,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Column(
             children: [
-              // 1. Search Bar & Filters
+              // Filters
               Card(
                 margin: const EdgeInsets.all(16),
                 child: Padding(
@@ -414,36 +437,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (_myRole == 'admin') ...[
                         const Divider(),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text("Role: "),
-                            ToggleButtons(
-                              isSelected: [
-                                _filterRole == 'All',
-                                _filterRole == 'nutritionist',
-                                _filterRole == 'user',
-                              ],
-                              onPressed: (idx) {
-                                setState(() {
-                                  if (idx == 0) _filterRole = 'All';
-                                  if (idx == 1) _filterRole = 'nutritionist';
-                                  if (idx == 2) _filterRole = 'user';
-                                });
-                              },
-                              children: const [
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text("All"),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Role: ",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ToggleButtons(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 40,
+                                    minWidth: 70,
+                                  ),
+                                  isSelected: [
+                                    _filterRole == 'All',
+                                    _filterRole == 'user',
+                                    _filterRole == 'independent',
+                                    _filterRole == 'nutritionist',
+                                    _filterRole == 'admin',
+                                  ],
+                                  onPressed: (idx) {
+                                    setState(() {
+                                      if (idx == 0) _filterRole = 'All';
+                                      if (idx == 1) _filterRole = 'user';
+                                      if (idx == 2) _filterRole = 'independent';
+                                      if (idx == 3)
+                                        _filterRole = 'nutritionist';
+                                      if (idx == 4) _filterRole = 'admin';
+                                    });
+                                  },
+                                  children: const [
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text("All"),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text("Clients"),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text("Indep"),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text("Nutri"),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text("Admin"),
+                                    ),
+                                  ],
                                 ),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text("Nutri"),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text("Client"),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
@@ -453,7 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // 2. User List
+              // User List
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _repo.getAllUsers(),
@@ -462,8 +520,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return const Center(child: CircularProgressIndicator());
 
                     var users = snapshot.data!;
-
-                    // --- FILTERING LOGIC ---
 
                     if (_myRole == 'nutritionist') {
                       users = users
@@ -501,15 +557,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       itemCount: users.length,
                       itemBuilder: (ctx, i) {
                         final user = users[i];
-                        final bool isActive = user['is_active'] ?? true;
-                        final String role = user['role'] ?? 'user';
+                        final String uid = user['uid'] ?? '';
                         final String email = user['email'] ?? 'No Email';
+                        final String role = user['role'] ?? 'user';
                         final String firstName = user['first_name'] ?? '';
                         final String lastName = user['last_name'] ?? '';
+                        final bool isActive = user['is_active'] ?? true;
+
+                        if (uid.isEmpty) return const SizedBox.shrink();
+
                         final String fullName = firstName.isEmpty
                             ? "Unknown"
                             : "$firstName $lastName";
-                        final String uid = user['uid'];
+
+                        IconData roleIcon = Icons.person;
+                        if (role == 'admin') roleIcon = Icons.security;
+                        if (role == 'nutritionist')
+                          roleIcon = Icons.medical_services;
+                        if (role == 'independent')
+                          roleIcon = Icons.accessibility_new;
 
                         return Card(
                           margin: const EdgeInsets.symmetric(
@@ -521,11 +587,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               backgroundColor: isActive
                                   ? Colors.green
                                   : Colors.grey,
-                              child: Text(
-                                firstName.isNotEmpty
-                                    ? firstName[0].toUpperCase()
-                                    : "?",
-                                style: const TextStyle(color: Colors.white),
+                              child: Icon(
+                                roleIcon,
+                                color: Colors.white,
+                                size: 20,
                               ),
                             ),
                             title: Text(
@@ -534,59 +599,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text("Role: $role"),
+                            subtitle: Text("Role: $role | UID: $uid"),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Action: Upload Diet
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.upload_file,
-                                    color: Colors.blue,
-                                  ),
-                                  onPressed: _isUploading
-                                      ? null
-                                      : () => _uploadDiet(uid),
-                                ),
-                                // Action: Delete
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: const Text("Delete User?"),
-                                        content: Text("Delete $fullName?"),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, false),
-                                            child: const Text("Cancel"),
-                                          ),
-                                          FilledButton(
-                                            onPressed: () =>
-                                                Navigator.pop(ctx, true),
-                                            child: const Text("Delete"),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      try {
-                                        await _repo.deleteUser(uid);
-                                      } catch (e) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(content: Text("Error: $e")),
-                                        );
+                                // [NEW] UPLOAD PARSER BUTTON (Only for Nutritionists, Visible to Admin)
+                                if (role == 'nutritionist' &&
+                                    _myRole == 'admin')
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.settings_suggest,
+                                      color: Colors.orange,
+                                    ),
+                                    tooltip: "Upload Custom AI Parser",
+                                    onPressed: () async {
+                                      FilePickerResult? result =
+                                          await FilePicker.platform.pickFiles(
+                                            type: FileType.custom,
+                                            allowedExtensions: [
+                                              'txt',
+                                            ], // Only Text Files
+                                            withData: true,
+                                          );
+
+                                      if (result != null) {
+                                        try {
+                                          await _repo.uploadParserConfig(
+                                            uid,
+                                            result.files.single,
+                                          );
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Custom Parser Instructions Saved!",
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text("Error: $e"),
+                                              ),
+                                            );
+                                          }
+                                        }
                                       }
-                                    }
-                                  },
-                                ),
+                                    },
+                                  ),
+
+                                // HISTORY BUTTON
+                                if (role == 'user' || role == 'independent')
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.history,
+                                      color: Colors.purple,
+                                    ),
+                                    tooltip: "View History",
+                                    onPressed: () =>
+                                        _openHistory(uid, fullName),
+                                  ),
+
+                                // UPLOAD DIET BUTTON
+                                if (role == 'user' || role == 'independent')
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.upload_file,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: _isUploading
+                                        ? null
+                                        : () => _uploadDiet(uid),
+                                  ),
+
+                                // DELETE BUTTON
+                                if (_myRole == 'admin' ||
+                                    _myRole == 'nutritionist')
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: const Text("Delete User?"),
+                                          content: Text("Delete $fullName?"),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child: const Text("Cancel"),
+                                            ),
+                                            FilledButton(
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                              ),
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child: const Text("Delete"),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        try {
+                                          await _repo.deleteUser(uid);
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text("User Deleted"),
+                                              ),
+                                            );
+                                          }
+                                        } catch (e) {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text("Error: $e"),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      }
+                                    },
+                                  ),
                               ],
                             ),
                           ),
@@ -598,13 +746,212 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-
           if (_isUploading)
             Container(
               color: Colors.black54,
               child: const Center(child: CircularProgressIndicator()),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// SCREEN: History of Diets
+class HistoryScreen extends StatelessWidget {
+  final String uid;
+  final String userName;
+  final AdminRepository _repo = AdminRepository();
+
+  HistoryScreen({super.key, required this.uid, required this.userName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("History: $userName")),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _repo.getDietHistory(uid),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
+          final diets = snapshot.data!;
+          if (diets.isEmpty)
+            return const Center(child: Text("No diets uploaded yet."));
+
+          return ListView.builder(
+            itemCount: diets.length,
+            itemBuilder: (ctx, i) {
+              final diet = diets[i];
+              // Safety fallback for old diets without fileName
+              final String fileName = diet['fileName'] ?? 'Unknown File';
+              final Timestamp? ts = diet['uploadedAt'];
+              final String dateStr = ts != null
+                  ? DateFormat('dd MMM yyyy - HH:mm').format(ts.toDate())
+                  : "Unknown Date";
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.description,
+                    color: Colors.blueGrey,
+                  ),
+                  title: Text(
+                    fileName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text("Uploaded: $dateStr"),
+                  trailing: const Icon(Icons.arrow_forward_ios),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            DietDetailScreen(dietData: diet, title: fileName),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// SCREEN: Detailed Diet View
+class DietDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> dietData;
+  final String title;
+
+  const DietDetailScreen({
+    super.key,
+    required this.dietData,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Prepare Plan Data
+    final Map<String, dynamic> plan = dietData['plan'] ?? {};
+
+    // Sort Days Order
+    final List<String> orderedDays = [
+      "Lunedì",
+      "Martedì",
+      "Mercoledì",
+      "Giovedì",
+      "Venerdì",
+      "Sabato",
+      "Domenica",
+    ];
+    final sortedKeys = plan.keys.toList()
+      ..sort((a, b) {
+        int idxA = orderedDays.indexOf(a);
+        int idxB = orderedDays.indexOf(b);
+        if (idxA == -1) idxA = 99;
+        if (idxB == -1) idxB = 99;
+        return idxA.compareTo(idxB);
+      });
+
+    // 2. Prepare Substitutions Data
+    final Map<String, dynamic> substitutions = dietData['substitutions'] ?? {};
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.calendar_month), text: "Plan"),
+              Tab(icon: Icon(Icons.swap_horiz), text: "Substitutions"),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            // Tab 1: Weekly Plan
+            plan.isEmpty
+                ? const Center(child: Text("Empty Plan Data"))
+                : ListView(
+                    children: sortedKeys.map((dayName) {
+                      Map<String, dynamic> meals = plan[dayName];
+                      return ExpansionTile(
+                        initiallyExpanded: true,
+                        title: Text(
+                          dayName,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        children: meals.entries.map((mealEntry) {
+                          String mealType = mealEntry.key;
+                          List<dynamic> dishes = mealEntry.value;
+
+                          return ListTile(
+                            title: Text(
+                              mealType,
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: dishes.map((d) {
+                                String dName = d['name'] ?? 'Dish';
+                                String dQty = d['qty'] ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text("• $dName $dQty"),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }).toList(),
+                  ),
+
+            // Tab 2: Substitutions
+            substitutions.isEmpty
+                ? const Center(child: Text("No Substitutions Available"))
+                : ListView.builder(
+                    itemCount: substitutions.length,
+                    itemBuilder: (ctx, i) {
+                      String key = substitutions.keys.elementAt(i);
+                      var group = substitutions[key];
+                      String groupName = group['name'] ?? 'Group $key';
+                      List<dynamic> options = group['options'] ?? [];
+
+                      return Card(
+                        margin: const EdgeInsets.all(8),
+                        child: ExpansionTile(
+                          title: Text(
+                            groupName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text("CAD Code: $key"),
+                          children: options.map((opt) {
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.check_circle_outline,
+                                size: 16,
+                              ),
+                              title: Text(opt['name']),
+                              trailing: Text(opt['qty']?.toString() ?? ''),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  ),
+          ],
+        ),
       ),
     );
   }

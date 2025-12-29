@@ -16,14 +16,31 @@ class AdminRepository {
     });
   }
 
-  // 2. Toggle Ban/Active
+  // 2. Fetch Diet History for a specific User [NEW]
+  Stream<List<Map<String, dynamic>>> getDietHistory(String uid) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('diets')
+        .orderBy('uploadedAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id; // Attach Doc ID
+            return data;
+          }).toList();
+        });
+  }
+
+  // 3. Toggle Ban/Active
   Future<void> toggleUserStatus(String uid, bool currentStatus) async {
     await _db.collection('users').doc(uid).update({
       'is_active': !currentStatus,
     });
   }
 
-  // 3. Create User (Via Python Backend)
+  // 4. Create User
   Future<void> createUser({
     required String email,
     required String password,
@@ -59,7 +76,7 @@ class AdminRepository {
     }
   }
 
-  // 4. Delete User (Via Python Backend)
+  // 5. Delete User
   Future<void> deleteUser(String uid) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
@@ -77,7 +94,7 @@ class AdminRepository {
     }
   }
 
-  // 5. Sync Users (Repair invisible users)
+  // 6. Sync Users
   Future<String> syncUsers() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
@@ -98,7 +115,7 @@ class AdminRepository {
     }
   }
 
-  // 6. Upload Diet (Inject PDF & Save to Firestore)
+  // 7. Upload Diet (Updated with fileName)
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
@@ -122,15 +139,45 @@ class AdminRepository {
       final respStr = await response.stream.bytesToString();
       final Map<String, dynamic> dietData = jsonDecode(respStr);
 
+      // [UPDATED] Save fileName to Firestore for history
       await _db.collection('users').doc(targetUid).collection('diets').add({
         'plan': dietData['plan'],
         'substitutions': dietData['substitutions'],
         'uploadedAt': FieldValue.serverTimestamp(),
         'uploadedBy': 'admin',
+        'fileName': file.name, // <--- SAVED HERE
       });
     } else {
       final respStr = await response.stream.bytesToString();
       throw Exception("Upload Failed (${response.statusCode}): $respStr");
+    }
+  }
+
+  // 8. Upload Custom Parser (.txt) [NEW]
+  Future<void> uploadParserConfig(String targetUid, PlatformFile file) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Admin not logged in");
+
+    final token = await user.getIdToken();
+    // [CHANGE TO YOUR RENDER URL]
+    const String backendUrl =
+        "[https://mydiet-74rg.onrender.com](https://mydiet-74rg.onrender.com)";
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$backendUrl/admin/upload-parser/$targetUid'),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(
+      http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
+    );
+
+    var response = await request.send();
+
+    if (response.statusCode != 200) {
+      final respStr = await response.stream.bytesToString();
+      throw Exception("Parser Upload Failed: $respStr");
     }
   }
 }
