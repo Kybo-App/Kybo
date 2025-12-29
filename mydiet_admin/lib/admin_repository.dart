@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AdminRepository {
@@ -29,15 +28,14 @@ class AdminRepository {
     required String email,
     required String password,
     required String role,
-    required String firstName, // [NEW]
-    required String lastName, // [NEW]
+    required String firstName,
+    required String lastName,
     String? parentId,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");
     final token = await user.getIdToken();
 
-    // [IMPORTANT] Ensure this matches your live Render URL
     const String backendUrl = "https://mydiet-74rg.onrender.com";
 
     final response = await http.post(
@@ -50,8 +48,8 @@ class AdminRepository {
         'email': email,
         'password': password,
         'role': role,
-        'first_name': firstName, // [NEW]
-        'last_name': lastName, // [NEW]
+        'first_name': firstName,
+        'last_name': lastName,
         'parent_id': parentId,
       }),
     );
@@ -79,7 +77,28 @@ class AdminRepository {
     }
   }
 
-  // 5. Upload Diet (Inject PDF & Save to Firestore)
+  // 5. Sync Users (Repair invisible users)
+  Future<String> syncUsers() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Admin not logged in");
+    final token = await user.getIdToken();
+
+    const String backendUrl = "https://mydiet-74rg.onrender.com";
+
+    final response = await http.post(
+      Uri.parse('$backendUrl/admin/sync-users'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['message'] ?? "Sync Done";
+    } else {
+      throw Exception("Sync Failed: ${response.body}");
+    }
+  }
+
+  // 6. Upload Diet (Inject PDF & Save to Firestore)
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception("Admin not logged in");

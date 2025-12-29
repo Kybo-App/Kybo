@@ -209,6 +209,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // [NEW] Sync Button Logic
+  Future<void> _performSync() async {
+    setState(() => _isUploading = true);
+    try {
+      String msg = await _repo.syncUsers();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Sync Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isUploading = false);
+    }
+  }
+
   void _showCreateUserDialog() {
     final emailCtrl = TextEditingController();
     final passCtrl = TextEditingController();
@@ -345,6 +369,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Text(_myRole == 'admin' ? "God Mode" : "Nutritionist Panel"),
         actions: [
+          // [NEW] Sync Button
+          if (_myRole == 'admin')
+            IconButton(
+              icon: const Icon(Icons.cloud_sync, color: Colors.blue),
+              tooltip: "Sync DB Users",
+              onPressed: _isUploading ? null : _performSync,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => setState(() {}),
@@ -434,21 +465,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                     // --- FILTERING LOGIC ---
 
-                    // A. Nutritionist Limit: Only see MY clients
                     if (_myRole == 'nutritionist') {
                       users = users
                           .where((u) => u['parent_id'] == _myUid)
                           .toList();
                     }
 
-                    // B. Role Filter (Admin only)
                     if (_myRole == 'admin' && _filterRole != 'All') {
                       users = users
                           .where((u) => u['role'] == _filterRole)
                           .toList();
                     }
 
-                    // C. Search Filter (Name or Email)
                     if (_searchQuery.isNotEmpty) {
                       users = users.where((u) {
                         final email = (u['email'] ?? '')
