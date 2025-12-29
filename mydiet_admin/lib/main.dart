@@ -40,8 +40,6 @@ class AuthGate extends StatelessWidget {
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
-
-        // Authenticated: Check Role
         return const RoleCheckScreen();
       },
     );
@@ -153,14 +151,12 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
       final role = doc.data()?['role'];
 
       if (role == 'admin' || role == 'nutritionist') {
-        // Access Granted -> Go to Dashboard
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const DashboardScreen()),
           );
         }
       } else {
-        // Access Denied
         await FirebaseAuth.instance.signOut();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -186,14 +182,38 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final AdminRepository _repo = AdminRepository();
-  String _filterRole = 'All'; // All, nutritionist, user
-
-  // 1. Add Loading State
+  String _filterRole = 'All';
+  String _searchQuery = '';
   bool _isUploading = false;
+
+  String? _myUid;
+  String? _myRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      setState(() {
+        _myUid = user.uid;
+        _myRole = doc.data()?['role'] ?? 'user';
+      });
+    }
+  }
 
   void _showCreateUserDialog() {
     final emailCtrl = TextEditingController();
     final passCtrl = TextEditingController();
+    final firstCtrl = TextEditingController();
+    final lastCtrl = TextEditingController();
     String selectedRole = 'user';
     bool isLoading = false;
 
@@ -202,33 +222,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text("Create New Account"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: emailCtrl,
-                decoration: const InputDecoration(labelText: "Email"),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: passCtrl,
-                decoration: const InputDecoration(labelText: "Password"),
-              ),
-              const SizedBox(height: 16),
-              DropdownButton<String>(
-                value: selectedRole,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: 'user', child: Text("Client (User)")),
-                  DropdownMenuItem(
-                    value: 'nutritionist',
-                    child: Text("Nutritionist"),
-                  ),
-                  DropdownMenuItem(value: 'admin', child: Text("Admin")),
-                ],
-                onChanged: (v) => setState(() => selectedRole = v!),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: firstCtrl,
+                        decoration: const InputDecoration(labelText: "Name"),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: lastCtrl,
+                        decoration: const InputDecoration(labelText: "Surname"),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(labelText: "Email"),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: passCtrl,
+                  decoration: const InputDecoration(labelText: "Password"),
+                ),
+                const SizedBox(height: 16),
+                DropdownButton<String>(
+                  value: selectedRole,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'user',
+                      child: Text("Client (User)"),
+                    ),
+                    DropdownMenuItem(
+                      value: 'nutritionist',
+                      child: Text("Nutritionist"),
+                    ),
+                    DropdownMenuItem(value: 'admin', child: Text("Admin")),
+                  ],
+                  onChanged: (v) => setState(() => selectedRole = v!),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -245,6 +288,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           email: emailCtrl.text.trim(),
                           password: passCtrl.text.trim(),
                           role: selectedRole,
+                          firstName: firstCtrl.text.trim(),
+                          lastName: lastCtrl.text.trim(),
                         );
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -268,7 +313,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _uploadDiet(String uid) async {
-    // 1. Pick File (No loading yet, system dialog)
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
@@ -276,28 +320,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
 
     if (result != null) {
-      // 2. Start Global Loading
       setState(() => _isUploading = true);
-
       try {
-        // 3. Perform Upload (Wait for Server & JSON)
         await _repo.uploadDietForUser(uid, result.files.single);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Diet Injected & Saved Successfully!"),
+            content: Text("Diet Saved!"),
             backgroundColor: Colors.green,
           ),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Upload Error: $e"),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
       } finally {
-        // 4. Stop Global Loading regardless of success/fail
         setState(() => _isUploading = false);
       }
     }
@@ -307,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("MyDiet God Mode"),
+        title: Text(_myRole == 'admin' ? "God Mode" : "Nutritionist Panel"),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -320,75 +356,118 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isUploading
-            ? null
-            : _showCreateUserDialog, // Disable when uploading
-        icon: const Icon(Icons.add),
-        label: const Text("Add User"),
+        onPressed: _isUploading ? null : _showCreateUserDialog,
+        icon: const Icon(Icons.person_add),
+        label: const Text("Add Client"),
       ),
-      // 5. Wrap Body in Stack for Overlay
       body: Stack(
         children: [
-          // A. Main Content
           Column(
             children: [
-              // Filters
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    const Text(
-                      "Filter: ",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 10),
-                    ToggleButtons(
-                      isSelected: [
-                        _filterRole == 'All',
-                        _filterRole == 'nutritionist',
-                        _filterRole == 'user',
+              // 1. Search Bar & Filters
+              Card(
+                margin: const EdgeInsets.all(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: "Search by Name or Email...",
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (val) =>
+                            setState(() => _searchQuery = val.toLowerCase()),
+                      ),
+                      if (_myRole == 'admin') ...[
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Role: "),
+                            ToggleButtons(
+                              isSelected: [
+                                _filterRole == 'All',
+                                _filterRole == 'nutritionist',
+                                _filterRole == 'user',
+                              ],
+                              onPressed: (idx) {
+                                setState(() {
+                                  if (idx == 0) _filterRole = 'All';
+                                  if (idx == 1) _filterRole = 'nutritionist';
+                                  if (idx == 2) _filterRole = 'user';
+                                });
+                              },
+                              children: const [
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text("All"),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text("Nutri"),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text("Client"),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ],
-                      onPressed: (idx) {
-                        setState(() {
-                          if (idx == 0) _filterRole = 'All';
-                          if (idx == 1) _filterRole = 'nutritionist';
-                          if (idx == 2) _filterRole = 'user';
-                        });
-                      },
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text("All"),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text("Nutritionists"),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text("Clients"),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
-              // List
+              // 2. User List
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _repo.getAllUsers(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
+                    if (!snapshot.hasData)
                       return const Center(child: CircularProgressIndicator());
-                    }
 
                     var users = snapshot.data!;
-                    if (_filterRole != 'All') {
+
+                    // --- FILTERING LOGIC ---
+
+                    // A. Nutritionist Limit: Only see MY clients
+                    if (_myRole == 'nutritionist') {
+                      users = users
+                          .where((u) => u['parent_id'] == _myUid)
+                          .toList();
+                    }
+
+                    // B. Role Filter (Admin only)
+                    if (_myRole == 'admin' && _filterRole != 'All') {
                       users = users
                           .where((u) => u['role'] == _filterRole)
                           .toList();
                     }
+
+                    // C. Search Filter (Name or Email)
+                    if (_searchQuery.isNotEmpty) {
+                      users = users.where((u) {
+                        final email = (u['email'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final first = (u['first_name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final last = (u['last_name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        return email.contains(_searchQuery) ||
+                            first.contains(_searchQuery) ||
+                            last.contains(_searchQuery);
+                      }).toList();
+                    }
+
+                    if (users.isEmpty)
+                      return const Center(child: Text("No users found."));
 
                     return ListView.builder(
                       itemCount: users.length,
@@ -397,6 +476,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         final bool isActive = user['is_active'] ?? true;
                         final String role = user['role'] ?? 'user';
                         final String email = user['email'] ?? 'No Email';
+                        final String firstName = user['first_name'] ?? '';
+                        final String lastName = user['last_name'] ?? '';
+                        final String fullName = firstName.isEmpty
+                            ? "Unknown"
+                            : "$firstName $lastName";
                         final String uid = user['uid'];
 
                         return Card(
@@ -408,48 +492,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             leading: CircleAvatar(
                               backgroundColor: isActive
                                   ? Colors.green
-                                  : Colors.red,
-                              child: Icon(
-                                role == 'admin'
-                                    ? Icons.security
-                                    : (role == 'nutritionist'
-                                          ? Icons.medical_services
-                                          : Icons.person),
-                                color: Colors.white,
+                                  : Colors.grey,
+                              child: Text(
+                                firstName.isNotEmpty
+                                    ? firstName[0].toUpperCase()
+                                    : "?",
+                                style: const TextStyle(color: Colors.white),
                               ),
                             ),
                             title: Text(
-                              email,
-                              style: TextStyle(
-                                decoration: isActive
-                                    ? null
-                                    : TextDecoration.lineThrough,
+                              "$fullName ($email)",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            subtitle: Text("Role: $role | UID: $uid"),
+                            subtitle: Text("Role: $role"),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (role == 'user' || role == 'independent')
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.upload_file,
-                                      color: Colors.blue,
-                                    ),
-                                    tooltip: "Inject Diet",
-                                    // Disable button while uploading
-                                    onPressed: _isUploading
-                                        ? null
-                                        : () => _uploadDiet(uid),
-                                  ),
+                                // Action: Upload Diet
                                 IconButton(
-                                  icon: Icon(
-                                    isActive ? Icons.block : Icons.check_circle,
-                                    color: isActive ? Colors.red : Colors.green,
+                                  icon: const Icon(
+                                    Icons.upload_file,
+                                    color: Colors.blue,
                                   ),
-                                  tooltip: isActive ? "Ban User" : "Unban User",
-                                  onPressed: () =>
-                                      _repo.toggleUserStatus(uid, isActive),
+                                  onPressed: _isUploading
+                                      ? null
+                                      : () => _uploadDiet(uid),
+                                ),
+                                // Action: Delete
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text("Delete User?"),
+                                        content: Text("Delete $fullName?"),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: const Text("Cancel"),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, true),
+                                            child: const Text("Delete"),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      try {
+                                        await _repo.deleteUser(uid);
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(content: Text("Error: $e")),
+                                        );
+                                      }
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -463,34 +571,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
 
-          // B. Loading Overlay (Visible only when _isUploading is true)
           if (_isUploading)
             Container(
-              color: Colors.black54, // Semi-transparent background
-              child: const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 6,
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      "Processing Diet PDF...",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      "Wait for Server Response",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
+              color: Colors.black54,
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
