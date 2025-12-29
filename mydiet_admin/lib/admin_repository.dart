@@ -166,4 +166,42 @@ class AdminRepository {
       throw Exception("Parser Upload Failed: $respStr");
     }
   }
+
+  // 9. Get Maintenance Status
+  Future<bool> getMaintenanceStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final token = await user.getIdToken();
+
+    final response = await http.get(
+      Uri.parse('$backendUrl/admin/config/maintenance'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['enabled'] ?? false;
+    }
+    return false;
+  }
+
+  // 10. Set Maintenance Status
+  Future<void> setMaintenanceStatus(bool enabled) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception("Not logged in");
+    final token = await user.getIdToken();
+
+    final response = await http.post(
+      Uri.parse('$backendUrl/admin/config/maintenance'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'enabled': enabled}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to set maintenance: ${response.body}");
+    }
+  }
 }

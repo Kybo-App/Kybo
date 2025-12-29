@@ -15,6 +15,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import Json, BaseModel
+from firebase_admin import remote_config 
 
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
@@ -486,3 +487,51 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         plan=app_plan,
         substitutions=app_substitutions
     )
+# --- REMOTE CONFIG MANAGEMENT ---
+
+@app.get("/admin/config/maintenance")
+async def get_maintenance_status(requester_id: str = Depends(verify_token)):
+    try:
+        template = remote_config.get_template()
+        # Check if parameter exists, otherwise default to False
+        maintenance_param = template.parameters.get('maintenance_mode')
+        
+        if maintenance_param and maintenance_param.default_value:
+            # The value is returned as a string "true" or "false" usually
+            is_active = maintenance_param.default_value.value.lower() == 'true'
+            return {"enabled": is_active}
+        
+        return {"enabled": False}
+    except Exception as e:
+        logger.error("remote_config_read_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+class MaintenanceRequest(BaseModel):
+    enabled: bool
+
+@app.post("/admin/config/maintenance")
+async def set_maintenance_status(
+    body: MaintenanceRequest,
+    requester_id: str = Depends(verify_token)
+):
+    try:
+        template = remote_config.get_template()
+        
+        # Update or Create the parameter
+        template.parameters['maintenance_mode'] = remote_config.Parameter(
+            default_value=remote_config.ParameterValue("true" if body.enabled else "false"),
+            description="Global Maintenance Mode Switch"
+        )
+        
+        # Publish the change
+        remote_config.validate_template(template)
+        remote_config.publish_template(template)
+        
+        status_str = "ENABLED" if body.enabled else "DISABLED"
+        logger.info("maintenance_mode_updated", status=status_str, admin=requester_id)
+        
+        return {"message": f"Maintenance Mode is now {status_str}"}
+
+    except Exception as e:
+        logger.error("remote_config_write_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
