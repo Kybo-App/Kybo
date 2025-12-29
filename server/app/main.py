@@ -14,7 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from pydantic import Json, BaseModel # [Updated] Added BaseModel
+from pydantic import Json, BaseModel
 
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
@@ -71,20 +71,20 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS", "DELETE"], # [Updated] Added DELETE
+    allow_methods=["GET", "POST", "OPTIONS", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 notification_service = NotificationService()
 diet_parser = DietParser()
 
-# --- NEW SCHEMAS ---
+# --- SCHEMAS ---
 class CreateUserRequest(BaseModel):
     email: str
     password: str
     role: str
-    first_name: str  # [NEW]
-    last_name: str   # [NEW]
+    first_name: str
+    last_name: str
     parent_id: Optional[str] = None
 
 # --- UTILS ---
@@ -238,15 +238,7 @@ async def admin_create_user(
     body: CreateUserRequest,
     requester_id: str = Depends(verify_token)
 ):
-    """
-    Creates a user via Admin SDK:
-    1. Sets email_verified = True (Bypasses verification)
-    2. Sets Custom Claims (Role)
-    3. Creates Firestore User Document
-    4. Auto-assigns parent_id if requester is a Nutritionist
-    """
     try:
-        # A. Determine who is creating this user
         db = firebase_admin.firestore.client()
         requester_doc = db.collection('users').document(requester_id).get()
         
@@ -255,23 +247,18 @@ async def admin_create_user(
         if requester_doc.exists:
             requester_data = requester_doc.to_dict()
             requester_role = requester_data.get('role', 'user')
-            
-            # IF requester is Nutritionist, they MUST be the parent
             if requester_role == 'nutritionist':
                 final_parent_id = requester_id
         
-        # B. Create in Firebase Auth
         user = auth.create_user(
             email=body.email,
             password=body.password,
             display_name=f"{body.first_name} {body.last_name}",
-            email_verified=True # FORCE VERIFIED
+            email_verified=True
         )
 
-        # C. Set Custom Claims (Role)
         auth.set_custom_user_claims(user.uid, {'role': body.role})
 
-        # D. Create Firestore Document
         db.collection('users').document(user.uid).set({
             'uid': user.uid,
             'email': body.email,
@@ -291,21 +278,22 @@ async def admin_create_user(
         logger.error("create_user_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+# [FIX] Force Delete + Sync Endpoint
 @app.delete("/admin/delete-user/{target_uid}")
 async def admin_delete_user(
     target_uid: str,
     requester_id: str = Depends(verify_token)
 ):
-    """
-    Deletes a user completely:
-    1. Removes from Firebase Auth
-    2. Deletes Firestore Document
-    """
     try:
-        # 1. Delete from Auth
-        auth.delete_user(target_uid)
+        # Try to delete from Auth, but ignore if already gone (Ghost User)
+        try:
+            auth.delete_user(target_uid)
+        except auth.UserNotFoundError:
+            logger.warning("delete_user_ghost_found", uid=target_uid)
+        except Exception as e:
+            raise e
 
-        # 2. Delete from Firestore
+        # Always delete from Firestore
         db = firebase_admin.firestore.client()
         db.collection('users').document(target_uid).delete()
 
@@ -316,6 +304,44 @@ async def admin_delete_user(
         logger.error("delete_user_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/admin/sync-users")
+async def admin_sync_users(requester_id: str = Depends(verify_token)):
+    """
+    Iterates over ALL Auth users. If a user has no Firestore doc, creates one.
+    Useful for 'invisible' users in God Mode.
+    """
+    try:
+        db = firebase_admin.firestore.client()
+        page = auth.list_users()
+        count = 0
+        
+        while page:
+            for user in page.users:
+                doc_ref = db.collection('users').document(user.uid)
+                doc = doc_ref.get()
+                
+                if not doc.exists:
+                    # Create default doc for invisible user
+                    doc_ref.set({
+                        'uid': user.uid,
+                        'email': user.email,
+                        'role': 'independent', # Default for self-registered
+                        'is_active': True,
+                        'first_name': user.display_name.split(' ')[0] if user.display_name else 'App',
+                        'last_name': '',
+                        'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
+                        'synced_by_admin': True
+                    })
+                    count += 1
+            
+            page = page.get_next_page()
+            
+        logger.info("sync_users_complete", created=count)
+        return {"message": f"Sync complete. Restored {count} users."}
+
+    except Exception as e:
+        logger.error("sync_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
     if not gemini_output:
