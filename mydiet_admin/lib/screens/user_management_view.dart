@@ -16,12 +16,12 @@ class _UserManagementViewState extends State<UserManagementView> {
   final AdminRepository _repo = AdminRepository();
   bool _isLoading = false;
 
-  // Filtri UI
+  // UI Filters
   String _searchQuery = "";
   String _roleFilter = "all";
   final TextEditingController _searchCtrl = TextEditingController();
 
-  // Dati Utente Loggato
+  // Current User Data
   String _currentUserId = '';
   String _currentUserRole = '';
   bool _isDataLoaded = false;
@@ -52,12 +52,9 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Stream<QuerySnapshot> _getUsersStream() {
     final usersRef = FirebaseFirestore.instance.collection('users');
-
     if (_currentUserRole == 'admin') {
-      // Admin vede tutto
       return usersRef.snapshots();
     } else if (_currentUserRole == 'nutritionist') {
-      // Nutrizionista vede solo i suoi creati
       return usersRef
           .where('created_by', isEqualTo: _currentUserId)
           .snapshots();
@@ -311,6 +308,8 @@ class _UserManagementViewState extends State<UserManagementView> {
     );
   }
 
+  // --- HELPERS ---
+
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
       case 'admin':
@@ -323,6 +322,8 @@ class _UserManagementViewState extends State<UserManagementView> {
         return Colors.green;
     }
   }
+
+  // --- BUILD METHODS ---
 
   @override
   Widget build(BuildContext context) {
@@ -357,8 +358,6 @@ class _UserManagementViewState extends State<UserManagementView> {
                       setState(() => _searchQuery = val.toLowerCase()),
                 ),
               ),
-
-              // [MODIFICA] Filtro ruolo visibile SOLO per Admin
               if (_currentUserRole == 'admin') ...[
                 const VerticalDivider(),
                 DropdownButton<String>(
@@ -383,9 +382,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   onChanged: (val) => setState(() => _roleFilter = val!),
                 ),
               ],
-
               const Spacer(),
-              // Actions
               IconButton(
                 icon: const Icon(Icons.sync, color: Colors.blue),
                 tooltip: "Sync DB",
@@ -405,7 +402,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         if (_isLoading) const LinearProgressIndicator(),
         const SizedBox(height: 20),
 
-        // --- USER GRID ---
+        // --- CONTENT ---
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: _getUsersStream(),
@@ -414,9 +411,22 @@ class _UserManagementViewState extends State<UserManagementView> {
               if (!snapshot.hasData)
                 return const Center(child: CircularProgressIndicator());
 
-              var docs = snapshot.data!.docs;
+              var allDocs = snapshot.data!.docs;
 
-              final filteredUsers = docs.where((doc) {
+              // Pre-calculate Nutritionist Names for Headers
+              final nutNameMap = <String, String>{};
+              for (var doc in allDocs) {
+                final d = doc.data() as Map<String, dynamic>;
+                if (d['role'] == 'nutritionist') {
+                  nutNameMap[doc.id] =
+                      "${d['first_name'] ?? ''} ${d['last_name'] ?? ''}".trim();
+                  if (nutNameMap[doc.id]!.isEmpty)
+                    nutNameMap[doc.id] = d['email'] ?? 'Unknown';
+                }
+              }
+
+              // Filter Logic
+              final filteredDocs = allDocs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final role = (data['role'] ?? 'user').toString().toLowerCase();
                 final name =
@@ -424,203 +434,427 @@ class _UserManagementViewState extends State<UserManagementView> {
                         .toLowerCase();
                 final email = (data['email'] ?? '').toString().toLowerCase();
 
-                // 1. Filtro Ruolo (Solo se Admin lo sta usando)
                 if (_currentUserRole == 'admin' &&
                     _roleFilter != 'all' &&
                     role != _roleFilter)
                   return false;
-
-                // 2. Filtro Ricerca
                 if (_searchQuery.isNotEmpty) {
                   return name.contains(_searchQuery) ||
                       email.contains(_searchQuery);
                 }
-
                 return true;
               }).toList();
 
-              // Ordinamento
-              filteredUsers.sort((a, b) {
-                Timestamp? tA =
-                    (a.data() as Map<String, dynamic>)['created_at'];
-                Timestamp? tB =
-                    (b.data() as Map<String, dynamic>)['created_at'];
-                if (tA == null) return 1;
-                if (tB == null) return -1;
-                return tB.compareTo(tA);
-              });
-
-              if (filteredUsers.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.person_off,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _currentUserRole == 'nutritionist'
-                            ? "Non hai ancora creato nessun cliente."
-                            : "Nessun utente trovato.",
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
+              if (filteredDocs.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "Nessun utente trovato.",
+                    style: TextStyle(color: Colors.grey),
                   ),
                 );
               }
 
-              return GridView.builder(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 400,
-                  mainAxisExtent: 230,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
-                ),
-                itemCount: filteredUsers.length,
-                itemBuilder: (context, index) {
-                  final data =
-                      filteredUsers[index].data() as Map<String, dynamic>;
-                  final role = data['role'] ?? 'user';
-                  final name =
-                      "${data['first_name'] ?? ''} ${data['last_name'] ?? ''}";
-                  final date = data['created_at'] != null
-                      ? DateFormat(
-                          'dd MMM yyyy',
-                        ).format((data['created_at'] as Timestamp).toDate())
-                      : '-';
-
-                  bool showParser = role == 'nutritionist';
-                  bool showDiet = role == 'user' || role == 'independent';
-                  bool canDelete =
-                      _currentUserRole == 'admin' || role == 'user';
-
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: _getRoleColor(
-                                  role,
-                                ).withOpacity(0.2),
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : "?",
-                                  style: TextStyle(
-                                    color: _getRoleColor(role),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      data['email'] ?? 'No Email',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getRoleColor(role).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  role.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: _getRoleColor(role),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          const Divider(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              if (showDiet)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.upload_file,
-                                    color: Colors.blueGrey,
-                                  ),
-                                  tooltip: "Carica Dieta",
-                                  onPressed: () => _uploadDiet(data['uid']),
-                                ),
-
-                              if (showParser)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.settings_applications,
-                                    color: Colors.orange,
-                                  ),
-                                  tooltip: "Configura Parser",
-                                  onPressed: () => _uploadParser(data['uid']),
-                                ),
-
-                              const SizedBox(width: 8),
-
-                              if (canDelete)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.red,
-                                  ),
-                                  tooltip: "Elimina",
-                                  onPressed: () => _deleteUser(data['uid']),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              "Creato il: $date",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[400],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
+              // Conditional Rendering based on Role
+              if (_currentUserRole == 'admin') {
+                return _buildAdminGroupedLayout(filteredDocs, nutNameMap);
+              } else {
+                return _buildUserGrid(filteredDocs);
+              }
             },
           ),
         ),
       ],
+    );
+  }
+
+  /// Original Grid Layout (Used for Nutritionists to see their own clients)
+  Widget _buildUserGrid(List<DocumentSnapshot> docs) {
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 400,
+        mainAxisExtent: 230,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+      ),
+      itemCount: docs.length,
+      itemBuilder: (context, index) {
+        return _UserCard(
+          doc: docs[index],
+          onDelete: _deleteUser,
+          onUploadDiet: _uploadDiet,
+          onUploadParser: _uploadParser,
+          currentUserRole: _currentUserRole,
+          roleColor: _getRoleColor(
+            (docs[index].data() as Map<String, dynamic>)['role'] ?? 'user',
+          ),
+        );
+      },
+    );
+  }
+
+  /// Grouped List Layout for Admins
+  Widget _buildAdminGroupedLayout(
+    List<DocumentSnapshot> docs,
+    Map<String, String> nutNameMap,
+  ) {
+    // Grouping Collections
+    final admins = <DocumentSnapshot>[];
+    final independents = <DocumentSnapshot>[];
+    final nutritionistGroups = <String, List<DocumentSnapshot>>{};
+    final nutritionistDocs =
+        <String, DocumentSnapshot>{}; // The nutritionist themselves
+
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final role = (data['role'] ?? 'user').toString().toLowerCase();
+      final createdBy = data['created_by'] as String?;
+
+      if (role == 'admin') {
+        admins.add(doc);
+      } else if (role == 'independent') {
+        independents.add(doc);
+      } else if (role == 'nutritionist') {
+        // Add the nutritionist to the map so we can show them or just use them as header
+        nutritionistDocs[doc.id] = doc;
+        // Ensure their group exists in the map
+        if (!nutritionistGroups.containsKey(doc.id)) {
+          nutritionistGroups[doc.id] = [];
+        }
+      } else if (role == 'user') {
+        // Client logic
+        if (createdBy != null &&
+            (nutNameMap.containsKey(createdBy) ||
+                nutritionistDocs.containsKey(createdBy))) {
+          // It's assigned to a known nutritionist
+          if (!nutritionistGroups.containsKey(createdBy)) {
+            nutritionistGroups[createdBy] = [];
+          }
+          nutritionistGroups[createdBy]!.add(doc);
+        } else {
+          // Unassigned client -> treat as independent
+          independents.add(doc);
+        }
+      }
+    }
+
+    return ListView(
+      children: [
+        // 1. NUTRITIONIST GROUPS
+        ...nutritionistGroups.entries.map((entry) {
+          final nutId = entry.key;
+          final clients = entry.value;
+          final nutName = nutNameMap[nutId] ?? "Nutritionist ID: $nutId";
+          final nutDoc = nutritionistDocs[nutId]; // The doc itself if visible
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 2,
+            child: ExpansionTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.blue.withOpacity(0.2),
+                child: const Icon(Icons.health_and_safety, color: Colors.blue),
+              ),
+              title: Text(
+                nutName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text("${clients.length} Clients"),
+              children: [
+                if (nutDoc != null)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _UserCard(
+                      doc: nutDoc,
+                      onDelete: _deleteUser,
+                      onUploadDiet: _uploadDiet,
+                      onUploadParser: _uploadParser,
+                      currentUserRole: _currentUserRole,
+                      roleColor: _getRoleColor('nutritionist'),
+                    ),
+                  ),
+                if (clients.isNotEmpty)
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 400,
+                          mainAxisExtent: 230,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                    itemCount: clients.length,
+                    padding: const EdgeInsets.all(10),
+                    itemBuilder: (ctx, idx) => _UserCard(
+                      doc: clients[idx],
+                      onDelete: _deleteUser,
+                      onUploadDiet: _uploadDiet,
+                      onUploadParser: _uploadParser,
+                      currentUserRole: _currentUserRole,
+                      roleColor: _getRoleColor('user'),
+                    ),
+                  ),
+                if (clients.isEmpty && nutDoc == null)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text("No visible clients or nutritionist data."),
+                  ),
+              ],
+            ),
+          );
+        }),
+
+        // 2. INDEPENDENT USERS CARD
+        if (independents.isNotEmpty)
+          Card(
+            color: Colors.orange.shade50,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              leading: const Icon(
+                Icons.person_outline,
+                color: Colors.orange,
+                size: 32,
+              ),
+              title: const Text(
+                "Independent Users",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              subtitle: Text(
+                "${independents.length} Users unassigned or independent",
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => IndependentUsersScreen(
+                      users: independents,
+                      onDelete: _deleteUser,
+                      onUploadDiet: _uploadDiet,
+                      onUploadParser: _uploadParser,
+                      currentUserRole: _currentUserRole,
+                      roleColor: _getRoleColor('independent'),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+        // 3. ADMINS
+        if (admins.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              "Administrators",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 400,
+              mainAxisExtent: 230,
+              crossAxisSpacing: 20,
+              mainAxisSpacing: 20,
+            ),
+            itemCount: admins.length,
+            itemBuilder: (ctx, idx) => _UserCard(
+              doc: admins[idx],
+              onDelete: _deleteUser,
+              onUploadDiet: _uploadDiet,
+              onUploadParser: _uploadParser,
+              currentUserRole: _currentUserRole,
+              roleColor: _getRoleColor('admin'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A separate screen to list independent users when the card is clicked
+class IndependentUsersScreen extends StatelessWidget {
+  final List<DocumentSnapshot> users;
+  final Function(String) onDelete;
+  final Function(String) onUploadDiet;
+  final Function(String) onUploadParser;
+  final String currentUserRole;
+  final Color roleColor;
+
+  const IndependentUsersScreen({
+    super.key,
+    required this.users,
+    required this.onDelete,
+    required this.onUploadDiet,
+    required this.onUploadParser,
+    required this.currentUserRole,
+    required this.roleColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Independent Users")),
+      body: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 400,
+          mainAxisExtent: 230,
+          crossAxisSpacing: 20,
+          mainAxisSpacing: 20,
+        ),
+        itemCount: users.length,
+        itemBuilder: (context, index) {
+          return _UserCard(
+            doc: users[index],
+            onDelete: onDelete,
+            onUploadDiet: onUploadDiet,
+            onUploadParser: onUploadParser,
+            currentUserRole: currentUserRole,
+            roleColor: roleColor,
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Refactored User Card Component
+class _UserCard extends StatelessWidget {
+  final DocumentSnapshot doc;
+  final Function(String) onDelete;
+  final Function(String) onUploadDiet;
+  final Function(String) onUploadParser;
+  final String currentUserRole;
+  final Color roleColor;
+
+  const _UserCard({
+    required this.doc,
+    required this.onDelete,
+    required this.onUploadDiet,
+    required this.onUploadParser,
+    required this.currentUserRole,
+    required this.roleColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data() as Map<String, dynamic>;
+    final role = data['role'] ?? 'user';
+    final name = "${data['first_name'] ?? ''} ${data['last_name'] ?? ''}";
+    final date = data['created_at'] != null
+        ? DateFormat(
+            'dd MMM yyyy',
+          ).format((data['created_at'] as Timestamp).toDate())
+        : '-';
+
+    bool showParser = role == 'nutritionist';
+    bool showDiet = role == 'user' || role == 'independent';
+    bool canDelete = currentUserRole == 'admin' || role == 'user';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: roleColor.withOpacity(0.2),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : "?",
+                    style: TextStyle(
+                      color: roleColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        data['email'] ?? 'No Email',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: roleColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    role.toString().toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: roleColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (showDiet)
+                  IconButton(
+                    icon: const Icon(Icons.upload_file, color: Colors.blueGrey),
+                    tooltip: "Carica Dieta",
+                    onPressed: () => onUploadDiet(data['uid']),
+                  ),
+                if (showParser)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.settings_applications,
+                      color: Colors.orange,
+                    ),
+                    tooltip: "Configura Parser",
+                    onPressed: () => onUploadParser(data['uid']),
+                  ),
+                const SizedBox(width: 8),
+                if (canDelete)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: "Elimina",
+                    onPressed: () => onDelete(data['uid']),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Creato il: $date",
+                style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

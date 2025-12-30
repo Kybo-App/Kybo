@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class AdminRepository {
   final String _baseUrl = "https://mydiet-74rg.onrender.com";
@@ -11,7 +12,7 @@ class AdminRepository {
     return await FirebaseAuth.instance.currentUser?.getIdToken();
   }
 
-  // --- 1. GESTIONE UTENTI ---
+  // --- 1. USER MANAGEMENT ---
 
   Future<void> createUser({
     required String email,
@@ -53,7 +54,6 @@ class AdminRepository {
     }
   }
 
-  // [RIPRISTINATO] Sync Users (Cruciale per allineare Auth e Firestore)
   Future<String> syncUsers() async {
     final token = await _getToken();
     final response = await http.post(
@@ -69,11 +69,10 @@ class AdminRepository {
     }
   }
 
-  // --- 2. UPLOAD FILE ---
+  // --- 2. FILE UPLOAD ---
 
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
     final token = await _getToken();
-
     if (file.bytes == null) throw Exception("File corrotto o vuoto");
 
     var request = http.MultipartRequest(
@@ -101,7 +100,6 @@ class AdminRepository {
 
   Future<void> uploadParserConfig(String targetUid, PlatformFile file) async {
     final token = await _getToken();
-
     if (file.bytes == null) throw Exception("File vuoto");
 
     var request = http.MultipartRequest(
@@ -126,7 +124,7 @@ class AdminRepository {
     }
   }
 
-  // --- 3. CONFIGURAZIONE ---
+  // --- 3. CONFIGURATION & MAINTENANCE ---
 
   Future<bool> getMaintenanceStatus() async {
     final token = await _getToken();
@@ -152,5 +150,31 @@ class AdminRepository {
       },
       body: jsonEncode({'enabled': enabled}),
     );
+  }
+
+  /// New Method: Schedule Maintenance and Notify Users
+  Future<void> scheduleMaintenance(DateTime date, bool notifyUsers) async {
+    final token = await _getToken();
+
+    // Format: "Friday, 12 Oct at 14:30"
+    String formattedDate = DateFormat('EEEE, d MMM "at" HH:mm').format(date);
+
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/schedule-maintenance'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'scheduled_time': date.toIso8601String(),
+        'message':
+            "Scheduled Maintenance: The app will be unavailable on $formattedDate.",
+        'notify': notifyUsers,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to schedule maintenance: ${response.body}');
+    }
   }
 }

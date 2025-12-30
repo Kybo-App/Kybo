@@ -17,19 +17,20 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import Json, BaseModel
 
-# --- IMPORTS RIPRISTINATI ---
+# --- IMPORTS ---
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name
 from app.core.config import settings
 from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
+# [ADDED] Import for broadcasting notifications
+from app.broadcast import broadcast_message 
 
 # --- CONFIGURATION ---
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
-# [RIPRISTINATO] Ordine dei pasti
 MEAL_ORDER = [
     "Colazione",
     "Seconda Colazione",
@@ -98,7 +99,9 @@ class ScheduleMaintenanceRequest(BaseModel):
     scheduled_time: str
     message: str
     notify: bool
-# --- UTILS ---
+
+# --- UTILS & SECURITY ---
+
 async def save_upload_file(file: UploadFile, filename: str) -> None:
     size = 0
     try:
@@ -138,6 +141,25 @@ async def verify_token(authorization: str = Header(...)):
         logger.warning("auth_failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(status_code=401, detail="Authentication failed")
 
+# [ADDED] Helper to verify Admin Role
+async def verify_admin(uid: str = Depends(verify_token)):
+    try:
+        db = firebase_admin.firestore.client()
+        user_doc = db.collection('users').document(uid).get()
+        if not user_doc.exists:
+             raise HTTPException(status_code=403, detail="User not found")
+             
+        user_data = user_doc.to_dict()
+        if user_data.get('role') != 'admin':
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+            
+        return uid
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("admin_verification_error", error=str(e))
+        raise HTTPException(status_code=500, detail="Authorization check failed")
+
 # --- ENDPOINTS ---
 
 @app.post("/upload-diet", response_model=DietResponse)
@@ -159,14 +181,7 @@ async def upload_diet(
         log.info("file_upload_success")
         
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, temp_filename)
-        
-        # [RIPRISTINATO] Conversione nel formato app
-        # NOTA: Assicurati che la funzione _convert_to_app_format sia definita in fondo al file!
-        # Se non c'è nel file originale che hai, devi recuperarla.
-        if '_convert_to_app_format' in globals():
-             final_data = _convert_to_app_format(raw_data)
-        else:
-             final_data = raw_data # Fallback se la funzione manca
+        final_data = _convert_to_app_format(raw_data)
 
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
@@ -208,7 +223,6 @@ async def upload_diet_admin(
         if user_doc.exists:
             user_data = user_doc.to_dict()
             parent_id = user_data.get('parent_id')
-            
             if parent_id:
                 parent_doc = db.collection('users').document(parent_id).get()
                 if parent_doc.exists:
@@ -219,12 +233,7 @@ async def upload_diet_admin(
             temp_filename, 
             custom_prompt
         )
-        
-        # [RIPRISTINATO] Conversione
-        if '_convert_to_app_format' in globals():
-             final_data = _convert_to_app_format(raw_data)
-        else:
-             final_data = raw_data
+        final_data = _convert_to_app_format(raw_data)
 
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
@@ -276,19 +285,16 @@ async def scan_receipt(
 @app.post("/admin/create-user")
 async def admin_create_user(
     body: CreateUserRequest,
-    requester_id: str = Depends(verify_token)
+    requester_id: str = Depends(verify_admin)  # Updated to use verify_admin
 ):
     try:
         db = firebase_admin.firestore.client()
         requester_doc = db.collection('users').document(requester_id).get()
         
         final_parent_id = body.parent_id
-        
-        # Logica genitore automatico
         if requester_doc.exists:
             requester_data = requester_doc.to_dict()
-            requester_role = requester_data.get('role', 'user')
-            if requester_role == 'nutritionist':
+            if requester_data.get('role', 'user') == 'nutritionist':
                 final_parent_id = requester_id
         
         user = auth.create_user(
@@ -300,7 +306,6 @@ async def admin_create_user(
 
         auth.set_custom_user_claims(user.uid, {'role': body.role})
 
-        # [NUOVO] Scrittura DB con flag requires_password_change: True
         db.collection('users').document(user.uid).set({
             'uid': user.uid,
             'email': body.email,
@@ -311,7 +316,7 @@ async def admin_create_user(
             'is_active': True,
             'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'created_by': requester_id,
-            'requires_password_change': True  # <--- CRITICO
+            'requires_password_change': True 
         })
         
         logger.info("user_created", uid=user.uid, role=body.role)
@@ -324,7 +329,7 @@ async def admin_create_user(
 @app.delete("/admin/delete-user/{target_uid}")
 async def admin_delete_user(
     target_uid: str,
-    requester_id: str = Depends(verify_token)
+    requester_id: str = Depends(verify_admin)
 ):
     try:
         try:
@@ -343,7 +348,7 @@ async def admin_delete_user(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/admin/sync-users")
-async def admin_sync_users(requester_id: str = Depends(verify_token)):
+async def admin_sync_users(requester_id: str = Depends(verify_admin)):
     try:
         db = firebase_admin.firestore.client()
         page = auth.list_users()
@@ -378,7 +383,7 @@ async def admin_sync_users(requester_id: str = Depends(verify_token)):
 async def upload_parser_config(
     target_uid: str,
     file: UploadFile = File(...),
-    requester_id: str = Depends(verify_token)
+    requester_id: str = Depends(verify_admin)
 ):
     if not file.filename.lower().endswith(".txt"):
         raise HTTPException(status_code=400, detail="Parser must be a .txt file")
@@ -400,9 +405,10 @@ async def upload_parser_config(
         logger.error("parser_upload_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- SYSTEM CONFIG & MAINTENANCE ---
 
 @app.get("/admin/config/maintenance")
-async def get_maintenance_status(requester_id: str = Depends(verify_token)):
+async def get_maintenance_status(requester_id: str = Depends(verify_admin)):
     try:
         db = firebase_admin.firestore.client()
         config_ref = db.collection('config').document('global')
@@ -419,7 +425,7 @@ async def get_maintenance_status(requester_id: str = Depends(verify_token)):
 @app.post("/admin/config/maintenance")
 async def set_maintenance_status(
     body: MaintenanceRequest,
-    requester_id: str = Depends(verify_token)
+    requester_id: str = Depends(verify_admin)
 ):
     try:
         db = firebase_admin.firestore.client()
@@ -434,6 +440,44 @@ async def set_maintenance_status(
     except Exception as e:
         logger.error("maintenance_write_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/admin/schedule-maintenance")
+async def schedule_maintenance(
+    req: ScheduleMaintenanceRequest, 
+    admin_uid: str = Depends(verify_admin)
+):
+    try:
+        db = firebase_admin.firestore.client()
+        # 1. Save schedule to Firestore
+        db.collection('config').document('global').set({
+            "scheduled_maintenance_start": req.scheduled_time,
+            "maintenance_message": req.message,
+            "is_scheduled": True
+        }, merge=True)
+
+        # 2. Broadcast Notification
+        sent_count = 0
+        if req.notify:
+            try:
+                # Assuming app subscribes to 'all_users' topic
+                response = broadcast_message(
+                    title="System Update",
+                    body=req.message,
+                    data={"type": "maintenance_alert", "time": req.scheduled_time}
+                )
+                sent_count = 1 # broadcast returns an id, not count, but success means sent
+                logger.info("maintenance_broadcast_sent", admin=admin_uid)
+            except Exception as e:
+                logger.error("broadcast_error", error=str(e))
+                # Don't fail the request if just notification fails, but warn
+                
+        return {"status": "scheduled", "notifications_sent": sent_count}
+        
+    except Exception as e:
+        logger.error("schedule_maintenance_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- HELPER FUNCTIONS ---
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
     if not gemini_output:
@@ -537,45 +581,3 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         plan=app_plan,
         substitutions=app_substitutions
     )
-# --- CONFIG & MAINTENANCE ROUTES ---
-
-@app.get("/admin/config/maintenance")
-async def get_maintenance_status(admin_uid: str = Depends(verify_admin)):
-    doc = db.collection('system_config').document('maintenance').get()
-    if doc.exists:
-        return doc.to_dict()
-    return {"enabled": False}
-
-@app.post("/admin/config/maintenance")
-async def set_maintenance_status(req: MaintenanceRequest, admin_uid: str = Depends(verify_admin)):
-    db.collection('system_config').document('maintenance').set({
-        "enabled": req.enabled,
-        "updated_at": firestore.SERVER_TIMESTAMP,
-        "updated_by": admin_uid
-    }, merge=True)
-    return {"status": "updated", "enabled": req.enabled}
-
-@app.post("/admin/schedule-maintenance")
-async def schedule_maintenance(req: ScheduleMaintenanceRequest, admin_uid: str = Depends(verify_admin)):
-    # 1. Save schedule to Firestore (so app can check it if needed)
-    db.collection('system_config').document('maintenance').set({
-        "scheduled_start": req.scheduled_time,
-        "maintenance_message": req.message,
-        "is_scheduled": True
-    }, merge=True)
-
-    # 2. Broadcast Notification
-    if req.notify:
-        try:
-            # Send to 'all_users' topic
-            response_count = broadcast_message(
-                title="System Update",
-                body=req.message,
-                data={"type": "maintenance_alert", "time": req.scheduled_time}
-            )
-            return {"status": "scheduled", "notifications_sent": response_count}
-        except Exception as e:
-            print(f"Broadcast error: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to send notifications: {str(e)}")
-            
-    return {"status": "scheduled", "notifications_sent": 0}
