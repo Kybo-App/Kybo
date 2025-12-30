@@ -3,10 +3,12 @@ import uuid
 import structlog
 import aiofiles
 import json
+import asyncio # [ADDED]
+from datetime import datetime # [ADDED]
 from typing import Optional, List, Dict
 
 import firebase_admin
-from firebase_admin import credentials, auth, firestore
+from firebase_admin import credentials, auth, firestore, messaging
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Header, Depends, Request
 from fastapi.responses import JSONResponse
@@ -24,7 +26,6 @@ from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name
 from app.core.config import settings
 from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
-# [ADDED] Import for broadcasting notifications
 from app.broadcast import broadcast_message 
 
 # --- CONFIGURATION ---
@@ -141,7 +142,6 @@ async def verify_token(authorization: str = Header(...)):
         logger.warning("auth_failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(status_code=401, detail="Authentication failed")
 
-# [ADDED] Helper to verify Admin Role
 async def verify_admin(uid: str = Depends(verify_token)):
     try:
         db = firebase_admin.firestore.client()
@@ -159,6 +159,60 @@ async def verify_admin(uid: str = Depends(verify_token)):
     except Exception as e:
         logger.error("admin_verification_error", error=str(e))
         raise HTTPException(status_code=500, detail="Authorization check failed")
+
+# --- BACKGROUND TASKS (SECURE SCHEDULER) ---
+
+async def maintenance_worker():
+    """
+    Runs every 60 seconds to check if a scheduled maintenance is due.
+    If due, it flips the 'maintenance_mode' boolean in DB, making it secure against client-side time manipulation.
+    """
+    logger.info("maintenance_worker_started")
+    while True:
+        try:
+            db = firebase_admin.firestore.client()
+            doc_ref = db.collection('config').document('global')
+            doc = doc_ref.get()
+            
+            if doc.exists:
+                data = doc.to_dict()
+                is_scheduled = data.get('is_scheduled', False)
+                start_str = data.get('scheduled_maintenance_start')
+                
+                # If scheduled and we have a start time
+                if is_scheduled and start_str:
+                    try:
+                        # Parse ISO string (Naive or Aware depending on what Dart sends)
+                        # NOTE: Ideally both client/server use UTC. 
+                        # Here we assume server time matches the intent or string includes offset.
+                        scheduled_time = datetime.fromisoformat(start_str)
+                        now = datetime.now()
+
+                        # If time has passed
+                        if now >= scheduled_time:
+                            logger.info("maintenance_triggered_automatically", scheduled_for=start_str)
+                            
+                            # 1. Turn ON Maintenance Mode
+                            # 2. Turn OFF Schedule (so it doesn't trigger loop repeatedly)
+                            doc_ref.update({
+                                "maintenance_mode": True,
+                                "is_scheduled": False,
+                                "scheduled_maintenance_start": firestore.DELETE_FIELD,
+                                "updated_by": "system_scheduler"
+                            })
+                    except ValueError:
+                        logger.error("invalid_date_format_in_db", date_str=start_str)
+                        
+        except Exception as e:
+            logger.error("maintenance_worker_error", error=str(e))
+        
+        # Check every 60 seconds
+        await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def start_background_tasks():
+    asyncio.create_task(maintenance_worker())
+
 
 # --- ENDPOINTS ---
 
@@ -285,7 +339,7 @@ async def scan_receipt(
 @app.post("/admin/create-user")
 async def admin_create_user(
     body: CreateUserRequest,
-    requester_id: str = Depends(verify_admin)  # Updated to use verify_admin
+    requester_id: str = Depends(verify_admin)
 ):
     try:
         db = firebase_admin.firestore.client()
@@ -448,33 +502,50 @@ async def schedule_maintenance(
 ):
     try:
         db = firebase_admin.firestore.client()
-        # 1. Save schedule to Firestore
+        # 1. Save schedule
         db.collection('config').document('global').set({
             "scheduled_maintenance_start": req.scheduled_time,
             "maintenance_message": req.message,
             "is_scheduled": True
         }, merge=True)
 
-        # 2. Broadcast Notification
+        # 2. Broadcast
         sent_count = 0
         if req.notify:
             try:
-                # Assuming app subscribes to 'all_users' topic
-                response = broadcast_message(
+                broadcast_message(
                     title="System Update",
                     body=req.message,
                     data={"type": "maintenance_alert", "time": req.scheduled_time}
                 )
-                sent_count = 1 # broadcast returns an id, not count, but success means sent
+                sent_count = 1
                 logger.info("maintenance_broadcast_sent", admin=admin_uid)
             except Exception as e:
                 logger.error("broadcast_error", error=str(e))
-                # Don't fail the request if just notification fails, but warn
                 
         return {"status": "scheduled", "notifications_sent": sent_count}
         
     except Exception as e:
         logger.error("schedule_maintenance_error", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/admin/cancel-maintenance")
+async def cancel_maintenance_schedule(
+    requester_id: str = Depends(verify_admin)
+):
+    try:
+        db = firebase_admin.firestore.client()
+        db.collection('config').document('global').update({
+            "is_scheduled": False,
+            "scheduled_maintenance_start": firebase_admin.firestore.DELETE_FIELD,
+            "maintenance_message": firebase_admin.firestore.DELETE_FIELD 
+        })
+        
+        logger.info("maintenance_schedule_cancelled", admin=requester_id)
+        return {"status": "cancelled", "message": "Schedule removed."}
+        
+    except Exception as e:
+        logger.error("cancel_maintenance_error", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- HELPER FUNCTIONS ---
@@ -581,23 +652,3 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         plan=app_plan,
         substitutions=app_substitutions
     )
-# [ADD THIS NEW ENDPOINT]
-@app.post("/admin/cancel-maintenance")
-async def cancel_maintenance_schedule(
-    requester_id: str = Depends(verify_admin)
-):
-    try:
-        db = firebase_admin.firestore.client()
-        # Remove schedule fields and set is_scheduled to False
-        db.collection('config').document('global').update({
-            "is_scheduled": False,
-            "scheduled_maintenance_start": firebase_admin.firestore.DELETE_FIELD,
-            "maintenance_message": firebase_admin.firestore.DELETE_FIELD 
-        })
-        
-        logger.info("maintenance_schedule_cancelled", admin=requester_id)
-        return {"status": "cancelled", "message": "Schedule removed."}
-        
-    except Exception as e:
-        logger.error("cancel_maintenance_error", error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
