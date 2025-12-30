@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,7 +18,8 @@ void main() async {
 
   // [NUOVO] Inizializza le notifiche qui
   await NotificationService().init();
-
+  // Subscribe user to the global topic
+  await FirebaseMessaging.instance.subscribeToTopic("all_users");
   runApp(
     MultiProvider(
       providers: [
