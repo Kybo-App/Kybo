@@ -3,183 +3,325 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kybo - Smart Nutrition</title>
+    <title>Kybo - La tua nutrizione, semplificata.</title>
+    <meta
+      name="description"
+      content="Gestisci dieta, dispensa e lista della spesa in un'unica app intelligente."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
       :root {
-        --primary: #007bff; /* Blu Kybo (o cambia con il tuo colore) */
-        --dark: #1a1a1a;
-        --light: #f4f6f8;
-        --text: #333;
+        /* COLORI ESTRATTI DAL PROGETTO (Adattabili) */
+        --primary: #2563eb; /* Un blu intenso e moderno */
+        --primary-dark: #1e40af;
+        --secondary: #64748b;
+        --bg-light: #f8fafc;
+        --surface: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #475569;
       }
 
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Helvetica, Arial, sans-serif;
-        color: var(--text);
+        font-family: "Inter", sans-serif;
+        color: var(--text-main);
+        background-color: var(--bg-light);
         line-height: 1.6;
+        overflow-x: hidden;
       }
 
-      /* Header */
+      /* --- NAVIGATION --- */
       header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 5%;
-        background: white;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 1.5rem 5%;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
         position: sticky;
         top: 0;
+        z-index: 1000;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
       }
 
-      .logo {
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+      }
+
+      .brand img {
+        height: 40px;
+        width: 40px;
+        border-radius: 10px; /* Arrotondamento stile icona app */
+      }
+
+      .brand span {
         font-size: 1.5rem;
         font-weight: 800;
-        color: var(--dark);
-        text-decoration: none;
+        color: var(--text-main);
+        letter-spacing: -0.5px;
       }
 
-      .btn-login {
-        background-color: var(--primary);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
+      .nav-actions {
+        display: flex;
+        gap: 15px;
+      }
+
+      .btn {
+        padding: 10px 24px;
+        border-radius: 50px; /* Pill shape come i bottoni Flutter */
         text-decoration: none;
         font-weight: 600;
-        transition: opacity 0.3s;
-      }
-      .btn-login:hover {
-        opacity: 0.9;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
       }
 
-      /* Hero Section */
+      .btn-ghost {
+        color: var(--text-muted);
+      }
+      .btn-ghost:hover {
+        color: var(--primary);
+      }
+
+      .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      }
+      .btn-primary:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+      }
+
+      /* --- HERO SECTION --- */
       .hero {
+        padding: 120px 5% 80px;
         text-align: center;
-        padding: 100px 20px;
-        background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        max-width: 1000px;
+        margin: 0 auto;
       }
 
       .hero h1 {
-        font-size: 3rem;
-        margin-bottom: 20px;
-        color: var(--dark);
+        font-size: 3.5rem;
+        line-height: 1.1;
+        margin-bottom: 24px;
+        background: linear-gradient(135deg, var(--text-main) 0%, #4b5563 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1.5px;
       }
 
       .hero p {
         font-size: 1.25rem;
-        color: #666;
+        color: var(--secondary);
         max-width: 600px;
         margin: 0 auto 40px;
       }
 
-      .cta-group {
+      /* --- MOCKUP PHONE (CSS Only representation) --- */
+      .phone-mockup-container {
+        margin-top: 60px;
+        perspective: 1000px;
+      }
+
+      .phone-frame {
+        width: 300px;
+        height: 600px;
+        background: var(--surface);
+        border: 12px solid #1e293b;
+        border-radius: 40px;
+        margin: 0 auto;
+        position: relative;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
         display: flex;
-        gap: 15px;
+        align-items: center;
         justify-content: center;
-        flex-wrap: wrap;
+        transform: rotateX(5deg); /* Effetto 3D */
       }
 
-      .btn-primary {
-        background: var(--dark);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-weight: bold;
+      /* Placeholder per screenshot app */
+      .app-screen {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
       }
 
-      /* Features */
+      /* --- FEATURES GRID --- */
       .features {
-        padding: 80px 5%;
+        padding: 100px 5%;
+        background: white;
+      }
+
+      .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 40px;
         max-width: 1200px;
         margin: 0 auto;
       }
 
-      .feature-card {
+      .card {
         padding: 30px;
-        border-radius: 12px;
+        border-radius: 24px;
+        background: var(--bg-light);
+        border: 1px solid rgba(0, 0, 0, 0.03);
+        transition: transform 0.3s;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+      }
+
+      .icon-box {
+        width: 50px;
+        height: 50px;
         background: white;
-        border: 1px solid #eee;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
       }
 
-      .feature-card h3 {
-        margin-top: 0;
+      .card h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.2rem;
+      }
+      .card p {
+        margin: 0;
+        color: var(--secondary);
+        font-size: 0.95rem;
       }
 
-      /* Footer */
+      /* --- FOOTER --- */
       footer {
         text-align: center;
-        padding: 40px;
-        background: var(--dark);
-        color: #888;
-        font-size: 0.9rem;
+        padding: 60px 20px;
+        background: white;
+        border-top: 1px solid #f1f5f9;
+        color: var(--secondary);
       }
 
+      /* MOBILE */
       @media (max-width: 768px) {
         .hero h1 {
-          font-size: 2rem;
+          font-size: 2.5rem;
         }
+        header {
+          padding: 15px 20px;
+        }
+        .nav-actions {
+          display: none;
+        } /* Nascondi login su mobile se vuoi */
       }
     </style>
+    <link rel="icon" href="icon.ico" type="image/ico" />
   </head>
   <body>
     <header>
-      <a href="#" class="logo">Kybo.</a>
-      <a href="https://app.kybo.it" class="btn-login">Accedi alla Dashboard</a>
+      <a href="#" class="brand">
+        <img
+          src="logo.png"
+          alt="Kybo Logo"
+          onerror="this.style.display='none'"
+        />
+        <span>Kybo.</span>
+      </a>
+      <div class="nav-actions">
+        <a href="https://app.kybo.it" class="btn btn-ghost"
+          >Sei un Nutrizionista?</a
+        >
+        <a href="https://app.kybo.it" class="btn btn-primary">Accedi</a>
+      </div>
     </header>
 
     <section class="hero">
-      <h1>Il futuro della tua nutrizione</h1>
+      <h1>Nutrizione intelligente,<br />senza stress.</h1>
       <p>
-        Gestisci i piani alimentari, monitora i progressi e raggiungi i tuoi
-        obiettivi con l'ecosistema Kybo.
+        Kybo unisce i tuoi piani alimentari, la gestione della dispensa e la
+        lista della spesa automatica in un'unica esperienza fluida.
       </p>
 
-      <div class="cta-group">
-        <a href="#" class="btn-primary">Scarica l'App</a>
-        <a
-          href="https://app.kybo.it"
-          style="
-            color: var(--primary);
-            padding: 15px;
-            text-decoration: none;
-            font-weight: bold;
-          "
-          >Sei un nutrizionista?</a
+      <div style="display: flex; gap: 15px; justify-content: center">
+        <a href="#" class="btn btn-primary" style="padding: 15px 30px"
+          >Scarica l'App</a
         >
+      </div>
+
+      <div class="phone-mockup-container">
+        <div class="phone-frame">
+          <div class="app-screen">
+            <img
+              src="logo.png"
+              width="80"
+              style="margin-bottom: 20px; opacity: 0.8"
+            />
+            <h3 style="margin: 0">Benvenuto in Kybo</h3>
+            <p style="font-size: 0.8rem; color: #666">
+              Il tuo piano alimentare
+            </p>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="features">
-      <div class="feature-card">
-        <h3>📱 App Mobile</h3>
-        <p>
-          Porta il tuo piano alimentare sempre con te. Lista della spesa
-          automatica e sostituzioni intelligenti.
-        </p>
-      </div>
-      <div class="feature-card">
-        <h3>⚡ Gestione Admin</h3>
-        <p>
-          Dashboard potente per professionisti. Crea, modifica e assegna diete
-          in pochi click.
-        </p>
-      </div>
-      <div class="feature-card">
-        <h3>📈 Analisi Dati</h3>
-        <p>
-          Monitora i macro, l'andamento del peso e l'aderenza al piano in tempo
-          reale.
-        </p>
+      <div class="grid">
+        <div class="card">
+          <div class="icon-box">🥗</div>
+          <h3>Piano Alimentare</h3>
+          <p>
+            Visualizza la tua dieta giornaliera con un'interfaccia chiara.
+            Sostituisci i pasti in modo intelligente rispettando i macro.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="icon-box">🏠</div>
+          <h3>Dispensa Digitale</h3>
+          <p>
+            Tieni traccia di ciò che hai in casa. Kybo ti suggerisce cosa
+            cucinare in base agli ingredienti disponibili.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="icon-box">🛒</div>
+          <h3>Lista Spesa Smart</h3>
+          <p>
+            Genera automaticamente la lista della spesa basata sul tuo piano
+            settimanale e su cosa manca in dispensa.
+          </p>
+        </div>
       </div>
     </section>
 
     <footer>
-      <p>&copy; 2024 Kybo. Tutti i diritti riservati.</p>
-      <p>P.IVA: 1234567890</p>
+      <p>&copy; 2024 Kybo. Sviluppato con passione in Flutter.</p>
+      <div style="margin-top: 10px; font-size: 0.9rem">
+        <a
+          href="https://app.kybo.it"
+          style="color: var(--primary); text-decoration: none"
+          >Area Riservata</a
+        >
+      </div>
     </footer>
   </body>
 </html>
