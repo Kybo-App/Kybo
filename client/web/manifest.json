@@ -1,11 +1,20 @@
 {
-  "name": "MyDiet",
-  "short_name": "MyDiet",
+<<<<<<< HEAD
+  "name": "Kybo Admin",
+  "short_name": "Kybo Admin",
+=======
+  "name": "Kybo",
+  "short_name": "Kybo",
+>>>>>>> dev
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0175C2",
   "theme_color": "#0175C2",
+<<<<<<< HEAD
+  "description": "Pannello Amministrativo Kybo",
+=======
   "description": "A new Flutter project.",
+>>>>>>> dev
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

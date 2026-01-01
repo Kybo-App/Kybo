@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "kybo-production"
+    "dev": "mydiet-6d55b",
+    "prod": "kybo-production"
   }
 }
