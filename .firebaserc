@@ -1,13 +1,12 @@
 {
   "projects": {
-    "dev": "mydiet-6d55b",
-    "prod": "kybo-production"
+    "default": "kybo-production"
   },
   "targets": {
     "kybo-production": {
       "hosting": {
-        "admin": [
-          "kybo-admin"
+        "landing": [
+          "kybo-production"
         ]
       }
     }
