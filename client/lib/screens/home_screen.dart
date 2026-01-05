@@ -1,21 +1,20 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/diet_provider.dart';
-import '../models/active_swap.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../constants.dart';
+import '../core/error_handler.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
 import 'shopping_list_view.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
+import 'change_password_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,10 +23,9 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
-  int _currentIndex = 0;
+  int _currentIndex = 1;
   late TabController _tabController;
   final AuthService _auth = AuthService();
-
   final List<String> days = [
     "Lunedì",
     "Martedì",
@@ -47,229 +45,335 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       initialIndex: today < 0 ? 0 : today,
       vsync: this,
     );
-
-    // [MODIFICA] Avvio logica di caricamento sequenziale (Cache -> Cloud)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initAppData();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initAppData());
   }
 
-  /// Carica i dati in sequenza: Cache (Offline) e poi Cloud (Sync)
   Future<void> _initAppData() async {
     final provider = context.read<DietProvider>();
+    await provider.loadFromCache();
     final user = FirebaseAuth.instance.currentUser;
-
-    // 1. CARICAMENTO CACHE (Istantaneo)
-    bool hasCache = await provider.loadFromCache();
-
-    // 2. SINCRONIZZAZIONE CLOUD
     if (user != null) {
-      // [MODIFICA] Ritardiamo il salvataggio del token di 5 secondi
-      // Così non va in conflitto con l'inizializzazione del main.dart
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) {
-          _saveFCMToken(
-            user.uid,
-          ).catchError((e) => debugPrint("FCM Error: $e"));
-        }
-      });
-
-      // Sync in background
-      await provider.syncFromFirebase(user.uid);
-    } else if (!hasCache) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      provider.syncFromFirebase(user.uid);
     }
   }
 
-  Future<void> _saveFCMToken(String uid) async {
-    try {
-      // 1. Check rapido: se non c'è rete, non provare neanche
-      try {
-        final result = await InternetAddress.lookup('google.com');
-        if (result.isEmpty || result[0].rawAddress.isEmpty) return;
-      } catch (_) {
-        return; // Offline -> Esci silenziosamente
-      }
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<DietProvider>();
 
-      // 2. Se siamo online, prova a prendere il token
-      final token = await NotificationService().getFCMToken();
-      if (token != null) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).update({
-          'fcm_token': token,
-        });
-      }
-    } catch (e) {
-      // Silenzia errori "Remote Config" o "Network"
-      debugPrint("FCM Token Skip (Offline/Error): $e");
+    if (provider.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.error!), backgroundColor: Colors.red),
+        );
+        provider.clearError();
+      });
     }
+
+    return Scaffold(
+      backgroundColor: Colors.white, // Sfondo base pulito
+      // HEADER DESIGN: Bianco e Minimale (Niente blocco verde)
+      appBar: _currentIndex == 1
+          ? AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0, // Niente ombreggiatura pesante
+              title: const Text(
+                "Kybo",
+                style: TextStyle(
+                  color: Colors.black, // Testo nero
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+              iconTheme: const IconThemeData(
+                color: Colors.black,
+              ), // Icona drawer nera
+              actions: [
+                IconButton(
+                  icon: Icon(
+                    provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
+                    color: provider.isTranquilMode
+                        ? AppColors.primary
+                        : Colors.grey,
+                  ),
+                  onPressed: provider.toggleTranquilMode,
+                ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                labelColor: AppColors.primary, // Testo selezionato Verde Brand
+                unselectedLabelColor:
+                    Colors.grey, // Testo non selezionato Grigio
+                indicatorColor: AppColors.primary, // Linea sotto Verde
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: days
+                    .map((d) => Tab(text: d.substring(0, 3).toUpperCase()))
+                    .toList(),
+              ),
+            )
+          : null,
+
+      drawer: _buildDrawer(context, _auth.currentUser),
+      body: _buildBody(provider),
+
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: AppColors.primary);
+            }
+            return const IconThemeData(color: Colors.grey);
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              );
+            }
+            return const TextStyle(color: Colors.grey, fontSize: 12);
+          }),
+          backgroundColor: Colors.white,
+          elevation: 5,
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (i) => setState(() => _currentIndex = i),
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.kitchen), label: 'Dispensa'),
+            NavigationDestination(
+              icon: Icon(Icons.calendar_today),
+              label: 'Piano',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.shopping_cart),
+              label: 'Lista',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(DietProvider provider) {
+    switch (_currentIndex) {
+      case 0:
+        return PantryView(
+          pantryItems: provider.pantryItems,
+          onAddManual: provider.addPantryItem,
+          onRemove: provider.removePantryItem,
+          onScanTap: () => _scanReceipt(provider),
+        );
+      case 1:
+        // Passaggio dati corretto alla DietView
+        return TabBarView(
+          controller: _tabController,
+          children: days.map((day) {
+            return DietView(
+              day: day,
+              dietData: provider.dietData,
+              isLoading: provider.isLoading,
+              activeSwaps: provider.activeSwaps,
+              substitutions: provider.substitutions,
+              pantryItems: provider.pantryItems,
+              isTranquilMode: provider.isTranquilMode,
+            );
+          }).toList(),
+        );
+      case 2:
+        return ShoppingListView(
+          shoppingList: provider.shoppingList,
+          dietData: provider.dietData,
+          activeSwaps: provider.activeSwaps,
+          pantryItems: provider.pantryItems,
+          onUpdateList: provider.updateShoppingList,
+          onAddToPantry: provider.addPantryItem,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  // --- DRAWER & FUNZIONI ---
+  Widget _buildDrawer(BuildContext drawerCtx, User? user) {
+    final String initial = (user?.email != null && user!.email!.isNotEmpty)
+        ? user.email![0].toUpperCase()
+        : "U";
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: user != null
+          ? FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .snapshots()
+          : const Stream.empty(),
+      builder: (streamCtx, snapshot) {
+        String role = 'user';
+        if (snapshot.hasData && snapshot.data!.exists) {
+          role =
+              (snapshot.data!.data() as Map<String, dynamic>)['role'] ?? 'user';
+        }
+        final bool canUpload = role != 'client';
+
+        return Drawer(
+          backgroundColor: Colors.white,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              UserAccountsDrawerHeader(
+                accountName: const Text(
+                  "Kybo",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                accountEmail: Text(
+                  "${user?.email ?? "Ospite"} ($role)",
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      fontSize: 30.0,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                decoration: const BoxDecoration(color: AppColors.primary),
+              ),
+              if (user != null) ...[
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text("Cronologia Diete"),
+                  onTap: () {
+                    Navigator.pop(drawerCtx);
+                    Navigator.push(
+                      drawerCtx,
+                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.lock),
+                  title: const Text("Cambia Password"),
+                  onTap: () {
+                    Navigator.pop(drawerCtx);
+                    Navigator.push(
+                      drawerCtx,
+                      MaterialPageRoute(
+                        builder: (_) => const ChangePasswordScreen(),
+                      ),
+                    );
+                  },
+                ),
+                if (canUpload)
+                  ListTile(
+                    leading: const Icon(
+                      Icons.upload_file,
+                      color: Colors.orange,
+                    ),
+                    title: const Text("Carica Dieta PDF"),
+                    onTap: () {
+                      Navigator.pop(drawerCtx);
+                      _uploadDiet(drawerCtx);
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.notifications_active),
+                  title: const Text("Gestisci Allarmi"),
+                  onTap: () {
+                    Navigator.pop(drawerCtx);
+                    _openTimeSettings();
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: const Text("Esci"),
+                  onTap: () async {
+                    Navigator.pop(drawerCtx);
+                    await context.read<DietProvider>().clearData();
+                    await _auth.signOut();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _uploadDiet(BuildContext context) async {
-    final provider = context.read<DietProvider>();
-    // Salviamo il riferimento allo ScaffoldMessenger PRIMA dell'await
-    final messenger = ScaffoldMessenger.of(context);
-
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-
-    // Controllo mounted obbligatorio
-    if (!mounted) return;
-
-    if (result != null && result.files.single.path != null) {
-      try {
+    final provider = Provider.of<DietProvider>(context, listen: false);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (result != null && result.files.single.path != null) {
         await provider.uploadDiet(result.files.single.path!);
-
-        // Controllo mounted dopo il secondo await
-        if (!mounted) return;
-
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text("Dieta caricata e salvata!"),
-            backgroundColor: AppColors.primary,
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Dieta caricata!"),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorMapper.toUserMessage(e)),
+            backgroundColor: Colors.red,
           ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        String msg = provider.error ?? "Errore sconosciuto";
-        messenger.showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  void _onConsume(
-    BuildContext context,
-    DietProvider provider,
-    String name,
-    String qty,
-  ) {
-    provider.consumeSmart(name, qty);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Hai mangiato $name! 😋"),
-        duration: const Duration(seconds: 1),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-  }
-
-  void _onEdit(
-    BuildContext context,
-    DietProvider provider,
-    String day,
-    String mealName,
-    int index,
-    String currentName,
-    String currentQty,
-  ) {
-    TextEditingController nameCtrl = TextEditingController(text: currentName);
-    TextEditingController qtyCtrl = TextEditingController(text: currentQty);
-
-    showDialog(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text("Modifica Piatto"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Nome"),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: qtyCtrl,
-              decoration: const InputDecoration(labelText: "Quantità"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c),
-            child: const Text("Annulla"),
-          ),
-          FilledButton(
-            onPressed: () {
-              provider.updateDietMeal(
-                day,
-                mealName,
-                index,
-                nameCtrl.text,
-                qtyCtrl.text,
-              );
-              Navigator.pop(c);
-            },
-            child: const Text("Salva"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _onSwap(
-    BuildContext context,
-    DietProvider provider,
-    String swapKey,
-    int cadCode,
-  ) {
-    String cadKey = cadCode.toString();
-    final subs = provider.substitutions;
-
-    if (subs == null || !subs.containsKey(cadKey)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Nessuna alternativa trovata.")),
+  Future<void> _scanReceipt(DietProvider provider) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'png', 'jpeg', 'pdf'],
       );
-      return;
+      if (result != null && result.files.single.path != null) {
+        int count = await provider.scanReceipt(result.files.single.path!);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Aggiunti $count prodotti!"),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorMapper.toUserMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-
-    var subData = subs[cadKey];
-    List<dynamic> options = subData['options'] ?? [];
-
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Alternative per ${subData['name']}",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: ListView.separated(
-                separatorBuilder: (context, index) => const Divider(),
-                itemCount: options.length,
-                itemBuilder: (ctx, i) {
-                  var opt = options[i];
-                  return ListTile(
-                    title: Text(opt['name']),
-                    subtitle: Text(opt['qty'].toString()),
-                    onTap: () {
-                      provider.swapMeal(
-                        swapKey,
-                        ActiveSwap(
-                          name: opt['name'],
-                          qty: opt['qty'].toString(),
-                          unit: opt['unit'] ?? "",
-                        ),
-                      );
-                      Navigator.pop(ctx);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Future<void> _openTimeSettings() async {
@@ -295,9 +399,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             }
 
             void removeAlarm(int index) {
-              setDialogState(() {
-                alarms.removeAt(index);
-              });
+              setDialogState(() => alarms.removeAt(index));
             }
 
             void restoreDefaults() {
@@ -330,21 +432,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Allarmi"),
+                  const Text("Gestisci Allarmi"),
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.restore, color: Colors.grey),
+                        icon: const Icon(Icons.restore),
                         onPressed: restoreDefaults,
-                        tooltip: "Ripristina",
                       ),
                       IconButton(
-                        icon: const Icon(
-                          Icons.add_circle,
-                          color: AppColors.primary,
-                        ),
+                        icon: const Icon(Icons.add_circle, color: Colors.blue),
                         onPressed: addAlarm,
-                        tooltip: "Aggiungi",
                       ),
                     ],
                   ),
@@ -359,7 +456,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                         itemCount: alarms.length,
                         itemBuilder: (context, index) {
                           final alarm = alarms[index];
-                          final time = _parseTime(alarm['time'] ?? "08:00");
+                          final parts = (alarm['time'] ?? "08:00").split(":");
+                          final time = TimeOfDay(
+                            hour: int.parse(parts[0]),
+                            minute: int.parse(parts[1]),
+                          );
 
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -373,13 +474,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                                         flex: 2,
                                         child: TextFormField(
                                           initialValue: alarm['label'],
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
                                           decoration: const InputDecoration(
                                             labelText: "Titolo",
                                             isDense: true,
-                                            border: InputBorder.none,
                                           ),
                                           onChanged: (val) =>
                                               alarm['label'] = val,
@@ -389,7 +486,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                                         icon: const Icon(Icons.access_time),
                                         label: Text(
                                           "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                                          style: const TextStyle(fontSize: 16),
                                         ),
                                         onPressed: () async {
                                           final picked = await showTimePicker(
@@ -418,12 +514,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                                     decoration: const InputDecoration(
                                       labelText: "Messaggio",
                                       isDense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      border: InputBorder.none,
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
                                     ),
                                     onChanged: (val) => alarm['body'] = val,
                                   ),
@@ -440,15 +530,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                   child: const Text("Annulla"),
                 ),
                 FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
                   onPressed: () async {
                     Navigator.pop(ctx);
                     await storage.saveAlarms(alarms);
-
                     final notifs = NotificationService();
                     await notifs.init();
                     await notifs.requestPermissions();
                     await notifs.scheduleAllMeals();
-
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("Allarmi aggiornati!")),
@@ -463,256 +554,5 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         );
       },
     );
-  }
-
-  TimeOfDay _parseTime(String s) {
-    try {
-      final parts = s.split(":");
-      return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-    } catch (e) {
-      return const TimeOfDay(hour: 8, minute: 0);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<DietProvider>();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            title: const Text("Kybo"),
-            actions: [
-              if (_currentIndex == 0)
-                IconButton(
-                  icon: Icon(
-                    provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
-                  ),
-                  tooltip: "Modalità Relax",
-                  onPressed: provider.toggleTranquilMode,
-                ),
-            ],
-            bottom: _currentIndex == 0
-                ? TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabs: days
-                        .map((d) => Tab(text: d.substring(0, 3).toUpperCase()))
-                        .toList(),
-                  )
-                : null,
-          ),
-          drawer: _buildDrawer(
-            context,
-            _auth.currentUser,
-            provider,
-            colorScheme,
-          ),
-          body: _buildBody(provider),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (i) => setState(() => _currentIndex = i),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.calendar_today),
-                label: 'Piano',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.kitchen),
-                label: 'Dispensa',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.shopping_cart),
-                label: 'Lista',
-              ),
-            ],
-          ),
-        ),
-        if (provider.isLoading)
-          Container(
-            color: Colors.black45,
-            child: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDrawer(
-    BuildContext drawerCtx,
-    User? user,
-    DietProvider provider,
-    ColorScheme colors,
-  ) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: user != null
-          ? FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .snapshots()
-          : const Stream.empty(),
-      builder: (streamCtx, snapshot) {
-        String role = 'user';
-        if (snapshot.hasData && snapshot.data!.exists) {
-          role =
-              (snapshot.data!.data() as Map<String, dynamic>)['role'] ?? 'user';
-        }
-
-        final bool canUpload = role == 'independent' || role == 'admin';
-
-        return Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              UserAccountsDrawerHeader(
-                accountName: const Text("Kybo"),
-                accountEmail: Text("${user?.email ?? "Ospite"}\n(Role: $role)"),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: colors.primary),
-                ),
-                decoration: BoxDecoration(color: colors.primary),
-              ),
-              if (user == null)
-                ListTile(
-                  leading: const Icon(Icons.login),
-                  title: const Text("Accedi / Registrati"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    Navigator.pushReplacement(
-                      drawerCtx,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                )
-              else ...[
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: const Text("Cronologia Diete"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    Navigator.push(
-                      drawerCtx,
-                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
-                    );
-                  },
-                ),
-                // [MODIFICA] Logout con pulizia cache locale
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text("Esci"),
-                  onTap: () async {
-                    Navigator.pop(drawerCtx);
-
-                    // Pulizia Cache
-                    await provider.clearData();
-
-                    await _auth.signOut();
-                    if (mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    }
-                  },
-                ),
-              ],
-              const Divider(),
-              if (canUpload)
-                ListTile(
-                  leading: const Icon(Icons.upload_file),
-                  title: const Text("Carica Dieta PDF"),
-                  onTap: () => _uploadDiet(drawerCtx),
-                ),
-              ListTile(
-                leading: const Icon(Icons.notifications_active),
-                title: const Text("Gestisci Allarmi"),
-                onTap: () {
-                  Navigator.pop(drawerCtx);
-                  _openTimeSettings();
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("Reset Dati Locali"),
-                onTap: () {
-                  provider.clearData();
-                  Navigator.pop(drawerCtx);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildBody(DietProvider provider) {
-    switch (_currentIndex) {
-      case 0:
-        return DietView(
-          tabController: _tabController,
-          days: days,
-          dietData: provider.dietData,
-          isLoading: provider.isLoading,
-          activeSwaps: provider.activeSwaps,
-          substitutions: provider.substitutions,
-          pantryItems: provider.pantryItems,
-          isTranquilMode: provider.isTranquilMode,
-          onConsume: (name, qty) => _onConsume(context, provider, name, qty),
-          onEdit: (d, m, i, n, q) => _onEdit(context, provider, d, m, i, n, q),
-          onSwap: (key, cad) => _onSwap(context, provider, key, cad),
-        );
-      case 1:
-        return PantryView(
-          pantryItems: provider.pantryItems,
-          onAddManual: provider.addPantryItem,
-          onRemove: provider.removePantryItem,
-          onScanTap: () async {
-            FilePickerResult? result = await FilePicker.platform.pickFiles(
-              type: FileType.custom,
-              allowedExtensions: ['jpg', 'png', 'jpeg', 'pdf'],
-            );
-            if (!mounted) return;
-            if (result != null && result.files.single.path != null) {
-              try {
-                int count = await provider.scanReceipt(
-                  result.files.single.path!,
-                );
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Aggiunti $count prodotti!"),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Errore: ${provider.error ?? e}"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            }
-          },
-        );
-      case 2:
-        return ShoppingListView(
-          shoppingList: provider.shoppingList,
-          dietData: provider.dietData,
-          activeSwaps: provider.activeSwaps,
-          pantryItems: provider.pantryItems,
-          onUpdateList: provider.updateShoppingList,
-          onAddToPantry: provider.addPantryItem,
-        );
-      default:
-        return const SizedBox.shrink();
-    }
   }
 }

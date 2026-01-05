@@ -1,28 +1,31 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Necessario per Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../repositories/diet_repository.dart';
 import '../services/storage_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
-import '../services/api_client.dart';
+import '../core/error_handler.dart';
 
 class UnitMismatchException implements Exception {
   final PantryItem item;
-  final double requiredQty;
   final String requiredUnit;
-
-  UnitMismatchException({
-    required this.item,
-    required this.requiredQty,
-    required this.requiredUnit,
-  });
+  UnitMismatchException({required this.item, required this.requiredUnit});
+  @override
+  String toString() => "Unità diverse: ${item.unit} vs $requiredUnit";
 }
 
-// --- ISOLATE LOGIC ---
+class IngredientException implements Exception {
+  final String message;
+  IngredientException(this.message);
+  @override
+  String toString() => message;
+}
+
 Map<String, bool> _calculateAvailabilityIsolate(Map<String, dynamic> payload) {
   final dietData = payload['dietData'] as Map<String, dynamic>;
   final pantryItemsRaw = payload['pantryItems'] as List<dynamic>;
@@ -219,7 +222,6 @@ class DietProvider extends ChangeNotifier {
   Map<String, bool> _availabilityMap = {};
   Map<String, double> _conversions = {};
 
-  // Sync Tracking
   DateTime _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _lastSyncedDiet;
   Map<String, dynamic>? _lastSyncedSubstitutions;
@@ -240,14 +242,8 @@ class DietProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasError => _error != null;
 
-  DietProvider(this._repository) {
-    // RIMOSSO _init() automatico per gestire cache e sync separatamente
-  }
+  DietProvider(this._repository);
 
-  // --- NUOVI METODI PER LA CACHE E SYNC ---
-
-  /// Carica i dati salvati nel telefono (Funziona Offline)
-  /// Ritorna true se ha trovato dati validi
   Future<bool> loadFromCache() async {
     bool hasData = false;
     try {
@@ -262,7 +258,6 @@ class DietProvider extends ChangeNotifier {
         _dietData = savedDiet['plan'];
         _substitutions = savedDiet['substitutions'];
 
-        // Init baseline for comparison
         _lastSyncedDiet = _deepCopy(_dietData);
         _lastSyncedSubstitutions = _deepCopy(_substitutions);
 
@@ -271,7 +266,7 @@ class DietProvider extends ChangeNotifier {
         debugPrint("📦 Dati caricati dalla Cache Locale");
       }
     } catch (e) {
-      debugPrint("Errore Cache: $e");
+      debugPrint("⚠️ Errore Cache (Non bloccante): $e");
     } finally {
       _setLoading(false);
     }
@@ -279,11 +274,8 @@ class DietProvider extends ChangeNotifier {
     return hasData;
   }
 
-  /// Scarica l'ultima dieta da Firebase (Se esiste e c'è rete)
-  /// Non blocca l'UI con loading indicator
   Future<void> syncFromFirebase(String uid) async {
     try {
-      // Usiamo Firestore per cercare l'ultimo salvataggio nella history
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -295,12 +287,10 @@ class DietProvider extends ChangeNotifier {
       if (snapshot.docs.isNotEmpty) {
         final data = snapshot.docs.first.data();
 
-        // Se i dati esistono, aggiorniamo lo stato
         if (data['dietData'] != null) {
           _dietData = data['dietData'];
           _substitutions = data['substitutions'];
 
-          // Salviamo subito in locale per la prossima volta
           await _storage.saveDiet({
             'plan': _dietData,
             'substitutions': _substitutions,
@@ -320,9 +310,7 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  // --- FINE NUOVI METODI ---
-
-  double _normalizeToGrams(double qty, String unit, String itemName) {
+  double _normalizeToGrams(double qty, String unit) {
     final u = unit.trim().toLowerCase();
     if (u == 'kg' || u == 'l') return qty * 1000;
     if (u == 'g' || u == 'ml' || u == 'mg' || u == 'gr' || u == 'grammi') {
@@ -331,27 +319,28 @@ class DietProvider extends ChangeNotifier {
     if (u.contains('vasetto')) return qty * 125;
     if (u.contains('cucchiain')) return qty * 5;
     if (u.contains('cucchiaio')) return qty * 15;
-
-    final key = "${itemName.trim().toLowerCase()}_$u";
-    if (_conversions.containsKey(key)) {
-      double gramsPerUnit = _conversions[key]!;
-      return qty * gramsPerUnit;
-    }
     return -1.0;
   }
 
   Future<void> resolveUnitMismatch(
     String itemName,
-    String unit,
-    double gramsPerUnit,
+    String fromUnit,
+    String toUnit,
+    double factor,
   ) async {
-    final key = "${itemName.trim().toLowerCase()}_${unit.trim().toLowerCase()}";
-    _conversions[key] = gramsPerUnit;
+    final key =
+        "${itemName.trim().toLowerCase()}_${fromUnit.trim().toLowerCase()}_to_${toUnit.trim().toLowerCase()}";
+    _conversions[key] = factor;
     await _storage.saveConversions(_conversions);
     notifyListeners();
   }
 
-  Future<void> consumeMeal(String day, String mealType, int dishIndex) async {
+  Future<void> consumeMeal(
+    String day,
+    String mealType,
+    int dishIndex, {
+    bool force = false,
+  }) async {
     if (_dietData == null || _dietData![day] == null) return;
     final meals = _dietData![day][mealType];
     if (meals == null || meals is! List || dishIndex >= meals.length) return;
@@ -367,21 +356,26 @@ class DietProvider extends ChangeNotifier {
     }
     if (targetGroupIndices.isEmpty) return;
 
-    for (int i in targetGroupIndices) {
-      final dish = meals[i];
-      List<dynamic> itemsToCheck = [];
-      if ((dish['qty']?.toString() ?? "") == "N/A") {
-        if (dish['ingredients'] != null) itemsToCheck = dish['ingredients'];
-      } else if (dish['ingredients'] != null &&
-          (dish['ingredients'] as List).isNotEmpty) {
-        itemsToCheck = dish['ingredients'];
-      } else {
-        itemsToCheck = [
-          {'name': dish['name'], 'qty': dish['qty'] ?? '1'},
-        ];
-      }
-      for (var itemData in itemsToCheck) {
-        _validateItem(itemData['name'].toString(), itemData['qty'].toString());
+    if (!force) {
+      for (int i in targetGroupIndices) {
+        final dish = meals[i];
+        List<dynamic> itemsToCheck = [];
+        if ((dish['qty']?.toString() ?? "") == "N/A") {
+          if (dish['ingredients'] != null) itemsToCheck = dish['ingredients'];
+        } else if (dish['ingredients'] != null &&
+            (dish['ingredients'] as List).isNotEmpty) {
+          itemsToCheck = dish['ingredients'];
+        } else {
+          itemsToCheck = [
+            {'name': dish['name'], 'qty': dish['qty'] ?? '1'},
+          ];
+        }
+        for (var itemData in itemsToCheck) {
+          _validateItem(
+            itemData['name'].toString(),
+            itemData['qty'].toString(),
+          );
+        }
       }
     }
 
@@ -390,16 +384,24 @@ class DietProvider extends ChangeNotifier {
       if ((dish['qty']?.toString() ?? "") == "N/A") {
         if (dish['ingredients'] != null) {
           for (var ing in dish['ingredients']) {
-            _consumeSmartExecute(ing['name'].toString(), ing['qty'].toString());
+            _consumeExecute(
+              ing['name'].toString(),
+              ing['qty'].toString(),
+              force: force,
+            );
           }
         }
       } else if (dish['ingredients'] != null &&
           (dish['ingredients'] as List).isNotEmpty) {
         for (var ing in dish['ingredients']) {
-          _consumeSmartExecute(ing['name'].toString(), ing['qty'].toString());
+          _consumeExecute(
+            ing['name'].toString(),
+            ing['qty'].toString(),
+            force: force,
+          );
         }
       } else {
-        _consumeSmartExecute(dish['name'], dish['qty'] ?? '1');
+        _consumeExecute(dish['name'], dish['qty'] ?? '1', force: force);
       }
     }
 
@@ -419,52 +421,68 @@ class DietProvider extends ChangeNotifier {
   }
 
   void _validateItem(String name, String rawQtyString) {
+    if (rawQtyString == "N/A" || name.toLowerCase().contains("libero")) return;
+
     double reqQty = _parseQty(rawQtyString);
     String reqUnit = _parseUnit(rawQtyString, name);
     String normalizedName = name.trim().toLowerCase();
 
-    try {
-      final pantryItem = _pantryItems.firstWhere((p) {
-        final pName = p.name.toLowerCase();
-        return (pName.contains(normalizedName) ||
-            normalizedName.contains(pName));
-      });
+    int index = _pantryItems.indexWhere((p) {
+      final pName = p.name.toLowerCase();
+      return (pName == normalizedName ||
+          pName.contains(normalizedName) ||
+          normalizedName.contains(pName));
+    });
 
-      double pVal = _normalizeToGrams(
-        pantryItem.quantity,
-        pantryItem.unit,
-        pantryItem.name,
-      );
-      double rVal = _normalizeToGrams(reqQty, reqUnit, pantryItem.name);
+    if (index == -1) {
+      throw IngredientException("Prodotto non trovato in dispensa: $name");
+    }
 
-      bool pIsWeight = pVal > 0;
-      bool rIsWeight = rVal > 0;
+    PantryItem pItem = _pantryItems[index];
 
-      if (pantryItem.unit.trim().toLowerCase() ==
-          reqUnit.trim().toLowerCase()) {
-        return;
+    if (pItem.unit.trim().toLowerCase() == reqUnit.trim().toLowerCase()) {
+      if (pItem.quantity < reqQty) {
+        throw IngredientException(
+          "Quantità insufficiente di $name. Hai ${pItem.quantity} ${pItem.unit}, servono $reqQty.",
+        );
       }
-      if (pIsWeight && rIsWeight) return;
-      if (pantryItem.unit.toLowerCase() == 'gr' &&
-          reqUnit.toLowerCase() == 'g') {
-        return;
-      }
-      if (pantryItem.unit.toLowerCase() == 'g' &&
-          reqUnit.toLowerCase() == 'gr') {
-        return;
-      }
+      return;
+    }
 
-      throw UnitMismatchException(
-        item: pantryItem,
-        requiredQty: reqQty,
-        requiredUnit: reqUnit,
-      );
-    } catch (e) {
-      if (e is UnitMismatchException) rethrow;
+    double conversionFactor = 1.0;
+    String convKey =
+        "${normalizedName}_${reqUnit.trim().toLowerCase()}_to_${pItem.unit.trim().toLowerCase()}";
+
+    if (_conversions.containsKey(convKey)) {
+      conversionFactor = _conversions[convKey]!;
+    } else {
+      double pVal = _normalizeToGrams(1, pItem.unit);
+      double rVal = _normalizeToGrams(1, reqUnit);
+
+      if (pVal > 0 && rVal > 0) {
+        // Compatibili (kg/g)
+      } else {
+        throw UnitMismatchException(item: pItem, requiredUnit: reqUnit);
+      }
+    }
+
+    double reqQtyInPantryUnit = reqQty;
+    if (_conversions.containsKey(convKey)) {
+      reqQtyInPantryUnit = reqQty * conversionFactor;
+    } else {
+      double rGrams = _normalizeToGrams(reqQty, reqUnit);
+      double pGrams = _normalizeToGrams(1, pItem.unit);
+      if (pGrams > 0) reqQtyInPantryUnit = rGrams / pGrams;
+    }
+
+    if (pItem.quantity < reqQtyInPantryUnit) {
+      throw IngredientException("Quantità insufficiente di $name.");
     }
   }
 
-  void _consumeSmartExecute(String name, String rawQtyString) {
+  void _consumeExecute(String name, String rawQtyString, {bool force = false}) {
+    if (rawQtyString == "N/A") return;
+
     double reqQty = _parseQty(rawQtyString);
     String reqUnit = _parseUnit(rawQtyString, name);
     String normalizedName = name.trim().toLowerCase();
@@ -477,13 +495,21 @@ class DietProvider extends ChangeNotifier {
     if (index != -1) {
       var item = _pantryItems[index];
       double qtyToSubtract = reqQty;
-      double pVal = _normalizeToGrams(item.quantity, item.unit, item.name);
-      double rVal = _normalizeToGrams(reqQty, reqUnit, item.name);
 
-      if (pVal > 0 && rVal > 0) {
-        double conversion = pVal / item.quantity;
-        qtyToSubtract = rVal / conversion;
+      if (item.unit.toLowerCase() != reqUnit.toLowerCase()) {
+        String convKey =
+            "${normalizedName}_${reqUnit.trim().toLowerCase()}_to_${item.unit.trim().toLowerCase()}";
+        if (_conversions.containsKey(convKey)) {
+          qtyToSubtract = reqQty * _conversions[convKey]!;
+        } else {
+          double rGrams = _normalizeToGrams(reqQty, reqUnit);
+          double pGramsOne = _normalizeToGrams(1, item.unit);
+          if (rGrams > 0 && pGramsOne > 0) {
+            qtyToSubtract = rGrams / pGramsOne;
+          }
+        }
       }
+
       item.quantity -= qtyToSubtract;
       if (item.quantity <= 0.01) {
         _pantryItems.removeAt(index);
@@ -503,7 +529,7 @@ class DietProvider extends ChangeNotifier {
 
   String _parseUnit(String raw, String name) {
     String lower = raw.toLowerCase().trim();
-    if (lower.contains('kg')) return 'g';
+    if (lower.contains('kg')) return 'kg';
     if (lower.contains('mg')) return 'mg';
     if (lower.contains('ml')) return 'ml';
     if (lower.contains('l') && !lower.contains('ml')) return 'ml';
@@ -512,6 +538,8 @@ class DietProvider extends ChangeNotifier {
     if (lower.contains('cucchiain')) return 'cucchiaino';
     if (lower.contains('cucchiai')) return 'cucchiaio';
     if (lower.contains('fett')) return 'fette';
+    if (lower.contains('tazza')) return 'tazza';
+    if (lower.contains('bicchiere')) return 'bicchiere';
     if (lower.contains('pz')) return 'pz';
     return 'pz';
   }
@@ -633,7 +661,8 @@ class DietProvider extends ChangeNotifier {
       await _storage.saveSwaps({});
       _recalcAvailability();
     } catch (e) {
-      _error = _mapError(e);
+      _error = ErrorMapper.toUserMessage(e);
+      debugPrint("❌ Errore Upload: $e");
       rethrow;
     } finally {
       _setLoading(false);
@@ -662,7 +691,8 @@ class DietProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      _error = _mapError(e);
+      _error = ErrorMapper.toUserMessage(e);
+      debugPrint("❌ Errore Scan: $e");
       rethrow;
     } finally {
       _setLoading(false);
@@ -733,12 +763,6 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  String _mapError(Object e) {
-    if (e is ApiException) return "Server Error: ${e.message}";
-    if (e is NetworkException) return "Problema di connessione. Riprova.";
-    return "Errore imprevisto: $e";
-  }
-
   void loadHistoricalDiet(Map<String, dynamic> dietData) {
     _dietData = dietData['plan'];
     _substitutions = dietData['substitutions'];
@@ -807,7 +831,7 @@ class DietProvider extends ChangeNotifier {
   void consumeSmart(String name, String qty) {
     try {
       _validateItem(name, qty);
-      _consumeSmartExecute(name, qty);
+      _consumeExecute(name, qty);
       notifyListeners();
     } catch (e) {
       rethrow;

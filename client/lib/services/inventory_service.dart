@@ -51,8 +51,8 @@ void callbackDispatcher() {
 class InventoryService {
   static Future<void> initialize() async {
     try {
-      // ignore: deprecated_member_use
-      await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+      // [FIX] Rimosso isInDebugMode deprecato
+      await Workmanager().initialize(callbackDispatcher);
       await Workmanager().registerPeriodicTask(
         "1",
         taskInventoryCheck,
@@ -90,7 +90,6 @@ bool _checkMissingIngredients(
           continue;
         }
 
-        // [FIX] Ensure item exists AND has quantity > 0.1
         bool found = pantry.any(
           (item) =>
               (item.name.toLowerCase().contains(dishName) ||

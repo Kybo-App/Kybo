@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/error_handler.dart'; // [IMPORTANTE]
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -18,74 +18,66 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;
 
     if (_passCtrl.text != _confirmCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Le password non coincidono")),
-      );
+      _showError("Le password non coincidono");
       return;
     }
     if (_passCtrl.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La password deve avere almeno 6 caratteri"),
-        ),
-      );
+      _showError("La password deve avere almeno 6 caratteri");
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) throw Exception("Utente non loggato");
 
-      // 1. Aggiorna la password su Firebase Auth
-      await user.updatePassword(_passCtrl.text.trim());
+      await user.updatePassword(_passCtrl.text);
 
-      // 2. Rimuovi il blocco su Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
-        {'requires_password_change': false},
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Password aggiornata con successo!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+      if (mounted) {
+        // [UX] Errore tradotto
+        _showError(ErrorMapper.toUserMessage(e));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Sicurezza Account"),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("Cambia Password")),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(
           child: SingleChildScrollView(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.lock_reset, size: 80, color: Colors.orange),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 const Text(
-                  "Primo Accesso",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  "Per sicurezza, devi cambiare la password provvisoria fornita dal tuo nutrizionista.",
+                  "Inserisci la tua nuova password.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
                 const SizedBox(height: 32),
                 TextField(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../providers/diet_provider.dart';
+import '../core/error_handler.dart'; // [IMPORTANTE]
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -21,10 +21,39 @@ class HistoryScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text("Errore: ${snapshot.error}"));
+            // [UX] Errore tradotto
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 50,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      ErrorMapper.toUserMessage(snapshot.error!),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Nessuna dieta salvata in cloud."));
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history, size: 50, color: Colors.grey),
+                  SizedBox(height: 10),
+                  Text("Nessuna dieta salvata nel cloud."),
+                ],
+              ),
+            );
           }
 
           final diets = snapshot.data!;
@@ -34,59 +63,32 @@ class HistoryScreen extends StatelessWidget {
               final diet = diets[index];
               DateTime date = DateTime.now();
               if (diet['uploadedAt'] != null) {
-                date = (diet['uploadedAt'] as Timestamp).toDate();
+                date = (diet['uploadedAt'] as dynamic).toDate();
               }
+              final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(date);
 
-              // [Replace the existing ListTile in ListView.builder with this updated version]
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
-                  leading: const Icon(Icons.history_edu, size: 32),
-                  title: Text(
-                    "Dieta del ${DateFormat('dd/MM/yyyy HH:mm').format(date)}",
-                  ),
+                  leading: const Icon(Icons.cloud_done, color: Colors.blue),
+                  title: Text("Dieta del $dateStr"),
                   subtitle: const Text("Tocca per ripristinare"),
-                  // --- NEW: Add Delete Button ---
                   trailing: IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (c) => AlertDialog(
-                          title: const Text("Elimina Dieta"),
-                          content: const Text(
-                            "Sei sicuro di voler eliminare questa versione salvata? L'azione è irreversibile.",
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(c),
-                              child: const Text("Annulla"),
+                    onPressed: () async {
+                      try {
+                        await firestore.deleteDiet(diet['id']);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ErrorMapper.toUserMessage(e)),
                             ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.red,
-                              ),
-                              onPressed: () async {
-                                await firestore.deleteDiet(
-                                  diet['id'],
-                                ); // Calls the new method
-                                if (!context.mounted) return;
-
-                                Navigator.pop(c);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Dieta eliminata."),
-                                  ),
-                                );
-                              },
-                              child: const Text("Elimina"),
-                            ),
-                          ],
-                        ),
-                      );
+                          );
+                        }
+                      }
                     },
                   ),
-                  // ------------------------------
                   onTap: () {
                     showDialog(
                       context: context,
@@ -109,7 +111,10 @@ class HistoryScreen extends StatelessWidget {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text("Dieta ripristinata!"),
+                                  content: Text(
+                                    "Dieta ripristinata con successo!",
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
                                 ),
                               );
                             },

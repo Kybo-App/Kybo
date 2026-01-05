@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../core/error_handler.dart'; // [IMPORTANTE]
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -21,17 +22,18 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await _auth.signInWithGoogle();
       if (mounted) {
-        // Replace LoginScreen with MainScreen instead of popping
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } catch (e) {
       if (mounted) {
+        // [UX] Errore tradotto
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore Google: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -43,47 +45,35 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
+
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text.trim();
+
     try {
+      if (email.isEmpty || pass.isEmpty) {
+        throw const FormatException("Inserisci email e password.");
+      }
+
       if (_isLogin) {
-        // LOGIN FLOW
-        await _auth.signIn(_emailCtrl.text.trim(), _passCtrl.text.trim());
-
-        // Modification 1: Security Check
-        final user = _auth.currentUser;
-        if (user != null && !user.emailVerified) {
-          await _auth.signOut(); // Logout immediately
-          throw Exception(
-            "Email non verificata. Controlla la tua casella di posta.",
-          );
-        }
-
-        if (mounted) {
-          // Replace LoginScreen with MainScreen instead of popping
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-          );
-        }
+        await _auth.signIn(email, pass);
       } else {
-        // REGISTRATION FLOW
-        await _auth.signUp(_emailCtrl.text.trim(), _passCtrl.text.trim());
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Registrazione avvenuta! Controlla la posta per verificare l'email.",
-              ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 4),
-            ),
-          );
-          // Switch to login mode instead of closing
-          setState(() => _isLogin = true);
-        }
+        await _auth.signUp(email, pass);
+      }
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {
+        // [UX] Errore tradotto
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(ErrorMapper.toUserMessage(e)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -94,48 +84,80 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isLogin ? "Accedi" : "Registrati")),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.eco, size: 80, color: Colors.green),
+                const SizedBox(height: 20),
+                Text(
+                  _isLogin ? "Bentornato!" : "Crea Account",
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _emailCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Email",
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Password",
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: 24),
+                if (_isLoading)
+                  const CircularProgressIndicator()
+                else
+                  Column(
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: _submit,
+                          child: Text(_isLogin ? "ACCEDI" : "REGISTRATI"),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.g_mobiledata, size: 28),
+                          label: const Text("Accedi con Google"),
+                          onPressed: _googleLogin,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => setState(() => _isLogin = !_isLogin),
+                  child: Text(
+                    _isLogin
+                        ? "Non hai un account? Registrati"
+                        : "Hai già un account? Accedi",
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passCtrl,
-              decoration: const InputDecoration(labelText: "Password"),
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 24),
-            if (_isLoading)
-              const CircularProgressIndicator()
-            else
-              FilledButton(
-                onPressed: _submit,
-                child: Text(_isLogin ? "Accedi" : "Registrati"),
-              ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.g_mobiledata, size: 28),
-              label: const Text("Accedi con Google"),
-              onPressed: _isLoading ? null : _googleLogin,
-            ),
-            TextButton(
-              onPressed: () => setState(() => _isLogin = !_isLogin),
-              child: Text(
-                _isLogin
-                    ? "Non hai un account? Registrati"
-                    : "Hai già un account? Accedi",
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
