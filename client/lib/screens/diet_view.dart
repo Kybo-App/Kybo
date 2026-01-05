@@ -4,34 +4,47 @@ import '../providers/diet_provider.dart';
 import '../widgets/meal_card.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
+import '../core/error_handler.dart';
 
 class DietView extends StatelessWidget {
-  final TabController tabController;
-  final List<String> days;
+  final String day;
   final Map<String, dynamic>? dietData;
   final bool isLoading;
   final Map<String, ActiveSwap> activeSwaps;
   final Map<String, dynamic>? substitutions;
   final List<PantryItem> pantryItems;
   final bool isTranquilMode;
-  final Function(String, String) onConsume;
-  final Function(String, String, int, String, String) onEdit;
-  final Function(String, int) onSwap;
 
   const DietView({
     super.key,
-    required this.tabController,
-    required this.days,
+    required this.day,
     required this.dietData,
     required this.isLoading,
     required this.activeSwaps,
     required this.substitutions,
     required this.pantryItems,
     required this.isTranquilMode,
-    required this.onConsume,
-    required this.onEdit,
-    required this.onSwap,
   });
+
+  // Funzione helper per capire se è oggi
+  bool _isToday(String dayName) {
+    final now = DateTime.now();
+    final italianDays = [
+      "Lunedì",
+      "Martedì",
+      "Mercoledì",
+      "Giovedì",
+      "Venerdì",
+      "Sabato",
+      "Domenica",
+    ];
+    // weekday 1=Lunedì, quindi index = weekday - 1
+    int index = now.weekday - 1;
+    if (index >= 0 && index < italianDays.length) {
+      return italianDays[index].toLowerCase() == dayName.toLowerCase();
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,36 +57,36 @@ class DietView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.no_meals, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
+            Icon(Icons.description_outlined, size: 60, color: Colors.grey[300]),
+            const SizedBox(height: 10),
             const Text(
-              "Nessuna dieta caricata.\nUsa il menu laterale per iniziare!",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              "Nessuna dieta caricata.",
+              style: TextStyle(color: Colors.grey),
             ),
           ],
         ),
       );
     }
 
-    return TabBarView(
-      controller: tabController,
-      children: days.map((day) {
-        if (!dietData!.containsKey(day)) {
-          return const Center(child: Text("Riposo o nessun dato."));
-        }
-        return _buildDayList(context, day);
-      }).toList(),
-    );
-  }
+    final mealsOfDay = dietData![day];
 
-  Widget _buildDayList(BuildContext context, String day) {
-    final provider = context.read<DietProvider>();
-    final dayPlan = dietData![day];
+    if (mealsOfDay == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bed_outlined, size: 60, color: Colors.grey[300]),
+            const SizedBox(height: 10),
+            Text(
+              "Riposo (nessun piano per $day)",
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
 
-    if (dayPlan == null) return const Center(child: Text("Nessun piano."));
-
-    const mealOrder = [
+    final mealTypes = [
       "Colazione",
       "Seconda Colazione",
       "Spuntino",
@@ -84,175 +97,123 @@ class DietView extends StatelessWidget {
       "Nell'Arco Della Giornata",
     ];
 
-    final validMeals = mealOrder.where((mealName) {
-      final foods = dayPlan[mealName];
-      return foods != null && (foods as List).isNotEmpty;
-    }).toList();
+    // Calcoliamo se è oggi una volta sola per il build
+    final bool isCurrentDay = _isToday(day);
 
-    final allKeys = (dayPlan as Map<String, dynamic>).keys.toList();
-    for (var key in allKeys) {
-      if (!mealOrder.contains(key) && !validMeals.contains(key)) {
-        final foods = dayPlan[key];
-        if (foods != null && (foods as List).isNotEmpty) {
-          validMeals.add(key);
-        }
-      }
-    }
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      child: RefreshIndicator(
+        onRefresh: () async =>
+            context.read<DietProvider>().refreshAvailability(),
+        child: ListView(
+          padding: const EdgeInsets.only(top: 10, bottom: 80),
+          children: mealTypes.map((mealType) {
+            if (!mealsOfDay.containsKey(mealType)) {
+              return const SizedBox.shrink();
+            }
 
-    if (validMeals.isEmpty) {
-      return const Center(
-        child: Text(
-          "Giorno Libero! 🎉",
-          style: TextStyle(fontSize: 18, color: Colors.green),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        await provider.refreshAvailability();
-      },
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        itemCount: validMeals.length,
-        itemBuilder: (context, index) {
-          final mealName = validMeals[index];
-          final foods = dayPlan[mealName];
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: MealCard(
+            return MealCard(
               day: day,
-              mealName: mealName,
-              foods: foods,
+              mealName: mealType,
+              foods: List.from(mealsOfDay[mealType]),
               activeSwaps: activeSwaps,
-              availabilityMap: provider.availabilityMap,
+              availabilityMap: context.watch<DietProvider>().availabilityMap,
               isTranquilMode: isTranquilMode,
-              onSwap: (String fullKey, int cad) => onSwap(fullKey, cad),
-              onEdit: (int itemIndex, String name, String qty) =>
-                  onEdit(day, mealName, itemIndex, name, qty),
-              onEat: (dishIndex) async {
-                final availabilityKey = "${day}_${mealName}_$dishIndex";
-                final isAvailable =
-                    provider.availabilityMap[availabilityKey] ?? false;
-
-                if (!isAvailable) {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text("Ingrediente Mancante"),
-                      content: const Text(
-                        "Questo piatto non risulta disponibile in frigo.\nVuoi segnarlo come mangiato lo stesso?",
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text(
-                            "Annulla",
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _attemptConsume(
-                              context,
-                              provider,
-                              day,
-                              mealName,
-                              dishIndex,
-                            );
-                          },
-                          child: const Text("Sì, procedi"),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  _attemptConsume(context, provider, day, mealName, dishIndex);
-                }
-              },
-            ),
-          );
-        },
+              isToday: isCurrentDay, // [FIX] Passiamo l'info se è oggi
+              onEat: (index) => _handleConsume(context, day, mealType, index),
+              onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
+              onEdit: (index, name, qty) => context
+                  .read<DietProvider>()
+                  .updateDietMeal(day, mealType, index, name, qty),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Future<void> _attemptConsume(
+  Future<void> _handleConsume(
     BuildContext context,
-    DietProvider provider,
     String day,
-    String mealName,
-    int dishIndex,
+    String mealType,
+    int index,
   ) async {
+    final provider = context.read<DietProvider>();
     try {
-      await provider.consumeMeal(day, mealName, dishIndex);
+      await provider.consumeMeal(day, mealType, index);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Pasto consumato! 😋"),
+            content: Text("Pasto consumato!"),
             duration: Duration(seconds: 1),
           ),
         );
       }
-    } on UnitMismatchException catch (e) {
-      if (context.mounted) {
-        _showMismatchDialog(context, provider, e, day, mealName, dishIndex);
-      }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+      if (!context.mounted) return;
+
+      if (e is UnitMismatchException) {
+        _showConversionDialog(context, provider, e);
+      } else if (e is IngredientException) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Ingrediente Mancante"),
+            content: Text(
+              "${e.message}\n\nVuoi segnarlo come consumato ugualmente?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("No"),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  provider.consumeMeal(day, mealType, index, force: true);
+                },
+                child: const Text("Sì, consuma"),
+              ),
+            ],
+          ),
         );
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
       }
     }
   }
 
-  void _showMismatchDialog(
+  void _showConversionDialog(
     BuildContext context,
     DietProvider provider,
     UnitMismatchException e,
-    String day,
-    String mealType,
-    int index,
   ) {
-    final item = e.item;
-    final reqQty = e.requiredQty;
-    final reqUnit = e.requiredUnit;
-
-    final TextEditingController ctrl = TextEditingController();
-
+    final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Unità Diversa ⚖️"),
+        title: const Text("Conversione Unità"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Richiesto: $reqQty $reqUnit"),
-            Text("Dispensa: ${item.quantity} ${item.unit} (${item.name})"),
-            const SizedBox(height: 16),
-            Text("Quanti '${item.unit}' hai consumato?"),
-            TextField(
-              controller: ctrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: InputDecoration(
-                hintText: "Es. ${item.quantity}",
-                suffixText: item.unit,
-              ),
-              autofocus: true,
+            Text(
+              "La dieta usa '${e.requiredUnit}' ma in dispensa hai '${e.item.unit}'.",
             ),
-            const SizedBox(height: 8),
-            const Text(
-              "Il sistema imparerà questa conversione per il futuro.",
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            const SizedBox(height: 10),
+            Text(
+              "A quanti ${e.item.unit} corrisponde 1 ${e.requiredUnit}?",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                suffixText: e.item.unit,
+                border: const OutlineInputBorder(),
+              ),
             ),
           ],
         ),
@@ -262,37 +223,85 @@ class DietView extends StatelessWidget {
             child: const Text("Annulla"),
           ),
           FilledButton(
-            onPressed: () async {
-              final val = double.tryParse(ctrl.text.replaceAll(',', '.'));
+            onPressed: () {
+              double? val = double.tryParse(
+                controller.text.replaceAll(',', '.'),
+              );
               if (val != null && val > 0) {
-                // Gestione specifica per 'pz' (unità sconosciuta)
-                if (reqUnit == 'pz') {
-                  // Impariamo che 1 pz = X unità dispensa (val/reqQty)
-                  double pzConversion = val / reqQty;
-                  await provider.resolveUnitMismatch(
-                    item.name,
-                    'pz',
-                    pzConversion,
-                  );
-                  // Impariamo anche che l'unità dispensa è la base (1.0)
-                  await provider.resolveUnitMismatch(item.name, item.unit, 1.0);
-                } else {
-                  double gramsPerUnit = reqQty / val;
-                  await provider.resolveUnitMismatch(
-                    item.name,
-                    item.unit,
-                    gramsPerUnit,
-                  );
-                }
-                if (!context.mounted) return;
+                provider.resolveUnitMismatch(
+                  e.item.name,
+                  e.requiredUnit,
+                  e.item.unit,
+                  val,
+                );
                 Navigator.pop(ctx);
-                _attemptConsume(context, provider, day, mealType, index);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Conversione salvata. Riprova a consumare."),
+                  ),
+                );
               }
             },
-            child: const Text("Conferma"),
+            child: const Text("Salva"),
           ),
         ],
       ),
+    );
+  }
+
+  void _showSwapDialog(BuildContext context, String swapKey, int cadCode) {
+    final subs = context.read<DietProvider>().substitutions;
+
+    // [FIX] Controllo preventivo se ci sono sostituzioni
+    if (subs == null ||
+        !subs.containsKey(cadCode.toString()) ||
+        subs[cadCode.toString()]['options'] == null ||
+        (subs[cadCode.toString()]['options'] as List).isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Nessuna Sostituzione"),
+          content: const Text(
+            "Il nutrizionista non ha indicato alternative per questo alimento.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final subGroup = subs[cadCode.toString()];
+    final List<dynamic> options = subGroup['options'];
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return ListView.builder(
+          itemCount: options.length,
+          itemBuilder: (ctx, idx) {
+            final opt = options[idx];
+            return ListTile(
+              title: Text(opt['name']),
+              subtitle: Text(opt['qty'] ?? ""),
+              onTap: () {
+                final newSwap = ActiveSwap(
+                  name: opt['name'],
+                  qty: opt['qty'] ?? "",
+                  unit: "",
+                  swappedIngredients: [],
+                );
+                context.read<DietProvider>().swapMeal(swapKey, newSwap);
+                Navigator.pop(ctx);
+              },
+            );
+          },
+        );
+      },
     );
   }
 }

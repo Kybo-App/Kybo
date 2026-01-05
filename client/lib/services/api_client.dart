@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:retry/retry.dart';
+import 'package:flutter/foundation.dart';
 import '../core/env.dart';
 
+// Eccezione per errori di business (es. 400, 500, dati non validi)
 class ApiException implements Exception {
   final String message;
   final int statusCode;
@@ -13,6 +15,7 @@ class ApiException implements Exception {
   String toString() => 'ApiException: $message (Code: $statusCode)';
 }
 
+// Eccezione per errori di rete (es. Timeout, DNS)
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
@@ -30,7 +33,6 @@ class ApiClient {
     String filePath, {
     Map<String, String>? fields,
   }) async {
-    // Retry only on network errors, not on timeouts (timeouts are final)
     final r = RetryOptions(
       maxAttempts: 3,
       delayFactor: const Duration(seconds: 1),
@@ -41,12 +43,16 @@ class ApiClient {
         () async {
           return await _performUpload(endpoint, filePath, fields);
         },
+        // Riprova solo su errori di rete puri, non su errori logici (4xx/5xx)
         retryIf: (e) =>
-            e is NetworkException || (e is ApiException && e.statusCode >= 500),
+            e is SocketException ||
+            e is TimeoutException ||
+            e is NetworkException,
       );
     } catch (e) {
-      if (e is ApiException) rethrow;
-      throw NetworkException('Operation failed: $e');
+      // Logga l'errore grezzo per debug
+      debugPrint("🛑 ApiClient Error: $e");
+      rethrow; // Passa la palla al Repository -> Provider
     }
   }
 
@@ -55,69 +61,70 @@ class ApiClient {
     String filePath,
     Map<String, String>? fields,
   ) async {
+    var uri = Uri.parse('${Env.apiUrl}$endpoint');
+    var request = http.MultipartRequest('POST', uri);
+
+    // Headers di sicurezza base
+    request.headers.addAll({'Accept': 'application/json'});
+
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+
+    // Verifica esistenza file prima dell'invio
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw const FileSystemException("Il file da caricare non esiste");
+    }
+
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    debugPrint("🚀 Uploading to $uri...");
+
     try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${Env.apiUrl}$endpoint'),
-      );
-
-      // Auth Token
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final token = await user.getIdToken(false);
-        request.headers['Authorization'] = 'Bearer $token';
-      }
-
-      // Add File
-      request.files.add(await http.MultipartFile.fromPath('file', filePath));
-
-      // Add Fields
-      if (fields != null) {
-        request.fields.addAll(fields);
-      }
-
-      // [FIX] Added generous timeout (5 min) to prevent infinite hangs
-      // while allowing time for AI processing.
       var streamedResponse = await request.send().timeout(
-        const Duration(seconds: 300),
+        const Duration(seconds: 60), // Timeout generoso per upload
         onTimeout: () {
-          throw NetworkException("Timeout: Server took too long to respond.");
+          throw NetworkException("Il server non risponde. Connessione lenta.");
         },
       );
 
       var response = await http.Response.fromStream(streamedResponse);
+      debugPrint("📥 Response Status: ${response.statusCode}");
 
-      // Handle Response
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) return {};
         try {
           return json.decode(utf8.decode(response.bodyBytes));
         } catch (e) {
           throw ApiException(
-            "Invalid JSON response from server",
+            "Risposta server non valida (JSON corrotto)",
             response.statusCode,
           );
         }
       } else {
-        // Parse Error
-        String errorMsg = response.body;
+        // Gestione errori server
+        String errorMsg = "Errore sconosciuto";
         try {
           final errorJson = json.decode(utf8.decode(response.bodyBytes));
           if (errorJson is Map && errorJson.containsKey('detail')) {
-            final detail = errorJson['detail'];
-            errorMsg = detail is String ? detail : detail.toString();
+            errorMsg = errorJson['detail'].toString();
           }
         } catch (_) {
-          // Truncate non-JSON HTML errors
-          if (errorMsg.length > 200) {
-            errorMsg = "${errorMsg.substring(0, 200)}...";
-          }
+          // Fallback se non è JSON
+          errorMsg = response.body.isNotEmpty
+              ? response.body.substring(0, min(response.body.length, 200))
+              : "Errore HTTP ${response.statusCode}";
         }
         throw ApiException(errorMsg, response.statusCode);
       }
+    } on SocketException {
+      throw NetworkException("Nessuna connessione internet.");
     } catch (e) {
-      if (e is ApiException) rethrow;
-      throw NetworkException('Network error: $e');
+      if (e is ApiException || e is NetworkException) rethrow;
+      throw ApiException("Errore imprevisto: $e", 500);
     }
   }
+
+  int min(int a, int b) => a < b ? a : b;
 }

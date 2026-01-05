@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
 // --- THEME COLORS ---
+
 class AppColors {
-  static const primary = Color(0xFF2E7D32); // Primary Green
-  static const secondary = Color(0xFFE65100); // Accent Orange
-  static const scaffoldBackground = Color(0xFFF5F5F5);
-  static const surface = Colors.white;
-  static const inputFill = Color(0xFFF5F5F5); // Grey 100 equivalent
+  // Nuovo Verde "Forest" (Più serio e integrato)
+  static const Color primary = Color(0xFF2E7D32);
+
+  // Verde chiaro per sfondi/accenti leggeri
+  static const Color secondary = Color(0xFF81C784);
+
+  static const Color accent = Colors.orange;
+  static const Color scaffoldBackground = Color(0xFFF5F5F5);
+  static const Color surface = Colors.white;
 }
 
 // --- LISTE KEYWORDS ---

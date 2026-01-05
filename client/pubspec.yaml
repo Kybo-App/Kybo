@@ -48,6 +48,7 @@ flutter:
   assets:
     - assets/dieta.json
     - assets/spesa_importata.json
+    - assets/icon/icon.png
     - ./.env
     - ./.env.prod
 

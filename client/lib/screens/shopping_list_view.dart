@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
+import '../constants.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
@@ -35,7 +36,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     "Sabato",
     "Domenica",
   ];
-
   final List<String> _orderedMealTypes = [
     "Colazione",
     "Seconda Colazione",
@@ -109,7 +109,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     return ExpansionTile(
                       leading: Checkbox(
                         value: areAllSelected,
-                        activeColor: Theme.of(context).colorScheme.primary,
+                        activeColor: AppColors.primary,
                         onChanged: (bool? value) {
                           setStateDialog(() {
                             if (value == true) {
@@ -126,7 +126,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           fontWeight: i == 0
                               ? FontWeight.bold
                               : FontWeight.normal,
-                          color: i == 0 ? Colors.green[800] : Colors.black87,
+                          color: i == 0 ? AppColors.primary : Colors.black87,
                         ),
                       ),
                       children: mealNames.map((meal) {
@@ -136,7 +136,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           title: Text(meal),
                           value: isSelected,
                           dense: true,
-                          activeColor: Theme.of(context).colorScheme.primary,
+                          activeColor: AppColors.primary,
                           contentPadding: const EdgeInsets.only(
                             left: 60,
                             right: 20,
@@ -162,14 +162,14 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                   child: const Text("Annulla"),
                 ),
                 FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
                   onPressed: () {
                     _generateListFromSelection();
                     Navigator.pop(context);
                   },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
-                  child: const Text("Importa Selezionati"),
+                  child: const Text("Importa"),
                 ),
               ],
             );
@@ -181,10 +181,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
   void _generateListFromSelection() {
     if (_selectedMealKeys.isEmpty) return;
-
-    // 1. Fase di Aggregazione (Nome + Nome = Somma)
-    // "Parmigiano" + "Parmigiano" = "Parmigiano" (somma)
-    // "Parmigiano" + "Parmigiano Grattugiato" = 2 entrate diverse
     Map<String, Map<String, dynamic>> neededItems = {};
 
     try {
@@ -200,8 +196,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
         for (var food in foods) {
           String qty = food['qty']?.toString() ?? "";
-          bool isHeader = qty == "N/A";
-          if (isHeader) {
+          if (qty == "N/A") {
             if (currentGroup.isNotEmpty) {
               groupedFoods.add(List.from(currentGroup));
             }
@@ -237,11 +232,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             if (food['ingredients'] != null &&
                 (food['ingredients'] as List).isNotEmpty) {
               for (var ing in food['ingredients']) {
-                String iName = ing['name']?.toString() ?? "";
-                String iQty = ing['qty']?.toString() ?? "";
-                if (iName.isNotEmpty) {
-                  _addToAggregator(neededItems, iName, iQty);
-                }
+                _addToAggregator(
+                  neededItems,
+                  ing['name']?.toString() ?? "",
+                  ing['qty']?.toString() ?? "",
+                );
               }
             } else {
               String qtyStr = food['qty']?.toString() ?? "";
@@ -252,19 +247,14 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         }
       }
     } catch (e) {
-      debugPrint("Error generating list: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Errore interno nella generazione dati.")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Errore generazione lista")));
       return;
     }
 
     List<String> newList = List.from(widget.shoppingList);
     int addedCount = 0;
-
-    // 2. Clone della Dispensa per il "Double Dipping Check"
-    // Questo permette a "Parmigiano" e "Parmigiano Grattugiato" di pescare
-    // sequenzialmente dallo stesso barattolo virtuale.
     List<PantryItem> tempPantry = widget.pantryItems
         .map(
           (p) => PantryItem(name: p.name, quantity: p.quantity, unit: p.unit),
@@ -276,7 +266,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       String unit = data['unit'];
       String cleanNameLower = name.trim().toLowerCase();
 
-      // Cerca corrispondenza (Fuzzy Match) nella dispensa clonata
       var pantryMatch = tempPantry.where((p) {
         String pName = p.name.trim().toLowerCase();
         return pName == cleanNameLower ||
@@ -285,10 +274,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       }).firstOrNull;
 
       double existingQty = 0.0;
-
       if (pantryMatch != null) {
         existingQty = pantryMatch.quantity;
-        // Normalizzazione unità (Kg -> g, L -> ml)
         if (pantryMatch.unit.toLowerCase() == 'kg' &&
             unit.toLowerCase() == 'g') {
           existingQty *= 1000;
@@ -301,12 +288,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
       double finalQty = neededQty - existingQty;
 
-      // Aggiorna dispensa virtuale (CONSUMO)
       if (pantryMatch != null) {
         if (finalQty <= 0) {
-          // Ce n'era abbastanza. Riduciamo la dispensa temp di quanto consumato.
           double consumed = neededQty;
-          // De-normalizzazione per salvataggio
           if (pantryMatch.unit.toLowerCase() == 'kg' &&
               unit.toLowerCase() == 'g') {
             consumed /= 1000;
@@ -315,13 +299,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
               unit.toLowerCase() == 'ml') {
             consumed /= 1000;
           }
-
           pantryMatch.quantity = (pantryMatch.quantity - consumed).clamp(
             0.0,
             9999.0,
           );
         } else {
-          // Non bastava. Svuotiamo virtualmente il barattolo.
           pantryMatch.quantity = 0.0;
         }
       }
@@ -333,8 +315,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         String entry = (finalQty == 0 || unit.isEmpty)
             ? name
             : "$name ($displayQty $unit)";
-
-        // Evita duplicati solo se esattamente identici (stesso nome e stessa qta calcolata)
         if (!newList.any((e) => e == entry)) {
           newList.add(entry);
           addedCount++;
@@ -347,7 +327,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("Aggiunti $addedCount prodotti!"),
-        backgroundColor: Colors.green[700],
+        backgroundColor: AppColors.primary,
       ),
     );
   }
@@ -366,15 +346,10 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       String numPart = match.group(1)!.replaceAll(',', '.');
       qty = double.tryParse(numPart) ?? 0.0;
       unit = qtyStr.replaceAll(match.group(0)!, '').trim();
-      if (name.toLowerCase().contains(unit.toLowerCase()) && unit.length > 2) {
-        unit = "";
-      }
     } else {
       unit = qtyStr;
     }
 
-    // Aggregazione Case-Insensitive ma nome-specifica
-    // "Parmigiano" != "Parmigiano Grattugiato" -> Restano separati qui
     String cleanName = name.trim();
     if (cleanName.isNotEmpty) {
       cleanName = "${cleanName[0].toUpperCase()}${cleanName.substring(1)}";
@@ -393,16 +368,13 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   void _moveCheckedToPantry() {
     int count = 0;
     List<String> newList = [];
-
     for (String item in widget.shoppingList) {
       if (item.startsWith("OK_")) {
         String content = item.substring(3);
-
         final RegExp regExp = RegExp(
           r'^(.*?)(?:\s*\((\d+(?:[.,]\d+)?)\s*(.*)\))?$',
         );
         final match = regExp.firstMatch(content);
-
         String name = content;
         double qty = 1.0;
         String unit = "pz";
@@ -411,7 +383,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           name = match.group(1)?.trim() ?? content;
           String? qtyStr = match.group(2);
           String? unitStr = match.group(3);
-
           if (qtyStr != null) {
             qty = double.tryParse(qtyStr.replaceAll(',', '.')) ?? 1.0;
           }
@@ -420,7 +391,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             if (unit.endsWith(')')) unit = unit.substring(0, unit.length - 1);
           }
         }
-
         widget.onAddToPantry(name, qty, unit);
         count++;
       } else {
@@ -431,11 +401,10 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     if (count > 0) {
       widget.onUpdateList(newList);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Spostati $count prodotti nel frigo! 🏠")),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Seleziona prima i prodotti comprati!")),
+        SnackBar(
+          content: Text("$count prodotti nel frigo!"),
+          backgroundColor: AppColors.primary,
+        ),
       );
     }
   }
@@ -445,103 +414,159 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     bool hasCheckedItems = widget.shoppingList.any((i) => i.startsWith("OK_"));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (hasCheckedItems)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: FloatingActionButton.extended(
-                heroTag: "moveToPantry",
-                onPressed: _moveCheckedToPantry,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                icon: const Icon(Icons.kitchen, color: Colors.white),
-                label: const Text(
-                  "Sposta nel Frigo",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          FloatingActionButton.extended(
-            heroTag: "importDiet",
-            onPressed: _showImportDialog,
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            icon: const Icon(Icons.auto_awesome, color: Colors.white),
-            label: const Text(
-              "Importa da Dieta",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-      body: widget.shoppingList.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: AppColors.scaffoldBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // HEADER
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Row(
                 children: [
-                  Icon(
-                    Icons.shopping_cart_outlined,
-                    size: 80,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 20),
+                  Icon(Icons.shopping_cart, size: 28, color: AppColors.primary),
+                  SizedBox(width: 10),
                   Text(
-                    "Lista Vuota",
-                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
+                    "Lista della Spesa",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              itemCount: widget.shoppingList.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final item = widget.shoppingList[index];
-                bool isChecked = item.startsWith("OK_");
-                String display = isChecked ? item.substring(3) : item;
+            ),
 
-                return Dismissible(
-                  key: Key(item + index.toString()),
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) {
-                    var list = List<String>.from(widget.shoppingList);
-                    list.removeAt(index);
-                    widget.onUpdateList(list);
-                  },
-                  child: Card(
-                    child: CheckboxListTile(
-                      value: isChecked,
-                      activeColor: Theme.of(context).colorScheme.primary,
-                      title: Text(
-                        display,
-                        style: TextStyle(
-                          decoration: isChecked
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: isChecked ? Colors.grey : Colors.black87,
-                        ),
+            // LISTA (Design Coerente con MealCard)
+            Expanded(
+              child: widget.shoppingList.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.list_alt,
+                            size: 60,
+                            color: Colors.grey[300],
+                          ),
+                          const Text("Lista Vuota"),
+                        ],
                       ),
-                      onChanged: (val) {
-                        var list = List<String>.from(widget.shoppingList);
-                        if (val == true) {
-                          list[index] = "OK_$display";
-                        } else {
-                          list[index] = display;
-                        }
-                        widget.onUpdateList(list);
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: widget.shoppingList.length,
+                      itemBuilder: (context, index) {
+                        String raw = widget.shoppingList[index];
+                        bool isChecked = raw.startsWith("OK_");
+                        String display = isChecked ? raw.substring(3) : raw;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Dismissible(
+                            key: Key(raw + index.toString()),
+                            onDismissed: (_) {
+                              var list = List<String>.from(widget.shoppingList);
+                              list.removeAt(index);
+                              widget.onUpdateList(list);
+                            },
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: Icon(Icons.delete, color: Colors.red[800]),
+                            ),
+                            child: CheckboxListTile(
+                              value: isChecked,
+                              activeColor: AppColors.primary,
+                              checkColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 2,
+                              ),
+                              title: Text(
+                                display,
+                                style: TextStyle(
+                                  decoration: isChecked
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: isChecked
+                                      ? Colors.grey
+                                      : const Color(0xFF2D3436),
+                                  fontWeight: isChecked
+                                      ? FontWeight.normal
+                                      : FontWeight.w500,
+                                ),
+                              ),
+                              onChanged: (val) {
+                                var list = List<String>.from(
+                                  widget.shoppingList,
+                                );
+                                list[index] = val == true
+                                    ? "OK_$display"
+                                    : display;
+                                widget.onUpdateList(list);
+                              },
+                            ),
+                          ),
+                        );
                       },
                     ),
-                  ),
-                );
-              },
             ),
+
+            // FOOTER CON BOTTONI
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: hasCheckedItems
+                            ? AppColors.primary
+                            : Colors.grey,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: hasCheckedItems ? _moveCheckedToPantry : null,
+                      icon: const Icon(Icons.kitchen, color: Colors.white),
+                      label: const Text(
+                        "Sposta nel Frigo",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: AppColors.accent),
+                      ),
+                      onPressed: _showImportDialog,
+                      icon: const Icon(Icons.download, color: AppColors.accent),
+                      label: const Text(
+                        "Importa da Dieta",
+                        style: TextStyle(color: AppColors.accent),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

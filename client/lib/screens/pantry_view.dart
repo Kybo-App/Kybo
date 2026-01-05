@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
+import '../constants.dart';
 
 class PantryView extends StatefulWidget {
   final List<PantryItem> pantryItems;
@@ -31,223 +32,200 @@ class _PantryViewState extends State<PantryView> {
       widget.onAddManual(_nameController.text.trim(), qty, _unit);
       _nameController.clear();
       _qtyController.clear();
-      FocusScope.of(context).unfocus(); // Chiude la tastiera
+      FocusScope.of(context).unfocus();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: AppColors.scaffoldBackground,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: widget.onScanTap,
-        icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text("Scan Scontrino"),
-        // Use Secondary (Orange) to encourage scanning
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        foregroundColor: Colors.white,
+        icon: const Icon(Icons.camera_alt, color: Colors.white),
+        label: const Text(
+          "Scansiona Scontrino",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: AppColors.primary,
       ),
-      body: Column(
-        children: [
-          // --- AREA INPUT ---
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(16),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: const [
+                  Icon(Icons.kitchen, size: 28, color: AppColors.primary),
+                  SizedBox(width: 10),
+                  Text(
+                    "La tua Dispensa",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      hintText: "Cibo (es. Pasta)",
-                      prefixIcon: Icon(Icons.edit_note, color: Colors.grey),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                    ),
+
+            // INPUT FORM (Stile Pulito)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: _qtyController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      hintText: "0",
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _unit,
-                      icon: const Icon(
-                        Icons.arrow_drop_down,
-                        color: Colors.green,
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        hintText: "Aggiungi cibo...",
+                        border: InputBorder.none,
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'g', child: Text("g")),
-                        DropdownMenuItem(value: 'pz', child: Text("pz")),
-                      ],
-                      onChanged: (val) => setState(() => _unit = val!),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _handleAdd,
-                  icon: const Icon(Icons.add),
-                  style: IconButton.styleFrom(
-                    // Use Primary (Green) for standard add action
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  Container(
+                    width: 1,
+                    height: 24,
+                    color: Colors.grey[200],
+                  ), // Separatore
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _qtyController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(
+                        hintText: "Qtà",
+                        border: InputBorder.none,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- GRIGLIA PRODOTTI ---
-          Expanded(
-            child: widget.pantryItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.kitchen_outlined,
-                          size: 64,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "La dispensa è vuota",
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                  DropdownButton<String>(
+                    value: _unit,
+                    underline: const SizedBox(),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.grey,
+                    ),
+                    items: ['g', 'ml', 'pz', 'vasetto', 'fette']
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(
+                              e,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                    physics: const BouncingScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 1.4,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                    itemCount: widget.pantryItems.length,
-                    itemBuilder: (context, index) {
-                      final item = widget.pantryItems[index];
-                      bool isLow = item.quantity < 2;
-
-                      String initial = item.name.isNotEmpty
-                          ? item.name[0].toUpperCase()
-                          : "?";
-
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.close,
-                                  size: 18,
-                                  color: Colors.grey[300],
-                                ),
-                                onPressed: () => widget.onRemove(index),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: isLow
-                                        ? Colors.orange[50]
-                                        : Colors.green[50],
-                                    radius: 18,
-                                    child: Text(
-                                      initial,
-                                      style: TextStyle(
-                                        color: isLow
-                                            ? Colors.orange
-                                            : Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    item.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    "${item.quantity.toInt()} ${item.unit}",
-                                    style: TextStyle(
-                                      color: isLow
-                                          ? Colors.orange
-                                          : Colors.green[700],
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _unit = v!),
                   ),
-          ),
-        ],
+                  IconButton(
+                    icon: const Icon(
+                      Icons.add_circle,
+                      color: AppColors.primary,
+                      size: 28,
+                    ),
+                    onPressed: _handleAdd,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // LISTA (Stile Card Identico alla DietView)
+            Expanded(
+              child: widget.pantryItems.isEmpty
+                  ? Center(
+                      child: Text(
+                        "Dispensa vuota",
+                        style: TextStyle(color: Colors.grey[400]),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: widget.pantryItems.length,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                      itemBuilder: (context, index) {
+                        final item = widget.pantryItems[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Dismissible(
+                            key: Key("${item.name}_$index"),
+                            direction: DismissDirection.endToStart,
+                            onDismissed: (_) => widget.onRemove(index),
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.red[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.delete, color: Colors.red[800]),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.inventory_2_outlined,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Text(
+                                item.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2D3436),
+                                ),
+                              ),
+                              trailing: Text(
+                                "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

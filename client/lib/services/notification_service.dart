@@ -1,11 +1,12 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
-import '../services/storage_service.dart'; // Assicurati che l'import sia corretto
+import '../services/storage_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -16,26 +17,27 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  // Getter per inventory_service
   FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin =>
       _localNotifications;
 
   bool _isInitialized = false;
 
+  // [FIX] Nome risorsa senza estensione e senza @drawable/
+  // [TEST] Usa l'icona di avvio temporaneamente
+  static const String _iconName = '@mipmap/launcher_icon';
+
   Future<void> init() async {
     if (_isInitialized) return;
 
     try {
-      // 1. Inizializza Timezones (Fondamentale per gli allarmi orari)
       tz.initializeTimeZones();
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
 
-      // 2. Setup Android
+      // [FIX] Inizializzazione corretta per Flutter (Raw resource name)
       const AndroidInitializationSettings androidSettings =
-          AndroidInitializationSettings('@drawable/ic_stat_logo');
+          AndroidInitializationSettings(_iconName);
 
-      // 3. Setup iOS (Permessi base)
       final DarwinInitializationSettings iosSettings =
           DarwinInitializationSettings(
             requestAlertPermission: true,
@@ -50,13 +52,12 @@ class NotificationService {
 
       await _localNotifications.initialize(initSettings);
 
-      // 4. Setup Firebase (Push esterne)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         _showLocalNotification(message);
       });
 
       _isInitialized = true;
-      debugPrint("✅ Notification Service Initialized (con Timezones)");
+      debugPrint("✅ Notification Service Initialized");
     } catch (e) {
       debugPrint("⚠️ Notification Init Error: $e");
     }
@@ -69,19 +70,13 @@ class NotificationService {
         badge: true,
         sound: true,
       );
-
       if (Platform.isAndroid) {
-        await _localNotifications
+        final androidPlugin = _localNotifications
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission();
-
-        await _localNotifications
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestExactAlarmsPermission();
+            >();
+        await androidPlugin?.requestNotificationsPermission();
+        await androidPlugin?.requestExactAlarmsPermission();
       }
     } catch (e) {
       debugPrint("Permission Error: $e");
@@ -96,7 +91,6 @@ class NotificationService {
     }
   }
 
-  /// Mostra notifica push in primo piano
   Future<void> _showLocalNotification(RemoteMessage message) async {
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
@@ -108,42 +102,40 @@ class NotificationService {
         notification.body,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'high_importance_channel',
-            'Notifiche Importanti',
+            // [FIX] NUOVO ID CANALE per forzare aggiornamento cache Android
+            'kybo_channel_v3',
+            'Notifiche Kybo',
+            channelDescription: 'Canale principale notifiche',
             importance: Importance.max,
             priority: Priority.high,
+            icon: _iconName, // [FIX] Icona esplicita
+            color: Color(0xFF4CAF50), // Verde Kybo
           ),
         ),
       );
     }
   }
 
-  /// [RIPRISTINATO] Schedula gli allarmi salvati in locale
   Future<void> scheduleAllMeals() async {
     if (!_isInitialized) await init();
-
-    // Cancelliamo i vecchi per non averne doppi
     await _localNotifications.cancelAll();
 
-    // Carichiamo gli allarmi salvati dall'utente
     final storage = StorageService();
     List<Map<String, dynamic>> alarms = await storage.loadAlarms();
-
-    debugPrint("⏰ Schedulazione ${alarms.length} allarmi...");
 
     for (var alarm in alarms) {
       final int id =
           alarm['id'] ?? DateTime.now().millisecondsSinceEpoch % 100000;
       final String timeStr = alarm['time'] ?? "08:00";
-      final String title = alarm['label'] ?? "Pasto";
-      final String body = alarm['body'] ?? "È ora di mangiare!";
-
-      // Parsing ora:minuti
       final parts = timeStr.split(":");
-      final int hour = int.parse(parts[0]);
-      final int minute = int.parse(parts[1]);
 
-      await _scheduleDaily(id, title, body, hour, minute);
+      await _scheduleDaily(
+        id,
+        alarm['label'] ?? "Pasto",
+        alarm['body'] ?? "È ora di mangiare!",
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
     }
   }
 
@@ -162,23 +154,23 @@ class NotificationService {
         _nextInstanceOf(hour, minute),
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'daily_meals_channel',
+            'kybo_meals_channel_v3', // [FIX] Nuovo ID anche qui
             'Promemoria Pasti',
-            channelDescription: 'Canale per gli allarmi dei pasti giornalieri',
+            channelDescription: 'Canale pasti giornalieri',
             importance: Importance.high,
             priority: Priority.high,
+            icon: _iconName, // [FIX] Icona esplicita
+            color: Color(0xFF4CAF50),
           ),
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents:
-            DateTimeComponents.time, // Ripeti ogni giorno alla stessa ora
+        matchDateTimeComponents: DateTimeComponents.time,
       );
-      debugPrint("✅ Allarme impostato: $title alle $hour:$minute");
     } catch (e) {
-      debugPrint("❌ Errore schedulazione $title: $e");
+      debugPrint("❌ Errore schedulazione: $e");
     }
   }
 

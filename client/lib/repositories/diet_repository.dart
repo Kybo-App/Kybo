@@ -6,6 +6,9 @@ class DietRepository {
   final ApiClient _client = ApiClient();
 
   Future<DietPlan> uploadDiet(String filePath, {String? fcmToken}) async {
+    // Non serve try-catch qui: se fallisce, l'errore risale al Provider
+    // che mostrerà il messaggio utente corretto.
+
     final Map<String, String> fields = {};
     if (fcmToken != null) {
       fields['fcm_token'] = fcmToken;
@@ -16,6 +19,7 @@ class DietRepository {
       filePath,
       fields: fields,
     );
+
     return DietPlan.fromJson(response);
   }
 
@@ -23,7 +27,6 @@ class DietRepository {
     String filePath,
     List<String> allowedFoods,
   ) async {
-    // Serialize list to JSON string to send as form field
     final String foodsJson = jsonEncode(allowedFoods);
 
     final response = await _client.uploadFile(
