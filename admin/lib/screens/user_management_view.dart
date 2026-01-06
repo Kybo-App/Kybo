@@ -263,7 +263,6 @@ class _UserManagementViewState extends State<UserManagementView> {
     String targetUid,
     Map<String, String> nutritionists,
   ) async {
-    // Only for INDEPENDENT users
     String? selectedNutId;
     if (nutritionists.isNotEmpty) selectedNutId = nutritionists.keys.first;
 
@@ -330,7 +329,6 @@ class _UserManagementViewState extends State<UserManagementView> {
     String targetUid,
     Map<String, String> nutritionists,
   ) async {
-    // For ALREADY ASSIGNED users: Move or Unassign
     String? selectedNutId;
     if (nutritionists.isNotEmpty) selectedNutId = nutritionists.keys.first;
 
@@ -734,7 +732,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 400,
-        mainAxisExtent: 240, // Increased height for extra buttons
+        mainAxisExtent: 240,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -750,7 +748,7 @@ class _UserManagementViewState extends State<UserManagementView> {
             (docs[index].data() as Map)['first_name'] ?? 'User',
           ),
           onEdit: _editUser,
-          onAssign: null, // Nutritionists can't re-assign users in this view
+          onAssign: null,
           currentUserRole: _currentUserRole,
           currentUserId: _currentUserId,
           roleColor: _getRoleColor(
@@ -765,7 +763,6 @@ class _UserManagementViewState extends State<UserManagementView> {
     List<DocumentSnapshot> docs,
     Map<String, String> nutNameMap,
   ) {
-    // Grouping Collections
     final admins = <DocumentSnapshot>[];
     final independents = <DocumentSnapshot>[];
     final nutritionistGroups = <String, List<DocumentSnapshot>>{};
@@ -984,14 +981,45 @@ class _UserCard extends StatelessWidget {
     required this.roleColor,
   });
 
+  // --- PRIVACY HELPERS ---
+  String _maskEmail(String email) {
+    if (email.length <= 4) return "****";
+    final parts = email.split('@');
+    if (parts.length != 2) return "****";
+    return "${parts[0][0]}***@***.${parts[1].split('.').last}";
+  }
+
+  String _maskName(String name) {
+    final parts = name.split(' ');
+    if (parts.isEmpty) return "***";
+    return parts.map((p) => p.isNotEmpty ? "${p[0]}***" : "*").join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = doc.data() as Map<String, dynamic>;
     final role = data['role'] ?? 'user';
-    final firstName = data['first_name'] ?? '';
-    final lastName = data['last_name'] ?? '';
-    final name = "$firstName $lastName";
-    final email = data['email'] ?? '';
+
+    // Dati Originali
+    final realFirstName = data['first_name'] ?? '';
+    final realLastName = data['last_name'] ?? '';
+    final realName = "$realFirstName $realLastName";
+    final realEmail = data['email'] ?? '';
+
+    // --- LOGICA PRIVACY AGGIORNATA ---
+    final bool isAdmin = currentUserRole == 'admin';
+
+    // Un "Professionista" è un Nutrizionista o un altro Admin.
+    // I loro dati sono di business, quindi l'Admin DEVE poterli vedere.
+    final bool isTargetProfessional =
+        (role == 'nutritionist' || role == 'admin');
+
+    // Mascheriamo SOLO se sono Admin E sto guardando un utente "semplice" (Paziente)
+    final bool shouldMask = isAdmin && !isTargetProfessional;
+
+    final String displayName = shouldMask ? _maskName(realName) : realName;
+    final String displayEmail = shouldMask ? _maskEmail(realEmail) : realEmail;
+
     final date = data['created_at'] != null
         ? DateFormat(
             'dd MMM yyyy',
@@ -1000,12 +1028,22 @@ class _UserCard extends StatelessWidget {
     final createdBy = data['created_by'];
     final requiresPassChange = data['requires_password_change'] == true;
 
-    bool showParser = role == 'nutritionist';
-    bool showDiet = role == 'user' || role == 'independent';
-    bool canDelete = currentUserRole == 'admin' || role == 'user';
+    // --- LOGICA PERMESSI AZIONI ---
+    // 1. Configurazione Parser: SOLO Admin (Gestione tecnica)
+    bool showParser = isAdmin;
+
+    // 2. Caricamento Dieta / Storico: SOLO Nutrizionista (Privacy Sanitaria)
+    // L'Admin non deve vedere le diete dei pazienti.
+    bool showDiet = !isAdmin && (role == 'user' || role == 'independent');
+
+    // 3. Eliminazione: Admin (gestione piattaforma) o Nutrizionista (sui suoi pazienti)
+    bool canDelete = isAdmin || (role == 'user' && createdBy == currentUserId);
+
+    // 4. Modifica: Admin (limitata) o Nutrizionista (sui suoi pazienti)
     bool canEdit =
-        requiresPassChange &&
-        (currentUserRole == 'admin' || createdBy == currentUserId);
+        requiresPassChange && (isAdmin || createdBy == currentUserId);
+
+    // 5. Assegnazione: Solo per utenti non assegnati
     bool canAssign =
         (role == 'independent' || role == 'user') && onAssign != null;
 
@@ -1021,7 +1059,9 @@ class _UserCard extends StatelessWidget {
                   radius: 24,
                   backgroundColor: roleColor.withValues(alpha: 0.2),
                   child: Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : "?",
+                    displayName.isNotEmpty && !displayName.startsWith('*')
+                        ? displayName[0].toUpperCase()
+                        : "?",
                     style: TextStyle(
                       color: roleColor,
                       fontWeight: FontWeight.bold,
@@ -1034,7 +1074,7 @@ class _UserCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name,
+                        displayName,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -1042,19 +1082,21 @@ class _UserCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        email,
+                        displayEmail,
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      // [DEBUG] Show Document ID to identify duplicates
-                      Text(
-                        "DOC ID: ${doc.id}",
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      // Mostriamo l'UID all'Admin per debug tecnico (utile se il nome è mascherato)
+                      if (isAdmin)
+                        Text(
+                          "UID: ${doc.id}",
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -1097,6 +1139,7 @@ class _UserCard extends StatelessWidget {
                 ),
               ),
             const Divider(),
+            // --- AZIONI ---
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -1111,6 +1154,8 @@ class _UserCard extends StatelessWidget {
                         : "Assegna a Nutrizionista",
                     onPressed: () => onAssign!(data['uid']),
                   ),
+
+                // DIETE: Visibili SOLO se NON sei Admin (Privacy Sanitaria)
                 if (showDiet) ...[
                   IconButton(
                     icon: const Icon(Icons.history, color: Colors.teal),
@@ -1123,21 +1168,31 @@ class _UserCard extends StatelessWidget {
                     onPressed: () => onUploadDiet(data['uid']),
                   ),
                 ],
+
+                // PARSER: Visibile SOLO se sei Admin (Tool Tecnico)
                 if (showParser)
                   IconButton(
                     icon: const Icon(
                       Icons.settings_applications,
                       color: Colors.orange,
                     ),
-                    tooltip: "Configura Parser",
+                    tooltip: "Configura Parser (Tecnico)",
                     onPressed: () => onUploadParser(data['uid']),
                   ),
+
                 if (canEdit)
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.indigo),
                     tooltip: "Modifica",
-                    onPressed: () =>
-                        onEdit(data['uid'], email, firstName, lastName),
+                    // Qui passiamo i dati REALI al form di modifica.
+                    // L'Admin può modificare l'email anche se è mascherata nella lista?
+                    // Sì, perché nel form di modifica deve poter correggere errori.
+                    onPressed: () => onEdit(
+                      data['uid'],
+                      realEmail,
+                      realFirstName,
+                      realLastName,
+                    ),
                   ),
                 if (canDelete)
                   IconButton(
@@ -1359,7 +1414,6 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
       setState(() => _isLoading = true);
       try {
         await _repo.uploadParserConfig(widget.targetUid, result.files.single);
-        // Ora 'mounted' garantisce che il 'context' della classe sia valido
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Configurazione aggiornata!")),
@@ -1422,7 +1476,6 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
                       Expanded(
                         child: TabBarView(
                           children: [
-                            // Tab 1: Current
                             SingleChildScrollView(
                               padding: const EdgeInsets.all(16),
                               child: Text(
@@ -1430,7 +1483,6 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
                                     "Nessuna configurazione personalizzata attiva (usa default).",
                               ),
                             ),
-                            // Tab 2: History
                             StreamBuilder<QuerySnapshot>(
                               stream: FirebaseFirestore.instance
                                   .collection('users')

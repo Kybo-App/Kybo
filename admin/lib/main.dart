@@ -221,6 +221,7 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           .get();
       final role = doc.data()?['role'];
 
+      // ACCESSO CONSENTITO SOLO A STAFF
       if (role == 'admin' || role == 'nutritionist') {
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -228,11 +229,31 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           );
         }
       } else {
+        // BLOCCA CLIENT E INDEPENDENT
         await FirebaseAuth.instance.signOut();
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Accesso Negato: Non sei autorizzato."),
+          showDialog(
+            context: context,
+            barrierDismissible: false, // L'utente deve premere il tasto
+            builder: (ctx) => AlertDialog(
+              title: const Text("Accesso Web non consentito"),
+              content: const Text(
+                "Questa dashboard è riservata ai Nutrizionisti.\n\n"
+                "Se sei un cliente, scarica l'App Kybo sul tuo smartphone per gestire il piano.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop(); // Chiude il dialog
+                    // Rimanda al login pulito
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  child: const Text("Torna indietro"),
+                ),
+              ],
             ),
           );
         }

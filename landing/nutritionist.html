@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kybo Pro - Per Nutrizionisti</title>
+    <meta
+      name="description"
+      content="La piattaforma per nutrizionisti che semplifica la gestione dei pazienti."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary: #2e7d32;
+        --primary-dark: #1b5e20;
+        --accent: #e65100;
+        --bg-light: #f5f5f5;
+        --text-main: #0f172a;
+        --text-muted: #475569;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg-light);
+        color: var(--text-main);
+        line-height: 1.6;
+      }
+
+      /* HEADER */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 40px;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: var(--primary);
+        text-decoration: none;
+      }
+      .brand img {
+        height: 40px;
+        width: auto;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: inline-block;
+        cursor: pointer;
+        border: none;
+      }
+      .btn-primary {
+        background-color: var(--primary);
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-1px);
+      }
+      .btn-outline {
+        border: 2px solid var(--primary);
+        color: var(--primary);
+        background: transparent;
+      }
+      .btn-outline:hover {
+        background: var(--primary);
+        color: white;
+      }
+
+      /* HERO */
+      .hero-pro {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+      }
+      .hero-pro h1 {
+        font-size: 3rem;
+        margin-bottom: 20px;
+        color: var(--text-main);
+        line-height: 1.2;
+      }
+      .hero-pro span {
+        color: var(--primary);
+      }
+      .hero-pro p {
+        font-size: 1.2rem;
+        color: var(--text-muted);
+        max-width: 700px;
+        margin: 0 auto 40px;
+      }
+
+      /* FEATURES GRID */
+      .features-section {
+        padding: 60px 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .feature-row {
+        display: flex;
+        align-items: center;
+        gap: 50px;
+        margin-bottom: 80px;
+      }
+      .feature-row:nth-child(even) {
+        flex-direction: row-reverse;
+      }
+      .feature-text {
+        flex: 1;
+      }
+      .feature-text h3 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+      }
+      .feature-text p {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        margin-bottom: 20px;
+      }
+      .feature-visual {
+        flex: 1;
+        background: #e0e7df;
+        height: 300px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: var(--primary);
+      }
+
+      /* CTA FINAL */
+      .cta-box {
+        background-color: var(--text-main);
+        color: white;
+        text-align: center;
+        padding: 60px 20px;
+        margin: 40px 20px;
+        border-radius: 20px;
+      }
+      .cta-box h2 {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+      }
+      .cta-box p {
+        font-size: 1.2rem;
+        color: #cbd5e1;
+        margin-bottom: 30px;
+      }
+
+      /* RESPONSIVE */
+      @media (max-width: 768px) {
+        .hero-pro h1 {
+          font-size: 2.2rem;
+        }
+        .feature-row {
+          flex-direction: column;
+          text-align: center;
+          gap: 30px;
+        }
+        .feature-row:nth-child(even) {
+          flex-direction: column;
+        }
+      }
+    </style>
+    <link rel="icon" href="icon.ico" type="image/ico" />
+  </head>
+  <body>
+    <header>
+      <a href="index.html" class="brand">
+        <img
+          src="logo.png"
+          alt="Kybo Logo"
+          onerror="this.style.display='none'"
+        />
+        <span>Kybo.</span>
+      </a>
+      <div class="nav-actions">
+        <a
+          href="index.html"
+          style="
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-right: 20px;
+          "
+          >Per i Clienti</a
+        >
+        <a href="mailto:info@kybo.it" class="btn btn-primary">Contattaci</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero-pro">
+        <h1>Fidelizza i pazienti.<br /><span>Automatizza il resto.</span></h1>
+        <p>
+          Kybo non è solo un software per fare diete. È l'ecosistema che
+          connette il tuo piano nutrizionale alla vita reale del paziente, dalla
+          spesa alla cucina.
+        </p>
+        <div style="display: flex; gap: 15px; justify-content: center">
+          <a href="#contatti" class="btn btn-primary">Richiedi una Demo</a>
+        </div>
+      </section>
+
+      <section class="features-section">
+        <div class="feature-row">
+          <div class="feature-text">
+            <h3>Dashboard di Controllo</h3>
+            <p>
+              Gestisci tutti i tuoi pazienti da un unico pannello. Carica i
+              piani nutrizionali in formato digitale, modifica i macro e
+              monitora lo stato di assegnazione in tempo reale.
+            </p>
+            <ul style="list-style: none; color: var(--text-muted)">
+              <li>✅ Gestione anagrafica pazienti</li>
+              <li>✅ Upload rapido dei piani</li>
+              <li>✅ Assegnazione istantanea all'App</li>
+            </ul>
+          </div>
+          <div class="feature-visual">💻</div>
+        </div>
+
+        <div class="feature-row">
+          <div class="feature-text">
+            <h3>Il paziente non si sente solo</h3>
+            <p>
+              Dimentica i PDF stampati e persi. Il tuo cliente riceve la dieta
+              direttamente sull'App Kybo. Può segnare i pasti completati e
+              vedere i progressi.
+            </p>
+            <p>
+              <strong>Meno domande su WhatsApp, più aderenza al piano.</strong>
+            </p>
+          </div>
+          <div class="feature-visual">📱</div>
+        </div>
+
+        <div class="feature-row">
+          <div class="feature-text">
+            <h3>Lista della Spesa Automatica</h3>
+            <p>
+              Una delle cause principali di abbandono è la disorganizzazione.
+              Kybo genera automaticamente la lista della spesa per il paziente
+              basandosi sul tuo piano settimanale e sulla loro dispensa.
+            </p>
+          </div>
+          <div class="feature-visual">🛒</div>
+        </div>
+      </section>
+
+      <section id="contatti" class="cta-box">
+        <h2>Porta il tuo studio nel futuro.</h2>
+        <p>
+          Stiamo selezionando un numero limitato di nutrizionisti per il lancio
+          della piattaforma.<br />
+          Richiedi l'accesso anticipato per provare Kybo.
+        </p>
+
+        <a
+          href="mailto:info@kybo.it?subject=Richiesta%20Demo%20Kybo%20Pro&body=Salve%2C%20sono%20un%20nutrizionista%20e%20vorrei%20sapere%20di%20pi%C3%B9%20su%20Kybo."
+          class="btn"
+          style="
+            background-color: white;
+            color: black;
+            font-size: 1.1rem;
+            padding: 15px 30px;
+          "
+        >
+          Parla con noi
+        </a>
+      </section>
+    </main>
+
+    <footer
+      style="
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      "
+    >
+      <p>&copy; 2026 Kybo. Tutti i diritti riservati.</p>
+    </footer>
+  </body>
+</html>
