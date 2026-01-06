@@ -3,6 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- HELPER FUNCTIONS ---
+    
+    // Base checks
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,53 +12,94 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    // Fetch the current user's document from the database
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+
+    // Recupera il ruolo dell'utente (dal Token Auth o dal Documento DB)
+    // Nota: L'uso del Token (Custom Claims) è più veloce ed economico se implementato.
+    // Qui usiamo un fallback sul documento per sicurezza.
+    function getUserRole() {
+       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // Check if user is Admin/Nutritionist via Token OR Database (Fallback)
-    function isAdmin() {
+    function hasRole(roleName) {
       return isSignedIn() && (
-        (request.auth.token.keys().hasAny(['role']) && request.auth.token.role in ['admin', 'nutritionist']) ||
-        getUserData().role in ['admin', 'nutritionist']
+        (request.auth.token.keys().hasAny(['role']) && request.auth.token.role == roleName) ||
+        getUserRole() == roleName
       );
+    }
+
+    // --- CHECK RELAZIONALE NUTRIZIONISTA-PAZIENTE ---
+    // Verifica se chi fa la richiesta è il Nutrizionista assegnato a quel paziente
+    function isAssignedNutritionist(targetUid) {
+       let targetUserDoc = get(/databases/$(database)/documents/users/$(targetUid)).data;
+       return hasRole('nutritionist') && (
+          targetUserDoc.created_by == request.auth.uid || 
+          targetUserDoc.nutritionist_id == request.auth.uid
+       );
     }
 
     // --- RULES ---
 
-    // 1. Config: Public Read
+    // 1. Configurazione Globale (Stato Manutenzione)
     match /config/global {
-      allow read: if true;
-      allow write: if false;
+      allow read: if true; // Pubblico per permettere il check all'avvio
+      allow write: if hasRole('admin'); // Solo Admin modifica lo stato
     }
 
-    // 2. Diet History (Global): Admins only
-    match /diet_history/{document=**} {
-      allow read, write: if isAdmin();
-    }
-
-    // 3. User Data    
+    // 2. Utenti (Profilo Anagrafico)
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId); // Allow creation and updates
-      allow delete: if false; // Prevent deletion
+      // READ: 
+      // - Proprietario
+      // - Admin (per gestione account/ban, ma vede dati mascherati da UI)
+      // - Nutrizionista Assegnato (per vedere chi è il paziente)
+      allow read: if isOwner(userId) || hasRole('admin') || isAssignedNutritionist(userId);
       
-      // Diets: Owner can do everything. Admin can read.
+      // WRITE:
+      // - Proprietario (aggiorna propri dati)
+      // - Admin (ban, delete, assegnazione)
+      // - Nutrizionista Assegnato (gestione note o link)
+      allow create: if isSignedIn(); 
+      allow update: if isOwner(userId) || hasRole('admin') || isAssignedNutritionist(userId);
+      allow delete: if hasRole('admin'); // Solo Admin può cancellare fisicamente
+
+      // --- SOTTO-COLLEZIONI SENSIBILI ---
+
+      // A. DIETA ATTIVA (Dati Sanitari)
       match /diets/{dietId} {
-        allow read, write: if isOwner(userId);
-        allow read: if isAdmin();
+        // ADMIN BLOCCATO QUI: Non può leggere né scrivere
+        allow read: if isOwner(userId) || isAssignedNutritionist(userId);
+        allow write: if isAssignedNutritionist(userId); // Il Nutrizionista carica la dieta
+        // Nota: L'owner potrebbe aver bisogno di write se deve segnare i pasti "consumati"
+        allow update: if isOwner(userId); 
       }
       
-      // Parser History: Admin only (Nutritionist config)
+      // B. STORICO LOCALE (Sync)
+      match /history/{docId} {
+        allow read: if isOwner(userId) || isAssignedNutritionist(userId);
+        allow write: if isOwner(userId);
+      }
+
+      // C. PARSER HISTORY (Dati Tecnici)
       match /parser_history/{docId} {
-        allow read: if isAdmin();
-        allow write: if false; // Backend writes this
+        // SOLO ADMIN. Il nutrizionista non vede i log tecnici, l'utente nemmeno.
+        allow read: if hasRole('admin');
+        allow write: if hasRole('admin'); 
       }
     }
 
-    // Deny all other access
+    // 3. Archivio PDF Globale (Diet History)
+    // Usato per la schermata "Storico Diete"
+    match /diet_history/{docId} {
+      // ADMIN BLOCCATO QUI.
+      // Legge solo chi possiede la dieta o il nutrizionista assegnato a quell'utente
+      allow read: if isOwner(resource.data.userId) || isAssignedNutritionist(resource.data.userId);
+      
+      // Scrittura: Di solito fa il Backend con privilegi speciali, 
+      // ma se carica il Nutrizionista da Client, serve questo:
+      allow create: if isAssignedNutritionist(request.resource.data.userId);
+      allow delete: if isAssignedNutritionist(resource.data.userId); 
+    }
+
+    // Blocca tutto il resto per sicurezza
     match /{document=**} {
       allow read, write: if false;
     }
