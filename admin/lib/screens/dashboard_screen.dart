@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_management_view.dart';
 import 'config_view.dart';
 import '../widgets/diet_logo.dart';
+import 'audit_log_view.dart'; // Assicurati di aver creato questo file come detto prima
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -46,15 +47,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     // Definiamo le viste disponibili in base al ruolo
+    // NOTA: L'ordine qui deve corrispondere all'ordine dei tasti nella sidebar!
     final List<Widget> views = [
-      const UserManagementView(),
-      if (_isAdmin) const ConfigView(), // Solo gli admin vedono la config
+      const UserManagementView(), // Index 0
+      if (_isAdmin) const ConfigView(), // Index 1 (Admin Only)
+      if (_isAdmin) const AuditLogView(), // Index 2 (Admin Only - NUOVO)
     ];
 
-    // Se un nutrizionista prova ad andare su config (index 1) ma non esiste, resetta a 0
+    // Se un nutrizionista prova ad andare su index non validi, resetta a 0
     if (_selectedIndex >= views.length) {
       _selectedIndex = 0;
     }
+
+    // Titolo dinamico in base alla pagina selezionata
+    String pageTitle = "Utenti";
+    if (_selectedIndex == 1) pageTitle = "Configurazione";
+    if (_selectedIndex == 2) pageTitle = "Audit Logs";
 
     return Scaffold(
       body: Row(
@@ -77,10 +85,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const DietLogo(
-                        size: 40,
-                        isDarkBackground: true,
-                      ), // <--- YOUR LOGO
+                      const DietLogo(size: 40, isDarkBackground: true),
                       const SizedBox(width: 12),
                       const Text(
                         "Kybo",
@@ -105,14 +110,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: () => setState(() => _selectedIndex = 0),
                 ),
 
-                // Mostra "Impostazioni" SOLO se è Admin
-                if (_isAdmin)
+                // Voci Admin
+                if (_isAdmin) ...[
                   _SidebarItem(
                     icon: Icons.settings_outlined,
                     label: "Impostazioni",
                     isSelected: _selectedIndex == 1,
                     onTap: () => setState(() => _selectedIndex = 1),
                   ),
+                  // --- NUOVO TASTO AUDIT LOG ---
+                  _SidebarItem(
+                    icon: Icons.security, // Icona scudo/sicurezza
+                    label: "Audit Logs (Legale)",
+                    isSelected: _selectedIndex == 2,
+                    onTap: () => setState(() => _selectedIndex = 2),
+                  ),
+                ],
 
                 const Spacer(),
 
@@ -152,8 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              _userRole
-                                  .toUpperCase(), // Mostra il ruolo vero (es. NUTRITIONIST)
+                              _userRole.toUpperCase(),
                               style: TextStyle(
                                 color: Colors.grey[400],
                                 fontSize: 10,
@@ -188,7 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   alignment: Alignment.centerLeft,
                   color: Colors.white,
                   child: Text(
-                    _selectedIndex == 0 ? "Utenti" : "Configurazione",
+                    pageTitle,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
@@ -199,6 +211,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(32.0),
+                    // Qui viene mostrata la vista corretta dalla lista 'views'
                     child: views[_selectedIndex],
                   ),
                 ),
