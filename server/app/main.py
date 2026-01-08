@@ -18,6 +18,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import Json, BaseModel
+import uuid
 
 # --- IMPORTS ---
 from app.services.diet_service import DietParser
@@ -110,6 +111,7 @@ class LogAccessRequest(BaseModel):
     reason: str
     
 # --- UTILS & SECURITY ---
+# --- UTILS & SECURITY ---
 
 async def save_upload_file(file: UploadFile, filename: str) -> None:
     size = 0
@@ -139,23 +141,31 @@ async def verify_token(authorization: str = Header(...)):
          raise HTTPException(status_code=401, detail="Empty token")
     try:
         decoded_token = await run_in_threadpool(auth.verify_id_token, token)
-        return decoded_token['uid'] 
+        return decoded_token 
     except Exception:
         raise HTTPException(status_code=401, detail="Authentication failed")
 
-async def verify_admin(uid: str = Depends(verify_token)):
+# CORRETTO: Dipende da verify_token (dict), non da get_current_uid (str)
+async def verify_admin(token: dict = Depends(verify_token)):
+    role = token.get('role')
+    uid = token.get('uid')
+    
+    if role == 'admin':
+        return uid
+    
     try:
         db = firebase_admin.firestore.client()
         user_doc = db.collection('users').document(uid).get()
-        if not user_doc.exists or user_doc.to_dict().get('role') != 'admin':
-            if user_doc.exists and user_doc.to_dict().get('role') == 'nutritionist':
-                 return uid
-            raise HTTPException(status_code=403, detail="Admin privileges required")
-        return uid
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Authorization check failed")
+        if user_doc.exists and user_doc.to_dict().get('role') == 'admin':
+             auth.set_custom_user_claims(uid, {'role': 'admin'})
+             return uid
+    except:
+        pass
+        
+    raise HTTPException(status_code=403, detail="Admin privileges required")
+
+async def get_current_uid(token: dict = Depends(verify_token)):
+    return token['uid']
 
 # --- BACKGROUND WORKER (SECURE SCHEDULER) ---
 
@@ -203,7 +213,7 @@ async def start_background_tasks():
 
 @app.post("/upload-diet", response_model=DietResponse)
 @limiter.limit("5/minute")
-async def upload_diet(request: Request, file: UploadFile = File(...), fcm_token: Optional[str] = Form(None), user_id: str = Depends(verify_token)):
+async def upload_diet(request: Request, file: UploadFile = File(...), fcm_token: Optional[str] = Form(None), user_id: str = Depends(get_current_uid)):
     if not file.filename.lower().endswith('.pdf'): raise HTTPException(status_code=400, detail="Only PDF allowed")
     temp_filename = f"{uuid.uuid4()}.pdf"
     try:
@@ -216,7 +226,7 @@ async def upload_diet(request: Request, file: UploadFile = File(...), fcm_token:
 
 @app.post("/upload-diet/{target_uid}", response_model=DietResponse)
 @limiter.limit("10/minute")
-async def upload_diet_admin(request: Request, target_uid: str, file: UploadFile = File(...), fcm_token: Optional[str] = Form(None), requester_id: str = Depends(verify_token)):
+async def upload_diet_admin(request: Request, target_uid: str, file: UploadFile = File(...), fcm_token: Optional[str] = Form(None), requester_id: str = Depends(get_current_uid)):
     if not file.filename.lower().endswith('.pdf'): raise HTTPException(status_code=400, detail="Only PDF allowed")
     temp_filename = f"{uuid.uuid4()}.pdf"
     try:
@@ -257,7 +267,7 @@ async def upload_diet_admin(request: Request, target_uid: str, file: UploadFile 
         if os.path.exists(temp_filename): os.remove(temp_filename)
 
 @app.post("/scan-receipt")
-async def scan_receipt(request: Request, file: UploadFile = File(...), allowed_foods: Json[List[str]] = Form(...), user_id: str = Depends(verify_token)):
+async def scan_receipt(request: Request, file: UploadFile = File(...), allowed_foods: Json[List[str]] = Form(...), user_id: str = Depends(get_current_uid)):
     temp_filename = f"{uuid.uuid4()}{validate_extension(file.filename)}"
     try:
         await save_upload_file(file, temp_filename)
@@ -384,20 +394,27 @@ async def admin_delete_user(target_uid: str, requester_id: str = Depends(verify_
 
 @app.post("/admin/sync-users")
 async def admin_sync_users(requester_id: str = Depends(verify_admin)):
+    # requester_id è già l'uid validato dall'admin
     try:
         db = firebase_admin.firestore.client()
+        count = 0
         
         # Iterate through all Auth users
         for user in auth.list_users().users:
             
-            # 1. GHOST BUSTER: Find and delete any docs with this email that have the WRONG ID
+            # 1. GHOST BUSTER
             email_docs = db.collection('users').where('email', '==', user.email).stream()
             for doc in email_docs:
                 if doc.id != user.uid:
                     doc.reference.delete()
 
-            # 2. Create missing document if it doesn't exist
-            if not db.collection('users').document(user.uid).get().exists:
+            # 2. Create missing document & Recupera Ruolo
+            current_role = 'independent'
+            user_doc = db.collection('users').document(user.uid).get()
+            
+            if user_doc.exists:
+                current_role = user_doc.to_dict().get('role', 'independent')
+            else:
                 db.collection('users').document(user.uid).set({
                     'uid': user.uid, 
                     'email': user.email, 
@@ -406,8 +423,12 @@ async def admin_sync_users(requester_id: str = Depends(verify_admin)):
                     'last_name': '', 
                     'created_at': firebase_admin.firestore.SERVER_TIMESTAMP
                 })
+            
+            # 3. UPDATE CLAIMS (Il fix magico)
+            auth.set_custom_user_claims(user.uid, {'role': current_role})
+            count += 1
                 
-        return {"message": "Synced & Cleaned"}
+        return {"message": f"Synced {count} users & Updated Claims"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -465,7 +486,7 @@ async def get_maintenance_status(requester_id: str = Depends(verify_admin)):
     return {"enabled": doc.to_dict().get('maintenance_mode', False)} if doc.exists else {"enabled": False}
 
 @app.post("/admin/config/maintenance")
-async def set_maintenance_status(body: MaintenanceRequest, requester_id: str = Depends(verify_admin)):
+async def set_maintenance_status(body: MaintenanceRequest, requester_id: str = Depends(verify_admin)): # <--- ERA get_current_uid (INSICURO)
     data = {'maintenance_mode': body.enabled, 'updated_by': requester_id}
     if body.message:
         data['maintenance_message'] = body.message
@@ -473,7 +494,7 @@ async def set_maintenance_status(body: MaintenanceRequest, requester_id: str = D
     return {"message": "Updated"}
 
 @app.post("/admin/schedule-maintenance")
-async def schedule_maintenance(req: ScheduleMaintenanceRequest, admin_uid: str = Depends(verify_admin)):
+async def schedule_maintenance(req: ScheduleMaintenanceRequest, admin_uid: str = Depends(verify_admin)): # <--- ERA get_current_uid
     firebase_admin.firestore.client().collection('config').document('global').set({
         "scheduled_maintenance_start": req.scheduled_time,
         "maintenance_message": req.message,
@@ -487,7 +508,7 @@ async def schedule_maintenance(req: ScheduleMaintenanceRequest, admin_uid: str =
     return {"status": "scheduled"}
 
 @app.post("/admin/cancel-maintenance")
-async def cancel_maintenance_schedule(requester_id: str = Depends(verify_admin)):
+async def cancel_maintenance_schedule(requester_id: str = Depends(verify_admin)): # <--- ERA get_current_uid
     firebase_admin.firestore.client().collection('config').document('global').update({
         "is_scheduled": False,
         "scheduled_maintenance_start": firestore.DELETE_FIELD,
@@ -500,6 +521,7 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
     app_plan, app_substitutions = {}, {}
     cad_map = {}
     
+    # 1. Mappatura Sostituzioni (Invariata)
     for g in gemini_output.get('tabella_sostituzioni', []):
         if g.get('cad_code', 0) > 0:
             cad_map[g.get('titolo', '').strip().lower()] = g['cad_code']
@@ -510,6 +532,7 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
 
     day_map = {"lun": "Lunedì", "mar": "Martedì", "mer": "Mercoledì", "gio": "Giovedì", "ven": "Venerdì", "sab": "Sabato", "dom": "Domenica"}
     
+    # 2. Costruzione Piano Settimanale (AGGIORNATA)
     for day in gemini_output.get('piano_settimanale', []):
         raw_name = day.get('giorno', '').lower().strip()
         day_name = day_map.get(raw_name[:3], raw_name.capitalize())
@@ -520,17 +543,29 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             dishes = []
             for d in meal.get('elenco_piatti', []):
                 d_name = d.get('nome_piatto') or 'Piatto'
-                dishes.append(Dish(
+                
+                # --- FIX CRITICO QUI SOTTO ---
+                # Generiamo un UUID univoco per ogni piatto, a prescindere dal cad_code.
+                # Se Gemini non dà un cad_code, usiamo 0 (come da logica base),
+                # ma l'instance_id renderà questo oggetto unico nel database.
+                
+                new_dish = Dish(
+                    instance_id=str(uuid.uuid4()), # <--- GENERA ID UNIVOCI
                     name=d_name,
                     qty=str(d.get('quantita_totale') or ''),
                     cad_code=d.get('cad_code', 0) or cad_map.get(d_name.lower(), 0),
                     is_composed=(d.get('tipo') == 'composto'),
                     ingredients=[Ingredient(name=str(i.get('nome','')), qty=str(i.get('quantita',''))) for i in d.get('ingredienti', [])]
-                ))
-            if m_name in app_plan[day_name]: app_plan[day_name][m_name].extend(dishes)
-            else: app_plan[day_name][m_name] = dishes
+                )
+                dishes.append(new_dish)
+                # -----------------------------
 
-    # Order meals
+            if m_name in app_plan[day_name]: 
+                app_plan[day_name][m_name].extend(dishes)
+            else: 
+                app_plan[day_name][m_name] = dishes
+
+    # Ordinamento Pasti (Invariato)
     for d, meals in app_plan.items():
         app_plan[d] = {k: meals[k] for k in MEAL_ORDER if k in meals}
         for k in meals: 

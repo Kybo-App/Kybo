@@ -1,4 +1,5 @@
 from typing import List, Dict, Optional
+import uuid  # <--- AGGIUNGI QUESTO IMPORT
 from pydantic import BaseModel, Field
 
 class Ingredient(BaseModel):
@@ -6,6 +7,7 @@ class Ingredient(BaseModel):
     qty: str
 
 class Dish(BaseModel):
+    instance_id: str = Field(default_factory=lambda: str(uuid.uuid4())) # <--- NUOVO CAMPO CRITICO
     name: str
     qty: str
     cad_code: int = Field(default=0)
@@ -21,7 +23,5 @@ class SubstitutionGroup(BaseModel):
     options: List[SubstitutionOption]
 
 class DietResponse(BaseModel):
-    # Structure: { "Lunedì": { "Pranzo": [Dish, Dish] } }
     plan: Dict[str, Dict[str, List[Dish]]]
-    # Structure: { "1": SubstitutionGroup }
     substitutions: Dict[str, SubstitutionGroup]
