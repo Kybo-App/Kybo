@@ -186,7 +186,7 @@ class MealCard extends StatelessWidget {
                             originalFood['consumed'] == true;
 
                         String availKey = "${day}_${mealName}_$index";
-                        bool isAvailable = availabilityMap[availKey] ?? true;
+                        bool isAvailable = availabilityMap[availKey] ?? false;
 
                         // Ingredienti: Se scambiato, non mostriamo quelli vecchi
                         // (o potremmo mostrare quelli nuovi se 'swappedIngredients' fosse popolato)

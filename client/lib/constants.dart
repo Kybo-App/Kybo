@@ -1,3 +1,4 @@
+// ignore_for_file: constant_identifier_names
 import 'package:flutter/material.dart';
 
 // --- THEME COLORS ---
@@ -64,3 +65,18 @@ const Set<String> veggieKeywords = {
   'lattuga',
   'funghi',
 };
+
+// [AGGIUNTA PUNTO 4.3] Centralizzazione Unità di Misura
+class DietUnits {
+  static const String GRAMS = "g";
+  static const String ML = "ml";
+  static const String KG = "kg";
+  static const String LITER = "l";
+  static const String VASETTO = "vasetto";
+  static const String CUCCHIAIO = "cucchiaio";
+  static const String CUCCHIAINO = "cucchiaino";
+  static const String TAZZA = "tazza";
+  static const String BICCHIERE = "bicchiere";
+  static const String FETTE = "fette";
+  static const String PIECE = "pz";
+}

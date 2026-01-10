@@ -6,33 +6,48 @@ service cloud.firestore {
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function hasRole(roleName) { return isSignedIn() && request.auth.token.role == roleName; }
 
+    // Helper per controllare quali campi vengono modificati
+    function affectsOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
     match /config/global {
       allow read: if true;
       allow write: if hasRole('admin');
     }
 
-    match /users/{userId} {
-      // READ: Proprietario, Admin, o Nutrizionista Assegnato
-      allow read: if isOwner(userId) || hasRole('admin') || 
+		match /users/{userId} {
+      // READ: Invariato
+      allow read: if isOwner(userId) ||
+                  hasRole('admin') || 
                   (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
       
-      // WRITE: Create (chiunque), Update (proprietario/admin/nutrizionista)
+      // WRITE: Create Invariato
       allow create: if isSignedIn();
-      allow update: if isOwner(userId) || hasRole('admin') || 
-                   (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
-      
-      // DELETE: Admin O Nutrizionista Assegnato
-      allow delete: if hasRole('admin') || 
-                   (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
+
+      // UPDATE: MODIFICA QUI
+      // L'utente (isOwner) può aggiornare SOLO SE NON tocca i campi proibiti.
+      // Admin e Nutrizionista mantengono i loro permessi completi.
+      allow update: if (isOwner(userId) && 
+                        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'parent_id', 'email', 'uid', 'is_active'])) ||
+                       hasRole('admin') || 
+                       (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
+
+      // DELETE: Invariato
+      allow delete: if hasRole('admin') ||
+                       (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
 
       match /diets/{dietId} {
-        allow read, write: if isOwner(userId) || 
-                           (hasRole('nutritionist') && (get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid));
+        allow read: if isOwner(userId) || (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        // Scrittura diete: Solo Admin o Nutrizionista, MAI l'utente
+        allow write: if hasRole('admin') || (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
       }
+      
       match /history/{docId} {
-        allow read, write: if isOwner(userId) || 
-                           (hasRole('nutritionist') && (get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid));
+        allow read: if isOwner(userId) || (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if hasRole('admin') || (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
       }
+
       match /parser_history/{docId} {
         allow read, write: if hasRole('admin');
       }
@@ -41,13 +56,14 @@ service cloud.firestore {
     match /diet_history/{docId} {
       allow read: if isOwner(resource.data.userId) || hasRole('admin') || (hasRole('nutritionist') && resource.data.uploadedBy == request.auth.uid);
       allow create: if hasRole('nutritionist') || hasRole('admin');
-      allow delete: if hasRole('admin'); 
+      allow delete: if hasRole('admin');
     }
     
+    // I log di accesso sono SCRIVIBILI solo dal Backend (che bypassa le regole).
+    // Nessuno (neanche admin da client) deve poterli falsificare/cancellare.
     match /access_logs/{logId} {
        allow read: if hasRole('admin');
-       allow create: if false; 
-       allow update, delete: if false; 
+       allow create, update, delete: if false; 
     }
 
     match /{document=**} { allow read, write: if false; }

@@ -6,12 +6,14 @@ import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
 
 class StorageService {
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   Future<Map<String, dynamic>?> loadDiet() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? jsonString = prefs.getString('diet_plan');
+      // MODIFICA: Leggi da Storage Sicuro invece che da SharedPreferences
+      String? jsonString = await _storage.read(key: 'diet_plan');
       if (jsonString == null) return null;
       return jsonDecode(jsonString);
     } catch (e) {
@@ -21,14 +23,14 @@ class StorageService {
   }
 
   Future<void> saveDiet(Map<String, dynamic> dietData) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('diet_plan', jsonEncode(dietData));
+    // MODIFICA: Scrivi su Storage Sicuro
+    await _storage.write(key: 'diet_plan', value: jsonEncode(dietData));
   }
 
   Future<List<PantryItem>> loadPantry() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? jsonString = prefs.getString('pantry');
+      // MODIFICA
+      String? jsonString = await _storage.read(key: 'pantry');
       if (jsonString == null) return [];
       List<dynamic> list = jsonDecode(jsonString);
       return list.map((e) => PantryItem.fromJson(e)).toList();
@@ -39,17 +41,16 @@ class StorageService {
   }
 
   Future<void> savePantry(List<PantryItem> items) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'pantry',
-      jsonEncode(items.map((e) => e.toJson()).toList()),
+    // MODIFICA
+    await _storage.write(
+      key: 'pantry',
+      value: jsonEncode(items.map((e) => e.toJson()).toList()),
     );
   }
 
   Future<Map<String, ActiveSwap>> loadSwaps() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? jsonString = prefs.getString('active_swaps');
+      String? jsonString = await _storage.read(key: 'active_swaps');
       if (jsonString == null) return {};
       Map<String, dynamic> jsonMap = jsonDecode(jsonString);
       return jsonMap.map(
@@ -61,9 +62,8 @@ class StorageService {
   }
 
   Future<void> saveSwaps(Map<String, ActiveSwap> swaps) async {
-    final prefs = await SharedPreferences.getInstance();
     final jsonMap = swaps.map((key, value) => MapEntry(key, value.toJson()));
-    await prefs.setString('active_swaps', jsonEncode(jsonMap));
+    await _storage.write(key: 'active_swaps', value: jsonEncode(jsonMap));
   }
 
   Future<List<Map<String, dynamic>>> loadAlarms() async {
@@ -85,8 +85,8 @@ class StorageService {
 
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    await _storage.deleteAll();
+    await prefs.clear(); // Pulisce le preferenze (allarmi, conversioni)
+    await _storage.deleteAll(); // Pulisce i dati sicuri (dieta, dispensa)
   }
 
   Future<Map<String, double>> loadConversions() async {

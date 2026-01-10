@@ -20,10 +20,13 @@ class ActiveSwap {
   };
 
   // Per leggere dalla memoria
-  factory ActiveSwap.fromJson(Map<String, dynamic> json) => ActiveSwap(
-    name: json['name'] ?? '',
-    qty: json['qty'] ?? '',
-    unit: json['unit'] ?? '',
-    swappedIngredients: json['swappedIngredients'],
-  );
+  factory ActiveSwap.fromJson(Map<String, dynamic> json) {
+    return ActiveSwap(
+      name: json['name'] ?? '',
+      // FIX 2.2: Cast sicuro anche qui, se la qty fosse numerica nel JSON
+      qty: json['qty']?.toString() ?? '',
+      unit: json['unit'] ?? '',
+      swappedIngredients: json['swappedIngredients'],
+    );
+  }
 }

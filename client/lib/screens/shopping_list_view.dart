@@ -191,6 +191,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         List<dynamic>? foods = widget.dietData![day]?[meal];
         if (foods == null) continue;
 
+        // --- Logica di Raggruppamento (Invariata) ---
         List<List<dynamic>> groupedFoods = [];
         List<dynamic> currentGroup = [];
 
@@ -211,12 +212,29 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         }
         if (currentGroup.isNotEmpty) groupedFoods.add(List.from(currentGroup));
 
+        // --- Processamento Gruppi con FIX SWAP KEY ---
         for (int i = 0; i < groupedFoods.length; i++) {
           var group = groupedFoods[i];
-          String swapKey = "${day}_${meal}_group_$i";
+
+          // [FIX START] Generazione chiave corretta (InstanceID o CadCode)
+          // Prima era: String swapKey = "${day}_${meal}_group_$i"; (SBAGLIATO)
+
+          var firstItem = group.first;
+          String? instanceId = firstItem['instance_id']?.toString();
+          int cadCode = firstItem['cad_code'] ?? 0;
+
+          String swapKey;
+          if (instanceId != null && instanceId.isNotEmpty) {
+            swapKey = "${day}_${meal}_$instanceId";
+          } else {
+            swapKey = "${day}_${meal}_$cadCode";
+          }
+          // [FIX END] Ora la chiave corrisponde a quella usata in ActiveSwaps
+
           List<dynamic> itemsToAdd = group;
 
           if (widget.activeSwaps.containsKey(swapKey)) {
+            // Trovato swap attivo! Uso gli ingredienti sostitutivi.
             final swap = widget.activeSwaps[swapKey]!;
             if (swap.swappedIngredients != null &&
                 swap.swappedIngredients!.isNotEmpty) {
@@ -240,21 +258,26 @@ class _ShoppingListViewState extends State<ShoppingListView> {
               }
             } else {
               String qtyStr = food['qty']?.toString() ?? "";
+              // Salta i "N/A" se sono placeholder di gruppo
               if (qtyStr == "N/A" && itemsToAdd.length > 1) continue;
+
               _addToAggregator(neededItems, food['name'], qtyStr);
             }
           }
         }
       }
     } catch (e) {
+      debugPrint("Errore lista spesa: $e"); // Meglio loggare l'errore reale
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Errore generazione lista")));
       return;
     }
 
+    // --- (Il resto della funzione rimane identico) ---
     List<String> newList = List.from(widget.shoppingList);
     int addedCount = 0;
+
     List<PantryItem> tempPantry = widget.pantryItems
         .map(
           (p) => PantryItem(name: p.name, quantity: p.quantity, unit: p.unit),
@@ -276,6 +299,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       double existingQty = 0.0;
       if (pantryMatch != null) {
         existingQty = pantryMatch.quantity;
+        // Semplice conversione Kg/g e L/ml
         if (pantryMatch.unit.toLowerCase() == 'kg' &&
             unit.toLowerCase() == 'g') {
           existingQty *= 1000;

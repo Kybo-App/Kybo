@@ -1370,6 +1370,17 @@ class _DietDetailScreen extends StatelessWidget {
     final parsedData = data['parsedData'] as Map<String, dynamic>?;
     final plan = parsedData?['plan'] as Map<String, dynamic>?;
 
+    // Lista ordinata per forzare la sequenza corretta
+    final orderedDays = [
+      "Lunedì",
+      "Martedì",
+      "Mercoledì",
+      "Giovedì",
+      "Venerdì",
+      "Sabato",
+      "Domenica",
+    ];
+
     return Scaffold(
       appBar: AppBar(title: Text(data['fileName'] ?? "Dettaglio")),
       body: plan == null
@@ -1395,9 +1406,12 @@ class _DietDetailScreen extends StatelessWidget {
             )
           : ListView(
               padding: const EdgeInsets.all(16),
-              children: plan.entries.map((entry) {
-                final day = entry.key;
-                final meals = entry.value as Map<String, dynamic>;
+              children: orderedDays.map((day) {
+                // Se il giorno non esiste nel piano (es. dieta di 5 giorni), lo saltiamo
+                if (!plan.containsKey(day)) return const SizedBox.shrink();
+
+                final meals = plan[day] as Map<String, dynamic>;
+
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ExpansionTile(

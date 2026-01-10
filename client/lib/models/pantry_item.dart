@@ -10,9 +10,12 @@ class PantryItem {
     'quantity': quantity,
     'unit': unit,
   };
-  factory PantryItem.fromJson(Map<String, dynamic> json) => PantryItem(
-    name: json['name'],
-    quantity: json['quantity'],
-    unit: json['unit'],
-  );
+  factory PantryItem.fromJson(Map<String, dynamic> json) {
+    return PantryItem(
+      name: json['name'] ?? '',
+      // FIX 2.2: Cast sicuro (gestisce int, double e null)
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
+      unit: json['unit'] ?? '',
+    );
+  }
 }
