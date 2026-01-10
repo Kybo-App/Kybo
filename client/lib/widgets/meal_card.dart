@@ -165,9 +165,16 @@ class MealCard extends StatelessWidget {
                       children: List.generate(foods.length, (index) {
                         final originalFood = foods[index];
                         final int cadCode = originalFood['cad_code'] ?? 0;
-                        final String swapKey = "${day}_${mealName}_$cadCode";
+                        final String? instanceId = originalFood['instance_id']
+                            ?.toString();
 
-                        // --- LOGICA SWAP (NUOVA) ---
+                        // MODIFICA: Generazione chiave robusta allineata a DietLogic
+                        final String swapKey =
+                            (instanceId != null && instanceId.isNotEmpty)
+                            ? "${day}::${mealName}::$instanceId"
+                            : "${day}::${mealName}::$cadCode";
+
+                        // --- LOGICA SWAP ---
                         final bool isSwapped = activeSwaps.containsKey(swapKey);
                         final activeSwap = isSwapped
                             ? activeSwaps[swapKey]

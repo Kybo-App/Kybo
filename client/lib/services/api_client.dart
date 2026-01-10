@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:retry/retry.dart';
 import 'package:flutter/foundation.dart';
@@ -64,7 +65,16 @@ class ApiClient {
     var uri = Uri.parse('${Env.apiUrl}$endpoint');
     var request = http.MultipartRequest('POST', uri);
 
-    // Headers di sicurezza base
+    // --- FIX AUTH: INIEZIONE TOKEN ---
+    // Recuperiamo il token fresco da Firebase Auth
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      request.headers['Authorization'] = 'Bearer $token';
+      debugPrint("🔑 Token iniettato per l'upload");
+    }
+    // ---------------------------------
+
     request.headers.addAll({'Accept': 'application/json'});
 
     if (fields != null) {

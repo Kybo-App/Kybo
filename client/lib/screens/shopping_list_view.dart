@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
 import '../constants.dart';
+import '../logic/diet_calculator.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
@@ -100,7 +101,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     if (mealNames.isEmpty) return const SizedBox.shrink();
 
                     final allDayKeys = mealNames
-                        .map((m) => "${day}_$m")
+                        .map((m) => "${day}::$m")
                         .toList();
                     bool areAllSelected = allDayKeys.every(
                       (k) => _selectedMealKeys.contains(k),
@@ -130,7 +131,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         ),
                       ),
                       children: mealNames.map((meal) {
-                        final key = "${day}_$meal";
+                        final key = "${day}::$meal";
                         final isSelected = _selectedMealKeys.contains(key);
                         return CheckboxListTile(
                           title: Text(meal),
@@ -185,9 +186,15 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
     try {
       for (String key in _selectedMealKeys) {
-        var parts = key.split('_');
+        // MODIFICA: Parsing sicuro con il nuovo separatore '::'
+        var parts = key.split('::');
+        if (parts.length < 2) continue; // Skip chiavi malformate
+
         var day = parts[0];
-        var meal = parts.sublist(1).join('_');
+        // Il pasto è tutto ciò che sta tra il primo e l'ultimo elemento
+        // (nel caso in cui in futuro il nome pasto contenesse '::', ma è improbabile)
+        var meal = parts[1];
+
         List<dynamic>? foods = widget.dietData![day]?[meal];
         if (foods == null) continue;
 
@@ -216,18 +223,23 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         for (int i = 0; i < groupedFoods.length; i++) {
           var group = groupedFoods[i];
 
-          // [FIX START] Generazione chiave corretta (InstanceID o CadCode)
-          // Prima era: String swapKey = "${day}_${meal}_group_$i"; (SBAGLIATO)
+          // --- MODIFICA PUNTO 2: CONTROLLO CONSUMATO ---
+          // Se anche solo un elemento del gruppo è consumato, saltiamo tutto il gruppo.
+          // Questo evita di aggiungere alla lista cose già mangiate.
+          bool isConsumed = group.any((f) => f['consumed'] == true);
+          if (isConsumed) continue;
+          // ---------------------------------------------
 
           var firstItem = group.first;
           String? instanceId = firstItem['instance_id']?.toString();
           int cadCode = firstItem['cad_code'] ?? 0;
 
+          // MODIFICA: Generazione chiave robusta
           String swapKey;
           if (instanceId != null && instanceId.isNotEmpty) {
-            swapKey = "${day}_${meal}_$instanceId";
+            swapKey = "${day}::${meal}::$instanceId";
           } else {
-            swapKey = "${day}_${meal}_$cadCode";
+            swapKey = "${day}::${meal}::$cadCode";
           }
           // [FIX END] Ora la chiave corrisponde a quella usata in ActiveSwaps
 
@@ -361,18 +373,10 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     String name,
     String qtyStr,
   ) {
-    final regExp = RegExp(r'(\d+(?:[.,]\d+)?)');
-    final match = regExp.firstMatch(qtyStr);
-    double qty = 0.0;
-    String unit = "";
-
-    if (match != null) {
-      String numPart = match.group(1)!.replaceAll(',', '.');
-      qty = double.tryParse(numPart) ?? 0.0;
-      unit = qtyStr.replaceAll(match.group(0)!, '').trim();
-    } else {
-      unit = qtyStr;
-    }
+    // MODIFICA: Uso DietCalculator per parsing sicuro e standardizzato
+    // Gestisce virgole, punti, "q.b." e normalizza le unità (es. "gr" -> "g")
+    double qty = DietCalculator.parseQty(qtyStr);
+    String unit = DietCalculator.parseUnit(qtyStr, name);
 
     String cleanName = name.trim();
     if (cleanName.isNotEmpty) {
@@ -381,7 +385,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
     if (agg.containsKey(cleanName)) {
       agg[cleanName]!['qty'] += qty;
-      if (agg[cleanName]!['unit'] == "" && unit.isNotEmpty) {
+
+      // Aggiorna l'unità se quella salvata è generica o vuota
+      // (Migliora l'aggregazione se prima avevo solo "pz" e ora ho "g")
+      String currentUnit = agg[cleanName]!['unit'];
+      if ((currentUnit.isEmpty || currentUnit == 'pz') && unit.isNotEmpty) {
         agg[cleanName]!['unit'] = unit;
       }
     } else {

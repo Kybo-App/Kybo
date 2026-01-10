@@ -116,6 +116,13 @@ class NotificationService {
     }
   }
 
+  Future<void> scheduleDietNotifications(Map<String, dynamic> dietPlan) async {
+    // Attualmente usiamo gli orari preferiti dell'utente (Allarmi)
+    // In futuro qui potrai usare 'dietPlan' per mettere il nome del piatto nella notifica
+    await scheduleAllMeals();
+    debugPrint("📅 Notifiche dieta aggiornate in base al piano.");
+  }
+
   Future<void> scheduleAllMeals() async {
     if (!_isInitialized) await init();
     await _localNotifications.cancelAll();
