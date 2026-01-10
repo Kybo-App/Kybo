@@ -12,6 +12,8 @@ import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
+import 'package:permission_handler/permission_handler.dart'; // <--- NUOVO
+import '../services/notification_service.dart'; // <--- NUOVO (se non c'è già)
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -36,6 +38,16 @@ class DietProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isTranquilMode = false;
   String? _error;
+  final NotificationService _notificationService =
+      NotificationService(); // Servizio notifiche
+
+  bool _needsNotificationPermissions = false;
+  bool get needsNotificationPermissions => _needsNotificationPermissions;
+
+  void resetPermissionFlag() {
+    _needsNotificationPermissions = false;
+    // Non chiamiamo notifyListeners() qui per evitare loop di rebuild
+  }
 
   // Getters
   Map<String, dynamic>? get dietData => _dietData;
@@ -82,19 +94,24 @@ class DietProvider extends ChangeNotifier {
 
   Future<void> syncFromFirebase(String uid) async {
     try {
-      final snapshot = await FirebaseFirestore.instance
+      // MODIFICA: Leggiamo da 'diets/current' invece che cercare l'ultimo in 'history'
+      final docSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .collection('history')
-          .orderBy('timestamp', descending: true)
-          .limit(1)
+          .collection('diets') // Corretto: ora corrisponde a FirestoreService
+          .doc('current') // Corretto: puntiamo al file unico
           .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        final data = snapshot.docs.first.data();
-        if (data['dietData'] != null) {
-          _dietData = data['dietData'];
+      if (docSnapshot.exists) {
+        final data = docSnapshot.data();
+        if (data != null && data['plan'] != null) {
+          // Qui dovremmo implementare la logica di Merge Intelligente
+          // per non sovrascrivere i 'consumed' locali se il cloud è più vecchio o uguale.
+          // Per ora, carichiamo i dati strutturali.
+
+          _dietData = data['plan'];
           _substitutions = data['substitutions'];
+
           await _storage.saveDiet({
             'plan': _dietData,
             'substitutions': _substitutions,
@@ -106,7 +123,10 @@ class DietProvider extends ChangeNotifier {
           _lastCloudSave = DateTime.now();
 
           _recalcAvailability();
+
+          await _scheduleMealNotifications();
           notifyListeners();
+          debugPrint("☁️ Sync Cloud completato (da 'current')");
         }
       }
     } catch (e) {
@@ -471,9 +491,6 @@ class DietProvider extends ChangeNotifier {
       );
       _availabilityMap = newMap;
 
-      // FIX INTELLIGENTE: Rigeneriamo la lista della spesa ORA che abbiamo i dati aggiornati
-      _shoppingList = generateSmartShoppingList();
-
       notifyListeners();
     } catch (e) {
       debugPrint("Isolate Calc Error: $e");
@@ -667,5 +684,21 @@ class DietProvider extends ChangeNotifier {
       return input.map((e) => _sanitize(e)).toList();
     }
     return input;
+  }
+
+  Future<void> _scheduleMealNotifications() async {
+    if (_dietData == null) return;
+
+    var status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      // Abbiamo i permessi: pianifichiamo silenziosamente
+      await _notificationService.scheduleDietNotifications(_dietData!);
+      debugPrint("🔔 Notifiche pianificate con successo");
+    } else {
+      // Mancano i permessi: segnaliamo alla UI di chiedere aiuto all'utente
+      _needsNotificationPermissions = true;
+      notifyListeners();
+    }
   }
 }

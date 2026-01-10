@@ -14,10 +14,9 @@ class DietLogic {
     final String? instanceId = dish['instance_id']?.toString();
     final int cadCode = dish['cad_code'] ?? 0;
 
-    // Ricostruisce la chiave univoca
     String swapKey = (instanceId != null && instanceId.isNotEmpty)
-        ? "${day}_${mealType}_$instanceId"
-        : "${day}_${mealType}_$cadCode";
+        ? "${day}::${mealType}::$instanceId"
+        : "${day}::${mealType}::$cadCode";
 
     List<Map<String, String>> result = [];
 

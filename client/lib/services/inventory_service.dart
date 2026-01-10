@@ -14,16 +14,29 @@ void callbackDispatcher() {
       await notifs.init();
 
       final storage = StorageService();
-      final diet = await storage.loadDiet();
+      // MODIFICA: Carichiamo tutto il dizionario, non solo il piano
+      final dietFull = await storage.loadDiet();
       final pantry = await storage.loadPantry();
 
-      if (diet == null) return Future.value(true);
+      if (dietFull == null || dietFull['plan'] == null)
+        return Future.value(true);
+
+      final Map<String, dynamic> plan = dietFull['plan'];
+      // MODIFICA: Recuperiamo le sostituzioni salvate
+      final Map<String, dynamic> substitutions =
+          dietFull['substitutions'] ?? {};
 
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final dayName = _getDayName(tomorrow.weekday);
 
-      if (diet['plan'] != null && diet['plan'][dayName] != null) {
-        bool missing = _checkMissingIngredients(diet['plan'][dayName], pantry);
+      if (plan[dayName] != null) {
+        // Passiamo anche le sostituzioni e il nome del giorno al checker
+        bool missing = _checkMissingIngredients(
+          plan[dayName],
+          pantry,
+          substitutions,
+          dayName,
+        );
 
         if (missing) {
           await notifs.flutterLocalNotificationsPlugin.show(
@@ -51,7 +64,6 @@ void callbackDispatcher() {
 class InventoryService {
   static Future<void> initialize() async {
     try {
-      // [FIX] Rimosso isInDebugMode deprecato
       await Workmanager().initialize(callbackDispatcher);
       await Workmanager().registerPeriodicTask(
         "1",
@@ -81,23 +93,58 @@ String _getDayName(int weekday) {
 bool _checkMissingIngredients(
   Map<String, dynamic> dayPlan,
   List<PantryItem> pantry,
+  Map<String, dynamic> substitutions,
+  String dayName,
 ) {
-  for (var meal in dayPlan.values) {
-    if (meal is List) {
-      for (var dish in meal) {
-        String dishName = dish['name'].toString().toLowerCase();
-        if (dishName.contains("libero") || dishName.contains("avanzi")) {
-          continue;
+  // MODIFICA: Iteriamo su entries per avere il nome del pasto (Pranzo, Cena...)
+  for (var entry in dayPlan.entries) {
+    String mealName = entry.key;
+    var mealContent = entry.value;
+
+    if (mealContent is List) {
+      for (var dish in mealContent) {
+        // --- 1. Generazione Chiave Swap (Allineata al resto dell'App) ---
+        String? instanceId = dish['instance_id']?.toString();
+        int cadCode = dish['cad_code'] ?? 0;
+
+        // Uso '::' come definito nel refactoring precedente
+        String swapKey = (instanceId != null && instanceId.isNotEmpty)
+            ? "${dayName}::${mealName}::$instanceId"
+            : "${dayName}::${mealName}::$cadCode";
+
+        List<dynamic> itemsToCheck = [];
+
+        // --- 2. Controllo Swap ---
+        if (substitutions.containsKey(swapKey)) {
+          // Se swappato, controlliamo gli ingredienti sostitutivi
+          var subData = substitutions[swapKey];
+          if (subData != null && subData['swappedIngredients'] != null) {
+            itemsToCheck = subData['swappedIngredients'];
+          }
+        } else {
+          // Se NON swappato, controlliamo il piatto originale
+          itemsToCheck = [dish];
         }
 
-        bool found = pantry.any(
-          (item) =>
-              (item.name.toLowerCase().contains(dishName) ||
-                  dishName.contains(item.name.toLowerCase())) &&
-              item.quantity > 0.1,
-        );
+        // --- 3. Verifica Disponibilità ---
+        for (var itemReq in itemsToCheck) {
+          String reqName = itemReq['name'].toString().toLowerCase();
 
-        if (!found) return true;
+          if (reqName.contains("libero") || reqName.contains("avanzi")) {
+            continue;
+          }
+
+          // Logica di match: cerchiamo se c'è qualcosa in dispensa > 0
+          // (Manteniamo la logica semplice "contains" per ora, ma applicata all'ingrediente GIUSTO)
+          bool found = pantry.any(
+            (pItem) =>
+                (pItem.name.toLowerCase().contains(reqName) ||
+                    reqName.contains(pItem.name.toLowerCase())) &&
+                pItem.quantity > 0.1,
+          );
+
+          if (!found) return true; // Appena manca qualcosa, scatta l'alert
+        }
       }
     }
   }

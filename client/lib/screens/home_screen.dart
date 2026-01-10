@@ -18,6 +18,7 @@ import 'shopping_list_view.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
 import 'change_password_screen.dart';
+import 'package:permission_handler/permission_handler.dart'; // <--- NUOVO
 
 // --- 1. WRAPPER PRINCIPALE ---
 class MainScreen extends StatelessWidget {
@@ -68,6 +69,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   @override
   void initState() {
     super.initState();
+    _initialPermissionCheck();
     int today = DateTime.now().weekday - 1;
     _tabController = TabController(
       length: 7,
@@ -79,6 +81,41 @@ class _MainScreenContentState extends State<MainScreenContent>
       _initAppData();
       _checkTutorial();
     });
+  }
+
+  Future<void> _initialPermissionCheck() async {
+    var status = await Permission.notification.status;
+    if (!status.isGranted && !status.isPermanentlyDenied) {
+      await Permission.notification.request();
+    }
+  }
+
+  // Dialog "Hard": Spiega e manda alle impostazioni
+  void _showForcePermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Notifiche Pasti 🍽️'),
+        content: const Text(
+          'Per ricordarti i pasti e controllare la dispensa, Kybo ha bisogno delle notifiche.\n\n'
+          'Per favore, attivale nelle impostazioni del telefono.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () {
+              openAppSettings(); // Apre le impostazioni Android/iOS
+              Navigator.pop(context);
+            },
+            child: const Text('Impostazioni'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initAppData() async {
@@ -178,15 +215,18 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<DietProvider>();
+    // [FIX 1] Rinominato da dietProvider a provider per coerenza con il resto del codice
+    final provider = Provider.of<DietProvider>(context);
+
+    // [FIX 2] Definito user per passarlo al drawer
     final user = FirebaseAuth.instance.currentUser;
 
-    if (provider.error != null) {
+    // 2. CONTROLLO REATTIVO: Se serve il permesso, mostra il dialog
+    if (provider.needsNotificationPermissions) {
+      // Usiamo 'provider' qui
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(provider.error!), backgroundColor: Colors.red),
-        );
-        provider.clearError();
+        provider.resetPermissionFlag();
+        _showForcePermissionDialog();
       });
     }
 
@@ -653,12 +693,19 @@ class _MainScreenContentState extends State<MainScreenContent>
                                           decoration: const InputDecoration(
                                             labelText: "Titolo",
                                             isDense: true,
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  vertical: 8,
+                                                ),
                                           ),
                                           onChanged: (v) => alarm['label'] = v,
                                         ),
                                       ),
-                                      TextButton(
-                                        onPressed: () async {
+                                      const SizedBox(width: 8),
+
+                                      // 1. TASTO ORARIO COMPATTO (No TextButton)
+                                      InkWell(
+                                        onTap: () async {
                                           final p = await showTimePicker(
                                             context: innerCtx,
                                             initialTime: time,
@@ -670,29 +717,40 @@ class _MainScreenContentState extends State<MainScreenContent>
                                             );
                                           }
                                         },
-                                        child: Text(
-                                          "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 6,
+                                          ),
+                                          child: Text(
+                                            "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary,
+                                              fontSize: 15,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.close,
-                                          color: Colors.red,
+
+                                      // 2. TASTO RIMUOVI COMPATTO (No IconButton)
+                                      InkWell(
+                                        onTap: () => removeAlarm(index),
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(
+                                            8.0,
+                                          ), // Padding manuale controllato
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Colors.red,
+                                            size:
+                                                22, // Icona leggermente più piccola
+                                          ),
                                         ),
-                                        onPressed: () => removeAlarm(index),
                                       ),
                                     ],
-                                  ),
-                                  TextFormField(
-                                    initialValue: alarm['body'],
-                                    decoration: const InputDecoration(
-                                      labelText: "Messaggio",
-                                      isDense: true,
-                                    ),
-                                    onChanged: (v) => alarm['body'] = v,
                                   ),
                                 ],
                               ),
