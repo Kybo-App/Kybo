@@ -1,3 +1,4 @@
+import 'package:kybo/constants.dart';
 import 'package:kybo/models/pantry_item.dart'; // Assicurati che l'import sia corretto per il tuo progetto
 
 // --- ECCEZIONI DI DOMINIO ---
@@ -47,11 +48,17 @@ class DietCalculator {
       "Sabato",
       "Domenica",
     ];
-    final todayIndex = DateTime.now().weekday - 1;
+
+    // Calcolo indice di oggi (0 = Lunedì, 6 = Domenica)
+    int todayIndex = DateTime.now().weekday - 1;
 
     for (int d = 0; d < italianDays.length; d++) {
-      if (d < todayIndex) continue; // Ottimizzazione: salta giorni passati
       String day = italianDays[d];
+
+      // MODIFICA 1: Saltiamo i giorni passati.
+      // La simulazione deve partire dalla dispensa ATTUALE per i pasti FUTURI.
+      if (d < todayIndex) continue;
+
       if (!dietData.containsKey(day)) continue;
 
       final mealsOfDay = dietData[day] as Map<String, dynamic>;
@@ -75,23 +82,27 @@ class DietCalculator {
           List<int> indices = groups[gIdx];
           if (indices.isEmpty) continue;
 
+          // MODIFICA 2: Controllo "Già Consumato"
           bool isConsumed = false;
-          if (indices.isNotEmpty && dishes[indices[0]]['consumed'] == true) {
+          if (dishes[indices[0]]['consumed'] == true) {
             isConsumed = true;
           }
 
           if (isConsumed) {
+            // Se è già consumato, NON sottraiamo ingredienti dal frigo simulato.
+            // L'ingrediente è già stato tolto dal frigo "vero" quando l'utente ha cliccato check.
             for (int originalIdx in indices) {
+              // Mettiamo false (grigio) o true (verde) a seconda di come vuoi la UI
+              // Ma il punto cruciale è il CONTINUE qui sotto.
               newMap["${day}_${mType}_$originalIdx"] = false;
             }
-            continue;
+            continue; // Saltiamo il calcolo consumo per questo pasto
           }
 
           final firstDish = dishes[indices[0]];
           final String? instanceId = firstDish['instance_id']?.toString();
           final int cadCode = firstDish['cad_code'] ?? 0;
 
-          // Chiave Swap (Priorità a instanceId nuovo backend)
           String swapKey = (instanceId != null && instanceId.isNotEmpty)
               ? "${day}_${mType}_$instanceId"
               : "${day}_${mType}_$cadCode";
@@ -235,39 +246,38 @@ class DietCalculator {
     return 1.0;
   }
 
-  // PARSER UNITÀ: Semplificato grazie alla normalizzazione Server-Side
+  // [MODIFICA PUNTO 4.3] Parser Unità con Costanti
   static String parseUnit(String raw, String name) {
     String lower = raw.toLowerCase().trim();
 
-    // 1. Unità Standard (Normalizzate dal Server)
-    if (lower.contains('kg')) return 'kg';
-    if (lower.contains('mg')) return 'mg';
-    if (lower.contains('ml')) return 'ml';
-    if (lower.contains(' l ') || lower.endsWith(' l')) {
-      return 'l'; // " l" o fine stringa per evitare 'ml'
+    // 1. Unità Standard (Uso costanti)
+    if (lower.contains(DietUnits.KG)) return DietUnits.KG;
+    if (lower.contains('mg')) return 'mg'; // Possiamo lasciare mg se raro
+    if (lower.contains(DietUnits.ML)) return DietUnits.ML;
+
+    // Gestione spaziata " l " o fine stringa " l"
+    if (lower.contains(' ${DietUnits.LITER} ') ||
+        lower.endsWith(' ${DietUnits.LITER}')) {
+      return DietUnits.LITER;
     }
 
     // Regex per 'g' isolato o 'gr'
-    if (RegExp(r'\b(g|gr)\b').hasMatch(lower)) return 'g';
+    if (RegExp(r'\b(g|gr)\b').hasMatch(lower)) return DietUnits.GRAMS;
 
-    // Unità discrete (Il server ora manda sempre il singolare standard)
-    if (lower.contains('vasetto')) return 'vasetto';
-    if (lower.contains('cucchiaino')) return 'cucchiaino';
-    if (lower.contains('cucchiaio')) return 'cucchiaio';
-    if (lower.contains('tazza')) return 'tazza';
-    if (lower.contains('bicchiere')) return 'bicchiere';
-    if (lower.contains('fette')) return 'fette';
+    // Unità discrete (Uso costanti)
+    if (lower.contains(DietUnits.VASETTO)) return DietUnits.VASETTO;
+    if (lower.contains(DietUnits.CUCCHIAINO)) return DietUnits.CUCCHIAINO;
+    if (lower.contains(DietUnits.CUCCHIAIO)) return DietUnits.CUCCHIAIO;
+    if (lower.contains(DietUnits.TAZZA)) return DietUnits.TAZZA;
+    if (lower.contains(DietUnits.BICCHIERE)) return DietUnits.BICCHIERE;
+    if (lower.contains(DietUnits.FETTE)) return DietUnits.FETTE;
 
-    // --- Retro-compatibilità (per diete vecchie in cache non normalizzate) ---
-    if (lower.contains('vasetti')) return 'vasetto';
-    if (lower.contains('cucchiai')) return 'cucchiaio'; // Plurale vecchio
-    if (lower.contains('grammi')) return 'g';
-    if (lower.contains('litri')) return 'l';
-    // -----------------------------------------------------------------------
+    // --- Retro-compatibilità (Plurali) ---
+    // Mappiamo i plurali alle costanti SINGOLARI
+    if (lower.contains('vasetti')) return DietUnits.VASETTO;
+    if (lower.contains('cucchiai')) return DietUnits.CUCCHIAIO;
+    if (lower.contains('grammi')) return DietUnits.GRAMS;
 
-    if (lower.contains('pz')) return 'pz';
-
-    // Fallback: se c'è un numero ma nessuna unità nota, è un pezzo (es "1 mela")
-    return 'pz';
+    return ""; // Default vuoto (pezzi implici)
   }
 }
