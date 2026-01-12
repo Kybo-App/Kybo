@@ -582,13 +582,16 @@ class _UserManagementViewState extends State<UserManagementView> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withOpacity(
+                  0.05,
+                ), // Nota: .withValues su Flutter 3.27+, withOpacity su precedenti
                 blurRadius: 10,
               ),
             ],
           ),
           child: Row(
             children: [
+              // 1. BARRA DI RICERCA (Per Tutti)
               Expanded(
                 flex: 2,
                 child: TextField(
@@ -602,6 +605,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                       setState(() => _searchQuery = val.toLowerCase()),
                 ),
               ),
+
+              // 2. FILTRO RUOLI (Solo Admin)
+              // Il nutrizionista vede solo i suoi, inutile filtrare.
               if (_currentUserRole == 'admin') ...[
                 const VerticalDivider(),
                 DropdownButton<String>(
@@ -625,32 +631,35 @@ class _UserManagementViewState extends State<UserManagementView> {
                   ],
                   onChanged: (val) => setState(() => _roleFilter = val!),
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.green),
-                  tooltip: "Ricarica Lista",
-                  onPressed: _refreshList,
-                ),
+              ],
+
+              const Spacer(),
+
+              // 3. REFRESH (Per Tutti)
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.green),
+                tooltip: "Ricarica Lista",
+                onPressed: _refreshList,
+              ),
+
+              // 4. SYNC DB (Solo Admin - Operazione costosa/sistemistica)
+              if (_currentUserRole == 'admin')
                 IconButton(
                   icon: const Icon(Icons.sync, color: Colors.blue),
                   tooltip: "Sync DB",
                   onPressed: _isLoading ? null : _syncUsers,
                 ),
-                const SizedBox(width: 12),
+
+              const SizedBox(width: 12),
+
+              // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
+              // [FIX] Ora visibile anche ai Nutrizionisti
+              if (_currentUserRole == 'admin' ||
+                  _currentUserRole == 'nutritionist')
                 FilledButton.icon(
                   onPressed: _isLoading ? null : _showCreateUserDialog,
                   icon: const Icon(Icons.add),
                   label: const Text("NUOVO UTENTE"),
-                ),
-              ] else
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.green),
-                      onPressed: _refreshList,
-                    ),
-                  ),
                 ),
             ],
           ),
