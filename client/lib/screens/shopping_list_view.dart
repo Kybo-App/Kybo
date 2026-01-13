@@ -101,7 +101,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     if (mealNames.isEmpty) return const SizedBox.shrink();
 
                     final allDayKeys = mealNames
-                        .map((m) => "${day}::$m")
+                        .map((m) => "$day::$m")
                         .toList();
                     bool areAllSelected = allDayKeys.every(
                       (k) => _selectedMealKeys.contains(k),
@@ -131,7 +131,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         ),
                       ),
                       children: mealNames.map((meal) {
-                        final key = "${day}::$meal";
+                        final key = "$day::$meal";
                         final isSelected = _selectedMealKeys.contains(key);
                         return CheckboxListTile(
                           title: Text(meal),
@@ -237,9 +237,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           // MODIFICA: Generazione chiave robusta
           String swapKey;
           if (instanceId != null && instanceId.isNotEmpty) {
-            swapKey = "${day}::${meal}::$instanceId";
+            swapKey = "$day::$meal::$instanceId";
           } else {
-            swapKey = "${day}::${meal}::$cadCode";
+            swapKey = "$day::$meal::$cadCode";
           }
           // [FIX END] Ora la chiave corrisponde a quella usata in ActiveSwaps
 
