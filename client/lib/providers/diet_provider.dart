@@ -54,53 +54,53 @@ class DietProvider extends ChangeNotifier {
     final user = _auth.currentUser;
     if (user == null || _dietData == null) return "Errore: Dati mancanti.";
 
-    // 1. Controllo Modifiche
     bool hasSwapsChanged = _activeSwaps.isNotEmpty;
     bool hasChanges =
         _hasStructuralChanges(_dietData, _lastSyncedDiet) || hasSwapsChanged;
 
-    if (!hasChanges && !forceSync) {
-      return "✅ Nessuna modifica da salvare.";
-    }
+    if (!hasChanges && !forceSync) return "✅ Nessuna modifica.";
 
-    // 2. Controllo Tempo (3h)
     final now = DateTime.now();
-    final difference = now.difference(_lastCloudSave);
+    if (!forceSync && now.difference(_lastCloudSave).inHours < 3) {
+      // Se è passato poco tempo, aggiorniamo SOLO 'current' (sync veloce)
+      final Map<String, dynamic> swapsToSave = {};
+      _activeSwaps.forEach((k, v) => swapsToSave[k] = v.toMap());
 
-    if (!forceSync && difference.inHours < 3) {
-      return "⏳ Modifiche in coda (attesa 3h).";
+      await _firestore.saveCurrentDiet(
+          _sanitize(_dietData!), _sanitize(_substitutions ?? {}), swapsToSave);
+      return "☁️ Modifiche sincronizzate.";
     }
 
-    // [CORREZIONE] Serializzazione corretta usando la tua classe
+    // Se è passato tempo (3h), creiamo ANCHE un punto nello storico
     final Map<String, dynamic> swapsToSave = {};
-    _activeSwaps.forEach((key, value) {
-      swapsToSave[key] = value.toMap(); // Usa il tuo metodo
-    });
+    _activeSwaps.forEach((k, v) => swapsToSave[k] = v.toMap());
 
     try {
+      // 1. Aggiorna Current (Sempre)
+      await _firestore.saveCurrentDiet(
+          _sanitize(_dietData!), _sanitize(_substitutions ?? {}), swapsToSave);
+
+      // 2. Crea voce Storico (Checkpoint)
       if (_currentFirestoreId == null) {
-        // CREAZIONE
         String newId = await _firestore.saveDietToHistory(
           _sanitize(_dietData!),
           _sanitize(_substitutions ?? {}),
-          swapsToSave, // <--- INVIO MAPPA CORRETTA
+          swapsToSave,
         );
         _currentFirestoreId = newId;
-        _lastCloudSave = now;
-        _lastSyncedDiet = _deepCopy(_dietData);
-        return "🆕 Nuova Dieta Salvata (ID: $newId).";
       } else {
-        // AGGIORNAMENTO
+        // Se stiamo lavorando su una dieta specifica dello storico, aggiorniamo quella
         await _firestore.updateDietHistory(
           _currentFirestoreId!,
           _sanitize(_dietData!),
           _sanitize(_substitutions ?? {}),
-          swapsToSave, // <--- INVIO MAPPA CORRETTA
+          swapsToSave,
         );
-        _lastCloudSave = now;
-        _lastSyncedDiet = _deepCopy(_dietData);
-        return "☁️ Dieta Aggiornata con le tue modifiche.";
       }
+
+      _lastCloudSave = now;
+      _lastSyncedDiet = _deepCopy(_dietData);
+      return "✅ Backup Storico e Sync completati.";
     } catch (e) {
       return "❌ Errore Sync: $e";
     }
@@ -469,25 +469,30 @@ class DietProvider extends ChangeNotifier {
       try {
         token = await FirebaseMessaging.instance.getToken();
       } catch (_) {}
+
+      // 1. Upload al Server (Il server salva su Firestore 'current' e 'history')
       final result = await _repository.uploadDiet(path, fcmToken: token);
+
       _dietData = result.plan;
       _substitutions = result.substitutions;
+
+      // 2. Salvataggio Locale
       await _storage.saveDiet({
         'plan': _dietData,
         'substitutions': _substitutions,
       });
+
+      // 3. Reset Stato Locale
+      _activeSwaps = {};
+      await _storage.saveSwaps({});
+
       if (_auth.currentUser != null) {
-        await _firestore.saveDietToHistory(
-          _sanitize(_dietData!),
-          _sanitize(_substitutions ?? {}),
-          {}, // <--- TERZO ARGOMENTO: Nessuno swap attivo all'inizio
-        );
         _lastCloudSave = DateTime.now();
         _lastSyncedDiet = _deepCopy(_dietData);
         _lastSyncedSubstitutions = _deepCopy(_substitutions);
+        // NON SALVIAMO SU FIRESTORE QUI: L'HA GIÀ FATTO IL SERVER!
       }
-      _activeSwaps = {};
-      await _storage.saveSwaps({});
+
       _recalcAvailability();
     } catch (e) {
       _error = ErrorMapper.toUserMessage(e);

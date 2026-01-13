@@ -207,12 +207,48 @@ async def start_background_tasks():
 async def upload_diet(request: Request, file: UploadFile = File(...), fcm_token: Optional[str] = Form(None), user_id: str = Depends(get_current_uid)):
     if not file.filename.lower().endswith('.pdf'): raise HTTPException(status_code=400, detail="Only PDF allowed")
     
-    # [FIX CONCORRENZA] Avvolgiamo l'operazione pesante nel semaforo
     async with heavy_tasks_semaphore:
         try:
+            # 1. Parsing
             raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, file.file)
+            formatted_data = _convert_to_app_format(raw_data)
+            dict_data = formatted_data.dict()
+            
+            # 2. Salvataggio su Firestore
+            db = firebase_admin.firestore.client()
+            user_diets_ref = db.collection('users').document(user_id).collection('diets')
+
+            diet_payload = {
+                'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
+                'lastUpdated': firebase_admin.firestore.SERVER_TIMESTAMP,
+                'plan': dict_data.get('plan'),
+                'substitutions': dict_data.get('substitutions'),
+                'activeSwaps': {}, 
+                'uploadedBy': 'user_upload',
+                'fileName': file.filename
+            }
+
+            # A. Salviamo/Sovrascriviamo la dieta "current" (Quella che l'app carica)
+            user_diets_ref.document('current').set(diet_payload)
+
+            # B. Aggiungiamo anche allo storico (Backup cronologico)
+            # Nota: Non ci serve l'ID di questo doc nel client, usiamo 'current'
+            user_diets_ref.add(diet_payload)
+            
+            # C. (Opzionale) Global Admin History
+            db.collection('diet_history').add({
+                'userId': user_id,
+                'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
+                'fileName': file.filename,
+                'parsedData': dict_data,
+                'uploadedBy': user_id
+            })
+
+            # 3. Notifica
             if fcm_token: await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
-            return _convert_to_app_format(raw_data)
+            
+            return formatted_data
+
         except Exception as e:
             logger.error("upload_diet_error", error=str(e))
             raise HTTPException(status_code=500, detail=str(e))
