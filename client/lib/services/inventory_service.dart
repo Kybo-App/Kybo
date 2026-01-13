@@ -18,8 +18,9 @@ void callbackDispatcher() {
       final dietFull = await storage.loadDiet();
       final pantry = await storage.loadPantry();
 
-      if (dietFull == null || dietFull['plan'] == null)
+      if (dietFull == null || dietFull['plan'] == null) {
         return Future.value(true);
+      }
 
       final Map<String, dynamic> plan = dietFull['plan'];
       // MODIFICA: Recuperiamo le sostituzioni salvate
@@ -109,8 +110,8 @@ bool _checkMissingIngredients(
 
         // Uso '::' come definito nel refactoring precedente
         String swapKey = (instanceId != null && instanceId.isNotEmpty)
-            ? "${dayName}::${mealName}::$instanceId"
-            : "${dayName}::${mealName}::$cadCode";
+            ? "$dayName::$mealName::$instanceId"
+            : "$dayName::$mealName::$cadCode";
 
         List<dynamic> itemsToCheck = [];
 

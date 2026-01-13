@@ -171,8 +171,8 @@ class MealCard extends StatelessWidget {
                         // MODIFICA: Generazione chiave robusta allineata a DietLogic
                         final String swapKey =
                             (instanceId != null && instanceId.isNotEmpty)
-                            ? "${day}::${mealName}::$instanceId"
-                            : "${day}::${mealName}::$cadCode";
+                            ? "$day::$mealName::$instanceId"
+                            : "$day::$mealName::$cadCode";
 
                         // --- LOGICA SWAP ---
                         final bool isSwapped = activeSwaps.containsKey(swapKey);

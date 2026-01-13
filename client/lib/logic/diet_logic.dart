@@ -15,8 +15,8 @@ class DietLogic {
     final int cadCode = dish['cad_code'] ?? 0;
 
     String swapKey = (instanceId != null && instanceId.isNotEmpty)
-        ? "${day}::${mealType}::$instanceId"
-        : "${day}::${mealType}::$cadCode";
+        ? "$day::$mealType::$instanceId"
+        : "$day::$mealType::$cadCode";
 
     List<Map<String, String>> result = [];
 
