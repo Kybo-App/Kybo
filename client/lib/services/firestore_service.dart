@@ -6,29 +6,58 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // [MODIFICATO] Ora accetta anche 'swaps' (le modifiche dell'utente)
-  Future<String> saveDietToHistory(
+  // Aggiungi questa funzione per salvare su 'current'
+  Future<void> saveCurrentDiet(
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
-    Map<String, dynamic> swaps, // <--- NUOVO PARAMETRO
+    Map<String, dynamic> swaps,
   ) async {
     try {
       final user = _auth.currentUser;
-      if (user == null) throw Exception("Utente non loggato");
+      if (user == null) return;
 
+      // Sovrascriviamo SEMPRE 'current' con lo stato attuale
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('diets')
+          .doc('current')
+          .set({
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'plan': plan,
+        'substitutions': subs,
+        'activeSwaps': swaps,
+      }, SetOptions(merge: true));
+
+      debugPrint("✅ Dieta 'current' aggiornata.");
+    } catch (e) {
+      debugPrint("⚠️ Errore salvataggio current: $e");
+    }
+  }
+
+  // Modifica saveDietToHistory per usare solo .add (Storico puro)
+  Future<String> saveDietToHistory(
+    Map<String, dynamic> plan,
+    Map<String, dynamic> subs,
+    Map<String, dynamic> swaps,
+  ) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception("User null");
+
+      // Salva nello storico
       final docRef =
           await _db.collection('users').doc(user.uid).collection('diets').add({
         'uploadedAt': FieldValue.serverTimestamp(),
         'lastUpdated': FieldValue.serverTimestamp(),
         'plan': plan,
         'substitutions': subs,
-        'activeSwaps': swaps, // <--- SALVIAMO LE TUE MODIFICHE
+        'activeSwaps': swaps,
       });
 
-      debugPrint("🆕 Nuova dieta creata con ID: ${docRef.id}");
       return docRef.id;
     } catch (e) {
-      debugPrint("⚠️ Errore creazione storico: $e");
+      debugPrint("⚠️ Errore storico: $e");
       rethrow;
     }
   }
