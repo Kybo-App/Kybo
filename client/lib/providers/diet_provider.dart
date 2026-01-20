@@ -771,11 +771,14 @@ class DietProvider extends ChangeNotifier {
   }
 
   // Rimuove campi volatili (consumed) per confrontare solo la struttura
+  // Rimuove campi volatili (consumed) per confrontare solo la struttura
   dynamic _sanitize(dynamic input) {
     if (input is Map) {
       final newMap = <String, dynamic>{};
       input.forEach((key, value) {
-        if (key != 'consumed' && key != 'cad_code') {
+        // [FIX] NON rimuovere 'cad_code'! È fondamentale per le sostituzioni.
+        // Rimuovi solo 'consumed' o altri stati temporanei UI.
+        if (key != 'consumed') {
           newMap[key.toString()] = _sanitize(value);
         }
       });

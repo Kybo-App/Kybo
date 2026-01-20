@@ -13,7 +13,6 @@ class Settings(BaseSettings):
         "http://localhost:8080",
         "http://localhost:4000",
         "http://localhost:5000",
-        "https://my-diet-admin.vercel.app",
     ]
     
     _prod_origins: list[str] = [
