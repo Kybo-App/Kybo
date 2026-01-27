@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
+import 'package:safe_device/safe_device.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 /// Servizio per rilevare dispositivi jailbroken/rooted
@@ -9,25 +9,25 @@ class JailbreakService {
   JailbreakService._internal();
 
   bool? _isJailbroken;
-  bool? _isDeveloperMode;
+  bool? _isRealDevice;
 
   /// Controlla se il dispositivo è compromesso
   Future<bool> checkDevice() async {
     try {
-      // Esegui i controlli disponibili
-      _isJailbroken = await FlutterJailbreakDetection.jailbroken;
-      _isDeveloperMode = await FlutterJailbreakDetection.developerMode;
+      // Esegui i controlli con safe_device
+      _isJailbroken = await SafeDevice.isJailBroken;
+      _isRealDevice = await SafeDevice.isRealDevice;
 
       debugPrint('🔐 Device Security Check:');
-      debugPrint('  Jailbroken: $_isJailbroken');
-      debugPrint('  Developer Mode: $_isDeveloperMode');
+      debugPrint('  Jailbroken/Rooted: $_isJailbroken');
+      debugPrint('  Real Device: $_isRealDevice');
 
       // Log su Firebase Analytics
       await FirebaseAnalytics.instance.logEvent(
         name: 'device_security_check',
         parameters: {
           'jailbroken': _isJailbroken ?? false,
-          'developer_mode': _isDeveloperMode ?? false,
+          'real_device': _isRealDevice ?? true,
         },
       );
 
@@ -42,13 +42,11 @@ class JailbreakService {
   /// Getter per stato jailbreak
   bool get isJailbroken => _isJailbroken ?? false;
 
-  /// Getter per developer mode (Android)
-  bool get isDeveloperMode => _isDeveloperMode ?? false;
+  /// Getter per verificare se è un dispositivo reale
+  bool get isRealDevice => _isRealDevice ?? true;
 
   /// Controlla se il dispositivo è considerato "a rischio"
   bool get isDeviceAtRisk {
-    // Considera a rischio solo se jailbroken
-    // (rimosso check emulatore perché non supportato dal package)
     return isJailbroken;
   }
 }
