@@ -1,3 +1,8 @@
+import 'package:uuid/uuid.dart';
+
+// [FIX] Generatore UUID singleton per instanceId
+const _uuid = Uuid();
+
 class Ingredient {
   final String name;
   final String qty;
@@ -36,8 +41,12 @@ class Dish {
   });
 
   factory Dish.fromJson(Map<String, dynamic> json) {
+    // [FIX] Genera UUID se instanceId è vuoto/null (previene bug nelle sostituzioni)
+    final rawId = json['instance_id']?.toString() ?? '';
+    final instanceId = rawId.isNotEmpty ? rawId : _uuid.v4();
+
     return Dish(
-      instanceId: json['instance_id']?.toString() ?? '',
+      instanceId: instanceId,
       name: json['name']?.toString() ?? 'Sconosciuto',
       qty: json['qty']?.toString() ?? '',
       cadCode: (json['cad_code'] is int) ? json['cad_code'] : 0,
