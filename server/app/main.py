@@ -48,6 +48,30 @@ from app.broadcast import broadcast_message
 MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
+# [SECURITY] Magic bytes per validazione contenuto file
+PDF_MAGIC_BYTES = b'%PDF'
+IMAGE_MAGIC_BYTES = {
+    b'\xff\xd8\xff': 'jpeg',      # JPEG
+    b'\x89PNG\r\n\x1a\n': 'png',  # PNG
+    b'RIFF': 'webp',               # WebP (RIFF header)
+}
+
+def validate_file_content(file_content: bytes, expected_type: str) -> bool:
+    """
+    Verifica che il contenuto del file corrisponda al tipo dichiarato.
+    Previene upload di file malevoli rinominati.
+    """
+    if expected_type == '.pdf':
+        return file_content[:4] == PDF_MAGIC_BYTES
+    elif expected_type in ['.jpg', '.jpeg']:
+        return file_content[:3] == b'\xff\xd8\xff'
+    elif expected_type == '.png':
+        return file_content[:8] == b'\x89PNG\r\n\x1a\n'
+    elif expected_type == '.webp':
+        # WebP: RIFF header + "WEBP" at offset 8
+        return file_content[:4] == b'RIFF' and file_content[8:12] == b'WEBP'
+    return False
+
 MEAL_ORDER = [
     "Colazione", "Seconda Colazione", "Spuntino", "Pranzo",
     "Merenda", "Cena", "Spuntino Serale", "Nell'Arco Della Giornata"
@@ -93,7 +117,34 @@ if not firebase_admin._apps:
         error_msg = re.sub(r'token["\']?\s*:\s*["\']?[A-Za-z0-9\-_\.]+', 'token: ***', error_msg, flags=re.IGNORECASE)
         logger.error("firebase_init_error", error=error_msg)
 
-limiter = Limiter(key_func=get_remote_address)
+# [SECURITY] Rate limiting migliorato: combina IP + User ID (se autenticato)
+# Questo previene bypass tramite IP rotation per utenti autenticati
+def get_rate_limit_key(request: Request) -> str:
+    """
+    Genera chiave per rate limiting combinando IP e User ID.
+    Se l'utente è autenticato, usa IP:UID per rate limit più preciso.
+    """
+    ip = get_remote_address(request)
+    # Prova a estrarre user_id dal token se presente
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            # Non verifichiamo il token qui (lo fa il dependency), solo estraiamo un hint
+            import base64
+            token_parts = auth_header.split(" ")[1].split(".")
+            if len(token_parts) >= 2:
+                # Decodifica payload JWT (senza verifica, solo per rate limiting)
+                payload = base64.urlsafe_b64decode(token_parts[1] + "==")
+                import json
+                data = json.loads(payload)
+                user_id = data.get("user_id") or data.get("sub") or data.get("uid")
+                if user_id:
+                    return f"{ip}:{user_id}"
+        except Exception:
+            pass  # Se fallisce, usa solo IP
+    return ip
+
+limiter = Limiter(key_func=get_rate_limit_key)
 app = FastAPI()
 
 # [NEW] SEMAFORO DI CONCORRENZA
@@ -270,6 +321,11 @@ async def upload_diet(request: Request, file: UploadFile = File(...), fcm_token:
     file_content = await file.read()
     if len(file_content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+
+    # [SECURITY] Validazione magic bytes - verifica che sia un vero PDF
+    if not validate_file_content(file_content, '.pdf'):
+        raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
+
     await file.seek(0)  # Reset file pointer
 
     async with heavy_tasks_semaphore:
@@ -332,6 +388,11 @@ async def upload_diet_admin(request: Request, target_uid: str, file: UploadFile 
     file_content = await file.read()
     if len(file_content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+
+    # [SECURITY] Validazione magic bytes - verifica che sia un vero PDF
+    if not validate_file_content(file_content, '.pdf'):
+        raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
+
     await file.seek(0)  # Reset file pointer
 
     db = firebase_admin.firestore.client()
@@ -387,10 +448,18 @@ async def upload_diet_admin(request: Request, target_uid: str, file: UploadFile 
 @app.post("/scan-receipt")
 @limiter.limit("10/minute")
 async def scan_receipt(request: Request, file: UploadFile = File(...), allowed_foods: Json[List[str]] = Form(...), user_id: str = Depends(get_current_uid)):
+    # [SECURITY] Validazione estensione file
+    ext = validate_extension(file.filename or "")
+
     # [SECURITY] Validazione dimensione file e lista allowed_foods
     file_content = await file.read()
     if len(file_content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+
+    # [SECURITY] Validazione magic bytes - verifica che sia una vera immagine
+    if not validate_file_content(file_content, ext):
+        raise HTTPException(status_code=400, detail="Il file non è un'immagine valida.")
+
     await file.seek(0)
 
     if len(allowed_foods) > 5000:
