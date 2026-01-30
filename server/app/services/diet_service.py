@@ -50,6 +50,12 @@ class OutputDietaCompleto(typing.TypedDict):
     tabella_sostituzioni: list[GruppoSostituzione]
 
 class DietParser:
+    # [OPTIMIZATION] Cache L1 in RAM (condivisa tra richieste)
+    # Chiave: content_hash, Valore: (result, timestamp)
+    _memory_cache: dict = {}
+    _MEMORY_CACHE_MAX_SIZE = 100  # Limita dimensione cache in RAM
+    _MEMORY_CACHE_TTL_SECONDS = 3600  # 1 ora TTL per cache RAM
+
     def __init__(self):
         api_key = settings.GOOGLE_API_KEY
         if not api_key:
@@ -58,7 +64,7 @@ class DietParser:
         else:
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             self.client = genai.Client(api_key=clean_key)
-        
+
         # [System instruction originale mantenuta...]
         self.system_instruction = """
 You are an expert AI Nutritionist and Data Analyst capable of understanding any language.
@@ -75,17 +81,65 @@ SIMPLIFIED SCHEMA RULES:
 3. No CAD Codes: Set to 0.
 """
 
-    # --- 1.4 SANITIZZAZIONE GDPR (Re-integrata) ---
+    # --- 1.4 SANITIZZAZIONE GDPR (Migliorata) ---
     def _sanitize_text(self, text: str) -> str:
+        """
+        Rimuove PII sensibile dal testo del PDF prima dell'elaborazione AI.
+        Gestisce: email, codici fiscali, telefoni, nomi composti, indirizzi.
+        """
         if not text: return ""
-        # Rimuove Email
-        text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL_OSCURATA]', text)
-        # Rimuove CF
-        text = re.sub(r'\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b', '[CF_OSCURATO]', text, flags=re.IGNORECASE)
-        # Rimuove Telefoni
-        text = re.sub(r'\b(\+39|0039)?\s?(3\d{2}|0\d{1,3})[\s\.-]?\d{6,10}\b', '[TEL_OSCURATO]', text)
-        # Rimuove Intestazioni Nomi
-        text = re.sub(r'(?i)(Paziente|Sig\.|Sig\.ra|Dott\.|Dr\.|Nome|Cognome|Spett\.le)\s*[:\.]?\s*[^\n]+', '[ANAGRAFICA_OSCURATA]', text)
+
+        # Rimuove Email (anche parziali)
+        text = re.sub(
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            '[EMAIL]',
+            text
+        )
+
+        # Rimuove Codici Fiscali italiani (16 caratteri alfanumerici)
+        text = re.sub(
+            r'\b[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]\b',
+            '[CF]',
+            text,
+            flags=re.IGNORECASE
+        )
+
+        # Rimuove Telefoni italiani (fissi e mobili, vari formati)
+        text = re.sub(
+            r'\b(?:\+39|0039)?\s*[0-9]{2,4}[\s\-\.]?[0-9]{6,7}\b',
+            '[TEL]',
+            text
+        )
+
+        # Rimuove numeri di telefono cellulare (3xx xxx xxxx)
+        text = re.sub(
+            r'\b3[0-9]{2}[\s\-\.]?[0-9]{3}[\s\-\.]?[0-9]{4}\b',
+            '[TEL]',
+            text
+        )
+
+        # Rimuove Intestazioni con nomi (Paziente, Sig., Dott., etc.)
+        # Gestisce anche nomi composti e con apostrofo (D'Angelo, Maria Grazia)
+        text = re.sub(
+            r'(?i)(Paziente|Sig\.?|Sig\.?ra|Dott\.?|Dr\.?|Nome|Cognome|Spett\.le|Cliente|Assistito)\s*[:\.]?\s*[A-Za-zÀ-ÿ\'\s]+(?=\n|$|[,;])',
+            '[ANAGRAFICA]',
+            text
+        )
+
+        # Rimuove potenziali indirizzi (Via/Piazza + nome + numero)
+        text = re.sub(
+            r'(?i)(Via|Viale|Piazza|P\.za|Corso|C\.so|Largo)\s+[A-Za-zÀ-ÿ\'\s]+,?\s*\d*',
+            '[INDIRIZZO]',
+            text
+        )
+
+        # Rimuove date di nascita in formato comune (gg/mm/aaaa o gg-mm-aaaa)
+        text = re.sub(
+            r'\b\d{1,2}[/\-\.]\d{1,2}[/\-\.](19|20)\d{2}\b',
+            '[DATA]',
+            text
+        )
+
         return text
 
     # --- 3.1 STREAMING I/O FIX ---
@@ -125,6 +179,31 @@ SIMPLIFIED SCHEMA RULES:
                 pass
         raise ValueError("Impossibile estrarre JSON valido.")
 
+    # [OPTIMIZATION] Metodi per cache L1 in RAM
+    def _get_from_memory_cache(self, content_hash: str):
+        """Cerca risultato in cache RAM (L1). Ritorna None se non trovato o scaduto."""
+        import time
+        if content_hash in DietParser._memory_cache:
+            result, timestamp = DietParser._memory_cache[content_hash]
+            # Verifica TTL
+            if time.time() - timestamp < DietParser._MEMORY_CACHE_TTL_SECONDS:
+                return result
+            else:
+                # Cache scaduta, rimuovi
+                del DietParser._memory_cache[content_hash]
+        return None
+
+    def _save_to_memory_cache(self, content_hash: str, result):
+        """Salva risultato in cache RAM (L1) con LRU eviction."""
+        import time
+        # Eviction se cache piena (rimuovi entry più vecchia)
+        if len(DietParser._memory_cache) >= DietParser._MEMORY_CACHE_MAX_SIZE:
+            oldest_key = min(DietParser._memory_cache.keys(),
+                           key=lambda k: DietParser._memory_cache[k][1])
+            del DietParser._memory_cache[oldest_key]
+
+        DietParser._memory_cache[content_hash] = (result, time.time())
+
     # Ora accetta 'file_obj' come primo parametro
     def parse_complex_diet(self, file_obj, custom_instructions: str = None):
         if not self.client:
@@ -134,19 +213,26 @@ SIMPLIFIED SCHEMA RULES:
         raw_text = self._extract_text_from_pdf(file_obj)
         if not raw_text:
             raise ValueError("PDF vuoto o illeggibile.")
-        
+
         # Applica sanitizzazione GDPR
         diet_text = self._sanitize_text(raw_text)
 
-        # ✅ CACHE LAYER 1: Calcola hash del contenuto
-        # Includiamo anche le custom instructions nell'hash per differenziare
+        # Calcola hash del contenuto (include custom instructions)
         cache_content = f"{diet_text}||{custom_instructions or 'default'}"
         content_hash = hashlib.sha256(cache_content.encode('utf-8')).hexdigest()
-        
-        # ✅ CACHE LAYER 2: Controlla se esiste già in Firestore
+
+        # ✅ CACHE L1: Check memoria RAM (microsecondi)
+        memory_result = self._get_from_memory_cache(content_hash)
+        if memory_result:
+            print(f"✅ Cache L1 (RAM) HIT per hash {content_hash[:8]}...")
+            return memory_result
+
+        # ✅ CACHE L2: Check Firestore (millisecondi)
         cached_result = self._get_cached_response(content_hash)
         if cached_result:
-            print(f"✅ Cache HIT per hash {content_hash[:8]}... (risparmio API)")
+            print(f"✅ Cache L2 (Firestore) HIT per hash {content_hash[:8]}...")
+            # Popola anche L1 per future richieste
+            self._save_to_memory_cache(content_hash, cached_result)
             return cached_result
 
         model_name = settings.GEMINI_MODEL
@@ -181,9 +267,12 @@ SIMPLIFIED SCHEMA RULES:
             else:
                 raise ValueError("Risposta vuota da Gemini")
             
-            # ✅ CACHE LAYER 3: Salva risultato in Firestore per riutilizzo futuro
+            # ✅ CACHE L1: Salva in RAM per accesso veloce
+            self._save_to_memory_cache(content_hash, result)
+
+            # ✅ CACHE L2: Salva in Firestore per persistenza
             self._save_cached_response(content_hash, result)
-            
+
             return result
 
         except Exception as e:
