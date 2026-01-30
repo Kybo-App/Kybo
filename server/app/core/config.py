@@ -22,10 +22,20 @@ class Settings(BaseSettings):
 
     @property
     def ALLOWED_ORIGINS(self) -> list[str]:
+        """
+        [SECURITY] CORS più restrittivo per ambiente:
+        - PROD: Solo domini di produzione
+        - STAGING: Localhost + produzione (per test pre-deploy)
+        - DEV: Solo localhost (evita test accidentali con dati prod)
+        """
         if self.ENV == "PROD":
             return self._prod_origins
-        # In DEV o STAGING permettiamo tutto (locale + prod per test)
-        return self._dev_origins + self._prod_origins
+        elif self.ENV == "STAGING":
+            # Staging permette entrambi per test pre-deploy
+            return self._dev_origins + self._prod_origins
+        else:  # DEV
+            # [FIX] DEV permette SOLO localhost per evitare confusione
+            return self._dev_origins
 
     # Paths
     DIET_PDF_PATH: str = "temp_dieta.pdf"

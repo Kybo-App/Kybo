@@ -30,6 +30,113 @@ class ApiClient {
   factory ApiClient() => _instance;
   ApiClient._internal();
 
+  // [NEW] Configurazione retry globale
+  static const int _maxRetries = 3;
+  static const Duration _baseDelay = Duration(seconds: 1);
+
+  /// Wrapper generico per richieste HTTP con retry e exponential backoff
+  Future<http.Response> _retryableRequest(
+    Future<http.Response> Function() requestFn, {
+    int maxRetries = _maxRetries,
+  }) async {
+    final r = RetryOptions(
+      maxAttempts: maxRetries,
+      delayFactor: _baseDelay,
+      randomizationFactor: 0.25, // Jitter per evitare thundering herd
+    );
+
+    return await r.retry(
+      requestFn,
+      retryIf: (e) =>
+          e is SocketException ||
+          e is TimeoutException ||
+          e is NetworkException ||
+          (e is http.ClientException),
+      onRetry: (e) => debugPrint("🔄 Retry dopo errore: $e"),
+    );
+  }
+
+  /// GET request con retry automatico
+  Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
+    try {
+      final uri = Uri.parse('${Env.apiUrl}$endpoint');
+      final user = FirebaseAuth.instance.currentUser;
+      final token = user != null ? await user.getIdToken() : null;
+
+      final response = await _retryableRequest(() async {
+        return await http.get(
+          uri,
+          headers: {
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+            ...?headers,
+          },
+        ).timeout(const Duration(seconds: 30));
+      });
+
+      return _parseResponse(response);
+    } on SocketException {
+      throw NetworkException("Nessuna connessione internet.");
+    } catch (e) {
+      if (e is ApiException || e is NetworkException) rethrow;
+      throw ApiException("Errore GET: $e", 500);
+    }
+  }
+
+  /// POST request con retry automatico
+  Future<dynamic> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final uri = Uri.parse('${Env.apiUrl}$endpoint');
+      final user = FirebaseAuth.instance.currentUser;
+      final token = user != null ? await user.getIdToken() : null;
+
+      final response = await _retryableRequest(() async {
+        return await http.post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+            ...?headers,
+          },
+          body: body != null ? json.encode(body) : null,
+        ).timeout(const Duration(seconds: 30));
+      });
+
+      return _parseResponse(response);
+    } on SocketException {
+      throw NetworkException("Nessuna connessione internet.");
+    } catch (e) {
+      if (e is ApiException || e is NetworkException) rethrow;
+      throw ApiException("Errore POST: $e", 500);
+    }
+  }
+
+  /// Parser comune per le risposte
+  dynamic _parseResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return {};
+      try {
+        return json.decode(utf8.decode(response.bodyBytes));
+      } catch (e) {
+        throw ApiException("Risposta server non valida", response.statusCode);
+      }
+    } else {
+      String errorMsg = "Errore HTTP ${response.statusCode}";
+      try {
+        final errorJson = json.decode(utf8.decode(response.bodyBytes));
+        if (errorJson is Map && errorJson.containsKey('detail')) {
+          errorMsg = errorJson['detail'].toString();
+        }
+      } catch (_) {}
+      throw ApiException(errorMsg, response.statusCode);
+    }
+  }
+
   Future<dynamic> uploadFile(
     String endpoint,
     String filePath, {
