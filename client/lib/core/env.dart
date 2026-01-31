@@ -2,11 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Env {
-  static String get fileName => kReleaseMode ? ".env.prod" : ".env";
+  // Flutter imposta automaticamente appFlavor quando usi --flavor
+  static const String _flavor = String.fromEnvironment(
+    'FLUTTER_APP_FLAVOR',
+    defaultValue: 'dev',
+  );
+
+  // Usa il flavor per scegliere il file env, non kReleaseMode
+  static String get fileName => _flavor == 'prod' ? ".env.prod" : ".env";
 
   static Future<void> init() async {
     try {
       await dotenv.load(fileName: fileName);
+      debugPrint("📁 Loaded env file: $fileName (flavor: $_flavor)");
     } catch (e) {
       debugPrint("Errore caricamento $fileName: $e");
     }
@@ -19,15 +27,12 @@ class Env {
       return envUrl;
     }
 
-    // 2. Fallback per Emulatore Android (10.0.2.2 = localhost del PC)
-    // Usa defaultTargetPlatform per compatibilità Web
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8000';
+    // 2. Fallback hardcoded per Render (come web app)
+    if (isProd) {
+      return 'https://kybo-prod.onrender.com';
     }
-
-    // 3. Fallback standard (iOS / Web / Desktop)
-    return 'http://127.0.0.1:8000';
+    return 'https://kybo-test.onrender.com';
   }
 
-  static bool get isProd => kReleaseMode || dotenv.env['IS_PROD'] == 'true';
+  static bool get isProd => _flavor == 'prod';
 }
