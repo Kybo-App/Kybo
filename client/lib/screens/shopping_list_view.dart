@@ -334,10 +334,14 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     for (String item in widget.shoppingList) {
       if (item.startsWith("OK_")) {
         String content = item.substring(3);
+        // Rimuovi "• X pasti" prima del parsing
+        content = content.replaceAll(RegExp(r'\s*•\s*\d+\s*past[io]$'), '');
+
+        // Regex: "Nome (quantità unità)"
         final RegExp regExp = RegExp(
-          r'^(.*?)(?:\s*\((\d+(?:[.,]\d+)?)\s*(.*)\))?$',
+          r'^(.*?)\s*\((\d+(?:[.,]\d+)?)\s*([^)]*)\)$',
         );
-        final match = regExp.firstMatch(content);
+        final match = regExp.firstMatch(content.trim());
         String name = content;
         double qty = 1.0;
         String unit = "pz";
@@ -349,9 +353,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           if (qtyStr != null) {
             qty = double.tryParse(qtyStr.replaceAll(',', '.')) ?? 1.0;
           }
-          if (unitStr != null && unitStr.isNotEmpty) {
+          if (unitStr != null && unitStr.trim().isNotEmpty) {
             unit = unitStr.trim();
-            if (unit.endsWith(')')) unit = unit.substring(0, unit.length - 1);
           }
         }
         widget.onAddToPantry(name, qty, unit);

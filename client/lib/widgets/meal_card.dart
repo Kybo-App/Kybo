@@ -205,17 +205,6 @@ class MealCard extends StatelessWidget {
                                     children: [
                                       Row(
                                         children: [
-                                          if (isSwapped)
-                                            const Padding(
-                                              padding: EdgeInsets.only(
-                                                right: 6,
-                                              ),
-                                              child: Icon(
-                                                Icons.swap_horiz,
-                                                size: 16,
-                                                color: Colors.orange,
-                                              ),
-                                            ),
                                           Expanded(
                                             child: Text(
                                               displayName,
@@ -240,8 +229,8 @@ class MealCard extends StatelessWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      // [FIX] Mostra ingredienti SOLO per piatti composti
-                                      if (originalFood.isComposed && hasIngredients)
+                                      // Mostra ingredienti se presenti (indipendentemente da isComposed)
+                                      if (hasIngredients)
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
                                           String iQty = ing.qty;
