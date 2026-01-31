@@ -144,17 +144,34 @@ class MealCard extends StatelessWidget {
                         final bool hasIngredients =
                             ingredients != null && ingredients.isNotEmpty;
 
+                        // Mostra ingredienti solo se:
+                        // - Ci sono 2+ ingredienti, OPPURE
+                        // - C'è 1 ingrediente con nome diverso dal piatto
+                        final bool shouldShowIngredients = hasIngredients &&
+                            (ingredients!.length > 1 ||
+                                !ingredients.first.name
+                                    .toLowerCase()
+                                    .contains(displayName.toLowerCase()));
+
                         // Logica Relax
                         final String nameLower = displayName.toLowerCase();
                         bool isRelaxableItem = relaxableFoods.any(
                           (tag) => nameLower.contains(tag),
                         );
 
+                        // Se abbiamo 1 ingrediente uguale al piatto, usa la sua qty
+                        String effectiveQty = displayQtyRaw;
+                        if (hasIngredients &&
+                            !shouldShowIngredients &&
+                            ingredients!.first.qty.isNotEmpty) {
+                          effectiveQty = ingredients.first.qty;
+                        }
+
                         String qtyDisplay;
                         if (isTranquilMode && isRelaxableItem) {
                           qtyDisplay = "A piacere";
                         } else {
-                          qtyDisplay = displayQtyRaw.trim();
+                          qtyDisplay = effectiveQty.trim();
                         }
 
                         return Container(
@@ -229,8 +246,8 @@ class MealCard extends StatelessWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      // Mostra ingredienti se presenti (indipendentemente da isComposed)
-                                      if (hasIngredients)
+                                      // Mostra ingredienti se rilevanti (non se è solo 1 uguale al piatto)
+                                      if (shouldShowIngredients)
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
                                           String iQty = ing.qty;
