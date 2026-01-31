@@ -3,11 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin_repository.dart';
-import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:path_provider/path_provider.dart';
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -1521,20 +1519,15 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // Salva come file temporaneo
       final bytes = utf8.encode(_promptController.text);
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/custom_prompt.txt');
-      await file.writeAsBytes(bytes);
 
-      // Upload tramite repository
+      // Upload tramite repository (direttamente dai bytes, senza file temporanei)
       await _repo.uploadParserConfig(
         widget.targetUid,
         PlatformFile(
           name: 'custom_prompt.txt',
           size: bytes.length,
           bytes: Uint8List.fromList(bytes),
-          path: file.path,
         ),
       );
 
