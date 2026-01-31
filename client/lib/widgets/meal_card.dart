@@ -37,12 +37,12 @@ class MealCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.getCardColor(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black
-                .withValues(alpha: 0.05), // Fix per versioni vecchie di Flutter
+                .withValues(alpha: AppColors.isDark(context) ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
