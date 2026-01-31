@@ -312,8 +312,8 @@ class MealCard extends StatelessWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      // [FIX] Loop sugli ingredienti oggetto
-                                      if (hasIngredients)
+                                      // [FIX] Mostra ingredienti SOLO per piatti composti
+                                      if (originalFood.isComposed && hasIngredients)
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
                                           String iQty = ing.qty;
