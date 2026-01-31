@@ -12,7 +12,7 @@ class UploadClient {
     _dio = Dio(BaseOptions(
       baseUrl: Env.apiUrl,
       connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 180), // 3 minuti per elaborazione Gemini
       headers: {
         'Accept': 'application/json',
       },
