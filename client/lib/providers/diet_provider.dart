@@ -193,14 +193,42 @@ class DietProvider extends ChangeNotifier {
       if (docSnapshot.exists) {
         final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
-          // [FIX] Conversione diretta da Mappa Firestore a Oggetto DietPlan
+          // [FIX] Salva lo stato consumed locale prima di sovrascrivere
+          final Map<String, bool> localConsumedStates = {};
+          if (_dietPlan != null) {
+            _dietPlan!.plan.forEach((day, meals) {
+              meals.forEach((mealType, dishes) {
+                for (var dish in dishes) {
+                  if (dish.isConsumed) {
+                    // Usa instanceId come chiave
+                    localConsumedStates[dish.instanceId] = true;
+                  }
+                }
+              });
+            });
+          }
+
+          // Conversione da Mappa Firestore a Oggetto DietPlan
           _dietPlan = DietPlan.fromJson(data);
 
-          // Salvataggio cache locale
+          // [FIX] Ripristina lo stato consumed dai dati locali
+          if (localConsumedStates.isNotEmpty) {
+            _dietPlan!.plan.forEach((day, meals) {
+              meals.forEach((mealType, dishes) {
+                for (var dish in dishes) {
+                  if (localConsumedStates[dish.instanceId] == true) {
+                    dish.isConsumed = true;
+                  }
+                }
+              });
+            });
+            debugPrint("🔄 Ripristinati ${localConsumedStates.length} stati consumo");
+          }
+
+          // Salvataggio cache locale (con stati consumed preservati)
           await _storage.saveDiet(_dietPlan!.toJson());
 
           // Aggiorna baseline sync
-          // Nota: toJson() ci dà la mappa completa {'plan': ..., 'substitutions': ...}
           final jsonMap = _dietPlan!.toJson();
           _lastSyncedDiet = _deepCopy(jsonMap['plan']);
           _lastSyncedSubstitutions = _deepCopy(jsonMap['substitutions']);

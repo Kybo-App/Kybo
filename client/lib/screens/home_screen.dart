@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../constants.dart' show AppColors, italianDays;
 import '../core/error_handler.dart';
 import 'diet_view.dart';
@@ -19,7 +21,7 @@ import 'shopping_list_view.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
 import 'change_password_screen.dart';
-import 'package:permission_handler/permission_handler.dart'; // <--- NUOVO
+import 'package:permission_handler/permission_handler.dart';
 import '../services/jailbreak_service.dart';
 
 // --- 1. WRAPPER PRINCIPALE ---
@@ -317,20 +319,20 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.getScaffoldBackground(context),
       appBar: _currentIndex == 1
           ? AppBar(
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.getSurface(context),
               elevation: 0,
-              title: const Text(
+              title: Text(
                 "Kybo",
                 style: TextStyle(
-                  color: Colors.black,
+                  color: AppColors.getTextColor(context),
                   fontWeight: FontWeight.bold,
                   fontSize: 22,
                 ),
               ),
-              iconTheme: const IconThemeData(color: Colors.black),
+              iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
               leading: Builder(
                 builder: (context) {
                   return Showcase(
@@ -396,9 +398,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                 fontSize: 12,
               );
             }
-            return const TextStyle(color: Colors.grey, fontSize: 12);
+            return TextStyle(color: AppColors.getSecondaryTextColor(context), fontSize: 12);
           }),
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.getSurface(context),
           elevation: 5,
         ),
         child: NavigationBar(
@@ -495,7 +497,7 @@ class _MainScreenContentState extends State<MainScreenContent>
         final bool canUpload = (role == 'independent' || role == 'admin');
 
         return Drawer(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.getSurface(drawerCtx),
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
@@ -781,194 +783,210 @@ class _MainScreenContentState extends State<MainScreenContent>
   }
 
   Future<void> _openTimeSettings() async {
-    final storage = StorageService();
-    List<Map<String, dynamic>> alarms = [];
-    try {
-      // FIX: Rimosso check ridondante 'data is List'
-      var data = await storage.loadAlarms();
-      if (data.isNotEmpty) {
-        alarms = List<Map<String, dynamic>>.from(data);
+    // Orari default per ogni tipo di pasto
+    final Map<String, String> defaultTimes = {
+      'Colazione': '08:00',
+      'Seconda Colazione': '10:30',
+      'Pranzo': '13:00',
+      'Merenda': '16:00',
+      'Cena': '20:00',
+      'Spuntino': '11:00',
+      'Spuntino Serale': '22:00',
+    };
+
+    // Carica impostazioni salvate
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedJson = prefs.getString('meal_alarms');
+    Map<String, String> currentAlarms = {};
+
+    if (savedJson != null) {
+      try {
+        final decoded = jsonDecode(savedJson) as Map<String, dynamic>;
+        decoded.forEach((k, v) => currentAlarms[k] = v.toString());
+      } catch (_) {}
+    }
+
+    // Stato per il dialog
+    Map<String, bool> enabled = {};
+    Map<String, TimeOfDay> times = {};
+
+    for (var mealType in defaultTimes.keys) {
+      enabled[mealType] = currentAlarms.containsKey(mealType);
+      if (currentAlarms.containsKey(mealType)) {
+        final parts = currentAlarms[mealType]!.split(':');
+        times[mealType] = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      } else {
+        final parts = defaultTimes[mealType]!.split(':');
+        times[mealType] = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }
-    } catch (_) {}
+    }
 
     if (!mounted) return;
+
+    // Verifica permessi
+    final notificationService = NotificationService();
+    await notificationService.requestPermissions();
 
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (innerCtx, setDialogState) {
-            void addAlarm() => setDialogState(
-                  () => alarms.add({
-                    'id': DateTime.now().millisecondsSinceEpoch % 100000,
-                    'label': 'Spuntino',
-                    'time': '10:00',
-                    'body': 'Ricorda il tuo spuntino!',
-                  }),
-                );
-            void removeAlarm(int index) =>
-                setDialogState(() => alarms.removeAt(index));
-
             return AlertDialog(
               title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Gestisci Allarmi"),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.restore),
-                        onPressed: () => setDialogState(
-                          () => alarms = [
-                            {
-                              'id': 10,
-                              'label': 'Colazione ☕',
-                              'time': '08:00',
-                              'body': 'Sveglia!',
-                            },
-                            {
-                              'id': 11,
-                              'label': 'Pranzo 🥗',
-                              'time': '13:00',
-                              'body': 'Buon appetito!',
-                            },
-                            {
-                              'id': 12,
-                              'label': 'Cena 🍽️',
-                              'time': '20:00',
-                              'body': 'Cena time!',
-                            },
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.blue),
-                        onPressed: addAlarm,
-                      ),
-                    ],
-                  ),
+                  const Icon(Icons.notifications_active, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text("Promemoria Pasti"),
                 ],
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: alarms.isEmpty
-                    ? const Center(child: Text("Nessun allarme."))
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: alarms.length,
-                        itemBuilder: (context, index) {
-                          final alarm = alarms[index];
-                          final parts = (alarm['time'] ?? "08:00").split(":");
-                          final time = TimeOfDay(
-                            hour: int.parse(parts[0]),
-                            minute: int.parse(parts[1]),
-                          );
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: alarm['label'],
-                                          decoration: const InputDecoration(
-                                            labelText: "Titolo",
-                                            isDense: true,
-                                            contentPadding:
-                                                EdgeInsets.symmetric(
-                                              vertical: 8,
-                                            ),
-                                          ),
-                                          onChanged: (v) => alarm['label'] = v,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          "Attiva i promemoria per ricevere notifiche all'orario dei pasti.",
+                          style: TextStyle(
+                            color: AppColors.getSecondaryTextColor(innerCtx),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      ...defaultTimes.keys.map((mealType) {
+                        final time = times[mealType]!;
+                        final isEnabled = enabled[mealType] ?? false;
 
-                                      // 1. TASTO ORARIO COMPATTO (No TextButton)
-                                      InkWell(
-                                        onTap: () async {
-                                          final p = await showTimePicker(
-                                            context: innerCtx,
-                                            initialTime: time,
-                                          );
-                                          if (p != null) {
-                                            setDialogState(
-                                              () => alarm['time'] =
-                                                  "${p.hour.toString().padLeft(2, '0')}:${p.minute.toString().padLeft(2, '0')}",
-                                            );
-                                          }
-                                        },
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 6,
-                                          ),
-                                          child: Text(
-                                            "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primary,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-
-                                      // 2. TASTO RIMUOVI COMPATTO (No IconButton)
-                                      InkWell(
-                                        onTap: () => removeAlarm(index),
-                                        borderRadius: BorderRadius.circular(20),
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(
-                                            8.0,
-                                          ), // Padding manuale controllato
-                                          child: Icon(
-                                            Icons.close,
-                                            color: Colors.red,
-                                            size:
-                                                22, // Icona leggermente più piccola
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: isEnabled
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : AppColors.getCardColor(innerCtx),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isEnabled
+                                  ? AppColors.primary.withValues(alpha: 0.3)
+                                  : Colors.grey.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            leading: Switch(
+                              value: isEnabled,
+                              activeColor: AppColors.primary,
+                              onChanged: (val) {
+                                setDialogState(() => enabled[mealType] = val);
+                              },
+                            ),
+                            title: Text(
+                              mealType,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: isEnabled
+                                    ? AppColors.primary
+                                    : AppColors.getSecondaryTextColor(innerCtx),
                               ),
                             ),
-                          );
-                        },
-                      ),
+                            trailing: isEnabled
+                                ? InkWell(
+                                    onTap: () async {
+                                      final p = await showTimePicker(
+                                        context: innerCtx,
+                                        initialTime: time,
+                                      );
+                                      if (p != null) {
+                                        setDialogState(() => times[mealType] = p);
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                    ),
+                                  ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text("Annulla"),
                 ),
-                FilledButton(
+                FilledButton.icon(
+                  icon: const Icon(Icons.save, size: 18),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                   ),
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    await storage.saveAlarms(alarms);
-                    // NUOVO
+
+                    // Salva solo i pasti attivati
+                    Map<String, String> toSave = {};
+                    for (var mealType in defaultTimes.keys) {
+                      if (enabled[mealType] == true) {
+                        final t = times[mealType]!;
+                        toSave[mealType] =
+                            "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+                      }
+                    }
+
+                    await prefs.setString('meal_alarms', jsonEncode(toSave));
+
+                    // Rischedula notifiche
                     if (mounted) {
-                      // Chiediamo al provider di rischedulare usando i dati che possiede
                       await context
                           .read<DietProvider>()
                           .scheduleMealNotifications();
-                    }
-                    if (mounted) {
+
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Allarmi aggiornati!")),
+                        SnackBar(
+                          content: Text(
+                            toSave.isEmpty
+                                ? "Promemoria disattivati"
+                                : "Attivati ${toSave.length} promemoria",
+                          ),
+                          backgroundColor: AppColors.primary,
+                        ),
                       );
                     }
                   },
-                  child: const Text("Salva"),
+                  label: const Text("Salva"),
                 ),
               ],
             );
