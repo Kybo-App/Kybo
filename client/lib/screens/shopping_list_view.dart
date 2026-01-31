@@ -235,7 +235,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             // --- LOGICA PIATTO ORIGINALE ---
             if (dish.qty == "N/A") continue;
 
-            if (dish.isComposed) {
+            // [FIX] Mostra ingredienti se il piatto è composto O se ha ingredienti
+            if (dish.isComposed || dish.ingredients.isNotEmpty) {
               for (var ing in dish.ingredients) {
                 _addToAggregator(neededItems, ing.name, ing.qty);
               }
@@ -245,6 +246,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           }
         }
       }
+
+      // [FIX] Sottrai gli ingredienti già in dispensa
+      _subtractPantryItems(neededItems);
 
       // Conversione finale per la lista (UI)
       List<String> result = neededItems.entries.map((e) {
@@ -305,6 +309,32 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       }
     } else {
       agg[cleanName] = {'qty': qty, 'unit': unit};
+    }
+  }
+
+  // [FIX] Sottrae dalla lista della spesa gli ingredienti già presenti in dispensa
+  void _subtractPantryItems(Map<String, Map<String, dynamic>> neededItems) {
+    for (var pantryItem in widget.pantryItems) {
+      String pantryName = pantryItem.name.trim();
+      if (pantryName.isNotEmpty) {
+        pantryName = "${pantryName[0].toUpperCase()}${pantryName.substring(1)}";
+      }
+
+      if (neededItems.containsKey(pantryName)) {
+        double neededQty = neededItems[pantryName]!['qty'] ?? 0.0;
+        double pantryQty = pantryItem.qty;
+
+        // Sottrai la quantità in dispensa
+        double remaining = neededQty - pantryQty;
+
+        if (remaining <= 0) {
+          // Abbiamo abbastanza in dispensa, rimuovi dalla lista
+          neededItems.remove(pantryName);
+        } else {
+          // Aggiorna con la quantità rimanente da comprare
+          neededItems[pantryName]!['qty'] = remaining;
+        }
+      }
     }
   }
 
