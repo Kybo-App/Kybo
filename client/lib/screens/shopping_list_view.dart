@@ -322,7 +322,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
       if (neededItems.containsKey(pantryName)) {
         double neededQty = neededItems[pantryName]!['qty'] ?? 0.0;
-        double pantryQty = pantryItem.qty;
+        double pantryQty = pantryItem.quantity;
 
         // Sottrai la quantità in dispensa
         double remaining = neededQty - pantryQty;
