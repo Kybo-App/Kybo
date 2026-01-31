@@ -15,7 +15,48 @@ class AppColors {
   static const Color surface = Colors.white;
 }
 
+// --- CONFIGURAZIONE DIETA (Centralizzata) ---
+
+/// Giorni della settimana in italiano (ordine standard: Lunedì = index 0)
+const List<String> italianDays = [
+  "Lunedì",
+  "Martedì",
+  "Mercoledì",
+  "Giovedì",
+  "Venerdì",
+  "Sabato",
+  "Domenica",
+];
+
+/// Tipi di pasto nell'ordine corretto della giornata
+const List<String> orderedMealTypes = [
+  "Colazione",
+  "Seconda Colazione",
+  "Spuntino",
+  "Pranzo",
+  "Merenda",
+  "Cena",
+  "Spuntino Serale",
+  "Nell'Arco Della Giornata",
+];
+
+// --- CONVERSIONI UNITÀ (Configurabili) ---
+
+/// Fattori di conversione per unità di misura comuni
+/// Tutti i valori sono espressi in grammi/ml equivalenti
+class UnitConversions {
+  static const double kgToGrams = 1000.0;
+  static const double literToMl = 1000.0;
+  static const double vasettoGrams = 125.0; // Vasetto yogurt standard
+  static const double cucchiainoMl = 5.0; // Cucchiaino standard
+  static const double cucchiaioMl = 15.0; // Cucchiaio standard
+  static const double tazzaMl = 250.0; // Tazza standard
+  static const double bicchiereMl = 200.0; // Bicchiere standard
+}
+
 // --- LISTE KEYWORDS ---
+
+/// Keywords per identificare frutta (usato per conteggio e "Tranquil Mode")
 const Set<String> fruitKeywords = {
   'mela',
   'mele',
@@ -23,36 +64,58 @@ const Set<String> fruitKeywords = {
   'pere',
   'banana',
   'banane',
-  'arance',
   'arancia',
+  'arance',
+  'mandarino',
+  'mandarini',
   'ananas',
   'kiwi',
+  'pesca',
   'pesche',
+  'albicocca',
   'albicocche',
+  'fragola',
   'fragole',
+  'ciliegia',
   'ciliegie',
+  'prugna',
   'prugne',
   'fichi',
   'uva',
   'caco',
   'cachi',
+  'anguria',
+  'melone',
+  'limone',
+  'pompelmo',
+  'frutti di bosco',
 };
 
+/// Keywords per identificare verdura
 const Set<String> veggieKeywords = {
+  'zucchina',
   'zucchine',
+  'melanzana',
   'melanzane',
+  'pomodoro',
   'pomodori',
+  'cetriolo',
   'cetrioli',
   'insalata',
+  'lattuga',
   'rucola',
   'bieta',
   'spinaci',
+  'carota',
   'carote',
+  'finocchio',
   'finocchi',
   'verza',
   'cavolfiore',
+  'broccolo',
   'broccoli',
   'minestrone',
+  'verdura',
   'verdure',
   'fagiolini',
   'cicoria',
@@ -60,10 +123,20 @@ const Set<String> veggieKeywords = {
   'indivia',
   'zucca',
   'asparagi',
+  'peperone',
   'peperoni',
   'sedano',
-  'lattuga',
   'funghi',
+  'cime di rapa',
+  'passato di verdura',
+  'ortaggi',
+};
+
+/// Set combinato di alimenti "rilassabili" per Tranquil Mode
+/// Frutta e verdura per cui la quantità può essere "a piacere"
+const Set<String> relaxableFoods = {
+  ...fruitKeywords,
+  ...veggieKeywords,
 };
 
 // [AGGIUNTA PUNTO 4.3] Centralizzazione Unità di Misura

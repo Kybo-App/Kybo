@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
 import '../models/pantry_item.dart';
+import '../constants.dart' show italianDays;
 
 const String taskInventoryCheck = "inventoryCheck";
 
@@ -101,16 +102,7 @@ class InventoryService {
 }
 
 String _getDayName(int weekday) {
-  const days = [
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
-    "Domenica",
-  ];
-  return days[weekday - 1];
+  return italianDays[weekday - 1];
 }
 
 bool _checkMissingIngredients(

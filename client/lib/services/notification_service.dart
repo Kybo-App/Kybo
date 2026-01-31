@@ -9,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/diet_models.dart'; // Fondamentale per i nuovi oggetti Dish
+import '../constants.dart' show italianDays;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -170,14 +171,9 @@ class NotificationService {
     int notificationId = 0;
     final now = DateTime.now();
 
+    // Costruisce daysMap da italianDays (index 0 = Lunedì = weekday 1)
     final daysMap = {
-      "Lunedì": 1,
-      "Martedì": 2,
-      "Mercoledì": 3,
-      "Giovedì": 4,
-      "Venerdì": 5,
-      "Sabato": 6,
-      "Domenica": 7
+      for (int i = 0; i < italianDays.length; i++) italianDays[i]: i + 1
     };
 
     for (var entry in plan.entries) {

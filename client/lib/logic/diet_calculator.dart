@@ -1,4 +1,5 @@
-import 'package:kybo/constants.dart';
+import 'package:kybo/constants.dart'
+    show DietUnits, UnitConversions, italianDays, orderedMealTypes;
 import 'package:kybo/models/pantry_item.dart'; // Assicurati che l'import sia corretto per il tuo progetto
 
 // --- ECCEZIONI DI DOMINIO ---
@@ -39,15 +40,6 @@ class DietCalculator {
     }
 
     Map<String, bool> newMap = {};
-    final italianDays = [
-      "Lunedì",
-      "Martedì",
-      "Mercoledì",
-      "Giovedì",
-      "Venerdì",
-      "Sabato",
-      "Domenica",
-    ];
 
 // ✅ FIX MIDNIGHT BUG: Usa mezzanotte del giorno corrente come riferimento
 // Questo previene race condition se il calcolo attraversa la mezzanotte
@@ -65,18 +57,8 @@ class DietCalculator {
       if (!dietData.containsKey(day)) continue;
 
       final mealsOfDay = dietData[day] as Map<String, dynamic>;
-      final mealTypes = [
-        "Colazione",
-        "Seconda Colazione",
-        "Spuntino",
-        "Pranzo",
-        "Merenda",
-        "Cena",
-        "Spuntino Serale",
-        "Nell'Arco Della Giornata",
-      ];
 
-      for (var mType in mealTypes) {
+      for (var mType in orderedMealTypes) {
         if (!mealsOfDay.containsKey(mType)) continue;
         List<dynamic> dishes = List.from(mealsOfDay[mType]);
         List<List<int>> groups = buildGroups(dishes);
@@ -199,12 +181,12 @@ class DietCalculator {
     String iRawQty = item['qty'].toString().toLowerCase();
     double iQty = parseQty(iRawQty);
 
-    // Normalizzazione rapida per simulazione
+    // Normalizzazione rapida per simulazione (usa costanti centralizzate)
     if (iRawQty.contains('kg') ||
         (iRawQty.contains('l') && !iRawQty.contains('ml'))) {
-      iQty *= 1000;
+      iQty *= UnitConversions.kgToGrams;
     }
-    if (iRawQty.contains('vasetto')) iQty = 125.0;
+    if (iRawQty.contains('vasetto')) iQty = UnitConversions.vasettoGrams;
 
     String? foundKey;
     for (var key in fridge.keys) {
@@ -227,13 +209,15 @@ class DietCalculator {
 
   static double normalizeToGrams(double qty, String unit) {
     final u = unit.trim().toLowerCase();
-    if (u == 'kg' || u == 'l') return qty * 1000;
+    if (u == 'kg' || u == 'l') return qty * UnitConversions.kgToGrams;
     if (u == 'g' || u == 'ml' || u == 'mg' || u == 'gr' || u == 'grammi') {
       return qty;
     }
-    if (u.contains('vasetto')) return qty * 125;
-    if (u.contains('cucchiain')) return qty * 5;
-    if (u.contains('cucchiaio')) return qty * 15;
+    if (u.contains('vasetto')) return qty * UnitConversions.vasettoGrams;
+    if (u.contains('cucchiain')) return qty * UnitConversions.cucchiainoMl;
+    if (u.contains('cucchiaio')) return qty * UnitConversions.cucchiaioMl;
+    if (u.contains('tazza')) return qty * UnitConversions.tazzaMl;
+    if (u.contains('bicchiere')) return qty * UnitConversions.bicchiereMl;
     return -1.0;
   }
 
