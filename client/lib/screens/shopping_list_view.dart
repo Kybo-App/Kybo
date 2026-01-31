@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kybo/models/diet_models.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
-import '../constants.dart';
+import '../constants.dart' show AppColors, italianDays, orderedMealTypes;
 import '../logic/diet_calculator.dart';
 
 class ShoppingListView extends StatefulWidget {
@@ -29,32 +29,13 @@ class ShoppingListView extends StatefulWidget {
 
 class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
-  final List<String> _allDays = [
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
-    "Domenica",
-  ];
-  final List<String> _orderedMealTypes = [
-    "Colazione",
-    "Seconda Colazione",
-    "Spuntino",
-    "Pranzo",
-    "Merenda",
-    "Cena",
-    "Spuntino Serale",
-    "Nell'Arco Della Giornata",
-  ];
 
   List<String> _getOrderedDays() {
     int todayIndex = DateTime.now().weekday - 1;
     if (todayIndex < 0 || todayIndex > 6) todayIndex = 0;
     return [
-      ..._allDays.sublist(todayIndex),
-      ..._allDays.sublist(0, todayIndex),
+      ...italianDays.sublist(todayIndex),
+      ...italianDays.sublist(0, todayIndex),
     ];
   }
 
@@ -91,8 +72,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     }).toList();
 
                     mealNames.sort((a, b) {
-                      int idxA = _orderedMealTypes.indexOf(a);
-                      int idxB = _orderedMealTypes.indexOf(b);
+                      int idxA = orderedMealTypes.indexOf(a);
+                      int idxB = orderedMealTypes.indexOf(b);
                       if (idxA == -1) idxA = 999;
                       if (idxB == -1) idxB = 999;
                       return idxA.compareTo(idxB);
@@ -183,8 +164,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   void _generateListFromSelection() {
     if (widget.dietPlan == null) return;
 
-    // [FIX] Usiamo la struttura complessa richiesta da _addToAggregator
-    // Struttura: {'Nome Ingrediente': {'qty': 100.0, 'unit': 'g'}}
+    // Struttura: {'Nome Ingrediente': {'qty': 100.0, 'unit': 'g', 'meals': {'Lunedì::Pranzo', ...}}}
     final Map<String, Map<String, dynamic>> neededItems = {};
 
     try {
@@ -194,6 +174,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
         var day = parts[0];
         var meal = parts[1];
+        final mealKey = "$day::$meal"; // Chiave unica per il pasto
 
         List<Dish>? foods = widget.dietPlan!.plan[day]?[meal];
         if (foods == null) continue;
@@ -222,32 +203,31 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                 }
 
                 if (name.isNotEmpty) {
-                  // Passiamo qtyStr, l'aggregator si occuperà del parsing
-                  _addToAggregator(neededItems, name, qtyStr);
+                  _addToAggregator(neededItems, name, qtyStr, mealKey);
                 }
               }
             } else {
               // Swap semplice
               _addToAggregator(
-                  neededItems, swap.name, "${swap.qty} ${swap.unit}");
+                  neededItems, swap.name, "${swap.qty} ${swap.unit}", mealKey);
             }
           } else {
             // --- LOGICA PIATTO ORIGINALE ---
             if (dish.qty == "N/A") continue;
 
-            // [FIX] Mostra ingredienti se il piatto è composto O se ha ingredienti
+            // Mostra ingredienti se il piatto è composto O se ha ingredienti
             if (dish.isComposed || dish.ingredients.isNotEmpty) {
               for (var ing in dish.ingredients) {
-                _addToAggregator(neededItems, ing.name, ing.qty);
+                _addToAggregator(neededItems, ing.name, ing.qty, mealKey);
               }
             } else {
-              _addToAggregator(neededItems, dish.name, dish.qty);
+              _addToAggregator(neededItems, dish.name, dish.qty, mealKey);
             }
           }
         }
       }
 
-      // [FIX] Sottrai gli ingredienti già in dispensa
+      // Sottrai gli ingredienti già in dispensa
       _subtractPantryItems(neededItems);
 
       // Conversione finale per la lista (UI)
@@ -255,6 +235,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         String name = e.key;
         double qty = e.value['qty'] ?? 0.0;
         String unit = e.value['unit'] ?? '';
+        Set<String> meals = e.value['meals'] ?? <String>{};
+        int mealCount = meals.length;
 
         // Formattazione pulita (100.0 -> 100)
         String qtyDisplay = qty.toStringAsFixed(1);
@@ -262,7 +244,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           qtyDisplay = qtyDisplay.substring(0, qtyDisplay.length - 2);
         }
 
-        return "$name ($qtyDisplay $unit)".trim();
+        // Formato: "Nome (100 g) • 3 pasti"
+        String mealInfo = mealCount > 1 ? " • $mealCount pasti" : "";
+        return "$name ($qtyDisplay $unit)$mealInfo".trim();
       }).toList();
 
       result.sort();
@@ -287,9 +271,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     Map<String, Map<String, dynamic>> agg,
     String name,
     String qtyStr,
+    String mealKey, // Chiave pasto (es. "Lunedì::Pranzo")
   ) {
-    // MODIFICA: Uso DietCalculator per parsing sicuro e standardizzato
-    // Gestisce virgole, punti, "q.b." e normalizza le unità (es. "gr" -> "g")
+    // Uso DietCalculator per parsing sicuro e standardizzato
     double qty = DietCalculator.parseQty(qtyStr);
     String unit = DietCalculator.parseUnit(qtyStr, name);
 
@@ -302,13 +286,19 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       agg[cleanName]!['qty'] += qty;
 
       // Aggiorna l'unità se quella salvata è generica o vuota
-      // (Migliora l'aggregazione se prima avevo solo "pz" e ora ho "g")
       String currentUnit = agg[cleanName]!['unit'];
       if ((currentUnit.isEmpty || currentUnit == 'pz') && unit.isNotEmpty) {
         agg[cleanName]!['unit'] = unit;
       }
+
+      // Aggiungi il pasto al set (per contare i pasti unici)
+      (agg[cleanName]!['meals'] as Set<String>).add(mealKey);
     } else {
-      agg[cleanName] = {'qty': qty, 'unit': unit};
+      agg[cleanName] = {
+        'qty': qty,
+        'unit': unit,
+        'meals': <String>{mealKey}, // Set per pasti unici
+      };
     }
   }
 

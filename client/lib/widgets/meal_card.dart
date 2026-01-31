@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants.dart';
+import '../constants.dart' show AppColors, relaxableFoods, orderedMealTypes;
 import '../models/active_swap.dart';
 import '../models/diet_models.dart'; // [IMPORTANTE] Serve per capire cos'è un Dish
 
@@ -28,69 +28,6 @@ class MealCard extends StatelessWidget {
     required this.onSwap,
     required this.onEdit,
   });
-
-  // Lista di alimenti "rilassabili" (Frutta e Verdura)
-  static const Set<String> _relaxableFoods = {
-    'mela',
-    'mele',
-    'pera',
-    'pere',
-    'banana',
-    'banane',
-    'arancia',
-    'arance',
-    'mandarino',
-    'mandarini',
-    'kiwi',
-    'ananas',
-    'fragola',
-    'fragole',
-    'ciliegia',
-    'ciliegie',
-    'albicocca',
-    'albicocche',
-    'pesca',
-    'pesche',
-    'anguria',
-    'melone',
-    'uva',
-    'prugna',
-    'prugne',
-    'limone',
-    'pompelmo',
-    'frutti di bosco',
-    'insalata',
-    'lattuga',
-    'rucola',
-    'spinaci',
-    'bieta',
-    'zucchina',
-    'zucchine',
-    'melanzana',
-    'melanzane',
-    'peperone',
-    'peperoni',
-    'pomodoro',
-    'pomodori',
-    'carota',
-    'carote',
-    'sedano',
-    'finocchio',
-    'finocchi',
-    'cetriolo',
-    'cetrioli',
-    'cavolfiore',
-    'broccolo',
-    'broccoli',
-    'verza',
-    'cime di rapa',
-    'fagiolini',
-    'verdura',
-    'verdure',
-    'minestrone',
-    'passato di verdura',
-    'ortaggi',
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -192,16 +129,7 @@ class MealCard extends StatelessWidget {
                         final bool isConsumed = originalFood.isConsumed;
 
                         assert(
-                          [
-                            'Colazione',
-                            'Seconda Colazione',
-                            'Spuntino',
-                            'Pranzo',
-                            'Merenda',
-                            'Cena',
-                            'Spuntino Serale',
-                            "Nell'Arco Della Giornata"
-                          ].contains(mealName),
+                          orderedMealTypes.contains(mealName),
                           '❌ BUG: Meal name "$mealName" non standardizzato! Controlla normalize_meal_name()',
                         );
                         String availKey = "${day}_${mealName}_$index";
@@ -218,7 +146,7 @@ class MealCard extends StatelessWidget {
 
                         // Logica Relax
                         final String nameLower = displayName.toLowerCase();
-                        bool isRelaxableItem = _relaxableFoods.any(
+                        bool isRelaxableItem = relaxableFoods.any(
                           (tag) => nameLower.contains(tag),
                         );
 
@@ -317,7 +245,7 @@ class MealCard extends StatelessWidget {
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
                                           String iQty = ing.qty;
-                                          bool iRelax = _relaxableFoods.any(
+                                          bool iRelax = relaxableFoods.any(
                                             (tag) => iName
                                                 .toLowerCase()
                                                 .contains(tag),

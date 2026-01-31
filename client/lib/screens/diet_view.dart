@@ -7,6 +7,7 @@ import '../models/pantry_item.dart';
 import '../models/diet_models.dart'; // Importa il modello
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
+import '../constants.dart' show italianDays, orderedMealTypes;
 
 class DietView extends StatelessWidget {
   final String day;
@@ -30,15 +31,6 @@ class DietView extends StatelessWidget {
 
   bool _isToday(String dayName) {
     final now = DateTime.now();
-    final italianDays = [
-      "Lunedì",
-      "Martedì",
-      "Mercoledì",
-      "Giovedì",
-      "Venerdì",
-      "Sabato",
-      "Domenica"
-    ];
     int index = now.weekday - 1;
     if (index >= 0 && index < italianDays.length) {
       return italianDays[index].toLowerCase() == dayName.toLowerCase();
@@ -88,17 +80,6 @@ class DietView extends StatelessWidget {
       );
     }
 
-    final mealTypes = [
-      "Colazione",
-      "Seconda Colazione",
-      "Spuntino",
-      "Pranzo",
-      "Merenda",
-      "Cena",
-      "Spuntino Serale",
-      "Nell'Arco Della Giornata",
-    ];
-
     final bool isCurrentDay = _isToday(day);
 
     return Container(
@@ -108,7 +89,7 @@ class DietView extends StatelessWidget {
             context.read<DietProvider>().refreshAvailability(),
         child: ListView(
           padding: const EdgeInsets.only(top: 10, bottom: 80),
-          children: mealTypes.map((mealType) {
+          children: orderedMealTypes.map((mealType) {
             if (!mealsOfDay.containsKey(mealType)) {
               return const SizedBox.shrink();
             }
