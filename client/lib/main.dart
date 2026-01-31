@@ -98,16 +98,43 @@ class DietApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.darkScaffoldBackground,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.primary,
           secondary: AppColors.secondary,
           surface: AppColors.darkSurface,
+          onSurface: Colors.white,
+          onPrimary: Colors.white,
+          onSecondary: Colors.black,
         ),
         cardColor: AppColors.darkCardColor,
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.darkSurface,
+          foregroundColor: Colors.white,
         ),
+        listTileTheme: const ListTileThemeData(
+          textColor: Colors.white,
+          iconColor: Colors.white70,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return AppColors.primary;
+            return Colors.grey;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return AppColors.primary.withValues(alpha: 0.5);
+            return Colors.grey.withValues(alpha: 0.3);
+          }),
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white),
+          bodySmall: TextStyle(color: Colors.white70),
+          titleLarge: TextStyle(color: Colors.white),
+          titleMedium: TextStyle(color: Colors.white),
+          titleSmall: TextStyle(color: Colors.white70),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white70),
+        dividerColor: Colors.white24,
       ),
       // Qui usiamo il MaintenanceGuard basato su Firestore
       builder: (context, child) {
