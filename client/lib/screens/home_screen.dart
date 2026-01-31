@@ -507,7 +507,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                   ),
                 ),
                 accountEmail: Text(
-                  "${user?.email ?? "Ospite"} ($role)",
+                  user?.email ?? "Ospite",
                   style: const TextStyle(color: Colors.white70),
                 ),
                 currentAccountPicture: CircleAvatar(
