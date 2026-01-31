@@ -677,11 +677,13 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void swapMeal(String key, ActiveSwap swap) {
+  Future<void> swapMeal(String key, ActiveSwap swap) async {
     _activeSwaps[key] = swap;
     _storage.saveSwaps(_activeSwaps);
-    _recalcAvailability();
+    // Notifica subito per aggiornare l'icona swap nella UI
     notifyListeners();
+    // Ricalcola disponibilità e notifica di nuovo quando finito
+    await _recalcAvailability();
   }
 
   Future<void> clearData() async {

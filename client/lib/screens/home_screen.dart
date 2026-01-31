@@ -10,7 +10,7 @@ import 'package:showcaseview/showcaseview.dart';
 import '../providers/diet_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
-import '../constants.dart';
+import '../constants.dart' show AppColors, italianDays;
 import '../core/error_handler.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
@@ -56,16 +56,6 @@ class _MainScreenContentState extends State<MainScreenContent>
   final GlobalKey _shoppingTabKey = GlobalKey();
 
   String _menuTutorialDescription = 'Qui trovi le impostazioni e lo storico.';
-
-  final List<String> days = [
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
-    "Domenica",
-  ];
 
   @override
   void initState() {
@@ -380,7 +370,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                 indicatorColor: AppColors.primary,
                 indicatorWeight: 3,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: days
+                tabs: italianDays
                     .map((d) => Tab(text: d.substring(0, 3).toUpperCase()))
                     .toList(),
               ),
@@ -456,7 +446,7 @@ class _MainScreenContentState extends State<MainScreenContent>
         // [FIX] Passiamo dietPlan invece di dietData/substitutions
         return TabBarView(
           controller: _tabController,
-          children: days.map((day) {
+          children: italianDays.map((day) {
             return DietView(
               day: day,
               dietPlan: provider.dietPlan, // <--- CAMBIATO QUI
