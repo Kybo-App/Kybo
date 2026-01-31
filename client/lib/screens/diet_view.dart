@@ -7,7 +7,7 @@ import '../models/pantry_item.dart';
 import '../models/diet_models.dart'; // Importa il modello
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
-import '../constants.dart' show italianDays, orderedMealTypes;
+import '../constants.dart' show italianDays, orderedMealTypes, AppColors;
 
 class DietView extends StatelessWidget {
   final String day;
@@ -83,7 +83,7 @@ class DietView extends StatelessWidget {
     final bool isCurrentDay = _isToday(day);
 
     return Container(
-      color: const Color(0xFFF5F5F5),
+      color: AppColors.getScaffoldBackground(context),
       child: RefreshIndicator(
         onRefresh: () async =>
             context.read<DietProvider>().refreshAvailability(),
