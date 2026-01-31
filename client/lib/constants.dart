@@ -18,6 +18,41 @@ class AppColors {
   static const Color darkScaffoldBackground = Color(0xFF121212);
   static const Color darkSurface = Color(0xFF1E1E1E);
   static const Color darkCardColor = Color(0xFF2C2C2C);
+
+  // Theme-aware color getters
+  static Color getScaffoldBackground(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkScaffoldBackground
+        : scaffoldBackground;
+  }
+
+  static Color getSurface(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkSurface
+        : surface;
+  }
+
+  static Color getCardColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkCardColor
+        : surface;
+  }
+
+  static Color getTextColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black87;
+  }
+
+  static Color getSecondaryTextColor(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
+  }
+
+  static bool isDark(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
 }
 
 // --- CONFIGURAZIONE DIETA (Centralizzata) ---
