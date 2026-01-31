@@ -148,10 +148,18 @@ class _UserManagementViewState extends State<UserManagementView> {
       allowedExtensions: ['pdf'],
     );
     if (result != null && result.files.single.bytes != null) {
-      setState(() => _isLoading = true);
+      // Mostra dialog con progress
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const _DietUploadProgressDialog(),
+      );
+
       try {
         await _repo.uploadDietForUser(targetUid, result.files.single);
         if (mounted) {
+          Navigator.of(context).pop(); // Chiudi dialog
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Dieta caricata!"),
@@ -161,6 +169,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         }
       } catch (e) {
         if (mounted) {
+          Navigator.of(context).pop(); // Chiudi dialog
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Errore upload: $e"),
@@ -168,8 +177,6 @@ class _UserManagementViewState extends State<UserManagementView> {
             ),
           );
         }
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -1063,8 +1070,9 @@ class _UserCardState extends State<_UserCard> {
     final String displayEmail = shouldMask ? _maskEmail(realEmail) : realEmail;
     final requiresPassChange = data['requires_password_change'] == true;
 
-    bool showParser = isAdmin && data['parent_id'] == null;
-    bool showDiet = !isAdmin && (role == 'user' || role == 'independent');
+    // Parser: solo admin può configurare per nutrizionisti/indipendenti/admin
+    bool showParser = isAdmin && (role == 'nutritionist' || role == 'independent' || role == 'admin');
+    bool showDiet = (role == 'user' || role == 'independent');
     bool canDelete =
         isAdmin ||
         (role == 'user' && data['parent_id'] == widget.currentUserId);
@@ -1596,5 +1604,90 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
   void dispose() {
     _promptController.dispose();
     super.dispose();
+  }
+}
+
+class _DietUploadProgressDialog extends StatefulWidget {
+  const _DietUploadProgressDialog();
+
+  @override
+  State<_DietUploadProgressDialog> createState() =>
+      _DietUploadProgressDialogState();
+}
+
+class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
+  int _currentStep = 0;
+  final List<String> _steps = [
+    "Caricamento PDF...",
+    "Analisi documento...",
+    "Estrazione dati...",
+    "Elaborazione finale...",
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateProgress();
+  }
+
+  void _simulateProgress() async {
+    for (int i = 0; i < _steps.length - 1; i++) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        setState(() => _currentStep = i + 1);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double progress = (_currentStep + 1) / _steps.length;
+
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 6,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+              ),
+              Text(
+                "${(progress * 100).toInt()}%",
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _steps[_currentStep],
+            style: const TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[200],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Step ${_currentStep + 1} di ${_steps.length}",
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
   }
 }
