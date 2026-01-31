@@ -186,7 +186,8 @@ class FirestoreService {
         .map((snapshot) {
       final encryptionService = EncryptionService();
 
-      return snapshot.docs.map((doc) {
+      // Filtra il documento 'current' che non è history
+      return snapshot.docs.where((doc) => doc.id != 'current').map((doc) {
         final data = doc.data();
         final isEncrypted = data['encrypted'] == true;
 
