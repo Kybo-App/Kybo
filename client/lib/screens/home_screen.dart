@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import '../providers/diet_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../constants.dart' show AppColors, italianDays;
@@ -567,6 +568,23 @@ class _MainScreenContentState extends State<MainScreenContent>
                     Navigator.pop(drawerCtx);
                     _openTimeSettings();
                   },
+                ),
+
+                // --- DARK MODE TOGGLE ---
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, _) => SwitchListTile(
+                    secondary: Icon(
+                      themeProvider.isDarkMode
+                          ? Icons.dark_mode
+                          : Icons.light_mode,
+                      color: themeProvider.isDarkMode
+                          ? Colors.amber
+                          : Colors.blueGrey,
+                    ),
+                    title: const Text("Modalità Scura"),
+                    value: themeProvider.isDarkMode,
+                    onChanged: (_) => themeProvider.toggleTheme(),
+                  ),
                 ),
 
                 // --- PRIVACY POLICY NEL MENU ---

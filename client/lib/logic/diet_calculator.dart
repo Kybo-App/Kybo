@@ -88,9 +88,10 @@ class DietCalculator {
           final String? instanceId = firstDish['instance_id']?.toString();
           final int cadCode = firstDish['cad_code'] ?? 0;
 
+          // IMPORTANTE: usa "::" come separatore (stesso formato di meal_card.dart)
           String swapKey = (instanceId != null && instanceId.isNotEmpty)
-              ? "${day}_${mType}_$instanceId"
-              : "${day}_${mType}_$cadCode";
+              ? "$day::$mType::$instanceId"
+              : "$day::$mType::$cadCode";
 
           bool isSwapped = activeSwapsRaw.containsKey(swapKey);
 
