@@ -8,6 +8,7 @@ import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_prod.dart' as prod;
 import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
@@ -48,6 +49,9 @@ void main() {
             ChangeNotifierProvider<DietProvider>(
               create: (context) => DietProvider(context.read<DietRepository>()),
             ),
+            ChangeNotifierProvider<ThemeProvider>(
+              create: (_) => ThemeProvider(),
+            ),
           ],
           child: const DietApp(),
         ),
@@ -72,16 +76,37 @@ class DietApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDarkMode;
+
     return MaterialApp(
       title: 'Kybo',
       debugShowCheckedModeBanner: false,
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         scaffoldBackgroundColor: AppColors.scaffoldBackground,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
+          brightness: Brightness.light,
           secondary: AppColors.secondary,
           surface: AppColors.surface,
+        ),
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.darkScaffoldBackground,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primary,
+          brightness: Brightness.dark,
+          secondary: AppColors.secondary,
+          surface: AppColors.darkSurface,
+        ),
+        cardColor: AppColors.darkCardColor,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.darkSurface,
         ),
       ),
       // Qui usiamo il MaintenanceGuard basato su Firestore
