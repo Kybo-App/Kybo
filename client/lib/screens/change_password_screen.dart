@@ -13,6 +13,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;    // [NEW] Toggle visibilità password
+  bool _obscureConfirm = true;     // [NEW] Toggle visibilità conferma
 
   Future<void> _changePassword() async {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;
@@ -91,21 +93,33 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 const SizedBox(height: 32),
                 TextField(
                   controller: _passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     labelText: "Nuova Password",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _confirmCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscureConfirm,
+                  decoration: InputDecoration(
                     labelText: "Conferma Password",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
