@@ -13,6 +13,11 @@ class AppColors {
   static const Color accent = Colors.orange;
   static const Color scaffoldBackground = Color(0xFFF5F5F5);
   static const Color surface = Colors.white;
+
+  // Dark Mode Colors
+  static const Color darkScaffoldBackground = Color(0xFF121212);
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkCardColor = Color(0xFF2C2C2C);
 }
 
 // --- CONFIGURAZIONE DIETA (Centralizzata) ---

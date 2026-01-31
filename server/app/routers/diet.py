@@ -220,13 +220,25 @@ async def upload_diet_admin(
 
     try:
         custom_prompt = None
-        user_doc = db.collection('users').document(target_uid).get()
-        if user_doc.exists:
-            parent_id = user_doc.to_dict().get('parent_id')
+        target_doc = db.collection('users').document(target_uid).get()
+        target_data = target_doc.to_dict() if target_doc.exists else {}
+
+        if requester_role == 'nutritionist':
+            # Nutrizionista: usa il proprio parser
+            requester_doc = db.collection('users').document(requester_id).get()
+            if requester_doc.exists:
+                custom_prompt = requester_doc.to_dict().get('custom_parser_prompt')
+        else:
+            # Admin: cerca il parser appropriato in base al target
+            parent_id = target_data.get('parent_id')
             if parent_id:
+                # Target ha un parent (nutrizionista) -> usa parser del parent
                 parent_doc = db.collection('users').document(parent_id).get()
                 if parent_doc.exists:
                     custom_prompt = parent_doc.to_dict().get('custom_parser_prompt')
+            else:
+                # Target è indipendente/nutrizionista/admin -> usa il suo parser
+                custom_prompt = target_data.get('custom_parser_prompt')
 
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, file.file, custom_prompt)
         formatted_data = _convert_to_app_format(raw_data)

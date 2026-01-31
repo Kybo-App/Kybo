@@ -126,16 +126,18 @@ async def upload_parser_config(
     file: UploadFile = File(...),
     requester: dict = Depends(verify_admin)
 ):
-    """Carica configurazione parser personalizzata per un nutrizionista."""
+    """Carica configurazione parser personalizzata (solo admin)."""
     requester_id = requester['uid']
+
     try:
         content = (await file.read()).decode("utf-8")
         db = firebase_admin.firestore.client()
-        db.collection('users').document(target_uid).update({
+        # Usa set con merge per evitare errori se i campi non esistono
+        db.collection('users').document(target_uid).set({
             'custom_parser_prompt': content,
             'has_custom_parser': True,
             'parser_updated_at': firebase_admin.firestore.SERVER_TIMESTAMP
-        })
+        }, merge=True)
         db.collection('users').document(target_uid).collection('parser_history').add({
             'content': content,
             'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
