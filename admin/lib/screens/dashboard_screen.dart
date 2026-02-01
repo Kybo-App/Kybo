@@ -86,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: KyboColors.background,
         body: Center(
           child: CircularProgressIndicator(color: KyboColors.primary),
@@ -192,7 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -302,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     _userName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: KyboColors.textPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
