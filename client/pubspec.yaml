@@ -32,7 +32,7 @@ dependencies:
   google_sign_in: ^6.1.0
   encrypt: ^5.0.3
   crypto: ^3.0.3
-  share_plus: ^10.1.4
+  share_plus: ^7.2.2
   safe_device: ^1.1.7
 
   # Notifications & Background Tasks
