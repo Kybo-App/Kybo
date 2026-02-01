@@ -23,7 +23,7 @@ from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name, normalize_quantity
-from app.models.schemas import DietResponse, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
+from app.models.schemas import DietResponse, DietConfig, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
 
 router = APIRouter(tags=["diet"])
 
@@ -40,7 +40,7 @@ MEAL_ORDER = [
 def _convert_to_app_format(gemini_output) -> DietResponse:
     """Converte l'output Gemini nel formato dell'app."""
     if not gemini_output:
-        return DietResponse(plan={}, substitutions={})
+        return DietResponse(plan={}, substitutions={}, config=None)
 
     app_plan, app_substitutions = {}, {}
     cad_map = {}
@@ -109,7 +109,37 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             if k not in app_plan[d]:
                 app_plan[d][k] = meals[k]
 
-    return DietResponse(plan=app_plan, substitutions=app_substitutions)
+    # 3. Estrazione Config dinamica
+    app_config = None
+    raw_config = gemini_output.get('config')
+    if raw_config:
+        # Traduci giorni se necessario
+        config_days = []
+        for g in raw_config.get('giorni', []):
+            g_lower = g.lower().strip()
+            config_days.append(day_map.get(g_lower[:3], g.capitalize()))
+
+        # Normalizza pasti
+        config_meals = []
+        for p in raw_config.get('pasti', []):
+            normalized = normalize_meal_name(p)
+            if normalized and normalized not in config_meals:
+                config_meals.append(normalized)
+
+        # Alimenti rilassabili (lowercase, deduplicated)
+        config_relaxable = list(set(
+            item.lower().strip()
+            for item in raw_config.get('alimenti_rilassabili', [])
+            if item and item.strip()
+        ))
+
+        app_config = DietConfig(
+            days=config_days if config_days else list(app_plan.keys()),
+            meals=config_meals if config_meals else MEAL_ORDER,
+            relaxable_foods=config_relaxable
+        )
+
+    return DietResponse(plan=app_plan, substitutions=app_substitutions, config=app_config)
 
 
 @router.post("/upload-diet", response_model=DietResponse)
@@ -155,6 +185,7 @@ async def upload_diet(
                 'lastUpdated': firebase_admin.firestore.SERVER_TIMESTAMP,
                 'plan': dict_data.get('plan'),
                 'substitutions': dict_data.get('substitutions'),
+                'config': dict_data.get('config'),  # Config dinamica
                 'activeSwaps': {},
                 'uploadedBy': 'user_upload',
                 'fileName': file.filename
@@ -256,6 +287,7 @@ async def upload_diet_admin(
             'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
             'plan': dict_data.get('plan'),
             'substitutions': dict_data.get('substitutions'),
+            'config': dict_data.get('config'),  # Config dinamica
             'uploadedBy': 'nutritionist'
         })
 

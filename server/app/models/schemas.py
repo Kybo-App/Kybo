@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
 import uuid  # <--- AGGIUNGI QUESTO IMPORT
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,13 @@ class SubstitutionGroup(BaseModel):
     name: str
     options: List[SubstitutionOption]
 
+class DietConfig(BaseModel):
+    """Configurazione dinamica estratta dalla dieta."""
+    days: List[str] = Field(default_factory=list)  # Giorni della settimana nell'ordine del PDF
+    meals: List[str] = Field(default_factory=list)  # Tipi di pasto nell'ordine del PDF
+    relaxable_foods: List[str] = Field(default_factory=list)  # Frutta/verdura identificati
+
 class DietResponse(BaseModel):
     plan: Dict[str, Dict[str, List[Dish]]]
     substitutions: Dict[str, SubstitutionGroup]
+    config: Optional[DietConfig] = None  # Configurazione dinamica opzionale

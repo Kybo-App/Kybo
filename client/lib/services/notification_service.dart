@@ -140,8 +140,10 @@ class NotificationService {
   /// Questa funzione DEVE rimanere in questa forma perché il DietProvider
   /// le passa un oggetto `Map<String, Map<String, List<Dish>>>`.
   /// La vecchia versione (dynamic) non funzionerebbe con la nuova architettura.
+  /// [days] opzionale: lista giorni dalla config dieta (fallback a italianDays)
   Future<void> scheduleDietNotifications(
-      Map<String, Map<String, List<Dish>>> plan) async {
+      Map<String, Map<String, List<Dish>>> plan,
+      {List<String>? days}) async {
     if (!_isInitialized) await init();
 
     await cancelAllNotifications();
@@ -171,9 +173,12 @@ class NotificationService {
     int notificationId = 0;
     final now = DateTime.now();
 
-    // Costruisce daysMap da italianDays (index 0 = Lunedì = weekday 1)
+    // Usa giorni dalla config o fallback a italianDays
+    final effectiveDays = days ?? (plan.isNotEmpty ? plan.keys.toList() : italianDays);
+
+    // Costruisce daysMap (index 0 = Lunedì = weekday 1)
     final daysMap = {
-      for (int i = 0; i < italianDays.length; i++) italianDays[i]: i + 1
+      for (int i = 0; i < effectiveDays.length; i++) effectiveDays[i]: i + 1
     };
 
     for (var entry in plan.entries) {
