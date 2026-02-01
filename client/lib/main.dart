@@ -147,10 +147,10 @@ class DietApp extends StatelessWidget {
             borderSide: BorderSide(color: AppColors.primary, width: 2),
           ),
         ),
-        dialogTheme: DialogTheme(
+        dialogTheme: const DialogThemeData(
           backgroundColor: AppColors.darkSurface,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          contentTextStyle: const TextStyle(color: Colors.white70),
+          titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          contentTextStyle: TextStyle(color: Colors.white70),
         ),
         bottomSheetTheme: const BottomSheetThemeData(
           backgroundColor: AppColors.darkSurface,
