@@ -61,11 +61,9 @@ class HistoryScreen extends StatelessWidget {
                         tooltip: "Condividi",
                         onPressed: () async {
                           try {
-                            await SharePlus.instance.share(
-                              ShareParams(
-                                text: jsonString,
-                                subject: 'Dieta Kybo',
-                              ),
+                            await Share.share(
+                              jsonString,
+                              subject: 'Dieta Kybo',
                             );
                           } catch (e) {
                             if (context.mounted) {
