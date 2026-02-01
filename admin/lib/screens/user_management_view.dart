@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin_repository.dart';
+import '../widgets/design_system.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -580,104 +581,102 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isDataLoaded) return const Center(child: CircularProgressIndicator());
+    if (!_isDataLoaded) {
+      return const Center(
+        child: CircularProgressIndicator(color: KyboColors.primary),
+      );
+    }
 
     return Column(
       children: [
-        // --- TOP TOOLBAR ---
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(
-                  alpha: 0.05,
-                ), // Nota: .withValues su Flutter 3.27+, withOpacity su precedenti
-                blurRadius: 10,
+        // ═══════════════════════════════════════════════════════════════════
+        // TOP TOOLBAR - Pill-shaped design
+        // ═══════════════════════════════════════════════════════════════════
+        Row(
+          children: [
+            // 1. BARRA DI RICERCA (Per Tutti)
+            Expanded(
+              flex: 2,
+              child: PillSearch(
+                controller: _searchCtrl,
+                hintText: "Cerca utente per nome o email...",
+                onChanged: (val) =>
+                    setState(() => _searchQuery = val.toLowerCase()),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // 1. BARRA DI RICERCA (Per Tutti)
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: "Cerca utente...",
-                    prefixIcon: Icon(Icons.search),
-                    border: InputBorder.none,
+            ),
+
+            const SizedBox(width: 16),
+
+            // 2. FILTRO RUOLI (Solo Admin)
+            if (_currentUserRole == 'admin') ...[
+              PillDropdown<String>(
+                value: _roleFilter,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'all',
+                    child: Text("Tutti i Ruoli"),
                   ),
-                  onChanged: (val) =>
-                      setState(() => _searchQuery = val.toLowerCase()),
-                ),
+                  DropdownMenuItem(value: 'user', child: Text("Clienti")),
+                  DropdownMenuItem(
+                    value: 'nutritionist',
+                    child: Text("Nutrizionisti"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'independent',
+                    child: Text("Indipendenti"),
+                  ),
+                  DropdownMenuItem(value: 'admin', child: Text("Admin")),
+                ],
+                onChanged: (val) => setState(() => _roleFilter = val!),
               ),
-
-              // 2. FILTRO RUOLI (Solo Admin)
-              // Il nutrizionista vede solo i suoi, inutile filtrare.
-              if (_currentUserRole == 'admin') ...[
-                const VerticalDivider(),
-                DropdownButton<String>(
-                  value: _roleFilter,
-                  underline: const SizedBox(),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'all',
-                      child: Text("Tutti i Ruoli"),
-                    ),
-                    DropdownMenuItem(value: 'user', child: Text("Clienti")),
-                    DropdownMenuItem(
-                      value: 'nutritionist',
-                      child: Text("Nutrizionisti"),
-                    ),
-                    DropdownMenuItem(
-                      value: 'independent',
-                      child: Text("Indipendenti"),
-                    ),
-                    DropdownMenuItem(value: 'admin', child: Text("Admin")),
-                  ],
-                  onChanged: (val) => setState(() => _roleFilter = val!),
-                ),
-              ],
-
-              const Spacer(),
-
-              // 3. REFRESH (Per Tutti)
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.green),
-                tooltip: "Ricarica Lista",
-                onPressed: _refreshList,
-              ),
-
-              // 4. SYNC DB (Solo Admin - Operazione costosa/sistemistica)
-              if (_currentUserRole == 'admin')
-                IconButton(
-                  icon: const Icon(Icons.sync, color: Colors.blue),
-                  tooltip: "Sync DB",
-                  onPressed: _isLoading ? null : _syncUsers,
-                ),
-
-              const SizedBox(width: 12),
-
-              // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
-              // [FIX] Ora visibile anche ai Nutrizionisti
-              if (_currentUserRole == 'admin' ||
-                  _currentUserRole == 'nutritionist')
-                FilledButton.icon(
-                  onPressed: _isLoading ? null : _showCreateUserDialog,
-                  icon: const Icon(Icons.add),
-                  label: const Text("NUOVO UTENTE"),
-                ),
+              const SizedBox(width: 16),
             ],
-          ),
+
+            // 3. REFRESH (Per Tutti)
+            PillIconButton(
+              icon: Icons.refresh_rounded,
+              color: KyboColors.primary,
+              tooltip: "Ricarica Lista",
+              onPressed: _refreshList,
+            ),
+
+            // 4. SYNC DB (Solo Admin)
+            if (_currentUserRole == 'admin') ...[
+              const SizedBox(width: 8),
+              PillIconButton(
+                icon: Icons.sync_rounded,
+                color: KyboColors.accent,
+                tooltip: "Sync DB",
+                onPressed: _isLoading ? null : _syncUsers,
+              ),
+            ],
+
+            const SizedBox(width: 16),
+
+            // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
+            if (_currentUserRole == 'admin' ||
+                _currentUserRole == 'nutritionist')
+              PillButton(
+                label: "NUOVO UTENTE",
+                icon: Icons.add_rounded,
+                backgroundColor: KyboColors.primary,
+                textColor: Colors.white,
+                isLoading: _isLoading,
+                onPressed: _isLoading ? null : _showCreateUserDialog,
+              ),
+          ],
         ),
 
-        const SizedBox(height: 20),
-        if (_isLoading) const LinearProgressIndicator(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
+
+        // Loading indicator
+        if (_isLoading)
+          LinearProgressIndicator(
+            backgroundColor: KyboColors.background,
+            valueColor: const AlwaysStoppedAnimation(KyboColors.primary),
+          ),
+
+        const SizedBox(height: 16),
 
         // --- CONTENT ---
         Expanded(
@@ -1069,7 +1068,7 @@ class _UserCardState extends State<_UserCard> {
         widget.currentUserRole == 'nutritionist' &&
         data['parent_id'] == widget.currentUserId;
 
-    // Privacy Logic: Admin maschera se non sbloccato; Nutrizionista maschera se non suo cliente.
+    // Privacy Logic
     final bool shouldMask =
         !_isUnlocked &&
         ((isAdmin && (role == 'user' || role == 'independent')) ||
@@ -1079,7 +1078,6 @@ class _UserCardState extends State<_UserCard> {
     final String displayEmail = shouldMask ? _maskEmail(realEmail) : realEmail;
     final requiresPassChange = data['requires_password_change'] == true;
 
-    // Parser: solo admin può configurare per nutrizionisti/indipendenti/admin
     bool showParser = isAdmin && (role == 'nutritionist' || role == 'independent' || role == 'admin');
     bool showDiet = (role == 'user' || role == 'independent');
     bool canDelete =
@@ -1101,164 +1099,205 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: widget.roleColor.withValues(alpha: 0.2),
+    return PillCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ─────────────────────────────────────────────────────────────────
+          // HEADER: Avatar + Info + Badge
+          // ─────────────────────────────────────────────────────────────────
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: widget.roleColor.withOpacity(0.12),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: Center(
                   child: Text(
                     displayName.isNotEmpty && !displayName.startsWith('*')
                         ? displayName[0].toUpperCase()
                         : "?",
                     style: TextStyle(
                       color: widget.roleColor,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        displayEmail,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (isAdmin)
-                        Text(
-                          "UID: $uid",
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (shouldMask)
-                  _isUnlocking
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : IconButton(
-                          icon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.orange,
-                          ),
-                          tooltip: "Sblocca Dati",
-                          onPressed: _unlockData,
-                        ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.roleColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    role.toString().toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: widget.roleColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            if (requiresPassChange)
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  "Password Change Pending",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            const Divider(),
-            Row(
+              const SizedBox(width: 16),
+
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName.isNotEmpty ? displayName : "Utente",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: KyboColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      displayEmail,
+                      style: const TextStyle(
+                        color: KyboColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (isAdmin) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        uid.substring(0, 8) + "...",
+                        style: TextStyle(
+                          color: KyboColors.textMuted,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Lock button
+              if (shouldMask)
+                _isUnlocking
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: KyboColors.warning,
+                        ),
+                      )
+                    : PillIconButton(
+                        icon: Icons.lock_outline_rounded,
+                        color: KyboColors.warning,
+                        tooltip: "Sblocca Dati",
+                        onPressed: _unlockData,
+                        size: 36,
+                      ),
+
+              const SizedBox(width: 8),
+
+              // Role Badge
+              PillBadge.role(role.toString()),
+            ],
+          ),
+
+          const Spacer(),
+
+          // ─────────────────────────────────────────────────────────────────
+          // STATUS BADGES
+          // ─────────────────────────────────────────────────────────────────
+          if (requiresPassChange)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: PillBadge(
+                label: "Password da cambiare",
+                color: KyboColors.warning,
+                icon: Icons.warning_amber_rounded,
+                small: true,
+              ),
+            ),
+
+          // ─────────────────────────────────────────────────────────────────
+          // ACTIONS ROW
+          // ─────────────────────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: KyboColors.textMuted.withOpacity(0.15),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (canAssign)
-                  IconButton(
-                    icon: Icon(
-                      role == 'user' ? Icons.manage_accounts : Icons.person_add,
-                      color: Colors.blue,
-                    ),
+                  PillIconButton(
+                    icon: role == 'user'
+                        ? Icons.manage_accounts_rounded
+                        : Icons.person_add_rounded,
+                    color: KyboColors.accent,
+                    tooltip: "Assegna",
                     onPressed: () => widget.onAssign!(uid),
+                    size: 36,
                   ),
                 if (showDiet) ...[
-                  IconButton(
-                    icon: const Icon(Icons.history, color: Colors.teal),
+                  PillIconButton(
+                    icon: Icons.history_rounded,
+                    color: KyboColors.primary,
+                    tooltip: "Storico Diete",
                     onPressed: () => widget.onHistory(uid),
+                    size: 36,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.upload_file, color: Colors.blueGrey),
+                  PillIconButton(
+                    icon: Icons.upload_file_rounded,
+                    color: KyboColors.textSecondary,
+                    tooltip: "Carica Dieta",
                     onPressed: () => widget.onUploadDiet(uid),
+                    size: 36,
                   ),
                 ],
                 if (showParser)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.settings_applications,
-                      color: Colors.orange,
-                    ),
+                  PillIconButton(
+                    icon: Icons.settings_applications_rounded,
+                    color: KyboColors.warning,
+                    tooltip: "Parser Config",
                     onPressed: () => widget.onUploadParser(uid),
+                    size: 36,
                   ),
                 if (canEdit)
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.indigo),
+                  PillIconButton(
+                    icon: Icons.edit_rounded,
+                    color: KyboColors.accent,
+                    tooltip: "Modifica",
                     onPressed: () => widget.onEdit(
                       uid,
                       realEmail,
                       data['first_name'] ?? '',
                       data['last_name'] ?? '',
                     ),
+                    size: 36,
                   ),
                 if (canDelete)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  PillIconButton(
+                    icon: Icons.delete_outline_rounded,
+                    color: KyboColors.error,
+                    tooltip: "Elimina",
                     onPressed: () => widget.onDelete(uid),
+                    size: 36,
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              "Creato il: $dateStr",
-              style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+          ),
+
+          // ─────────────────────────────────────────────────────────────────
+          // FOOTER
+          // ─────────────────────────────────────────────────────────────────
+          Text(
+            "Creato il: $dateStr",
+            style: const TextStyle(
+              fontSize: 11,
+              color: KyboColors.textMuted,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

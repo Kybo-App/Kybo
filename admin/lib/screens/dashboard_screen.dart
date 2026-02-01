@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:kybo_admin/widgets/diet_logo.dart';
+import '../widgets/design_system.dart';
+import '../widgets/diet_logo.dart';
 import 'user_management_view.dart';
 import 'config_view.dart';
 import 'audit_log_view.dart';
@@ -18,6 +19,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _userName = "Caricamento...";
   String _userRole = "Utente";
   bool _isAdmin = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -36,258 +38,293 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
           _userName =
-              "${data['first_name'] ?? 'Utente'} ${data['last_name'] ?? ''}";
+              "${data['first_name'] ?? 'Utente'} ${data['last_name'] ?? ''}".trim();
           _userRole = data['role'] ?? 'user';
           _isAdmin = _userRole == 'admin';
+          _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
       }
+    } else {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _onItemSelected(int index) {
+  void _onNavSelected(int index) {
     setState(() => _selectedIndex = index);
-    if (Scaffold.maybeOf(context)?.hasDrawer ?? false) {
-      Navigator.pop(context);
-    }
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: const Text("Conferma Logout"),
+        content: const Text("Sei sicuro di voler uscire?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Annulla"),
+          ),
+          PillButton(
+            label: "Esci",
+            icon: Icons.logout,
+            backgroundColor: KyboColors.error,
+            textColor: Colors.white,
+            height: 40,
+            onPressed: () {
+              Navigator.pop(ctx);
+              FirebaseAuth.instance.signOut();
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> views = [
-      const UserManagementView(),
-      if (_isAdmin) const ConfigView(),
-      if (_isAdmin) const AuditLogView(),
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: KyboColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: KyboColors.primary),
+        ),
+      );
+    }
+
+    // Build navigation items based on role
+    final List<_NavItem> navItems = [
+      _NavItem(
+        icon: Icons.people_alt_rounded,
+        label: "Utenti",
+        view: const UserManagementView(),
+      ),
+      if (_isAdmin)
+        _NavItem(
+          icon: Icons.settings_rounded,
+          label: "Impostazioni",
+          view: const ConfigView(),
+        ),
+      if (_isAdmin)
+        _NavItem(
+          icon: Icons.security_rounded,
+          label: "Audit Log",
+          view: const AuditLogView(),
+        ),
     ];
 
-    if (_selectedIndex >= views.length) _selectedIndex = 0;
+    // Ensure selected index is valid
+    if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
-    String pageTitle = "Utenti";
-    if (_selectedIndex == 1) pageTitle = "Configurazione";
-    if (_selectedIndex == 2) pageTitle = "Audit Logs";
+    return Scaffold(
+      backgroundColor: KyboColors.background,
+      body: Column(
+        children: [
+          // ═══════════════════════════════════════════════════════════════════
+          // TOP BAR
+          // ═══════════════════════════════════════════════════════════════════
+          _buildTopBar(navItems),
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool isMobile = constraints.maxWidth < 800;
-
-        if (isMobile) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                pageTitle,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
+          // ═══════════════════════════════════════════════════════════════════
+          // CONTENT AREA
+          // ═══════════════════════════════════════════════════════════════════
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: PillCard(
+                padding: const EdgeInsets.all(24),
+                child: navItems[_selectedIndex].view,
               ),
-              backgroundColor: Colors.white,
-              elevation: 1,
-              iconTheme: const IconThemeData(color: Colors.black),
             ),
-            drawer: Drawer(
-              backgroundColor: const Color(0xFF1F2937),
-              child: _buildSidebarContent(),
-            ),
-            body: views[_selectedIndex],
-          );
-        } else {
-          return Scaffold(
-            body: Row(
-              children: [
-                SizedBox(
-                  width: 260,
-                  child: Container(
-                    color: const Color(0xFF1F2937),
-                    child: _buildSidebarContent(),
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 80,
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        alignment: Alignment.centerLeft,
-                        color: Colors.white,
-                        child: Text(
-                          pageTitle,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: views[_selectedIndex],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-      },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSidebarContent() {
-    return Column(
+  Widget _buildTopBar(List<_NavItem> navItems) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        boxShadow: KyboColors.softShadow,
+      ),
+      child: Row(
+        children: [
+          // ─────────────────────────────────────────────────────────────────
+          // LOGO
+          // ─────────────────────────────────────────────────────────────────
+          _buildLogo(),
+
+          const SizedBox(width: 48),
+
+          // ─────────────────────────────────────────────────────────────────
+          // NAVIGATION PILLS
+          // ─────────────────────────────────────────────────────────────────
+          _buildNavigation(navItems),
+
+          const Spacer(),
+
+          // ─────────────────────────────────────────────────────────────────
+          // USER SECTION
+          // ─────────────────────────────────────────────────────────────────
+          _buildUserSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 80,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFF374151))),
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: KyboColors.primary.withOpacity(0.1),
+            borderRadius: KyboBorderRadius.medium,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const DietLogo(size: 40, isDarkBackground: true),
-              const SizedBox(width: 12),
-              const Text(
-                "Kybo",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
+          child: const Center(
+            child: DietLogo(size: 28, isDarkBackground: false),
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "Kybo",
+              style: TextStyle(
+                color: KyboColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
               ),
-            ],
-          ),
+            ),
+            Text(
+              "Admin Panel",
+              style: TextStyle(
+                color: KyboColors.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 20),
+      ],
+    );
+  }
 
-        _SidebarItem(
-          icon: Icons.people_alt_outlined,
-          label: "Gestione Utenti",
-          isSelected: _selectedIndex == 0,
-          onTap: () => _onItemSelected(0),
-        ),
+  Widget _buildNavigation(List<_NavItem> navItems) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: KyboColors.background,
+        borderRadius: KyboBorderRadius.pill,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: navItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              right: index < navItems.length - 1 ? 8 : 0,
+            ),
+            child: PillNavItem(
+              label: item.label,
+              icon: item.icon,
+              isSelected: _selectedIndex == index,
+              onTap: () => _onNavSelected(index),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-        if (_isAdmin) ...[
-          _SidebarItem(
-            icon: Icons.settings_outlined,
-            label: "Impostazioni",
-            isSelected: _selectedIndex == 1,
-            onTap: () => _onItemSelected(1),
-          ),
-          _SidebarItem(
-            icon: Icons.security,
-            label: "Audit Logs",
-            isSelected: _selectedIndex == 2,
-            onTap: () => _onItemSelected(2),
-          ),
-        ],
-
-        const Spacer(),
-
+  Widget _buildUserSection() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // User Info
         Container(
-          padding: const EdgeInsets.all(16),
-          color: const Color(0xFF111827),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: KyboColors.background,
+            borderRadius: KyboBorderRadius.pill,
+          ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                backgroundColor: _isAdmin ? Colors.purple : Colors.blue,
-                radius: 16,
-                child: Text(
-                  _userName.isNotEmpty ? _userName[0].toUpperCase() : "?",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              // Avatar
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _isAdmin ? KyboColors.roleAdmin : KyboColors.roleNutritionist,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    _userName.isNotEmpty ? _userName[0].toUpperCase() : "?",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _userName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+
+              // Name & Role
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _userName,
+                    style: const TextStyle(
+                      color: KyboColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
                     ),
-                    Text(
-                      _userRole.toUpperCase(),
-                      style: TextStyle(color: Colors.grey[400], fontSize: 10),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.logout,
-                  color: Colors.redAccent,
-                  size: 20,
-                ),
-                onPressed: () => FirebaseAuth.instance.signOut(),
-                tooltip: "Esci",
+                  ),
+                  const SizedBox(height: 2),
+                  PillBadge.role(_userRole),
+                ],
               ),
             ],
           ),
+        ),
+
+        const SizedBox(width: 12),
+
+        // Logout Button
+        PillIconButton(
+          icon: Icons.logout_rounded,
+          color: KyboColors.error,
+          tooltip: "Esci",
+          onPressed: _logout,
         ),
       ],
     );
   }
 }
 
-class _SidebarItem extends StatelessWidget {
+class _NavItem {
   final IconData icon;
   final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
+  final Widget view;
 
-  // FIX: Rimossa super.key inutilizzata
-  const _SidebarItem({
+  _NavItem({
     required this.icon,
     required this.label,
-    required this.isSelected,
-    required this.onTap,
+    required this.view,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF374151) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.grey[400],
-                size: 22,
-              ),
-              const SizedBox(width: 16),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey[400],
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
