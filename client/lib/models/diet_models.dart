@@ -3,6 +3,40 @@ import 'package:uuid/uuid.dart';
 // [FIX] Generatore UUID singleton per instanceId
 const _uuid = Uuid();
 
+/// Configurazione dinamica della dieta estratta dal parser AI
+/// Contiene giorni, pasti e alimenti "rilassabili" specifici per questa dieta
+class DietConfig {
+  final List<String> days;
+  final List<String> meals;
+  final Set<String> relaxableFoods;
+
+  DietConfig({
+    required this.days,
+    required this.meals,
+    required this.relaxableFoods,
+  });
+
+  factory DietConfig.fromJson(Map<String, dynamic> json) {
+    return DietConfig(
+      days: (json['days'] as List<dynamic>?)?.cast<String>() ?? [],
+      meals: (json['meals'] as List<dynamic>?)?.cast<String>() ?? [],
+      relaxableFoods: (json['relaxable_foods'] as List<dynamic>?)
+              ?.cast<String>()
+              .toSet() ??
+          {},
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'days': days,
+        'meals': meals,
+        'relaxable_foods': relaxableFoods.toList(),
+      };
+
+  /// Verifica se la config è vuota (fallback necessario)
+  bool get isEmpty => days.isEmpty && meals.isEmpty;
+}
+
 class Ingredient {
   final String name;
   final String qty;
@@ -112,7 +146,15 @@ class DietPlan {
   final Map<String, Map<String, List<Dish>>> plan;
   final Map<String, SubstitutionGroup> substitutions;
 
-  DietPlan({required this.plan, required this.substitutions});
+  /// Configurazione dinamica (giorni, pasti, relaxable foods)
+  /// Estratta dal parser AI, può essere null per retrocompatibilità
+  final DietConfig? config;
+
+  DietPlan({
+    required this.plan,
+    required this.substitutions,
+    this.config,
+  });
 
   factory DietPlan.fromJson(Map<String, dynamic> json) {
     // Parsing Piano
@@ -136,7 +178,17 @@ class DietPlan {
       });
     }
 
-    return DietPlan(plan: parsedPlan, substitutions: parsedSubs);
+    // Parsing Config (nuova v2)
+    DietConfig? parsedConfig;
+    if (json['config'] != null) {
+      parsedConfig = DietConfig.fromJson(json['config']);
+    }
+
+    return DietPlan(
+      plan: parsedPlan,
+      substitutions: parsedSubs,
+      config: parsedConfig,
+    );
   }
 
   // Fondamentale per il salvataggio su Firestore/Locale
@@ -155,6 +207,16 @@ class DietPlan {
       jsonSubs[k] = v.toJson();
     });
 
-    return {'plan': jsonPlan, 'substitutions': jsonSubs};
+    final result = <String, dynamic>{
+      'plan': jsonPlan,
+      'substitutions': jsonSubs,
+    };
+
+    // Salva config solo se presente
+    if (config != null) {
+      result['config'] = config!.toJson();
+    }
+
+    return result;
   }
 }

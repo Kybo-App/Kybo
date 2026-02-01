@@ -5,6 +5,8 @@ import '../models/pantry_item.dart';
 import '../constants.dart' show AppColors, italianDays, orderedMealTypes;
 import '../logic/diet_calculator.dart';
 
+// Fallback constants sono importati ma usati solo se config non disponibile
+
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
   final DietPlan? dietPlan; // <--- CAMBIATO: da Map a DietPlan
@@ -30,12 +32,35 @@ class ShoppingListView extends StatefulWidget {
 class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
 
+  /// Restituisce i giorni dalla config della dieta, o fallback a hardcoded
+  List<String> _getDays() {
+    final config = widget.dietPlan?.config;
+    if (config != null && config.days.isNotEmpty) {
+      return config.days;
+    }
+    // Fallback: estrai dalle chiavi del piano se presenti
+    if (widget.dietPlan != null && widget.dietPlan!.plan.isNotEmpty) {
+      return widget.dietPlan!.plan.keys.toList();
+    }
+    return italianDays;
+  }
+
+  /// Restituisce i pasti dalla config della dieta, o fallback a hardcoded
+  List<String> _getMeals() {
+    final config = widget.dietPlan?.config;
+    if (config != null && config.meals.isNotEmpty) {
+      return config.meals;
+    }
+    return orderedMealTypes;
+  }
+
   List<String> _getOrderedDays() {
+    final days = _getDays();
     int todayIndex = DateTime.now().weekday - 1;
-    if (todayIndex < 0 || todayIndex > 6) todayIndex = 0;
+    if (todayIndex < 0 || todayIndex >= days.length) todayIndex = 0;
     return [
-      ...italianDays.sublist(todayIndex),
-      ...italianDays.sublist(0, todayIndex),
+      ...days.sublist(todayIndex),
+      ...days.sublist(0, todayIndex),
     ];
   }
 
@@ -71,9 +96,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                       return foods != null && foods.isNotEmpty;
                     }).toList();
 
+                    // Ordina secondo i pasti dalla config dieta
+                    final meals = _getMeals();
                     mealNames.sort((a, b) {
-                      int idxA = orderedMealTypes.indexOf(a);
-                      int idxB = orderedMealTypes.indexOf(b);
+                      int idxA = meals.indexOf(a);
+                      int idxB = meals.indexOf(b);
                       if (idxA == -1) idxA = 999;
                       if (idxB == -1) idxB = 999;
                       return idxA.compareTo(idxB);
