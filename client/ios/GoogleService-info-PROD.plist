@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>857607129010-27vr64u2pl3qp135fbmofreis89bejkm.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.857607129010-27vr64u2pl3qp135fbmofreis89bejkm</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>857607129010-0f47qiq40uiteln4spn753nhm0he89rg.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyATlBH8dEkFiv6zNfjKGlyJkn5OFlo2FOY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>857607129010</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>it.kybo.app</string>
+	<key>PROJECT_ID</key>
+	<string>kybo-production</string>
+	<key>STORAGE_BUCKET</key>
+	<string>kybo-production.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:857607129010:ios:e47d298ba7891ba35206ab</string>
+</dict>
+</plist>
