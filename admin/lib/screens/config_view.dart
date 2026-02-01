@@ -214,7 +214,7 @@ class _ConfigViewState extends State<ConfigView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: KyboColors.primary),
       );
     }
@@ -289,7 +289,7 @@ class _ConfigViewState extends State<ConfigView> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 14,
                   ),
@@ -395,7 +395,7 @@ class _ConfigViewState extends State<ConfigView> {
                     children: [
                       Text(
                         "Schedulato: ${DateFormat('EEE, d MMM - HH:mm').format(_scheduledDate!)}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           color: KyboColors.textPrimary,
