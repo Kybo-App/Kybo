@@ -668,7 +668,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                         DropdownMenuItem(value: 'admin', child: Text("Admin")),
                       ],
                       onChanged: (val) => setState(() => _roleFilter = val!),
-                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: KyboColors.textSecondary),
+                      icon: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: KyboColors.textSecondary,
+                      ),
                       style: TextStyle(
                         color: KyboColors.textPrimary,
                         fontSize: 14,
@@ -882,10 +885,13 @@ class _UserManagementViewState extends State<UserManagementView> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: KyboColors.roleNutritionist.withOpacity(0.15),
+                  color: KyboColors.roleNutritionist.withValues(alpha: 0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: Icon(Icons.health_and_safety, color: KyboColors.roleNutritionist),
+                child: Icon(
+                  Icons.health_and_safety,
+                  color: KyboColors.roleNutritionist,
+                ),
               ),
               title: nutName,
               subtitle: "${clients.length} Clienti",
@@ -952,10 +958,13 @@ class _UserManagementViewState extends State<UserManagementView> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: KyboColors.roleIndependent.withOpacity(0.15),
+                  color: KyboColors.roleIndependent.withValues(alpha: 0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: Icon(Icons.person_outline, color: KyboColors.roleIndependent),
+                child: Icon(
+                  Icons.person_outline,
+                  color: KyboColors.roleIndependent,
+                ),
               ),
               title: "Utenti Indipendenti",
               subtitle: "${independents.length} Utenti",
@@ -1000,10 +1009,13 @@ class _UserManagementViewState extends State<UserManagementView> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: KyboColors.roleAdmin.withOpacity(0.15),
+                  color: KyboColors.roleAdmin.withValues(alpha: 0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: Icon(Icons.admin_panel_settings, color: KyboColors.roleAdmin),
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: KyboColors.roleAdmin,
+                ),
               ),
               title: "Amministratori",
               subtitle: "${admins.length} Admin",
@@ -1131,7 +1143,9 @@ class _UserCardState extends State<_UserCard> {
     final String displayEmail = shouldMask ? _maskEmail(realEmail) : realEmail;
     final requiresPassChange = data['requires_password_change'] == true;
 
-    bool showParser = isAdmin && (role == 'nutritionist' || role == 'independent' || role == 'admin');
+    bool showParser =
+        isAdmin &&
+        (role == 'nutritionist' || role == 'independent' || role == 'admin');
     bool showDiet = (role == 'user' || role == 'independent');
     bool canDelete =
         isAdmin ||
@@ -1167,7 +1181,7 @@ class _UserCardState extends State<_UserCard> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: widget.roleColor.withOpacity(0.12),
+                  color: widget.roleColor.withValues(alpha: 0.12),
                   borderRadius: KyboBorderRadius.medium,
                 ),
                 child: Center(
@@ -1211,7 +1225,7 @@ class _UserCardState extends State<_UserCard> {
                     if (isAdmin) ...[
                       const SizedBox(height: 2),
                       Text(
-                        uid.substring(0, 8) + "...",
+                        "${uid.substring(0, 8)}...",
                         style: TextStyle(
                           color: KyboColors.textMuted,
                           fontSize: 10,
@@ -1273,7 +1287,7 @@ class _UserCardState extends State<_UserCard> {
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: KyboColors.textMuted.withOpacity(0.15),
+                  color: KyboColors.textMuted.withValues(alpha: 0.15),
                   width: 1,
                 ),
               ),
@@ -1345,10 +1359,7 @@ class _UserCardState extends State<_UserCard> {
           // ─────────────────────────────────────────────────────────────────
           Text(
             "Creato il: $dateStr",
-            style: TextStyle(
-              fontSize: 11,
-              color: KyboColors.textMuted,
-            ),
+            style: TextStyle(fontSize: 11, color: KyboColors.textMuted),
           ),
         ],
       ),
