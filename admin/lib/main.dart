@@ -1,5 +1,6 @@
 import 'package:kybo_admin/guards/admin_password_guard.dart';
 import 'package:kybo_admin/screens/dashboard_screen.dart';
+import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -106,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
@@ -116,9 +118,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Errore: $e"),
+            backgroundColor: KyboColors.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -128,70 +133,143 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: KyboColors.background,
       body: Center(
-        child: Card(
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 420,
+          padding: const EdgeInsets.all(48),
+          decoration: BoxDecoration(
+            color: KyboColors.surface,
+            borderRadius: KyboBorderRadius.large,
+            boxShadow: KyboColors.mediumShadow,
+            border: Border.all(color: KyboColors.border),
           ),
-          child: Container(
-            width: 400,
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Logo Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: KyboColors.primary.withOpacity(0.1),
+                  borderRadius: KyboBorderRadius.large,
+                ),
+                child: const Icon(
                   Icons.admin_panel_settings,
-                  size: 60,
-                  color: Color(0xFF2E7D32), // Kybo Green
+                  size: 44,
+                  color: KyboColors.primary,
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  "Kybo Admin",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 28),
+
+              // Title
+              Text(
+                "Kybo Admin",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: KyboColors.textPrimary,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  "Accesso riservato",
-                  style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Accesso riservato al pannello di controllo",
+                style: TextStyle(
+                  color: KyboColors.textSecondary,
+                  fontSize: 14,
                 ),
-                const SizedBox(height: 32),
-                TextField(
+              ),
+              const SizedBox(height: 36),
+
+              // Email Field
+              Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  color: KyboColors.background,
+                  borderRadius: KyboBorderRadius.pill,
+                  border: Border.all(color: KyboColors.border),
+                ),
+                child: TextField(
                   controller: _emailCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Email",
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
                   textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: Icon(Icons.lock_outline),
+                  style: TextStyle(color: KyboColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: "Email",
+                    hintStyle: TextStyle(color: KyboColors.textMuted),
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: KyboColors.textMuted,
+                      size: 20,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Password Field with visibility toggle
+              Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  color: KyboColors.background,
+                  borderRadius: KyboBorderRadius.pill,
+                  border: Border.all(color: KyboColors.border),
+                ),
+                child: TextField(
+                  controller: _passCtrl,
+                  obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _login(),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _login,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32), // Kybo Green
+                  style: TextStyle(color: KyboColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: "Password",
+                    hintStyle: TextStyle(color: KyboColors.textMuted),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      color: KyboColors.textMuted,
+                      size: 20,
                     ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("ACCEDI AL PANNELLO"),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
+                        color: KyboColors.textMuted,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 28),
+
+              // Login Button
+              SizedBox(
+                width: double.infinity,
+                child: PillButton(
+                  label: "ACCEDI AL PANNELLO",
+                  icon: Icons.login_rounded,
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  height: 52,
+                  isLoading: _isLoading,
+                  onPressed: _isLoading ? null : _login,
+                ),
+              ),
+            ],
           ),
         ),
       ),
