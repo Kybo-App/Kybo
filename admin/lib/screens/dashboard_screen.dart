@@ -38,7 +38,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
           _userName =
-              "${data['first_name'] ?? 'Utente'} ${data['last_name'] ?? ''}".trim();
+              "${data['first_name'] ?? 'Utente'} ${data['last_name'] ?? ''}"
+                  .trim();
           _userRole = data['role'] ?? 'user';
           _isAdmin = _userRole == 'admin';
           _isLoading = false;
@@ -184,7 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: KyboColors.primary.withOpacity(0.1),
+            color: KyboColors.primary.withValues(alpha: 0.1),
             borderRadius: KyboBorderRadius.medium,
           ),
           child: const Center(
@@ -253,7 +254,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         // Dark Mode Toggle
         PillIconButton(
-          icon: KyboColors.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          icon: KyboColors.isDark
+              ? Icons.light_mode_rounded
+              : Icons.dark_mode_rounded,
           color: KyboColors.textSecondary,
           tooltip: KyboColors.isDark ? "Modalità Chiara" : "Modalità Scura",
           onPressed: () {
@@ -279,7 +282,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: _isAdmin ? KyboColors.roleAdmin : KyboColors.roleNutritionist,
+                  color: _isAdmin
+                      ? KyboColors.roleAdmin
+                      : KyboColors.roleNutritionist,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -335,9 +340,5 @@ class _NavItem {
   final String label;
   final Widget view;
 
-  _NavItem({
-    required this.icon,
-    required this.label,
-    required this.view,
-  });
+  _NavItem({required this.icon, required this.label, required this.view});
 }

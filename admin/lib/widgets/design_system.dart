@@ -53,7 +53,8 @@ class KyboColors {
   // Dynamic getters
   static Color get background => isDark ? _backgroundDark : _backgroundLight;
   static Color get surface => isDark ? _surfaceDark : _surfaceLight;
-  static Color get surfaceElevated => isDark ? _surfaceElevatedDark : _surfaceLight;
+  static Color get surfaceElevated =>
+      isDark ? _surfaceElevatedDark : _surfaceLight;
 
   // Text - Light
   static const Color _textPrimaryLight = Color(0xFF1E293B);
@@ -67,7 +68,8 @@ class KyboColors {
 
   // Dynamic text getters
   static Color get textPrimary => isDark ? _textPrimaryDark : _textPrimaryLight;
-  static Color get textSecondary => isDark ? _textSecondaryDark : _textSecondaryLight;
+  static Color get textSecondary =>
+      isDark ? _textSecondaryDark : _textSecondaryLight;
   static Color get textMuted => isDark ? _textMutedDark : _textMutedLight;
 
   // Accents (same for both modes)
@@ -86,8 +88,8 @@ class KyboColors {
   static List<BoxShadow> get softShadow => [
     BoxShadow(
       color: isDark
-          ? Colors.black.withOpacity(0.3)
-          : Colors.black.withOpacity(0.08),
+          ? Colors.black.withValues(alpha: 0.3)
+          : Colors.black.withValues(alpha: 0.08),
       blurRadius: 24,
       offset: const Offset(0, 6),
       spreadRadius: 0,
@@ -97,8 +99,8 @@ class KyboColors {
   static List<BoxShadow> get mediumShadow => [
     BoxShadow(
       color: isDark
-          ? Colors.black.withOpacity(0.4)
-          : Colors.black.withOpacity(0.12),
+          ? Colors.black.withValues(alpha: 0.4)
+          : Colors.black.withValues(alpha: 0.12),
       blurRadius: 32,
       offset: const Offset(0, 10),
       spreadRadius: 2,
@@ -107,8 +109,8 @@ class KyboColors {
 
   // Border colors
   static Color get border => isDark
-      ? Colors.white.withOpacity(0.1)
-      : Colors.black.withOpacity(0.08);
+      ? Colors.white.withValues(alpha: 0.1)
+      : Colors.black.withValues(alpha: 0.08);
 }
 
 class KyboSpacing {
@@ -159,14 +161,17 @@ class PillButton extends StatefulWidget {
   State<PillButton> createState() => _PillButtonState();
 }
 
-class _PillButtonState extends State<PillButton> with SingleTickerProviderStateMixin {
+class _PillButtonState extends State<PillButton>
+    with SingleTickerProviderStateMixin {
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.backgroundColor ??
+    final bgColor =
+        widget.backgroundColor ??
         (widget.isSelected ? KyboColors.primary : KyboColors.surface);
-    final fgColor = widget.textColor ??
+    final fgColor =
+        widget.textColor ??
         (widget.isSelected ? Colors.white : KyboColors.textPrimary);
 
     return MouseRegion(
@@ -179,9 +184,7 @@ class _PillButtonState extends State<PillButton> with SingleTickerProviderStateM
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         height: widget.height,
-        constraints: BoxConstraints(
-          minWidth: widget.minWidth ?? 120,
-        ),
+        constraints: BoxConstraints(minWidth: widget.minWidth ?? 120),
         transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
         transformAlignment: Alignment.center,
         child: Material(
@@ -197,16 +200,15 @@ class _PillButtonState extends State<PillButton> with SingleTickerProviderStateM
               ),
               decoration: BoxDecoration(
                 color: _isHovered && !widget.isSelected
-                    ? bgColor.withOpacity(0.95)
+                    ? bgColor.withValues(alpha: 0.95)
                     : bgColor,
                 borderRadius: KyboBorderRadius.pill,
                 boxShadow: widget.isSelected || _isHovered
                     ? KyboColors.mediumShadow
                     : KyboColors.softShadow,
-                border: !widget.isSelected ? Border.all(
-                  color: KyboColors.border,
-                  width: 1,
-                ) : null,
+                border: !widget.isSelected
+                    ? Border.all(color: KyboColors.border, width: 1)
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -286,7 +288,9 @@ class _PillNavItemState extends State<PillNavItem> {
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? KyboColors.primary
-                : (_isHovered ? KyboColors.primary.withOpacity(0.15) : Colors.transparent),
+                : (_isHovered
+                      ? KyboColors.primary.withValues(alpha: 0.15)
+                      : Colors.transparent),
             borderRadius: KyboBorderRadius.pill,
             boxShadow: widget.isSelected ? KyboColors.softShadow : null,
           ),
@@ -298,7 +302,9 @@ class _PillNavItemState extends State<PillNavItem> {
                 size: 20,
                 color: widget.isSelected
                     ? Colors.white
-                    : (_isHovered ? KyboColors.primary : KyboColors.textSecondary),
+                    : (_isHovered
+                          ? KyboColors.primary
+                          : KyboColors.textSecondary),
               ),
               const SizedBox(width: 10),
               Text(
@@ -306,8 +312,12 @@ class _PillNavItemState extends State<PillNavItem> {
                 style: TextStyle(
                   color: widget.isSelected
                       ? Colors.white
-                      : (_isHovered ? KyboColors.primary : KyboColors.textSecondary),
-                  fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                      : (_isHovered
+                            ? KyboColors.primary
+                            : KyboColors.textSecondary),
+                  fontWeight: widget.isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500,
                   fontSize: 14,
                 ),
               ),
@@ -375,7 +385,7 @@ class PillBadge extends StatelessWidget {
         vertical: small ? 4 : 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: KyboBorderRadius.pill,
       ),
       child: Row(
@@ -425,10 +435,7 @@ class PillSearch extends StatelessWidget {
       decoration: BoxDecoration(
         color: KyboColors.surface,
         borderRadius: KyboBorderRadius.pill,
-        border: Border.all(
-          color: KyboColors.border,
-          width: 1,
-        ),
+        border: Border.all(color: KyboColors.border, width: 1),
         boxShadow: KyboColors.softShadow,
       ),
       child: TextField(
@@ -437,10 +444,7 @@ class PillSearch extends StatelessWidget {
         style: TextStyle(color: KyboColors.textPrimary),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(
-            color: KyboColors.textMuted,
-            fontSize: 14,
-          ),
+          hintStyle: TextStyle(color: KyboColors.textMuted, fontSize: 14),
           prefixIcon: Icon(
             Icons.search_rounded,
             color: KyboColors.textMuted,
@@ -491,20 +495,18 @@ class _PillCardState extends State<PillCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        transform: Matrix4.identity()..scale(_isHovered && widget.onTap != null ? 1.01 : 1.0),
+        transform: Matrix4.identity()
+          ..scale(_isHovered && widget.onTap != null ? 1.01 : 1.0),
         transformAlignment: Alignment.center,
         decoration: BoxDecoration(
           color: widget.backgroundColor ?? KyboColors.surface,
           borderRadius: KyboBorderRadius.large,
           boxShadow: widget.elevated
               ? (_isHovered && widget.onTap != null
-                  ? KyboColors.mediumShadow
-                  : KyboColors.softShadow)
+                    ? KyboColors.mediumShadow
+                    : KyboColors.softShadow)
               : null,
-          border: Border.all(
-            color: KyboColors.border,
-            width: 1,
-          ),
+          border: Border.all(color: KyboColors.border, width: 1),
         ),
         child: Material(
           color: Colors.transparent,
@@ -583,10 +585,7 @@ class _PillIconButtonState extends State<PillIconButton> {
     );
 
     if (widget.tooltip != null) {
-      return Tooltip(
-        message: widget.tooltip!,
-        child: button,
-      );
+      return Tooltip(message: widget.tooltip!, child: button);
     }
     return button;
   }
@@ -618,10 +617,7 @@ class PillDropdown<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: KyboColors.surface,
         borderRadius: KyboBorderRadius.pill,
-        border: Border.all(
-          color: KyboColors.border,
-          width: 1,
-        ),
+        border: Border.all(color: KyboColors.border, width: 1),
         boxShadow: KyboColors.softShadow,
       ),
       child: DropdownButtonHideUnderline(
@@ -630,11 +626,11 @@ class PillDropdown<T> extends StatelessWidget {
           items: items,
           onChanged: onChanged,
           hint: hint != null ? Text(hint!) : null,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: KyboColors.textSecondary),
-          style: TextStyle(
-            color: KyboColors.textPrimary,
-            fontSize: 14,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: KyboColors.textSecondary,
           ),
+          style: TextStyle(color: KyboColors.textPrimary, fontSize: 14),
           dropdownColor: KyboColors.surface,
           borderRadius: KyboBorderRadius.medium,
         ),
@@ -673,7 +669,7 @@ class StatCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: KyboBorderRadius.medium,
             ),
             child: Icon(icon, color: color, size: 28),
@@ -784,28 +780,21 @@ class _PillTextFieldState extends State<PillTextField> {
           decoration: BoxDecoration(
             color: KyboColors.surface,
             borderRadius: KyboBorderRadius.pill,
-            border: Border.all(
-              color: KyboColors.border,
-              width: 1,
-            ),
+            border: Border.all(color: KyboColors.border, width: 1),
             boxShadow: KyboColors.softShadow,
           ),
           child: TextField(
             controller: widget.controller,
-            obscureText: widget.showPasswordToggle ? _obscureText : widget.obscureText,
+            obscureText: widget.showPasswordToggle
+                ? _obscureText
+                : widget.obscureText,
             textInputAction: widget.textInputAction,
             onSubmitted: widget.onSubmitted,
             onChanged: widget.onChanged,
-            style: TextStyle(
-              color: KyboColors.textPrimary,
-              fontSize: 15,
-            ),
+            style: TextStyle(color: KyboColors.textPrimary, fontSize: 15),
             decoration: InputDecoration(
               hintText: widget.hintText,
-              hintStyle: TextStyle(
-                color: KyboColors.textMuted,
-                fontSize: 14,
-              ),
+              hintStyle: TextStyle(color: KyboColors.textMuted, fontSize: 14),
               prefixIcon: widget.prefixIcon != null
                   ? Icon(
                       widget.prefixIcon,
@@ -816,11 +805,14 @@ class _PillTextFieldState extends State<PillTextField> {
               suffixIcon: widget.showPasswordToggle
                   ? IconButton(
                       icon: Icon(
-                        _obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        _obscureText
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: KyboColors.textMuted,
                         size: 20,
                       ),
-                      onPressed: () => setState(() => _obscureText = !_obscureText),
+                      onPressed: () =>
+                          setState(() => _obscureText = !_obscureText),
                     )
                   : null,
               border: InputBorder.none,
@@ -874,9 +866,10 @@ class _PillExpansionTileState extends State<PillExpansionTile>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _iconTurns = Tween<double>(begin: 0.0, end: 0.5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _iconTurns = Tween<double>(
+      begin: 0.0,
+      end: 0.5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     if (_isExpanded) _controller.value = 1.0;
   }
 
@@ -956,10 +949,7 @@ class _PillExpansionTileState extends State<PillExpansionTile>
             secondChild: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Divider(
-                  height: 1,
-                  color: KyboColors.border,
-                ),
+                Divider(height: 1, color: KyboColors.border),
                 ...widget.children,
               ],
             ),

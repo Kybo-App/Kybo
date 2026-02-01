@@ -152,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: KyboColors.primary.withOpacity(0.1),
+                  color: KyboColors.primary.withValues(alpha: 0.1),
                   borderRadius: KyboBorderRadius.large,
                 ),
                 child: const Icon(
@@ -175,10 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Text(
                 "Accesso riservato al pannello di controllo",
-                style: TextStyle(
-                  color: KyboColors.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: KyboColors.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 36),
 
