@@ -45,9 +45,16 @@ class GruppoSostituzione(typing.TypedDict):
     titolo: str
     opzioni: list[OpzioneSostituzione]
 
+class ConfigDieta(typing.TypedDict):
+    """Configurazione dinamica estratta dalla dieta."""
+    giorni: list[str]  # Giorni della settimana nell'ordine del PDF
+    pasti: list[str]   # Tipi di pasto nell'ordine del PDF
+    alimenti_rilassabili: list[str]  # Frutta/verdura identificati nel piano
+
 class OutputDietaCompleto(typing.TypedDict):
     piano_settimanale: list[GiornoDieta]
     tabella_sostituzioni: list[GruppoSostituzione]
+    config: ConfigDieta  # Configurazione dinamica
 
 class DietParser:
     # [OPTIMIZATION] Cache L1 in RAM (condivisa tra richieste)
@@ -65,20 +72,35 @@ class DietParser:
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             self.client = genai.Client(api_key=clean_key)
 
-        # [System instruction originale mantenuta...]
+        # [System instruction con supporto config dinamica]
         self.system_instruction = """
 You are an expert AI Nutritionist and Data Analyst capable of understanding any language.
 YOUR TASK: Extract the weekly diet plan from the provided document.
+
 CRITICAL RULES FOR MULTI-LANGUAGE SUPPORT:
 1. Detect Language: Read the document in its original language.
-2. Translate Structure (Required): 
+2. Translate Structure (Required):
    - Translate Day of the Week into Italian.
    - Translate Meal Category into Italian.
 3. Preserve Content: Keep Dish Names, Ingredients, and Quantities in ORIGINAL LANGUAGE.
+
 SIMPLIFIED SCHEMA RULES:
 1. Weekly Plan Only: Extract every meal.
 2. No Substitutions: Return empty list [].
 3. No CAD Codes: Set to 0.
+
+CONFIG EXTRACTION (REQUIRED):
+Extract the following metadata and include in "config" field:
+1. "giorni": List of days of the week AS THEY APPEAR in the document (translated to Italian).
+   Example: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
+2. "pasti": List of meal types IN THE ORDER they appear in the document (translated to Italian).
+   Example: ["Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"]
+3. "alimenti_rilassabili": List of fruits and vegetables found in the diet plan.
+   - Include common fruits: mela, pera, banana, arancia, kiwi, fragola, etc.
+   - Include common vegetables: insalata, pomodoro, zucchina, carota, spinaci, etc.
+   - Extract from dish names and ingredients that match fruit/vegetable categories.
+   - Keep names in lowercase, singular form when possible.
+   Example: ["mela", "banana", "insalata", "pomodoro", "carote", "spinaci"]
 """
 
     # --- 1.4 SANITIZZAZIONE GDPR (Migliorata) ---
