@@ -70,7 +70,10 @@ class _ConfigViewState extends State<ConfigView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: KyboColors.error,
+          ),
         );
         setState(() => _isLoading = false);
       }
@@ -154,7 +157,10 @@ class _ConfigViewState extends State<ConfigView> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
+            SnackBar(
+              content: Text("Error: $e"),
+              backgroundColor: KyboColors.error,
+            ),
           );
         }
       } finally {
@@ -195,14 +201,17 @@ class _ConfigViewState extends State<ConfigView> {
       try {
         await _repo.cancelMaintenanceSchedule();
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Schedulazione Annullata")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Schedulazione Annullata")),
+          );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
+            SnackBar(
+              content: Text("Error: $e"),
+              backgroundColor: KyboColors.error,
+            ),
           );
         }
       } finally {
@@ -261,14 +270,14 @@ class _ConfigViewState extends State<ConfigView> {
 
     return PillCard(
       padding: const EdgeInsets.all(24),
-      backgroundColor: color.withOpacity(0.08),
+      backgroundColor: color.withValues(alpha: 0.08),
       child: Row(
         children: [
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: KyboBorderRadius.medium,
             ),
             child: Icon(icon, color: color, size: 32),
@@ -311,7 +320,7 @@ class _ConfigViewState extends State<ConfigView> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: KyboColors.error.withOpacity(0.1),
+              color: KyboColors.error.withValues(alpha: 0.1),
               borderRadius: KyboBorderRadius.medium,
             ),
             child: const Icon(
@@ -325,7 +334,7 @@ class _ConfigViewState extends State<ConfigView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Override Manuale",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
@@ -334,7 +343,7 @@ class _ConfigViewState extends State<ConfigView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "Forza manutenzione immediata",
                   style: TextStyle(
                     color: KyboColors.textSecondary,
@@ -347,7 +356,7 @@ class _ConfigViewState extends State<ConfigView> {
           Switch(
             value: _manualMaintenance,
             onChanged: _toggleMaintenance,
-            activeColor: KyboColors.error,
+            activeThumbColor: KyboColors.error,
           ),
         ],
       ),
@@ -358,7 +367,7 @@ class _ConfigViewState extends State<ConfigView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Schedula Manutenzione",
           style: TextStyle(
             fontWeight: FontWeight.w600,
@@ -372,14 +381,14 @@ class _ConfigViewState extends State<ConfigView> {
         if (_isScheduled && _scheduledDate != null)
           PillCard(
             padding: const EdgeInsets.all(20),
-            backgroundColor: KyboColors.accent.withOpacity(0.08),
+            backgroundColor: KyboColors.accent.withValues(alpha: 0.08),
             child: Row(
               children: [
                 Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: KyboColors.accent.withOpacity(0.15),
+                    color: KyboColors.accent.withValues(alpha: 0.15),
                     borderRadius: KyboBorderRadius.medium,
                   ),
                   child: const Icon(
@@ -430,7 +439,7 @@ class _ConfigViewState extends State<ConfigView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Nuova Schedulazione",
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
