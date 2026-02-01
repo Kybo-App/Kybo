@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/error_handler.dart'; // [IMPORTANTE]
+import '../constants.dart' show AppColors;
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -76,7 +77,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Cambia Password")),
+      backgroundColor: AppColors.getScaffoldBackground(context),
+      appBar: AppBar(
+        backgroundColor: AppColors.getSurface(context),
+        title: Text(
+          "Cambia Password",
+          style: TextStyle(color: AppColors.getTextColor(context)),
+        ),
+        iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(
@@ -85,10 +94,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               children: [
                 const Icon(Icons.lock_reset, size: 80, color: Colors.orange),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   "Inserisci la tua nuova password.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                  style: TextStyle(color: AppColors.getSecondaryTextColor(context), fontSize: 16),
                 ),
                 const SizedBox(height: 32),
                 TextField(
