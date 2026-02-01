@@ -148,7 +148,7 @@ class MealCard extends StatelessWidget {
                         // - Ci sono 2+ ingredienti, OPPURE
                         // - C'è 1 ingrediente con nome diverso dal piatto
                         final bool shouldShowIngredients = hasIngredients &&
-                            (ingredients!.length > 1 ||
+                            (ingredients.length > 1 ||
                                 !ingredients.first.name
                                     .toLowerCase()
                                     .contains(displayName.toLowerCase()));
@@ -163,7 +163,7 @@ class MealCard extends StatelessWidget {
                         String effectiveQty = displayQtyRaw;
                         if (hasIngredients &&
                             !shouldShowIngredients &&
-                            ingredients!.first.qty.isNotEmpty) {
+                            ingredients.first.qty.isNotEmpty) {
                           effectiveQty = ingredients.first.qty;
                         }
 

@@ -833,6 +833,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     final notificationService = NotificationService();
     await notificationService.requestPermissions();
 
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) {
@@ -886,7 +887,11 @@ class _MainScreenContentState extends State<MainScreenContent>
                             ),
                             leading: Switch(
                               value: isEnabled,
-                              activeColor: AppColors.primary,
+                              activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+                              thumbColor: WidgetStateProperty.resolveWith((states) {
+                                if (states.contains(WidgetState.selected)) return AppColors.primary;
+                                return Colors.grey;
+                              }),
                               onChanged: (val) {
                                 setDialogState(() => enabled[mealType] = val);
                               },
@@ -974,16 +979,18 @@ class _MainScreenContentState extends State<MainScreenContent>
                           .read<DietProvider>()
                           .scheduleMealNotifications();
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            toSave.isEmpty
-                                ? "Promemoria disattivati"
-                                : "Attivati ${toSave.length} promemoria",
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              toSave.isEmpty
+                                  ? "Promemoria disattivati"
+                                  : "Attivati ${toSave.length} promemoria",
+                            ),
+                            backgroundColor: AppColors.primary,
                           ),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
+                        );
+                      }
                     }
                   },
                   label: const Text("Salva"),

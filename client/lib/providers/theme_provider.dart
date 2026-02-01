@@ -7,7 +7,6 @@ class ThemeProvider extends ChangeNotifier {
   static const String _themeSetKey = 'theme_set'; // Per sapere se l'utente ha già scelto
 
   bool _isDarkMode = false;
-  bool _isInitialized = false;
   bool get isDarkMode => _isDarkMode;
 
   ThemeProvider() {
@@ -27,7 +26,6 @@ class ThemeProvider extends ChangeNotifier {
       _isDarkMode = brightness == Brightness.dark;
     }
 
-    _isInitialized = true;
     notifyListeners();
   }
 
