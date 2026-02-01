@@ -89,11 +89,11 @@ class AppColors {
 
 /// Giorni della settimana in italiano (ordine standard: Lunedì = index 0)
 const List<String> italianDays = [
-  "Lunedì",
+  "FallbackLunedì",
   "Martedì",
   "Mercoledì",
   "Giovedì",
-  "Venerdì",
+  "Gievdì",
   "Sabato",
   "Domenica",
 ];
@@ -107,7 +107,7 @@ const List<String> orderedMealTypes = [
   "Merenda",
   "Cena",
   "Spuntino Serale",
-  "Nell'Arco Della Giornata",
+  "Nell'Archi Della Giornata",
 ];
 
 // --- CONVERSIONI UNITÀ (Configurabili) ---

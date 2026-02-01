@@ -101,7 +101,7 @@ class AuditLogView extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: KyboColors.roleAdmin.withOpacity(0.1),
+            color: KyboColors.roleAdmin.withValues(alpha: 0.1),
             borderRadius: KyboBorderRadius.medium,
           ),
           child: const Icon(
@@ -126,10 +126,7 @@ class AuditLogView extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 "Cronologia di tutte le azioni sensibili eseguite dagli amministratori",
-                style: TextStyle(
-                  color: KyboColors.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: KyboColors.textSecondary, fontSize: 14),
               ),
             ],
           ),
@@ -170,7 +167,7 @@ class AuditLogView extends StatelessWidget {
           return Center(
             child: PillCard(
               padding: const EdgeInsets.all(32),
-              backgroundColor: KyboColors.error.withOpacity(0.08),
+              backgroundColor: KyboColors.error.withValues(alpha: 0.08),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -221,17 +218,17 @@ class AuditLogView extends StatelessWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: KyboColors.textMuted.withOpacity(0.1),
+                      color: KyboColors.textMuted.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.history_rounded,
                       color: KyboColors.textMuted,
                       size: 40,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     "Nessun log registrato",
                     style: TextStyle(
                       color: KyboColors.textPrimary,
@@ -240,7 +237,7 @@ class AuditLogView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Le azioni sensibili appariranno qui",
                     style: TextStyle(
                       color: KyboColors.textSecondary,
@@ -260,15 +257,13 @@ class AuditLogView extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(
-                  KyboColors.background,
-                ),
+                headingRowColor: WidgetStateProperty.all(KyboColors.background),
                 headingRowHeight: 56,
                 dataRowMinHeight: 64,
                 dataRowMaxHeight: 72,
                 columnSpacing: 32,
                 horizontalMargin: 24,
-                columns: const [
+                columns: [
                   DataColumn(
                     label: Text(
                       "DATA/ORA",
@@ -329,7 +324,9 @@ class AuditLogView extends StatelessWidget {
                   final data = doc.data() as Map<String, dynamic>;
                   final timestamp = data['timestamp'] as Timestamp?;
                   final dateStr = timestamp != null
-                      ? DateFormat('dd/MM/yyyy HH:mm').format(timestamp.toDate())
+                      ? DateFormat(
+                          'dd/MM/yyyy HH:mm',
+                        ).format(timestamp.toDate())
                       : '-';
                   final action = data['action'] ?? '-';
                   final actionColor = _getActionColor(action);
@@ -345,10 +342,12 @@ class AuditLogView extends StatelessWidget {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: KyboColors.textMuted.withOpacity(0.1),
+                                color: KyboColors.textMuted.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: KyboBorderRadius.small,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.schedule_rounded,
                                 color: KyboColors.textMuted,
                                 size: 18,
@@ -374,7 +373,7 @@ class AuditLogView extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: KyboColors.roleAdmin.withOpacity(0.08),
+                            color: KyboColors.roleAdmin.withValues(alpha: 0.08),
                             borderRadius: KyboBorderRadius.pill,
                           ),
                           child: Text(
@@ -406,7 +405,9 @@ class AuditLogView extends StatelessWidget {
                             color: KyboColors.background,
                             borderRadius: KyboBorderRadius.pill,
                             border: Border.all(
-                              color: KyboColors.textMuted.withOpacity(0.2),
+                              color: KyboColors.textMuted.withValues(
+                                alpha: 0.2,
+                              ),
                             ),
                           ),
                           child: Text(
