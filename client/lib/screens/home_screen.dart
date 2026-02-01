@@ -13,7 +13,7 @@ import '../providers/theme_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-import '../constants.dart' show AppColors, italianDays;
+import '../constants.dart' show AppColors;
 import '../core/error_handler.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
@@ -373,8 +373,8 @@ class _MainScreenContentState extends State<MainScreenContent>
                 indicatorColor: AppColors.primary,
                 indicatorWeight: 3,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                tabs: italianDays
-                    .map((d) => Tab(text: d.substring(0, 3).toUpperCase()))
+                tabs: provider.getDays()
+                    .map((d) => Tab(text: d.length >= 3 ? d.substring(0, 3).toUpperCase() : d.toUpperCase()))
                     .toList(),
               ),
             )
@@ -449,13 +449,12 @@ class _MainScreenContentState extends State<MainScreenContent>
         // [FIX] Passiamo dietPlan invece di dietData/substitutions
         return TabBarView(
           controller: _tabController,
-          children: italianDays.map((day) {
+          children: provider.getDays().map((day) {
             return DietView(
               day: day,
-              dietPlan: provider.dietPlan, // <--- CAMBIATO QUI
+              dietPlan: provider.dietPlan,
               isLoading: provider.isLoading,
               activeSwaps: provider.activeSwaps,
-              // substitutions rimosso
               pantryItems: provider.pantryItems,
               isTranquilMode: provider.isTranquilMode,
             );

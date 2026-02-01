@@ -31,8 +31,11 @@ void callbackDispatcher() {
       final Map<String, dynamic> substitutions =
           dietFull['substitutions'] ?? {};
 
+      // Estrai giorni dalla config o fallback a italianDays
+      final List<String> days = _extractDays(dietFull);
+
       final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final dayName = _getDayName(tomorrow.weekday);
+      final dayName = _getDayName(tomorrow.weekday, days);
 
       if (plan[dayName] != null) {
         // Passiamo anche le sostituzioni e il nome del giorno al checker
@@ -101,8 +104,33 @@ class InventoryService {
   }
 }
 
-String _getDayName(int weekday) {
-  return italianDays[weekday - 1];
+/// Estrae i giorni dalla config della dieta o fallback
+List<String> _extractDays(Map<String, dynamic> dietFull) {
+  // Prima prova dalla config
+  if (dietFull['config'] != null) {
+    final config = dietFull['config'];
+    if (config['days'] != null && (config['days'] as List).isNotEmpty) {
+      return (config['days'] as List).cast<String>();
+    }
+  }
+  // Fallback: estrai dalle chiavi del piano
+  if (dietFull['plan'] != null) {
+    final plan = dietFull['plan'] as Map;
+    if (plan.isNotEmpty) {
+      return plan.keys.cast<String>().toList();
+    }
+  }
+  // Ultimo fallback: hardcoded
+  return italianDays;
+}
+
+String _getDayName(int weekday, List<String> days) {
+  // weekday 1 = Monday = index 0
+  final index = weekday - 1;
+  if (index >= 0 && index < days.length) {
+    return days[index];
+  }
+  return days.isNotEmpty ? days.first : italianDays[weekday - 1];
 }
 
 bool _checkMissingIngredients(

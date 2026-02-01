@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants.dart' show AppColors, relaxableFoods, orderedMealTypes;
+import '../constants.dart' show AppColors;
 import '../models/active_swap.dart';
 import '../models/diet_models.dart'; // [IMPORTANTE] Serve per capire cos'è un Dish
 
@@ -11,6 +11,8 @@ class MealCard extends StatelessWidget {
   final Map<String, bool> availabilityMap;
   final bool isTranquilMode;
   final bool isToday;
+  final Set<String> relaxableFoods; // Alimenti "rilassabili" dalla config dieta
+  final List<String> orderedMeals; // Pasti ordinati dalla config dieta
   final Function(int) onEat;
   final Function(String, int) onSwap;
   final Function(int, String, String) onEdit;
@@ -24,6 +26,8 @@ class MealCard extends StatelessWidget {
     required this.availabilityMap,
     required this.isTranquilMode,
     required this.isToday,
+    required this.relaxableFoods,
+    required this.orderedMeals,
     required this.onEat,
     required this.onSwap,
     required this.onEdit,
@@ -129,7 +133,7 @@ class MealCard extends StatelessWidget {
                         final bool isConsumed = originalFood.isConsumed;
 
                         assert(
-                          orderedMealTypes.contains(mealName),
+                          orderedMeals.contains(mealName),
                           '❌ BUG: Meal name "$mealName" non standardizzato! Controlla normalize_meal_name()',
                         );
                         String availKey = "${day}_${mealName}_$index";

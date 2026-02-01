@@ -12,9 +12,10 @@ import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
-import 'package:permission_handler/permission_handler.dart'; // <--- NUOVO
-import '../services/notification_service.dart'; // <--- NUOVO (se non c'è già)
+import 'package:permission_handler/permission_handler.dart';
+import '../services/notification_service.dart';
 import '../models/diet_models.dart';
+import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods;
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -147,6 +148,89 @@ class DietProvider extends ChangeNotifier {
   String? get error => _error;
   double get uploadProgress => _uploadProgress;
   bool get hasError => _error != null;
+
+  // ========== GETTER DINAMICI (da config JSON o fallback hardcoded) ==========
+
+  /// Restituisce i giorni della settimana dalla config della dieta,
+  /// oppure fallback ai valori hardcoded italiani se non disponibili
+  List<String> getDays() {
+    final config = _dietPlan?.config;
+    if (config != null && config.days.isNotEmpty) {
+      return config.days;
+    }
+    // Fallback: estrai giorni dalle chiavi del piano se presenti
+    if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
+      return _dietPlan!.plan.keys.toList();
+    }
+    return italianDays;
+  }
+
+  /// Restituisce i tipi di pasto dalla config della dieta,
+  /// oppure fallback ai valori hardcoded se non disponibili
+  List<String> getMeals() {
+    final config = _dietPlan?.config;
+    if (config != null && config.meals.isNotEmpty) {
+      return config.meals;
+    }
+    // Fallback: estrai pasti unici dal piano se presenti
+    if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
+      final Set<String> mealsSet = {};
+      for (var dayMeals in _dietPlan!.plan.values) {
+        mealsSet.addAll(dayMeals.keys);
+      }
+      if (mealsSet.isNotEmpty) {
+        // Ordina secondo orderedMealTypes se possibile
+        final ordered = <String>[];
+        for (var meal in orderedMealTypes) {
+          if (mealsSet.contains(meal)) {
+            ordered.add(meal);
+            mealsSet.remove(meal);
+          }
+        }
+        // Aggiungi eventuali pasti non standard alla fine
+        ordered.addAll(mealsSet);
+        return ordered;
+      }
+    }
+    return orderedMealTypes;
+  }
+
+  /// Restituisce i relaxable foods dalla config della dieta,
+  /// oppure fallback ai valori hardcoded se non disponibili
+  Set<String> getRelaxableFoods() {
+    final config = _dietPlan?.config;
+    if (config != null && config.relaxableFoods.isNotEmpty) {
+      return config.relaxableFoods;
+    }
+    return relaxableFoods;
+  }
+
+  /// Trova l'indice del giorno corrente nella lista dei giorni della dieta
+  /// Restituisce -1 se non trovato
+  int getTodayIndex() {
+    final days = getDays();
+    if (days.isEmpty) return -1;
+
+    final now = DateTime.now();
+    // DateTime.weekday: 1 = Monday, 7 = Sunday
+    // Assumiamo che la lista days inizi da Lunedì (o equivalente)
+    int weekdayIndex = now.weekday - 1; // 0 = Monday
+
+    if (weekdayIndex >= 0 && weekdayIndex < days.length) {
+      return weekdayIndex;
+    }
+    return 0; // Default al primo giorno
+  }
+
+  /// Restituisce il nome del giorno corrente secondo la config della dieta
+  String getTodayName() {
+    final days = getDays();
+    final index = getTodayIndex();
+    if (index >= 0 && index < days.length) {
+      return days[index];
+    }
+    return days.isNotEmpty ? days.first : '';
+  }
 
   DietProvider(this._repository);
 
@@ -765,9 +849,11 @@ class DietProvider extends ChangeNotifier {
     var status = await Permission.notification.status;
 
     if (status.isGranted) {
-      // [FIX] Passiamo la mappa 'plan' al servizio notifiche
-      // Assumendo che il tuo NotificationService si aspetti Map<String, dynamic>
-      await _notificationService.scheduleDietNotifications(_dietPlan!.plan);
+      // Passiamo piano e giorni dalla config dieta
+      await _notificationService.scheduleDietNotifications(
+        _dietPlan!.plan,
+        days: getDays(),
+      );
       debugPrint("🔔 Notifiche pianificate con successo");
     } else {
       _needsNotificationPermissions = true;
