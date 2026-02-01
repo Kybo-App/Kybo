@@ -251,6 +251,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Dark Mode Toggle
+        PillIconButton(
+          icon: KyboColors.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+          color: KyboColors.textSecondary,
+          tooltip: KyboColors.isDark ? "Modalità Chiara" : "Modalità Scura",
+          onPressed: () {
+            KyboThemeProvider().toggleTheme();
+            setState(() {}); // Rebuild UI
+          },
+        ),
+
+        const SizedBox(width: 8),
+
         // User Info
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
