@@ -50,11 +50,11 @@ class DietView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.description_outlined, size: 60, color: Colors.grey[300]),
+            Icon(Icons.description_outlined, size: 60, color: AppColors.getHintColor(context)),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "Nessuna dieta caricata.",
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
             ),
           ],
         ),
@@ -69,11 +69,11 @@ class DietView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bed_outlined, size: 60, color: Colors.grey[300]),
+            Icon(Icons.bed_outlined, size: 60, color: AppColors.getHintColor(context)),
             const SizedBox(height: 10),
             Text(
               "Riposo (nessun piano per $day)",
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
             ),
           ],
         ),
