@@ -590,81 +590,131 @@ class _UserManagementViewState extends State<UserManagementView> {
     return Column(
       children: [
         // ═══════════════════════════════════════════════════════════════════
-        // TOP TOOLBAR - Pill-shaped design
+        // TOP TOOLBAR - Pill-shaped container
         // ═══════════════════════════════════════════════════════════════════
-        Row(
-          children: [
-            // 1. BARRA DI RICERCA (Per Tutti)
-            Expanded(
-              flex: 2,
-              child: PillSearch(
-                controller: _searchCtrl,
-                hintText: "Cerca utente per nome o email...",
-                onChanged: (val) =>
-                    setState(() => _searchQuery = val.toLowerCase()),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: KyboColors.surface,
+            borderRadius: KyboBorderRadius.pill,
+            boxShadow: KyboColors.softShadow,
+            border: Border.all(color: KyboColors.border),
+          ),
+          child: Row(
+            children: [
+              // 1. BARRA DI RICERCA (Per Tutti)
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: KyboColors.background,
+                    borderRadius: KyboBorderRadius.pill,
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (val) =>
+                        setState(() => _searchQuery = val.toLowerCase()),
+                    style: TextStyle(color: KyboColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: "Cerca utente per nome o email...",
+                      hintStyle: TextStyle(
+                        color: KyboColors.textMuted,
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: KyboColors.textMuted,
+                        size: 20,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
 
-            const SizedBox(width: 16),
+              const SizedBox(width: 12),
 
-            // 2. FILTRO RUOLI (Solo Admin)
-            if (_currentUserRole == 'admin') ...[
-              PillDropdown<String>(
-                value: _roleFilter,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'all',
-                    child: Text("Tutti i Ruoli"),
+              // 2. FILTRO RUOLI (Solo Admin)
+              if (_currentUserRole == 'admin') ...[
+                Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: KyboColors.background,
+                    borderRadius: KyboBorderRadius.pill,
                   ),
-                  DropdownMenuItem(value: 'user', child: Text("Clienti")),
-                  DropdownMenuItem(
-                    value: 'nutritionist',
-                    child: Text("Nutrizionisti"),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _roleFilter,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text("Tutti i Ruoli"),
+                        ),
+                        DropdownMenuItem(value: 'user', child: Text("Clienti")),
+                        DropdownMenuItem(
+                          value: 'nutritionist',
+                          child: Text("Nutrizionisti"),
+                        ),
+                        DropdownMenuItem(
+                          value: 'independent',
+                          child: Text("Indipendenti"),
+                        ),
+                        DropdownMenuItem(value: 'admin', child: Text("Admin")),
+                      ],
+                      onChanged: (val) => setState(() => _roleFilter = val!),
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: KyboColors.textSecondary),
+                      style: TextStyle(
+                        color: KyboColors.textPrimary,
+                        fontSize: 14,
+                      ),
+                      dropdownColor: KyboColors.surface,
+                      borderRadius: KyboBorderRadius.medium,
+                    ),
                   ),
-                  DropdownMenuItem(
-                    value: 'independent',
-                    child: Text("Indipendenti"),
-                  ),
-                  DropdownMenuItem(value: 'admin', child: Text("Admin")),
-                ],
-                onChanged: (val) => setState(() => _roleFilter = val!),
-              ),
-              const SizedBox(width: 16),
-            ],
+                ),
+                const SizedBox(width: 12),
+              ],
 
-            // 3. REFRESH (Per Tutti)
-            PillIconButton(
-              icon: Icons.refresh_rounded,
-              color: KyboColors.primary,
-              tooltip: "Ricarica Lista",
-              onPressed: _refreshList,
-            ),
-
-            // 4. SYNC DB (Solo Admin)
-            if (_currentUserRole == 'admin') ...[
-              const SizedBox(width: 8),
+              // 3. REFRESH (Per Tutti)
               PillIconButton(
-                icon: Icons.sync_rounded,
-                color: KyboColors.accent,
-                tooltip: "Sync DB",
-                onPressed: _isLoading ? null : _syncUsers,
+                icon: Icons.refresh_rounded,
+                color: KyboColors.primary,
+                tooltip: "Ricarica Lista",
+                onPressed: _refreshList,
               ),
+
+              // 4. SYNC DB (Solo Admin)
+              if (_currentUserRole == 'admin') ...[
+                const SizedBox(width: 4),
+                PillIconButton(
+                  icon: Icons.sync_rounded,
+                  color: KyboColors.accent,
+                  tooltip: "Sync DB",
+                  onPressed: _isLoading ? null : _syncUsers,
+                ),
+              ],
+
+              const SizedBox(width: 12),
+
+              // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
+              if (_currentUserRole == 'admin' ||
+                  _currentUserRole == 'nutritionist')
+                PillButton(
+                  label: "NUOVO UTENTE",
+                  icon: Icons.add_rounded,
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  isLoading: _isLoading,
+                  onPressed: _isLoading ? null : _showCreateUserDialog,
+                ),
             ],
-
-            const SizedBox(width: 16),
-
-            // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
-            if (_currentUserRole == 'admin' ||
-                _currentUserRole == 'nutritionist')
-              PillButton(
-                label: "NUOVO UTENTE",
-                icon: Icons.add_rounded,
-                backgroundColor: KyboColors.primary,
-                textColor: Colors.white,
-                isLoading: _isLoading,
-                onPressed: _isLoading ? null : _showCreateUserDialog,
-              ),
-          ],
+          ),
         ),
 
         const SizedBox(height: 24),
@@ -825,23 +875,24 @@ class _UserManagementViewState extends State<UserManagementView> {
           final nutName = nutNameMap[nutId] ?? "Nutritionist ID: $nutId";
           final nutDoc = nutritionistDocs[nutId];
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            child: ExpansionTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.blue.withValues(alpha: 0.2),
-                child: const Icon(Icons.health_and_safety, color: Colors.blue),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: PillExpansionTile(
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: KyboColors.roleNutritionist.withOpacity(0.15),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: const Icon(Icons.health_and_safety, color: KyboColors.roleNutritionist),
               ),
-              title: Text(
-                nutName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text("${clients.length} Clients"),
+              title: nutName,
+              subtitle: "${clients.length} Clienti",
               children: [
                 if (nutDoc != null)
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(12),
                     child: SizedBox(
                       height: 240,
                       child: _UserCard(
@@ -866,11 +917,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                         const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 400,
                           mainAxisExtent: 240,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
                         ),
                     itemCount: clients.length,
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     itemBuilder: (ctx, idx) => _UserCard(
                       user: clients[idx],
                       onDelete: _deleteUser,
@@ -894,19 +945,20 @@ class _UserManagementViewState extends State<UserManagementView> {
         }),
 
         if (independents.isNotEmpty)
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            child: ExpansionTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.orange.withValues(alpha: 0.2),
-                child: const Icon(Icons.person_outline, color: Colors.orange),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: PillExpansionTile(
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: KyboColors.roleIndependent.withOpacity(0.15),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: const Icon(Icons.person_outline, color: KyboColors.roleIndependent),
               ),
-              title: const Text(
-                "Independent Users",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text("${independents.length} Users"),
+              title: "Utenti Indipendenti",
+              subtitle: "${independents.length} Utenti",
               initiallyExpanded: false,
               children: [
                 GridView.builder(
@@ -915,11 +967,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
                     mainAxisExtent: 240,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                   ),
                   itemCount: independents.length,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   itemBuilder: (ctx, idx) => _UserCard(
                     user: independents[idx],
                     onDelete: _deleteUser,
@@ -941,19 +993,20 @@ class _UserManagementViewState extends State<UserManagementView> {
           ),
 
         if (admins.isNotEmpty)
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            child: ExpansionTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.purple.withValues(alpha: 0.2),
-                child: const Icon(Icons.admin_panel_settings, color: Colors.purple),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: PillExpansionTile(
+              leading: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: KyboColors.roleAdmin.withOpacity(0.15),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: const Icon(Icons.admin_panel_settings, color: KyboColors.roleAdmin),
               ),
-              title: const Text(
-                "Administrators",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text("${admins.length} Admins"),
+              title: "Amministratori",
+              subtitle: "${admins.length} Admin",
               initiallyExpanded: false,
               children: [
                 GridView.builder(
@@ -962,11 +1015,11 @@ class _UserManagementViewState extends State<UserManagementView> {
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
                     mainAxisExtent: 240,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
                   ),
                   itemCount: admins.length,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   itemBuilder: (ctx, idx) => _UserCard(
                     user: admins[idx],
                     onDelete: _deleteUser,
