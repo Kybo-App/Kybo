@@ -39,7 +39,7 @@ class _PantryViewState extends State<PantryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
+      backgroundColor: AppColors.getScaffoldBackground(context),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: widget.onScanTap,
         icon: const Icon(Icons.camera_alt, color: Colors.white),
@@ -55,27 +55,31 @@ class _PantryViewState extends State<PantryView> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
-                children: const [
-                  Icon(Icons.kitchen, size: 28, color: AppColors.primary),
-                  SizedBox(width: 10),
+                children: [
+                  const Icon(Icons.kitchen, size: 28, color: AppColors.primary),
+                  const SizedBox(width: 10),
                   Text(
                     "La tua Dispensa",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.getTextColor(context),
+                    ),
                   ),
                 ],
               ),
             ),
 
-            // INPUT FORM (Stile Pulito)
+            // INPUT FORM
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.getInputBackground(context),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: AppColors.getShadowColor(context),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -87,8 +91,10 @@ class _PantryViewState extends State<PantryView> {
                     flex: 3,
                     child: TextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: AppColors.getTextColor(context)),
+                      decoration: InputDecoration(
                         hintText: "Aggiungi cibo...",
+                        hintStyle: TextStyle(color: AppColors.getHintColor(context)),
                         border: InputBorder.none,
                       ),
                     ),
@@ -96,16 +102,18 @@ class _PantryViewState extends State<PantryView> {
                   Container(
                     width: 1,
                     height: 24,
-                    color: Colors.grey[200],
-                  ), // Separatore
+                    color: AppColors.getDividerColor(context),
+                  ),
                   Expanded(
                     flex: 2,
                     child: TextField(
                       controller: _qtyController,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: AppColors.getTextColor(context)),
+                      decoration: InputDecoration(
                         hintText: "Qtà",
+                        hintStyle: TextStyle(color: AppColors.getHintColor(context)),
                         border: InputBorder.none,
                       ),
                     ),
@@ -113,9 +121,10 @@ class _PantryViewState extends State<PantryView> {
                   DropdownButton<String>(
                     value: _unit,
                     underline: const SizedBox(),
-                    icon: const Icon(
+                    dropdownColor: AppColors.getCardColor(context),
+                    icon: Icon(
                       Icons.keyboard_arrow_down,
-                      color: Colors.grey,
+                      color: AppColors.getIconColor(context),
                     ),
                     items: ['g', 'ml', 'pz', 'vasetto', 'fette']
                         .map(
@@ -123,7 +132,10 @@ class _PantryViewState extends State<PantryView> {
                             value: e,
                             child: Text(
                               e,
-                              style: const TextStyle(fontSize: 13),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.getTextColor(context),
+                              ),
                             ),
                           ),
                         )
@@ -144,13 +156,13 @@ class _PantryViewState extends State<PantryView> {
 
             const SizedBox(height: 16),
 
-            // LISTA (Stile Card Identico alla DietView)
+            // LISTA
             Expanded(
               child: widget.pantryItems.isEmpty
                   ? Center(
                       child: Text(
                         "Dispensa vuota",
-                        style: TextStyle(color: Colors.grey[400]),
+                        style: TextStyle(color: AppColors.getHintColor(context)),
                       ),
                     )
                   : ListView.builder(
@@ -161,11 +173,11 @@ class _PantryViewState extends State<PantryView> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.getCardColor(context),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
+                                color: AppColors.getShadowColor(context),
                                 blurRadius: 5,
                                 offset: const Offset(0, 2),
                               ),
@@ -179,10 +191,13 @@ class _PantryViewState extends State<PantryView> {
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
                               decoration: BoxDecoration(
-                                color: Colors.red[100],
+                                color: AppColors.getErrorBackground(context),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(Icons.delete, color: Colors.red[800]),
+                              child: Icon(
+                                Icons.delete,
+                                color: AppColors.getErrorForeground(context),
+                              ),
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(
@@ -192,12 +207,10 @@ class _PantryViewState extends State<PantryView> {
                               leading: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.1,
-                                  ),
+                                  color: AppColors.primary.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(
+                                child: const Icon(
                                   Icons.inventory_2_outlined,
                                   color: AppColors.primary,
                                   size: 20,
@@ -205,9 +218,9 @@ class _PantryViewState extends State<PantryView> {
                               ),
                               title: Text(
                                 item.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2D3436),
+                                  color: AppColors.getTextColor(context),
                                 ),
                               ),
                               trailing: Text(

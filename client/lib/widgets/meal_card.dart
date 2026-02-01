@@ -57,7 +57,7 @@ class MealCard extends StatelessWidget {
               // Barra Laterale Decorativa
               Container(
                 width: 6,
-                color: allConsumed ? Colors.grey[300] : AppColors.primary,
+                color: allConsumed ? AppColors.getHintColor(context) : AppColors.primary,
               ),
 
               // Contenuto Card
@@ -75,22 +75,22 @@ class MealCard extends StatelessWidget {
                             mealName.toUpperCase(),
                             style: TextStyle(
                               color:
-                                  allConsumed ? Colors.grey : AppColors.primary,
+                                  allConsumed ? AppColors.getHintColor(context) : AppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               letterSpacing: 1.2,
                             ),
                           ),
                           if (allConsumed)
-                            const Icon(
+                            Icon(
                               Icons.check_circle,
-                              color: Colors.grey,
+                              color: AppColors.getHintColor(context),
                               size: 20,
                             )
                           else
                             Icon(
                               Icons.restaurant,
-                              color: Colors.grey[400],
+                              color: AppColors.getHintColor(context),
                               size: 18,
                             ),
                         ],
@@ -177,12 +177,12 @@ class MealCard extends StatelessWidget {
                         return Container(
                           decoration: BoxDecoration(
                             color: isSwapped
-                                ? Colors.orange.withValues(alpha: 0.05)
+                                ? Colors.orange.withValues(alpha: AppColors.isDark(context) ? 0.15 : 0.05)
                                 : null,
                             border: index != foods.length - 1
                                 ? Border(
                                     bottom: BorderSide(
-                                      color: Colors.grey[100]!,
+                                      color: AppColors.getDividerColor(context),
                                     ),
                                   )
                                 : null,
@@ -205,10 +205,10 @@ class MealCard extends StatelessWidget {
                                             ? Icons.check_circle
                                             : Icons.circle_outlined),
                                     color: isConsumed
-                                        ? Colors.grey[300]
+                                        ? AppColors.getHintColor(context)
                                         : (isAvailable
                                             ? AppColors.primary
-                                            : Colors.grey[400]),
+                                            : AppColors.getHintColor(context)),
                                     size: 24,
                                   ),
                                 ),
@@ -230,12 +230,10 @@ class MealCard extends StatelessWidget {
                                                     ? TextDecoration.lineThrough
                                                     : null,
                                                 color: isConsumed
-                                                    ? Colors.grey
+                                                    ? AppColors.getHintColor(context)
                                                     : (isSwapped
                                                         ? Colors.deepOrange
-                                                        : const Color(
-                                                            0xFF2D3436,
-                                                          )),
+                                                        : AppColors.getTextColor(context)),
                                                 fontWeight: isSwapped
                                                     ? FontWeight.bold
                                                     : FontWeight.w600,
@@ -267,8 +265,8 @@ class MealCard extends StatelessWidget {
                                               "• $iName ${iQty.isNotEmpty ? '($iQty)' : ''}",
                                               style: TextStyle(
                                                 color: isConsumed
-                                                    ? Colors.grey[400]
-                                                    : Colors.grey[600],
+                                                    ? AppColors.getHintColor(context)
+                                                    : AppColors.getSecondaryTextColor(context),
                                                 fontSize: 13,
                                               ),
                                             ),
@@ -279,10 +277,10 @@ class MealCard extends StatelessWidget {
                                           qtyDisplay,
                                           style: TextStyle(
                                             color: isConsumed
-                                                ? Colors.grey[400]
+                                                ? AppColors.getHintColor(context)
                                                 : (qtyDisplay == "A piacere"
                                                     ? AppColors.primary
-                                                    : Colors.grey[600]),
+                                                    : AppColors.getSecondaryTextColor(context)),
                                             fontSize: 13,
                                             fontStyle: qtyDisplay == "A piacere"
                                                 ? FontStyle.italic
@@ -304,7 +302,7 @@ class MealCard extends StatelessWidget {
                                             : Icons.swap_horiz_outlined,
                                         color: isSwapped
                                             ? Colors.orange
-                                            : Colors.grey[400],
+                                            : AppColors.getHintColor(context),
                                       ),
                                       splashRadius: 20,
                                       constraints: const BoxConstraints(),

@@ -135,6 +135,26 @@ class DietApp extends StatelessWidget {
         ),
         iconTheme: const IconThemeData(color: Colors.white70),
         dividerColor: Colors.white24,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.darkInputBackground,
+          labelStyle: const TextStyle(color: Colors.white70),
+          hintStyle: TextStyle(color: Colors.grey[600]),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey[700]!),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.primary, width: 2),
+          ),
+        ),
+        dialogTheme: DialogTheme(
+          backgroundColor: AppColors.darkSurface,
+          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          contentTextStyle: const TextStyle(color: Colors.white70),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.darkSurface,
+        ),
       ),
       // Qui usiamo il MaintenanceGuard basato su Firestore
       builder: (context, child) {
@@ -176,7 +196,7 @@ class MaintenanceGuard extends StatelessWidget {
 
         if (isMaintenance) {
           return Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.getScaffoldBackground(context),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -187,9 +207,13 @@ class MaintenanceGuard extends StatelessWidget {
                     color: Colors.orange,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     "Manutenzione",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.getTextColor(context),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Padding(
@@ -198,6 +222,7 @@ class MaintenanceGuard extends StatelessWidget {
                       data?['maintenance_message'] ??
                           "Sistema in aggiornamento.",
                       textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
                     ),
                   ),
                 ],

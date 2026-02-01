@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../core/error_handler.dart';
 import '../widgets/diet_logo.dart';
+import '../constants.dart' show AppColors;
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.getScaffoldBackground(context),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Center(
@@ -121,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isLogin ? "Bentornato!" : "Crea Account",
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: AppColors.getTextColor(context),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -194,11 +195,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 // --- DISCLAIMER PRIVACY ---
                 GestureDetector(
                   onTap: _showPrivacyDialog,
-                  child: const Text(
+                  child: Text(
                     "Continuando, accetti la Privacy Policy e i Termini di Servizio",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: AppColors.getSecondaryTextColor(context),
                       fontSize: 12,
                       decoration: TextDecoration.underline,
                     ),
