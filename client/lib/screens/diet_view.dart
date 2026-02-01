@@ -4,10 +4,10 @@ import '../providers/diet_provider.dart';
 import '../widgets/meal_card.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
-import '../models/diet_models.dart'; // Importa il modello
+import '../models/diet_models.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
-import '../constants.dart' show italianDays, orderedMealTypes, AppColors;
+import '../constants.dart' show AppColors;
 
 class DietView extends StatelessWidget {
   final String day;
@@ -29,11 +29,13 @@ class DietView extends StatelessWidget {
     required this.isTranquilMode,
   });
 
-  bool _isToday(String dayName) {
+  bool _isToday(BuildContext context, String dayName) {
+    final provider = context.read<DietProvider>();
+    final days = provider.getDays();
     final now = DateTime.now();
-    int index = now.weekday - 1;
-    if (index >= 0 && index < italianDays.length) {
-      return italianDays[index].toLowerCase() == dayName.toLowerCase();
+    int index = now.weekday - 1; // 0 = Monday
+    if (index >= 0 && index < days.length) {
+      return days[index].toLowerCase() == dayName.toLowerCase();
     }
     return false;
   }
@@ -80,16 +82,18 @@ class DietView extends StatelessWidget {
       );
     }
 
-    final bool isCurrentDay = _isToday(day);
+    final bool isCurrentDay = _isToday(context, day);
+    final provider = context.read<DietProvider>();
+    final orderedMeals = provider.getMeals();
+    final relaxableFoods = provider.getRelaxableFoods();
 
     return Container(
       color: AppColors.getScaffoldBackground(context),
       child: RefreshIndicator(
-        onRefresh: () async =>
-            context.read<DietProvider>().refreshAvailability(),
+        onRefresh: () async => provider.refreshAvailability(),
         child: ListView(
           padding: const EdgeInsets.only(top: 10, bottom: 80),
-          children: orderedMealTypes.map((mealType) {
+          children: orderedMeals.map((mealType) {
             if (!mealsOfDay.containsKey(mealType)) {
               return const SizedBox.shrink();
             }
@@ -97,15 +101,16 @@ class DietView extends StatelessWidget {
             return MealCard(
               day: day,
               mealName: mealType,
-              foods: mealsOfDay[mealType]!, // [FIX] Passa List<Dish>
+              foods: mealsOfDay[mealType]!,
               activeSwaps: activeSwaps,
               availabilityMap: context.watch<DietProvider>().availabilityMap,
               isTranquilMode: isTranquilMode,
               isToday: isCurrentDay,
+              relaxableFoods: relaxableFoods,
+              orderedMeals: orderedMeals,
               onEat: (index) => _handleConsume(context, day, mealType, index),
               onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
-              onEdit: (index, name, qty) => context
-                  .read<DietProvider>()
+              onEdit: (index, name, qty) => provider
                   .updateDietMeal(day, mealType, index, name, qty),
             );
           }).toList(),
