@@ -106,7 +106,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         style: TextStyle(
                           fontWeight:
                               i == 0 ? FontWeight.bold : FontWeight.normal,
-                          color: i == 0 ? AppColors.primary : Colors.black87,
+                          color: i == 0 ? AppColors.primary : AppColors.getTextColor(context),
                         ),
                       ),
                       children: mealNames.map((meal) {
@@ -380,20 +380,24 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     bool hasCheckedItems = widget.shoppingList.any((i) => i.startsWith("OK_"));
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
+      backgroundColor: AppColors.getScaffoldBackground(context),
       body: SafeArea(
         child: Column(
           children: [
             // HEADER
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  Icon(Icons.shopping_cart, size: 28, color: AppColors.primary),
-                  SizedBox(width: 10),
+                  const Icon(Icons.shopping_cart, size: 28, color: AppColors.primary),
+                  const SizedBox(width: 10),
                   Text(
                     "Lista della Spesa",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.getTextColor(context),
+                    ),
                   ),
                 ],
               ),
@@ -409,9 +413,12 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           Icon(
                             Icons.list_alt,
                             size: 60,
-                            color: Colors.grey[300],
+                            color: AppColors.getHintColor(context),
                           ),
-                          const Text("Lista Vuota"),
+                          Text(
+                            "Lista Vuota",
+                            style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                          ),
                         ],
                       ),
                     )
@@ -426,11 +433,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.getCardColor(context),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
+                                color: AppColors.getShadowColor(context),
                                 blurRadius: 5,
                                 offset: const Offset(0, 2),
                               ),
@@ -445,12 +452,12 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                             },
                             background: Container(
                               decoration: BoxDecoration(
-                                color: Colors.red[100],
+                                color: AppColors.getErrorBackground(context),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
-                              child: Icon(Icons.delete, color: Colors.red[800]),
+                              child: Icon(Icons.delete, color: AppColors.getErrorForeground(context)),
                             ),
                             child: CheckboxListTile(
                               value: isChecked,
@@ -467,8 +474,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                                       ? TextDecoration.lineThrough
                                       : null,
                                   color: isChecked
-                                      ? Colors.grey
-                                      : const Color(0xFF2D3436),
+                                      ? AppColors.getHintColor(context)
+                                      : AppColors.getTextColor(context),
                                   fontWeight: isChecked
                                       ? FontWeight.normal
                                       : FontWeight.w500,
@@ -492,7 +499,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             // FOOTER CON BOTTONI
             Container(
               padding: const EdgeInsets.all(16),
-              color: Colors.white,
+              color: AppColors.getCardColor(context),
               child: Row(
                 children: [
                   Expanded(

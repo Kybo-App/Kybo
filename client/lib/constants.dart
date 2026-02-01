@@ -4,54 +4,84 @@ import 'package:flutter/material.dart';
 // --- THEME COLORS ---
 
 class AppColors {
-  // Nuovo Verde "Forest" (Più serio e integrato)
+  // Colori primari (uguali in light e dark)
   static const Color primary = Color(0xFF2E7D32);
-
-  // Verde chiaro per sfondi/accenti leggeri
   static const Color secondary = Color(0xFF81C784);
-
   static const Color accent = Colors.orange;
+
+  // Light Mode Colors
   static const Color scaffoldBackground = Color(0xFFF5F5F5);
   static const Color surface = Colors.white;
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF2D3436);
+  static const Color textSecondary = Color(0xFF636E72);
+  static const Color dividerLight = Color(0xFFE0E0E0);
+  static const Color inputBackground = Colors.white;
 
   // Dark Mode Colors
   static const Color darkScaffoldBackground = Color(0xFF121212);
   static const Color darkSurface = Color(0xFF1E1E1E);
   static const Color darkCardColor = Color(0xFF2C2C2C);
+  static const Color darkTextPrimary = Color(0xFFE0E0E0);
+  static const Color darkTextSecondary = Color(0xFF9E9E9E);
+  static const Color darkDivider = Color(0xFF424242);
+  static const Color darkInputBackground = Color(0xFF2C2C2C);
 
-  // Theme-aware color getters
-  static Color getScaffoldBackground(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? darkScaffoldBackground
-        : scaffoldBackground;
-  }
-
-  static Color getSurface(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? darkSurface
-        : surface;
-  }
-
-  static Color getCardColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? darkCardColor
-        : surface;
-  }
-
-  static Color getTextColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-  }
-
-  static Color getSecondaryTextColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? Colors.grey[400]!
-        : Colors.grey[600]!;
-  }
+  // ========== THEME-AWARE GETTERS ==========
 
   static bool isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  static Color getScaffoldBackground(BuildContext context) {
+    return isDark(context) ? darkScaffoldBackground : scaffoldBackground;
+  }
+
+  static Color getSurface(BuildContext context) {
+    return isDark(context) ? darkSurface : surface;
+  }
+
+  static Color getCardColor(BuildContext context) {
+    return isDark(context) ? darkCardColor : cardBackground;
+  }
+
+  static Color getTextColor(BuildContext context) {
+    return isDark(context) ? darkTextPrimary : textPrimary;
+  }
+
+  static Color getSecondaryTextColor(BuildContext context) {
+    return isDark(context) ? darkTextSecondary : textSecondary;
+  }
+
+  static Color getDividerColor(BuildContext context) {
+    return isDark(context) ? darkDivider : dividerLight;
+  }
+
+  static Color getInputBackground(BuildContext context) {
+    return isDark(context) ? darkInputBackground : inputBackground;
+  }
+
+  static Color getHintColor(BuildContext context) {
+    return isDark(context) ? Colors.grey[600]! : Colors.grey[400]!;
+  }
+
+  static Color getIconColor(BuildContext context) {
+    return isDark(context) ? Colors.white70 : Colors.grey[700]!;
+  }
+
+  static Color getShadowColor(BuildContext context) {
+    return isDark(context)
+        ? Colors.black.withValues(alpha: 0.3)
+        : Colors.black.withValues(alpha: 0.05);
+  }
+
+  // Per elementi con sfondo colorato (delete, warning, etc)
+  static Color getErrorBackground(BuildContext context) {
+    return isDark(context) ? Colors.red[900]! : Colors.red[100]!;
+  }
+
+  static Color getErrorForeground(BuildContext context) {
+    return isDark(context) ? Colors.red[200]! : Colors.red[800]!;
   }
 }
 

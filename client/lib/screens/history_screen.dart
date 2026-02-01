@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../services/firestore_service.dart';
 import '../providers/diet_provider.dart';
 import '../core/error_handler.dart'; // [IMPORTANTE]
+import '../constants.dart' show AppColors;
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -111,8 +112,14 @@ class HistoryScreen extends StatelessWidget {
     final firestore = FirestoreService();
 
     return Scaffold(
+      backgroundColor: AppColors.getScaffoldBackground(context),
       appBar: AppBar(
-        title: const Text("Cronologia Diete"),
+        backgroundColor: AppColors.getSurface(context),
+        title: Text(
+          "Cronologia Diete",
+          style: TextStyle(color: AppColors.getTextColor(context)),
+        ),
+        iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
         actions: [
           // Bottone per vedere JSON dieta corrente
           IconButton(
@@ -184,13 +191,16 @@ class HistoryScreen extends StatelessWidget {
             );
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 50, color: Colors.grey),
-                  SizedBox(height: 10),
-                  Text("Nessuna dieta salvata nel cloud."),
+                  Icon(Icons.history, size: 50, color: AppColors.getHintColor(context)),
+                  const SizedBox(height: 10),
+                  Text(
+                    "Nessuna dieta salvata nel cloud.",
+                    style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                  ),
                 ],
               ),
             );
@@ -209,12 +219,19 @@ class HistoryScreen extends StatelessWidget {
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.getCardColor(context),
                 child: ListTile(
                   leading: const Icon(Icons.cloud_done, color: Colors.blue),
-                  title: Text("Dieta del $dateStr"),
-                  subtitle: const Text("Tocca per ripristinare"),
+                  title: Text(
+                    "Dieta del $dateStr",
+                    style: TextStyle(color: AppColors.getTextColor(context)),
+                  ),
+                  subtitle: Text(
+                    "Tocca per ripristinare",
+                    style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                  ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: Icon(Icons.delete, color: AppColors.getErrorForeground(context)),
                     onPressed: () async {
                       try {
                         await firestore.deleteDiet(diet['id']);
