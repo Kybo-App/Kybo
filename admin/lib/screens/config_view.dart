@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_repository.dart';
+import '../widgets/design_system.dart';
 
 class ConfigView extends StatefulWidget {
   const ConfigView({super.key});
@@ -13,24 +14,16 @@ class ConfigView extends StatefulWidget {
 class _ConfigViewState extends State<ConfigView> {
   final AdminRepository _repo = AdminRepository();
 
-  // UI Loading State
   bool _isLoading = true;
-
-  // Manual Switch State (from DB)
   bool _manualMaintenance = false;
-
-  // Scheduled State (from DB)
   bool _isScheduled = false;
   DateTime? _scheduledDate;
-
-  // Selection for NEW schedule
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
   @override
   void initState() {
     super.initState();
-    // Listen to the database in real-time so the UI updates automatically
     _initStream();
   }
 
@@ -42,12 +35,8 @@ class _ConfigViewState extends State<ConfigView> {
         .listen((snapshot) {
           if (mounted && snapshot.exists) {
             final data = snapshot.data() as Map<String, dynamic>;
-
             setState(() {
-              // 1. Update Manual Status
               _manualMaintenance = data['maintenance_mode'] ?? false;
-
-              // 2. Update Schedule Status
               _isScheduled = data['is_scheduled'] ?? false;
               if (data['scheduled_maintenance_start'] != null) {
                 _scheduledDate = DateTime.tryParse(
@@ -56,43 +45,32 @@ class _ConfigViewState extends State<ConfigView> {
               } else {
                 _scheduledDate = null;
               }
-
               _isLoading = false;
             });
           }
         });
   }
 
-  // Helper to determine if the app is currently blocked for users
   bool get _isEffectivelyDown {
-    // If Manual Switch is ON, it's down.
     if (_manualMaintenance) return true;
-
-    // If Schedule is active AND we are past the start time, it's down.
     if (_isScheduled && _scheduledDate != null) {
       return DateTime.now().isAfter(_scheduledDate!);
     }
-
     return false;
   }
-
-  // --- ACTIONS ---
 
   Future<void> _toggleMaintenance(bool value) async {
     setState(() => _isLoading = true);
     try {
-      // Define the message only if we are turning it ON
       String? msg;
       if (value == true) {
         msg = "Emergency maintenance, we are working for you";
       }
-
-      // Pass the message to the repository
       await _repo.setMaintenanceStatus(value, message: msg);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
         );
         setState(() => _isLoading = false);
       }
@@ -135,18 +113,22 @@ class _ConfigViewState extends State<ConfigView> {
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text("Confirm Schedule"),
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: const Text("Conferma Schedulazione"),
             content: Text(
-              "This will send a notification to ALL users saying maintenance will start at:\n\n${DateFormat('yyyy-MM-dd HH:mm').format(dateTime)}",
+              "Verrà inviata una notifica a TUTTI gli utenti che la manutenzione inizierà:\n\n${DateFormat('yyyy-MM-dd HH:mm').format(dateTime)}",
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
+                child: const Text("Annulla"),
               ),
-              FilledButton(
+              PillButton(
+                label: "Conferma",
+                backgroundColor: KyboColors.warning,
+                textColor: Colors.white,
+                height: 40,
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text("Confirm & Notify"),
               ),
             ],
           ),
@@ -160,11 +142,10 @@ class _ConfigViewState extends State<ConfigView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Maintenance Scheduled!"),
-              backgroundColor: Colors.blue,
+              content: Text("Manutenzione Schedulata!"),
+              backgroundColor: KyboColors.accent,
             ),
           );
-          // Clear selection
           setState(() {
             _selectedDate = null;
             _selectedTime = null;
@@ -173,7 +154,7 @@ class _ConfigViewState extends State<ConfigView> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+            SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
           );
         }
       } finally {
@@ -187,18 +168,22 @@ class _ConfigViewState extends State<ConfigView> {
         await showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text("Cancel Schedule?"),
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: const Text("Annullare Schedulazione?"),
             content: const Text(
-              "This will remove the schedule. If maintenance is currently active due to this schedule, users will regain access immediately.",
+              "Questo rimuoverà la schedulazione. Se la manutenzione è attiva, gli utenti potranno accedere immediatamente.",
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
                 child: const Text("No"),
               ),
-              FilledButton(
+              PillButton(
+                label: "Sì, Annulla",
+                backgroundColor: KyboColors.error,
+                textColor: Colors.white,
+                height: 40,
                 onPressed: () => Navigator.pop(c, true),
-                child: const Text("Yes, Cancel"),
               ),
             ],
           ),
@@ -212,12 +197,12 @@ class _ConfigViewState extends State<ConfigView> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text("Schedule Cancelled")));
+          ).showSnackBar(const SnackBar(content: Text("Schedulazione Annullata")));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+            SnackBar(content: Text("Error: $e"), backgroundColor: KyboColors.error),
           );
         }
       } finally {
@@ -226,171 +211,261 @@ class _ConfigViewState extends State<ConfigView> {
     }
   }
 
-  // --- BUILD UI ---
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-
-    // Status Visuals
-    Color statusColor = _isEffectivelyDown
-        ? Colors.red.shade50
-        : Colors.green.shade50;
-    Color statusBorder = _isEffectivelyDown ? Colors.red : Colors.green;
-    String statusTitle = _isEffectivelyDown
-        ? "SYSTEM IS DOWN"
-        : "SYSTEM IS ACTIVE";
-    IconData statusIcon = _isEffectivelyDown ? Icons.lock : Icons.check_circle;
-
-    // Status Description
-    String detailedStatus = "";
-    if (_manualMaintenance) {
-      detailedStatus = "Manual Override is ON";
-    } else if (_isEffectivelyDown) {
-      detailedStatus = "Schedule is Active (Start time passed)";
-    } else {
-      detailedStatus = "Users can access the app";
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: KyboColors.primary),
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView(
+    return ListView(
+      padding: const EdgeInsets.all(8),
+      children: [
+        // ═══════════════════════════════════════════════════════════════════
+        // STATUS CARD
+        // ═══════════════════════════════════════════════════════════════════
+        _buildStatusCard(),
+
+        const SizedBox(height: 24),
+
+        // ═══════════════════════════════════════════════════════════════════
+        // MANUAL OVERRIDE
+        // ═══════════════════════════════════════════════════════════════════
+        _buildManualOverrideCard(),
+
+        const SizedBox(height: 24),
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SCHEDULE SECTION
+        // ═══════════════════════════════════════════════════════════════════
+        _buildScheduleSection(),
+      ],
+    );
+  }
+
+  Widget _buildStatusCard() {
+    final isDown = _isEffectivelyDown;
+    final color = isDown ? KyboColors.error : KyboColors.success;
+    final icon = isDown ? Icons.lock_rounded : Icons.check_circle_rounded;
+    final title = isDown ? "SISTEMA OFFLINE" : "SISTEMA ATTIVO";
+
+    String subtitle;
+    if (_manualMaintenance) {
+      subtitle = "Override Manuale ATTIVO";
+    } else if (isDown) {
+      subtitle = "Schedulazione Attiva (Ora passata)";
+    } else {
+      subtitle = "Gli utenti possono accedere all'app";
+    }
+
+    return PillCard(
+      padding: const EdgeInsets.all(24),
+      backgroundColor: color.withOpacity(0.08),
+      child: Row(
         children: [
-          const Text(
-            "System Configuration",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          // 1. GLOBAL STATUS INDICATOR
           Container(
-            padding: const EdgeInsets.all(16),
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: statusBorder, width: 2),
+              color: color.withOpacity(0.15),
+              borderRadius: KyboBorderRadius.medium,
             ),
-            child: Row(
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(statusIcon, color: statusBorder, size: 30),
-                const SizedBox(width: 16),
-                // --- FIX INIZIA QUI ---
-                Expanded(
-                  // Aggiunto Expanded per prevenire overflow
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        statusTitle,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: statusBorder,
-                        ),
-                      ),
-                      Text(
-                        detailedStatus,
-                        style: const TextStyle(color: Colors.black87),
-                        overflow: TextOverflow
-                            .ellipsis, // Opzionale: taglia con ... se troppo lungo
-                        maxLines: 2, // Opzionale: max 2 righe
-                      ),
-                    ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: color,
                   ),
                 ),
-                // --- FIX FINISCE QUI ---
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
               ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // 2. MANUAL TOGGLE
-          Card(
-            child: SwitchListTile(
-              title: const Text("Manual Override"),
-              subtitle: const Text("Force maintenance mode ON immediately"),
-              value: _manualMaintenance,
-              onChanged: _toggleMaintenance,
-              activeThumbColor: Colors.red,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-          const Divider(),
-          const SizedBox(height: 20),
-
-          // 3. SCHEDULE SECTION
-          const Text(
-            "Schedule Maintenance",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-
-          // A. Current Schedule Card (Only visible if a schedule exists)
-          if (_isScheduled && _scheduledDate != null)
-            Card(
-              color: Colors.blue.shade50,
-              child: ListTile(
-                leading: const Icon(Icons.timer, color: Colors.blue),
-                title: Text(
-                  "Scheduled: ${DateFormat('EEE, d MMM - HH:mm').format(_scheduledDate!)}",
-                ),
-                subtitle: Text(
-                  _isEffectivelyDown
-                      ? "STATUS: ACTIVE (Blocking Users)"
-                      : "STATUS: PENDING",
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  tooltip: "Cancel Schedule",
-                  onPressed:
-                      _cancelSchedule, // Calls the method to delete from DB
-                ),
-              ),
-            ),
-
-          const SizedBox(height: 10),
-
-          // B. New Schedule Inputs
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Set new schedule & Notify users:"),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _pickDateTime,
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          _selectedDate == null
-                              ? "Select Date & Time"
-                              : "${DateFormat('dd/MM').format(_selectedDate!)} at ${_selectedTime!.format(context)}",
-                        ),
-                      ),
-                      const Spacer(),
-                      FilledButton.icon(
-                        onPressed:
-                            (_selectedDate != null && _selectedTime != null)
-                            ? _scheduleMaintenance
-                            : null,
-                        icon: const Icon(Icons.send),
-                        label: const Text("Schedule"),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildManualOverrideCard() {
+    return PillCard(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: KyboColors.error.withOpacity(0.1),
+              borderRadius: KyboBorderRadius.medium,
+            ),
+            child: const Icon(
+              Icons.emergency_rounded,
+              color: KyboColors.error,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Override Manuale",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: KyboColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Forza manutenzione immediata",
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _manualMaintenance,
+            onChanged: _toggleMaintenance,
+            activeColor: KyboColors.error,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Schedula Manutenzione",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: KyboColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Current Schedule
+        if (_isScheduled && _scheduledDate != null)
+          PillCard(
+            padding: const EdgeInsets.all(20),
+            backgroundColor: KyboColors.accent.withOpacity(0.08),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: KyboColors.accent.withOpacity(0.15),
+                    borderRadius: KyboBorderRadius.medium,
+                  ),
+                  child: const Icon(
+                    Icons.timer_rounded,
+                    color: KyboColors.accent,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Schedulato: ${DateFormat('EEE, d MMM - HH:mm').format(_scheduledDate!)}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: KyboColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      PillBadge(
+                        label: _isEffectivelyDown ? "ATTIVO" : "IN ATTESA",
+                        color: _isEffectivelyDown
+                            ? KyboColors.error
+                            : KyboColors.warning,
+                        small: true,
+                      ),
+                    ],
+                  ),
+                ),
+                PillIconButton(
+                  icon: Icons.delete_rounded,
+                  color: KyboColors.error,
+                  tooltip: "Annulla Schedulazione",
+                  onPressed: _cancelSchedule,
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 16),
+
+        // New Schedule
+        PillCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Nuova Schedulazione",
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: KyboColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: PillButton(
+                      label: _selectedDate == null
+                          ? "Seleziona Data e Ora"
+                          : "${DateFormat('dd/MM').format(_selectedDate!)} alle ${_selectedTime!.format(context)}",
+                      icon: Icons.calendar_today_rounded,
+                      onPressed: _pickDateTime,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  PillButton(
+                    label: "Schedula",
+                    icon: Icons.send_rounded,
+                    backgroundColor: KyboColors.warning,
+                    textColor: Colors.white,
+                    onPressed: (_selectedDate != null && _selectedTime != null)
+                        ? _scheduleMaintenance
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
