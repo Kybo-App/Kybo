@@ -2,55 +2,113 @@ import 'package:flutter/material.dart';
 
 /// Sistema di Design Kybo Admin - Pill-shaped UI
 /// Tutti i componenti hanno forme ellittiche/pill
+/// Supporta Dark Mode
+
+// =============================================================================
+// THEME PROVIDER
+// =============================================================================
+
+class KyboThemeProvider extends ChangeNotifier {
+  static final KyboThemeProvider _instance = KyboThemeProvider._internal();
+  factory KyboThemeProvider() => _instance;
+  KyboThemeProvider._internal();
+
+  bool _isDarkMode = false;
+  bool get isDarkMode => _isDarkMode;
+
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
+  }
+
+  void setDarkMode(bool value) {
+    _isDarkMode = value;
+    notifyListeners();
+  }
+}
 
 // =============================================================================
 // COSTANTI DI DESIGN
 // =============================================================================
 
 class KyboColors {
+  // Theme provider instance
+  static final _theme = KyboThemeProvider();
+  static bool get isDark => _theme.isDarkMode;
+
   // Primary
   static const Color primary = Color(0xFF2E7D32);
   static const Color primaryLight = Color(0xFF60AD5E);
   static const Color primaryDark = Color(0xFF005005);
 
-  // Backgrounds
-  static const Color background = Color(0xFFF8FAFC);
-  static const Color surface = Colors.white;
-  static const Color surfaceElevated = Colors.white;
+  // Backgrounds - Light
+  static const Color _backgroundLight = Color(0xFFF8FAFC);
+  static const Color _surfaceLight = Colors.white;
 
-  // Text
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textMuted = Color(0xFF94A3B8);
+  // Backgrounds - Dark
+  static const Color _backgroundDark = Color(0xFF0F172A);
+  static const Color _surfaceDark = Color(0xFF1E293B);
+  static const Color _surfaceElevatedDark = Color(0xFF334155);
 
-  // Accents
+  // Dynamic getters
+  static Color get background => isDark ? _backgroundDark : _backgroundLight;
+  static Color get surface => isDark ? _surfaceDark : _surfaceLight;
+  static Color get surfaceElevated => isDark ? _surfaceElevatedDark : _surfaceLight;
+
+  // Text - Light
+  static const Color _textPrimaryLight = Color(0xFF1E293B);
+  static const Color _textSecondaryLight = Color(0xFF64748B);
+  static const Color _textMutedLight = Color(0xFF94A3B8);
+
+  // Text - Dark
+  static const Color _textPrimaryDark = Color(0xFFF1F5F9);
+  static const Color _textSecondaryDark = Color(0xFF94A3B8);
+  static const Color _textMutedDark = Color(0xFF64748B);
+
+  // Dynamic text getters
+  static Color get textPrimary => isDark ? _textPrimaryDark : _textPrimaryLight;
+  static Color get textSecondary => isDark ? _textSecondaryDark : _textSecondaryLight;
+  static Color get textMuted => isDark ? _textMutedDark : _textMutedLight;
+
+  // Accents (same for both modes)
   static const Color accent = Color(0xFF3B82F6);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
 
-  // Role Colors
+  // Role Colors (same for both modes)
   static const Color roleAdmin = Color(0xFF8B5CF6);
   static const Color roleNutritionist = Color(0xFF3B82F6);
   static const Color roleIndependent = Color(0xFFF59E0B);
   static const Color roleUser = Color(0xFF10B981);
 
-  // Shadows
+  // Shadows - Darker and more visible
   static List<BoxShadow> get softShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.04),
-      blurRadius: 20,
-      offset: const Offset(0, 4),
+      color: isDark
+          ? Colors.black.withOpacity(0.3)
+          : Colors.black.withOpacity(0.08),
+      blurRadius: 24,
+      offset: const Offset(0, 6),
+      spreadRadius: 0,
     ),
   ];
 
   static List<BoxShadow> get mediumShadow => [
     BoxShadow(
-      color: Colors.black.withOpacity(0.08),
-      blurRadius: 30,
-      offset: const Offset(0, 8),
+      color: isDark
+          ? Colors.black.withOpacity(0.4)
+          : Colors.black.withOpacity(0.12),
+      blurRadius: 32,
+      offset: const Offset(0, 10),
+      spreadRadius: 2,
     ),
   ];
+
+  // Border colors
+  static Color get border => isDark
+      ? Colors.white.withOpacity(0.1)
+      : Colors.black.withOpacity(0.08);
 }
 
 class KyboSpacing {
@@ -146,7 +204,7 @@ class _PillButtonState extends State<PillButton> with SingleTickerProviderStateM
                     ? KyboColors.mediumShadow
                     : KyboColors.softShadow,
                 border: !widget.isSelected ? Border.all(
-                  color: KyboColors.textMuted.withOpacity(0.2),
+                  color: KyboColors.border,
                   width: 1,
                 ) : null,
               ),
@@ -228,7 +286,7 @@ class _PillNavItemState extends State<PillNavItem> {
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? KyboColors.primary
-                : (_isHovered ? KyboColors.background : Colors.transparent),
+                : (_isHovered ? KyboColors.primary.withOpacity(0.15) : Colors.transparent),
             borderRadius: KyboBorderRadius.pill,
             boxShadow: widget.isSelected ? KyboColors.softShadow : null,
           ),
@@ -365,16 +423,18 @@ class PillSearch extends StatelessWidget {
       width: width,
       height: 48,
       decoration: BoxDecoration(
-        color: KyboColors.background,
+        color: KyboColors.surface,
         borderRadius: KyboBorderRadius.pill,
         border: Border.all(
-          color: KyboColors.textMuted.withOpacity(0.2),
+          color: KyboColors.border,
           width: 1,
         ),
+        boxShadow: KyboColors.softShadow,
       ),
       child: TextField(
         controller: controller,
         onChanged: onChanged,
+        style: TextStyle(color: KyboColors.textPrimary),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(
@@ -406,6 +466,7 @@ class PillCard extends StatefulWidget {
   final EdgeInsets? padding;
   final VoidCallback? onTap;
   final Color? backgroundColor;
+  final bool elevated;
 
   const PillCard({
     super.key,
@@ -413,6 +474,7 @@ class PillCard extends StatefulWidget {
     this.padding,
     this.onTap,
     this.backgroundColor,
+    this.elevated = true,
   });
 
   @override
@@ -434,9 +496,15 @@ class _PillCardState extends State<PillCard> {
         decoration: BoxDecoration(
           color: widget.backgroundColor ?? KyboColors.surface,
           borderRadius: KyboBorderRadius.large,
-          boxShadow: _isHovered && widget.onTap != null
-              ? KyboColors.mediumShadow
-              : KyboColors.softShadow,
+          boxShadow: widget.elevated
+              ? (_isHovered && widget.onTap != null
+                  ? KyboColors.mediumShadow
+                  : KyboColors.softShadow)
+              : null,
+          border: Border.all(
+            color: KyboColors.border,
+            width: 1,
+          ),
         ),
         child: Material(
           color: Colors.transparent,
@@ -498,7 +566,7 @@ class _PillIconButtonState extends State<PillIconButton> {
         height: widget.size,
         decoration: BoxDecoration(
           color: _isHovered
-              ? (widget.backgroundColor ?? KyboColors.background)
+              ? (widget.backgroundColor ?? KyboColors.surfaceElevated)
               : Colors.transparent,
           shape: BoxShape.circle,
         ),
@@ -548,12 +616,13 @@ class PillDropdown<T> extends StatelessWidget {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: KyboColors.background,
+        color: KyboColors.surface,
         borderRadius: KyboBorderRadius.pill,
         border: Border.all(
-          color: KyboColors.textMuted.withOpacity(0.2),
+          color: KyboColors.border,
           width: 1,
         ),
+        boxShadow: KyboColors.softShadow,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
@@ -561,8 +630,8 @@ class PillDropdown<T> extends StatelessWidget {
           items: items,
           onChanged: onChanged,
           hint: hint != null ? Text(hint!) : null,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          style: const TextStyle(
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: KyboColors.textSecondary),
+          style: TextStyle(
             color: KyboColors.textPrimary,
             fontSize: 14,
           ),
@@ -617,7 +686,7 @@ class StatCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -626,7 +695,7 @@ class StatCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: KyboColors.textPrimary,
                     fontSize: 28,
                     fontWeight: FontWeight.w700,
@@ -645,6 +714,259 @@ class StatCard extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// PILL TEXT FIELD - Campo di input con stile pill
+// =============================================================================
+
+class PillTextField extends StatefulWidget {
+  final TextEditingController? controller;
+  final String? labelText;
+  final String? hintText;
+  final IconData? prefixIcon;
+  final bool obscureText;
+  final bool showPasswordToggle;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+
+  const PillTextField({
+    super.key,
+    this.controller,
+    this.labelText,
+    this.hintText,
+    this.prefixIcon,
+    this.obscureText = false,
+    this.showPasswordToggle = false,
+    this.textInputAction,
+    this.onSubmitted,
+    this.onChanged,
+  });
+
+  @override
+  State<PillTextField> createState() => _PillTextFieldState();
+}
+
+class _PillTextFieldState extends State<PillTextField> {
+  bool _obscureText = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.obscureText;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.labelText != null) ...[
+          Text(
+            widget.labelText!,
+            style: TextStyle(
+              color: KyboColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Container(
+          height: 52,
+          decoration: BoxDecoration(
+            color: KyboColors.surface,
+            borderRadius: KyboBorderRadius.pill,
+            border: Border.all(
+              color: KyboColors.border,
+              width: 1,
+            ),
+            boxShadow: KyboColors.softShadow,
+          ),
+          child: TextField(
+            controller: widget.controller,
+            obscureText: widget.showPasswordToggle ? _obscureText : widget.obscureText,
+            textInputAction: widget.textInputAction,
+            onSubmitted: widget.onSubmitted,
+            onChanged: widget.onChanged,
+            style: TextStyle(
+              color: KyboColors.textPrimary,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              hintStyle: TextStyle(
+                color: KyboColors.textMuted,
+                fontSize: 14,
+              ),
+              prefixIcon: widget.prefixIcon != null
+                  ? Icon(
+                      widget.prefixIcon,
+                      color: KyboColors.textMuted,
+                      size: 20,
+                    )
+                  : null,
+              suffixIcon: widget.showPasswordToggle
+                  ? IconButton(
+                      icon: Icon(
+                        _obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        color: KyboColors.textMuted,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscureText = !_obscureText),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================================================================
+// PILL EXPANSION TILE - Expansion tile con stile pill (senza linee)
+// =============================================================================
+
+class PillExpansionTile extends StatefulWidget {
+  final Widget leading;
+  final String title;
+  final String? subtitle;
+  final List<Widget> children;
+  final bool initiallyExpanded;
+
+  const PillExpansionTile({
+    super.key,
+    required this.leading,
+    required this.title,
+    this.subtitle,
+    required this.children,
+    this.initiallyExpanded = false,
+  });
+
+  @override
+  State<PillExpansionTile> createState() => _PillExpansionTileState();
+}
+
+class _PillExpansionTileState extends State<PillExpansionTile>
+    with SingleTickerProviderStateMixin {
+  late bool _isExpanded;
+  late AnimationController _controller;
+  late Animation<double> _iconTurns;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initiallyExpanded;
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _iconTurns = Tween<double>(begin: 0.0, end: 0.5).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    if (_isExpanded) _controller.value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PillCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          InkWell(
+            onTap: _handleTap,
+            borderRadius: KyboBorderRadius.large,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  widget.leading,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: KyboColors.textPrimary,
+                          ),
+                        ),
+                        if (widget.subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.subtitle!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: KyboColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  RotationTransition(
+                    turns: _iconTurns,
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: KyboColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Content
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                  height: 1,
+                  color: KyboColors.border,
+                ),
+                ...widget.children,
+              ],
+            ),
+            crossFadeState: _isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
           ),
         ],
       ),
