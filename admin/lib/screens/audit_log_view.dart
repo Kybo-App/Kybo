@@ -111,7 +111,7 @@ class AuditLogView extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -123,7 +123,7 @@ class AuditLogView extends StatelessWidget {
                   color: KyboColors.textPrimary,
                 ),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 "Cronologia di tutte le azioni sensibili eseguite dagli amministratori",
                 style: TextStyle(
@@ -191,7 +191,7 @@ class AuditLogView extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     "${snapshot.error}",
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: KyboColors.textSecondary,
                       fontSize: 14,
                     ),
@@ -203,7 +203,7 @@ class AuditLogView extends StatelessWidget {
         }
 
         if (!snapshot.hasData) {
-          return const Center(
+          return Center(
             child: CircularProgressIndicator(color: KyboColors.primary),
           );
         }
@@ -357,7 +357,7 @@ class AuditLogView extends StatelessWidget {
                             const SizedBox(width: 12),
                             Text(
                               dateStr,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 fontSize: 13,
                                 color: KyboColors.textPrimary,
@@ -379,7 +379,7 @@ class AuditLogView extends StatelessWidget {
                           ),
                           child: Text(
                             data['requester_id'] ?? 'Unknown',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -411,7 +411,7 @@ class AuditLogView extends StatelessWidget {
                           ),
                           child: Text(
                             data['target_uid'] ?? '-',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 11,
                               color: KyboColors.textSecondary,
@@ -425,7 +425,7 @@ class AuditLogView extends StatelessWidget {
                           constraints: const BoxConstraints(maxWidth: 300),
                           child: Text(
                             data['reason'] ?? '-',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               color: KyboColors.textSecondary,
                             ),

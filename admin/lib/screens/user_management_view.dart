@@ -582,7 +582,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   @override
   Widget build(BuildContext context) {
     if (!_isDataLoaded) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: KyboColors.primary),
       );
     }
@@ -723,7 +723,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         if (_isLoading)
           LinearProgressIndicator(
             backgroundColor: KyboColors.background,
-            valueColor: const AlwaysStoppedAnimation(KyboColors.primary),
+            valueColor: AlwaysStoppedAnimation(KyboColors.primary),
           ),
 
         const SizedBox(height: 16),
@@ -885,7 +885,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   color: KyboColors.roleNutritionist.withOpacity(0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: const Icon(Icons.health_and_safety, color: KyboColors.roleNutritionist),
+                child: Icon(Icons.health_and_safety, color: KyboColors.roleNutritionist),
               ),
               title: nutName,
               subtitle: "${clients.length} Clienti",
@@ -955,7 +955,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   color: KyboColors.roleIndependent.withOpacity(0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: const Icon(Icons.person_outline, color: KyboColors.roleIndependent),
+                child: Icon(Icons.person_outline, color: KyboColors.roleIndependent),
               ),
               title: "Utenti Indipendenti",
               subtitle: "${independents.length} Utenti",
@@ -1003,7 +1003,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   color: KyboColors.roleAdmin.withOpacity(0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
-                child: const Icon(Icons.admin_panel_settings, color: KyboColors.roleAdmin),
+                child: Icon(Icons.admin_panel_settings, color: KyboColors.roleAdmin),
               ),
               title: "Amministratori",
               subtitle: "${admins.length} Admin",
@@ -1192,7 +1192,7 @@ class _UserCardState extends State<_UserCard> {
                   children: [
                     Text(
                       displayName.isNotEmpty ? displayName : "Utente",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: KyboColors.textPrimary,
@@ -1202,7 +1202,7 @@ class _UserCardState extends State<_UserCard> {
                     const SizedBox(height: 2),
                     Text(
                       displayEmail,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: KyboColors.textSecondary,
                         fontSize: 12,
                       ),
@@ -1345,7 +1345,7 @@ class _UserCardState extends State<_UserCard> {
           // ─────────────────────────────────────────────────────────────────
           Text(
             "Creato il: $dateStr",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               color: KyboColors.textMuted,
             ),
