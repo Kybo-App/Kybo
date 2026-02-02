@@ -95,12 +95,15 @@ Extract the following metadata and include in "config" field:
    Example: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 2. "pasti": List of meal types IN THE ORDER they appear in the document (translated to Italian).
    Example: ["Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"]
-3. "alimenti_rilassabili": List of fruits and vegetables found in the diet plan.
+3. "alimenti_rilassabili": List of SIMPLE fruits and vegetables found in the diet plan.
+   - STRICTLY ONLY fresh, whole fruits and vegetables.
+   - DO NOT INCLUDE: Oils (olio di oliva), fats, jams (marmellata), honey, bread, pasta, meat, fish, dairy, eggs.
+   - DO NOT extract fruits/vegetables that appear ONLY in processed forms (e.g., do NOT add "mela" if it only appears in "marmellata di mele").
+   - ONLY extract if the fruit/vegetable appears as a standalone ingredient or fresh dish component.
    - Include common fruits: mela, pera, banana, arancia, kiwi, fragola, etc.
    - Include common vegetables: insalata, pomodoro, zucchina, carota, spinaci, etc.
-   - Extract from dish names and ingredients that match fruit/vegetable categories.
    - Keep names in lowercase, singular form when possible.
-   Example: ["mela", "banana", "insalata", "pomodoro", "carote", "spinaci"]
+   Example: ["mela", "banana", "arancia", "insalata", "pomodoro", "carote", "spinaci"]
 """
 
     # --- 1.4 SANITIZZAZIONE GDPR (Migliorata) ---
