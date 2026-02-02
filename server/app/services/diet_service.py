@@ -239,8 +239,10 @@ Extract the following metadata and include in "config" field:
         # Applica sanitizzazione GDPR
         diet_text = self._sanitize_text(raw_text)
 
-        # Calcola hash del contenuto (include custom instructions)
-        cache_content = f"{diet_text}||{custom_instructions or 'default'}"
+        # Calcola hash del contenuto (include custom instructions O system instruction default)
+        # [FIX] Include system_instruction nel hash per invalidare cache se aggiorniamo il prompt!
+        instruction_part = custom_instructions if custom_instructions else self.system_instruction
+        cache_content = f"{diet_text}||{instruction_part}"
         content_hash = hashlib.sha256(cache_content.encode('utf-8')).hexdigest()
 
         # ✅ CACHE L1: Check memoria RAM (microsecondi)
