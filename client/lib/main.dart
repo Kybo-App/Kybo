@@ -12,7 +12,7 @@ import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
-import 'constants.dart';
+import 'widgets/design_system.dart';
 
 void main() {
   runZonedGuarded(
@@ -83,77 +83,166 @@ class DietApp extends StatelessWidget {
       title: 'Kybo',
       debugShowCheckedModeBanner: false,
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      // ═══════════════════════════════════════════════════════════════════════
+      // LIGHT THEME - Colori identici a Kybo Admin
+      // ═══════════════════════════════════════════════════════════════════════
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        scaffoldBackgroundColor: AppColors.scaffoldBackground,
+        scaffoldBackgroundColor: KyboColors.backgroundLight,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
+          seedColor: KyboColors.primary,
           brightness: Brightness.light,
-          secondary: AppColors.secondary,
-          surface: AppColors.surface,
+          primary: KyboColors.primary,
+          secondary: KyboColors.accent,
+          surface: KyboColors.surfaceLight,
+          onSurface: KyboColors.textPrimaryLight,
         ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.darkScaffoldBackground,
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.primary,
-          secondary: AppColors.secondary,
-          surface: AppColors.darkSurface,
-          onSurface: Colors.white,
-          onPrimary: Colors.white,
-          onSecondary: Colors.black,
-        ),
-        cardColor: AppColors.darkCardColor,
+        cardColor: KyboColors.surfaceLight,
         appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.darkSurface,
-          foregroundColor: Colors.white,
+          backgroundColor: KyboColors.surfaceLight,
+          foregroundColor: KyboColors.textPrimaryLight,
+          elevation: 0,
+          surfaceTintColor: KyboColors.surfaceLight,
         ),
         listTileTheme: const ListTileThemeData(
-          textColor: Colors.white,
-          iconColor: Colors.white70,
+          textColor: KyboColors.textPrimaryLight,
+          iconColor: KyboColors.textSecondaryLight,
         ),
         switchTheme: SwitchThemeData(
           thumbColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return AppColors.primary;
+            if (states.contains(WidgetState.selected)) return KyboColors.primary;
             return Colors.grey;
           }),
           trackColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return AppColors.primary.withValues(alpha: 0.5);
+            if (states.contains(WidgetState.selected)) {
+              return KyboColors.primary.withValues(alpha: 0.5);
+            }
             return Colors.grey.withValues(alpha: 0.3);
           }),
         ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-          bodySmall: TextStyle(color: Colors.white70),
-          titleLarge: TextStyle(color: Colors.white),
-          titleMedium: TextStyle(color: Colors.white),
-          titleSmall: TextStyle(color: Colors.white70),
+          bodyLarge: TextStyle(color: KyboColors.textPrimaryLight),
+          bodyMedium: TextStyle(color: KyboColors.textPrimaryLight),
+          bodySmall: TextStyle(color: KyboColors.textSecondaryLight),
+          titleLarge: TextStyle(color: KyboColors.textPrimaryLight),
+          titleMedium: TextStyle(color: KyboColors.textPrimaryLight),
+          titleSmall: TextStyle(color: KyboColors.textSecondaryLight),
         ),
-        iconTheme: const IconThemeData(color: Colors.white70),
-        dividerColor: Colors.white24,
+        iconTheme: const IconThemeData(color: KyboColors.textSecondaryLight),
+        dividerColor: KyboColors.textMutedLight,
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: AppColors.darkInputBackground,
-          labelStyle: const TextStyle(color: Colors.white70),
-          hintStyle: TextStyle(color: Colors.grey[600]),
+          fillColor: KyboColors.surfaceLight,
+          labelStyle: const TextStyle(color: KyboColors.textSecondaryLight),
+          hintStyle: const TextStyle(color: KyboColors.textMutedLight),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey[700]!),
+            borderRadius: KyboBorderRadius.medium,
+            borderSide: BorderSide(
+              color: Colors.black.withValues(alpha: 0.08),
+            ),
           ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.primary, width: 2),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: KyboBorderRadius.medium,
+            borderSide: const BorderSide(color: KyboColors.primary, width: 2),
           ),
         ),
-        dialogTheme: const DialogThemeData(
-          backgroundColor: AppColors.darkSurface,
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          contentTextStyle: TextStyle(color: Colors.white70),
+        dialogTheme: DialogThemeData(
+          backgroundColor: KyboColors.surfaceLight,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          titleTextStyle: const TextStyle(
+            color: KyboColors.textPrimaryLight,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: const TextStyle(color: KyboColors.textSecondaryLight),
         ),
-        bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: AppColors.darkSurface,
+        bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: KyboColors.surfaceLight,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+        ),
+      ),
+      // ═══════════════════════════════════════════════════════════════════════
+      // DARK THEME - Colori identici a Kybo Admin
+      // ═══════════════════════════════════════════════════════════════════════
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: KyboColors.backgroundDark,
+        colorScheme: const ColorScheme.dark(
+          primary: KyboColors.primary,
+          secondary: KyboColors.accent,
+          surface: KyboColors.surfaceDark,
+          onSurface: KyboColors.textPrimaryDark,
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+        ),
+        cardColor: KyboColors.surfaceElevatedDark,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: KyboColors.surfaceDark,
+          foregroundColor: KyboColors.textPrimaryDark,
+          elevation: 0,
+          surfaceTintColor: KyboColors.surfaceDark,
+        ),
+        listTileTheme: const ListTileThemeData(
+          textColor: KyboColors.textPrimaryDark,
+          iconColor: KyboColors.textSecondaryDark,
+        ),
+        switchTheme: SwitchThemeData(
+          thumbColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return KyboColors.primary;
+            return Colors.grey;
+          }),
+          trackColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return KyboColors.primary.withValues(alpha: 0.5);
+            }
+            return Colors.grey.withValues(alpha: 0.3);
+          }),
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: KyboColors.textPrimaryDark),
+          bodyMedium: TextStyle(color: KyboColors.textPrimaryDark),
+          bodySmall: TextStyle(color: KyboColors.textSecondaryDark),
+          titleLarge: TextStyle(color: KyboColors.textPrimaryDark),
+          titleMedium: TextStyle(color: KyboColors.textPrimaryDark),
+          titleSmall: TextStyle(color: KyboColors.textSecondaryDark),
+        ),
+        iconTheme: const IconThemeData(color: KyboColors.textSecondaryDark),
+        dividerColor: Colors.white.withValues(alpha: 0.1),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: KyboColors.surfaceDark,
+          labelStyle: const TextStyle(color: KyboColors.textSecondaryDark),
+          hintStyle: const TextStyle(color: KyboColors.textMutedDark),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: KyboBorderRadius.medium,
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: KyboBorderRadius.medium,
+            borderSide: const BorderSide(color: KyboColors.primary, width: 2),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: KyboColors.surfaceDark,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          titleTextStyle: const TextStyle(
+            color: KyboColors.textPrimaryDark,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          contentTextStyle: const TextStyle(color: KyboColors.textSecondaryDark),
+        ),
+        bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: KyboColors.surfaceDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
         ),
       ),
       // Qui usiamo il MaintenanceGuard basato su Firestore
@@ -196,33 +285,44 @@ class MaintenanceGuard extends StatelessWidget {
 
         if (isMaintenance) {
           return Scaffold(
-            backgroundColor: AppColors.getScaffoldBackground(context),
+            backgroundColor: KyboColors.background(context),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.build_circle,
-                    size: 80,
-                    color: Colors.orange,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: KyboColors.warning.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.build_circle,
+                      size: 56,
+                      color: KyboColors.warning,
+                    ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   Text(
                     "Manutenzione",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.getTextColor(context),
+                      color: KyboColors.textPrimary(context),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     child: Text(
                       data?['maintenance_message'] ??
                           "Sistema in aggiornamento.",
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                      style: TextStyle(
+                        color: KyboColors.textSecondary(context),
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ],
