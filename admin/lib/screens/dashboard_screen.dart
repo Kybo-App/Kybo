@@ -96,23 +96,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // Build navigation items based on role
+    // Use theme key to force rebuild when theme changes
+    final themeKey = KyboColors.isDark ? 'dark' : 'light';
+
     final List<_NavItem> navItems = [
       _NavItem(
         icon: Icons.people_alt_rounded,
         label: "Utenti",
-        view: const UserManagementView(),
+        view: UserManagementView(key: ValueKey('users_$themeKey')),
       ),
       if (_isAdmin)
         _NavItem(
           icon: Icons.settings_rounded,
           label: "Impostazioni",
-          view: const ConfigView(),
+          view: ConfigView(key: ValueKey('config_$themeKey')),
         ),
       if (_isAdmin)
         _NavItem(
           icon: Icons.security_rounded,
           label: "Audit Log",
-          view: const AuditLogView(),
+          view: AuditLogView(key: ValueKey('audit_$themeKey')),
         ),
     ];
 
