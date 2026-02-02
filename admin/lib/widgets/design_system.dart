@@ -556,6 +556,10 @@ class _PillIconButtonState extends State<PillIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = widget.color ?? KyboColors.textSecondary;
+    // Use icon color with opacity for hover background
+    final hoverBgColor = widget.backgroundColor ?? iconColor.withValues(alpha: 0.15);
+
     final button = MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -567,15 +571,13 @@ class _PillIconButtonState extends State<PillIconButton> {
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
-          color: _isHovered
-              ? (widget.backgroundColor ?? KyboColors.surfaceElevated)
-              : Colors.transparent,
+          color: _isHovered ? hoverBgColor : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: IconButton(
           icon: Icon(
             widget.icon,
-            color: widget.color ?? KyboColors.textSecondary,
+            color: iconColor,
             size: widget.size * 0.5,
           ),
           onPressed: widget.onPressed,
