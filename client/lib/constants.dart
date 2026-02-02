@@ -1,33 +1,38 @@
 // ignore_for_file: constant_identifier_names
 import 'package:flutter/material.dart';
+import 'widgets/design_system.dart';
 
 // --- THEME COLORS ---
+// NOTA: Usare KyboColors da design_system.dart per nuovi componenti
+// AppColors mantenuto per backward compatibility
 
 class AppColors {
-  // Colori primari (uguali in light e dark)
-  static const Color primary = Color(0xFF2E7D32);
+  // Colori primari - IDENTICI A KYBO ADMIN
+  static const Color primary = KyboColors.primary;
   static const Color secondary = Color(0xFF81C784);
-  static const Color accent = Colors.orange;
+  static const Color accent = Color(0xFF3B82F6); // Allineato a KyboColors.accent
 
-  // Light Mode Colors
-  static const Color scaffoldBackground = Color(0xFFF5F5F5);
-  static const Color surface = Colors.white;
-  static const Color cardBackground = Colors.white;
-  static const Color textPrimary = Color(0xFF2D3436);
-  static const Color textSecondary = Color(0xFF636E72);
+  // Light Mode Colors - IDENTICI A KYBO ADMIN
+  static const Color scaffoldBackground = KyboColors.backgroundLight;
+  static const Color surface = KyboColors.surfaceLight;
+  static const Color cardBackground = KyboColors.surfaceLight;
+  static const Color textPrimary = KyboColors.textPrimaryLight;
+  static const Color textSecondary = KyboColors.textSecondaryLight;
   static const Color dividerLight = Color(0xFFE0E0E0);
-  static const Color inputBackground = Colors.white;
+  static const Color inputBackground = KyboColors.surfaceLight;
 
-  // Dark Mode Colors
-  static const Color darkScaffoldBackground = Color(0xFF121212);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  static const Color darkCardColor = Color(0xFF2C2C2C);
-  static const Color darkTextPrimary = Color(0xFFE0E0E0);
-  static const Color darkTextSecondary = Color(0xFF9E9E9E);
+  // Dark Mode Colors - IDENTICI A KYBO ADMIN
+  static const Color darkScaffoldBackground = KyboColors.backgroundDark;
+  static const Color darkSurface = KyboColors.surfaceDark;
+  static const Color darkCardColor = KyboColors.surfaceElevatedDark;
+  static const Color darkTextPrimary = KyboColors.textPrimaryDark;
+  static const Color darkTextSecondary = KyboColors.textSecondaryDark;
   static const Color darkDivider = Color(0xFF424242);
-  static const Color darkInputBackground = Color(0xFF2C2C2C);
+  static const Color darkInputBackground = KyboColors.surfaceDark;
 
   // ========== THEME-AWARE GETTERS ==========
+  // Questi usano Theme.of(context) per compatibilità con codice esistente
+  // Per nuovi componenti, usare KyboColors.background(context) etc.
 
   static bool isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
@@ -62,11 +67,11 @@ class AppColors {
   }
 
   static Color getHintColor(BuildContext context) {
-    return isDark(context) ? Colors.grey[600]! : Colors.grey[400]!;
+    return KyboColors.textMuted(context);
   }
 
   static Color getIconColor(BuildContext context) {
-    return isDark(context) ? Colors.white70 : Colors.grey[700]!;
+    return KyboColors.textSecondary(context);
   }
 
   static Color getShadowColor(BuildContext context) {
@@ -77,11 +82,13 @@ class AppColors {
 
   // Per elementi con sfondo colorato (delete, warning, etc)
   static Color getErrorBackground(BuildContext context) {
-    return isDark(context) ? Colors.red[900]! : Colors.red[100]!;
+    return isDark(context)
+        ? KyboColors.error.withValues(alpha: 0.2)
+        : KyboColors.error.withValues(alpha: 0.1);
   }
 
   static Color getErrorForeground(BuildContext context) {
-    return isDark(context) ? Colors.red[200]! : Colors.red[800]!;
+    return KyboColors.error;
   }
 }
 
