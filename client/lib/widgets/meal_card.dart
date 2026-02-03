@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../constants.dart' show AppColors;
+import '../widgets/design_system.dart';
 import '../models/active_swap.dart';
 import '../models/diet_models.dart'; // [IMPORTANTE] Serve per capire cos'è un Dish
 
@@ -11,7 +11,7 @@ class MealCard extends StatelessWidget {
   final Map<String, bool> availabilityMap;
   final bool isTranquilMode;
   final bool isToday;
-  final Set<String> relaxableFoods; // Alimenti "rilassabili" dalla config dieta
+  final bool Function(String) isRelaxable; // Callback per check relaxable
   final List<String> orderedMeals; // Pasti ordinati dalla config dieta
   final Function(int) onEat;
   final Function(String, int) onSwap;
@@ -26,7 +26,7 @@ class MealCard extends StatelessWidget {
     required this.availabilityMap,
     required this.isTranquilMode,
     required this.isToday,
-    required this.relaxableFoods,
+    required this.isRelaxable,
     required this.orderedMeals,
     required this.onEat,
     required this.onSwap,
@@ -41,27 +41,38 @@ class MealCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.getCardColor(context),
-        borderRadius: BorderRadius.circular(16),
+        color: KyboColors.surface(context),
+        borderRadius: KyboBorderRadius.large,
+        border: Border.all(
+          color: KyboColors.border(context),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black
-                .withValues(alpha: AppColors.isDark(context) ? 0.3 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: KyboBorderRadius.large,
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Barra Laterale Decorativa
               Container(
-                width: 6,
-                color: allConsumed ? AppColors.getHintColor(context) : AppColors.primary,
+                width: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: allConsumed 
+                        ? [KyboColors.textMuted(context), KyboColors.textMuted(context)]
+                        : [KyboColors.primary, KyboColors.primaryDark],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
               ),
 
               // Contenuto Card
@@ -78,29 +89,42 @@ class MealCard extends StatelessWidget {
                           Text(
                             mealName.toUpperCase(),
                             style: TextStyle(
-                              color:
-                                  allConsumed ? AppColors.getHintColor(context) : AppColors.primary,
+                              color: allConsumed 
+                                  ? KyboColors.textMuted(context) 
+                                  : KyboColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               letterSpacing: 1.2,
                             ),
                           ),
                           if (allConsumed)
-                            Icon(
-                              Icons.check_circle,
-                              color: AppColors.getHintColor(context),
-                              size: 20,
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: KyboColors.success.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.check_circle,
+                                color: KyboColors.success,
+                                size: 16,
+                              ),
                             )
                           else
                             Icon(
                               Icons.restaurant,
-                              color: AppColors.getHintColor(context),
+                              color: KyboColors.textMuted(context),
                               size: 18,
                             ),
                         ],
                       ),
                     ),
-                    const Divider(height: 1, thickness: 0.5),
+                    const SizedBox(height: 8),
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: KyboColors.border(context),
+                    ),
 
                     // Lista Piatti
                     Column(
@@ -159,9 +183,7 @@ class MealCard extends StatelessWidget {
 
                         // Logica Relax
                         final String nameLower = displayName.toLowerCase();
-                        bool isRelaxableItem = relaxableFoods.any(
-                          (tag) => nameLower.contains(tag),
-                        );
+                        bool isRelaxableItem = isRelaxable(displayName);
 
                         // Se abbiamo 1 ingrediente uguale al piatto, usa la sua qty
                         String effectiveQty = displayQtyRaw;
@@ -181,12 +203,13 @@ class MealCard extends StatelessWidget {
                         return Container(
                           decoration: BoxDecoration(
                             color: isSwapped
-                                ? Colors.orange.withValues(alpha: AppColors.isDark(context) ? 0.15 : 0.05)
+                                ? KyboColors.warning.withValues(alpha: 0.08)
                                 : null,
                             border: index != foods.length - 1
                                 ? Border(
                                     bottom: BorderSide(
-                                      color: AppColors.getDividerColor(context),
+                                      color: KyboColors.border(context),
+                                      width: 0.5,
                                     ),
                                   )
                                 : null,
@@ -199,23 +222,33 @@ class MealCard extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Icona Stato
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Icon(
-                                    isConsumed
-                                        ? Icons.check
-                                        : (isAvailable
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: isConsumed
+                                            ? KyboColors.success.withValues(alpha: 0.1)
+                                            : (isAvailable
+                                                ? KyboColors.primary.withValues(alpha: 0.1)
+                                                : Colors.transparent),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isConsumed
                                             ? Icons.check_circle
-                                            : Icons.circle_outlined),
-                                    color: isConsumed
-                                        ? AppColors.getHintColor(context)
-                                        : (isAvailable
-                                            ? AppColors.primary
-                                            : AppColors.getHintColor(context)),
-                                    size: 24,
+                                            : (isAvailable
+                                                ? Icons.check_circle_outline
+                                                : Icons.circle_outlined),
+                                        color: isConsumed
+                                            ? KyboColors.success
+                                            : (isAvailable
+                                                ? KyboColors.primary
+                                                : KyboColors.textMuted(context)),
+                                        size: 20,
+                                      ),
+                                    ),
                                   ),
-                                ),
                                 const SizedBox(width: 12),
 
                                 // Testi
@@ -227,23 +260,23 @@ class MealCard extends StatelessWidget {
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: Text(
-                                              displayName,
-                                              style: TextStyle(
-                                                decoration: isConsumed
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                color: isConsumed
-                                                    ? AppColors.getHintColor(context)
-                                                    : (isSwapped
-                                                        ? Colors.deepOrange
-                                                        : AppColors.getTextColor(context)),
-                                                fontWeight: isSwapped
-                                                    ? FontWeight.bold
-                                                    : FontWeight.w600,
-                                                fontSize: 15,
+                                              child: Text(
+                                                displayName,
+                                                style: TextStyle(
+                                                  decoration: isConsumed
+                                                      ? TextDecoration.lineThrough
+                                                      : null,
+                                                  color: isConsumed
+                                                      ? KyboColors.textMuted(context)
+                                                      : (isSwapped
+                                                          ? KyboColors.warning
+                                                          : KyboColors.textPrimary(context)),
+                                                  fontWeight: isSwapped
+                                                      ? FontWeight.bold
+                                                      : FontWeight.w600,
+                                                  fontSize: 15,
+                                                ),
                                               ),
-                                            ),
                                           ),
                                         ],
                                       ),
@@ -253,11 +286,7 @@ class MealCard extends StatelessWidget {
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
                                           String iQty = ing.qty;
-                                          bool iRelax = relaxableFoods.any(
-                                            (tag) => iName
-                                                .toLowerCase()
-                                                .contains(tag),
-                                          );
+                                          bool iRelax = isRelaxable(iName);
                                           if (isTranquilMode && iRelax) {
                                             iQty = "";
                                           }
@@ -269,8 +298,8 @@ class MealCard extends StatelessWidget {
                                               "• $iName ${iQty.isNotEmpty ? '($iQty)' : ''}",
                                               style: TextStyle(
                                                 color: isConsumed
-                                                    ? AppColors.getHintColor(context)
-                                                    : AppColors.getSecondaryTextColor(context),
+                                                    ? KyboColors.textMuted(context)
+                                                    : KyboColors.textSecondary(context),
                                                 fontSize: 13,
                                               ),
                                             ),
@@ -281,11 +310,14 @@ class MealCard extends StatelessWidget {
                                           qtyDisplay,
                                           style: TextStyle(
                                             color: isConsumed
-                                                ? AppColors.getHintColor(context)
+                                                ? KyboColors.textMuted(context)
                                                 : (qtyDisplay == "A piacere"
-                                                    ? AppColors.primary
-                                                    : AppColors.getSecondaryTextColor(context)),
+                                                    ? KyboColors.primary
+                                                    : KyboColors.textSecondary(context)),
                                             fontSize: 13,
+                                            fontWeight: qtyDisplay == "A piacere"
+                                                ? FontWeight.w500
+                                                : FontWeight.normal,
                                             fontStyle: qtyDisplay == "A piacere"
                                                 ? FontStyle.italic
                                                 : FontStyle.normal,
@@ -299,42 +331,62 @@ class MealCard extends StatelessWidget {
                                 if (!isConsumed) ...[
                                   // Swap
                                   if (cadCode > 0)
-                                    IconButton(
-                                      icon: Icon(
-                                        isSwapped
-                                            ? Icons.swap_horiz
-                                            : Icons.swap_horiz_outlined,
+                                    Container(
+                                      margin: const EdgeInsets.only(right: 4),
+                                      decoration: BoxDecoration(
                                         color: isSwapped
-                                            ? Colors.orange
-                                            : AppColors.getHintColor(context),
+                                            ? KyboColors.warning.withValues(alpha: 0.1)
+                                            : KyboColors.surface(context),
+                                        borderRadius: KyboBorderRadius.medium,
+                                        border: Border.all(
+                                          color: isSwapped
+                                              ? KyboColors.warning
+                                              : KyboColors.border(context),
+                                          width: 1,
+                                        ),
                                       ),
-                                      splashRadius: 20,
-                                      constraints: const BoxConstraints(),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                      child: IconButton(
+                                        icon: Icon(
+                                          Icons.swap_horiz,
+                                          color: isSwapped
+                                              ? KyboColors.warning
+                                              : KyboColors.textMuted(context),
+                                          size: 20,
+                                        ),
+                                        splashRadius: 20,
+                                        constraints: const BoxConstraints(),
+                                        padding: const EdgeInsets.all(8),
+                                        onPressed: () => onSwap(swapKey, cadCode),
                                       ),
-                                      onPressed: () => onSwap(swapKey, cadCode),
                                     ),
 
                                   // Consuma
                                   if (isToday)
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 4),
-                                      child: InkWell(
-                                        onTap: () => onEat(index),
-                                        borderRadius: BorderRadius.circular(20),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary
-                                                .withValues(alpha: 0.1),
-                                            shape: BoxShape.circle,
+                                    InkWell(
+                                      onTap: () => onEat(index),
+                                      borderRadius: KyboBorderRadius.medium,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              KyboColors.primary,
+                                              KyboColors.primaryDark,
+                                            ],
                                           ),
-                                          child: const Icon(
-                                            Icons.check,
-                                            size: 18,
-                                            color: AppColors.primary,
-                                          ),
+                                          borderRadius: KyboBorderRadius.medium,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: KyboColors.primary.withValues(alpha: 0.3),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.check,
+                                          size: 18,
+                                          color: Colors.white,
                                         ),
                                       ),
                                     ),

@@ -9,6 +9,7 @@ import 'firebase_options_prod.dart' as prod;
 import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/chat_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
@@ -51,6 +52,9 @@ void main() {
             ),
             ChangeNotifierProvider<ThemeProvider>(
               create: (_) => ThemeProvider(),
+            ),
+            ChangeNotifierProvider<ChatProvider>(
+              create: (_) => ChatProvider()..initializeChat(),
             ),
           ],
           child: const DietApp(),

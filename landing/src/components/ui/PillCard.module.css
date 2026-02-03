@@ -1,0 +1,22 @@
+.pillCard {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-large);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-small);
+  transition: all var(--transition-normal);
+  border: 1px solid var(--color-border);
+}
+
+.pillCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-medium);
+}
+
+.elevated {
+  background-color: var(--color-surface-elevated);
+  box-shadow: var(--shadow-medium);
+}
+
+.elevated:hover {
+  box-shadow: var(--shadow-large);
+}

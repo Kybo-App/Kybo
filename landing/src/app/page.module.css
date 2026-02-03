@@ -1,0 +1,10 @@
+.main {
+  min-height: 100vh;
+  background: #1a1a1a;
+  position: relative;
+}
+
+/* Smooth transitions between sections */
+.main > section {
+  position: relative;
+}

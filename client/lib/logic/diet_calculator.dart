@@ -1,5 +1,5 @@
 import 'package:kybo/constants.dart'
-    show DietUnits, UnitConversions, italianDays, orderedMealTypes;
+    show DietUnits, UnitConversions;
 import 'package:kybo/models/pantry_item.dart'; // Assicurati che l'import sia corretto per il tuo progetto
 
 // --- ECCEZIONI DI DOMINIO ---
@@ -47,8 +47,13 @@ class DietCalculator {
     final today = DateTime(now.year, now.month, now.day); // 00:00:00 di oggi
     int todayIndex = today.weekday - 1;
 
-    for (int d = 0; d < italianDays.length; d++) {
-      String day = italianDays[d];
+    // [FIX] Usa i giorni dinamici passati nel payload
+    final List<String> daysToCheck = (payload['days'] as List<dynamic>?)?.cast<String>() ?? [];
+    // [FIX] Usa i pasti dinamici passati nel payload
+    final List<String> mealsToCheck = (payload['meals'] as List<dynamic>?)?.cast<String>() ?? [];
+
+    for (int d = 0; d < daysToCheck.length; d++) {
+      String day = daysToCheck[d];
 
       // Saltiamo i giorni già passati (prima di oggi)
       // La simulazione parte dalla dispensa ATTUALE per i pasti FUTURI
@@ -58,7 +63,7 @@ class DietCalculator {
 
       final mealsOfDay = dietData[day] as Map<String, dynamic>;
 
-      for (var mType in orderedMealTypes) {
+      for (var mType in mealsToCheck) {
         if (!mealsOfDay.containsKey(mType)) continue;
         List<dynamic> dishes = List.from(mealsOfDay[mType]);
         List<List<int>> groups = buildGroups(dishes);

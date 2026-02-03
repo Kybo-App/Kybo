@@ -43,7 +43,8 @@ class DietLogic {
       }
     } else {
       // CASO B: Nessuno swap, usa il piatto originale
-      if (dish.isComposed) {
+      // Robustezza: Se ha ingredienti, trattalo come composto anche se isComposed è false
+      if (dish.isComposed || dish.ingredients.isNotEmpty) {
         for (var ing in dish.ingredients) {
           result.add({
             'name': ing.name,

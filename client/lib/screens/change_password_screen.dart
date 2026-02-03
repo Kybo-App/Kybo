@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/error_handler.dart'; // [IMPORTANTE]
-import '../constants.dart' show AppColors;
+import '../widgets/design_system.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -47,9 +47,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Password aggiornata con successo!"),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text("Password aggiornata con successo!"),
+            backgroundColor: KyboColors.success,
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.pop(context);
@@ -68,7 +70,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: KyboColors.error,
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -77,14 +80,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
+      backgroundColor: KyboColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.getSurface(context),
+        backgroundColor: KyboColors.surface(context),
         title: Text(
           "Cambia Password",
-          style: TextStyle(color: AppColors.getTextColor(context)),
+          style: TextStyle(color: KyboColors.textPrimary(context)),
         ),
-        iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
+        iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -97,50 +100,30 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 Text(
                   "Inserisci la tua nuova password.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.getSecondaryTextColor(context), fontSize: 16),
+                  style: TextStyle(color: KyboColors.textSecondary(context), fontSize: 16),
                 ),
                 const SizedBox(height: 32),
-                TextField(
+                PillTextField(
                   controller: _passCtrl,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: "Nuova Password",
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
+                  showPasswordToggle: true,
+                  labelText: "Nuova Password",
+                  prefixIcon: Icons.lock,
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                PillTextField(
                   controller: _confirmCtrl,
-                  obscureText: _obscureConfirm,
-                  decoration: InputDecoration(
-                    labelText: "Conferma Password",
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                    ),
-                  ),
+                  showPasswordToggle: true,
+                  labelText: "Conferma Password",
+                  prefixIcon: Icons.lock_outline,
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
+                PillButton(
+                  label: "AGGIORNA PASSWORD",
+                  isLoading: _isLoading,
+                  onPressed: _changePassword,
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
                   height: 50,
-                  child: FilledButton(
-                    onPressed: _isLoading ? null : _changePassword,
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("AGGIORNA PASSWORD"),
-                  ),
                 ),
               ],
             ),

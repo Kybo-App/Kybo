@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
-import '../constants.dart';
+import '../widgets/design_system.dart';
 
 class PantryView extends StatefulWidget {
   final List<PantryItem> pantryItems;
@@ -39,15 +39,31 @@ class _PantryViewState extends State<PantryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: widget.onScanTap,
-        icon: const Icon(Icons.camera_alt, color: Colors.white),
-        label: const Text(
-          "Scansiona Scontrino",
-          style: TextStyle(color: Colors.white),
+      backgroundColor: KyboColors.background(context),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [KyboColors.primary, KyboColors.primaryDark],
+          ),
+          borderRadius: KyboBorderRadius.large,
+          boxShadow: [
+            BoxShadow(
+              color: KyboColors.primary.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        backgroundColor: AppColors.primary,
+        child: FloatingActionButton.extended(
+          onPressed: widget.onScanTap,
+          icon: const Icon(Icons.camera_alt, color: Colors.white),
+          label: const Text(
+            "Scansiona Scontrino",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -56,14 +72,21 @@ class _PantryViewState extends State<PantryView> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  const Icon(Icons.kitchen, size: 28, color: AppColors.primary),
-                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: KyboColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.kitchen, size: 24, color: KyboColors.primary),
+                  ),
+                  const SizedBox(width: 12),
                   Text(
                     "La tua Dispensa",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.getTextColor(context),
+                      color: KyboColors.textPrimary(context),
                     ),
                   ),
                 ],
@@ -73,15 +96,19 @@ class _PantryViewState extends State<PantryView> {
             // INPUT FORM
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.getInputBackground(context),
-                borderRadius: BorderRadius.circular(16),
+                color: KyboColors.surface(context),
+                borderRadius: KyboBorderRadius.large,
+                border: Border.all(
+                  color: KyboColors.border(context),
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.getShadowColor(context),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -91,18 +118,20 @@ class _PantryViewState extends State<PantryView> {
                     flex: 3,
                     child: TextField(
                       controller: _nameController,
-                      style: TextStyle(color: AppColors.getTextColor(context)),
+                      style: TextStyle(color: KyboColors.textPrimary(context)),
                       decoration: InputDecoration(
                         hintText: "Aggiungi cibo...",
-                        hintStyle: TextStyle(color: AppColors.getHintColor(context)),
+                        hintStyle: TextStyle(color: KyboColors.textMuted(context)),
                         border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                       ),
                     ),
                   ),
                   Container(
                     width: 1,
                     height: 24,
-                    color: AppColors.getDividerColor(context),
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    color: KyboColors.border(context),
                   ),
                   Expanded(
                     flex: 2,
@@ -110,10 +139,10 @@ class _PantryViewState extends State<PantryView> {
                       controller: _qtyController,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.getTextColor(context)),
+                      style: TextStyle(color: KyboColors.textPrimary(context)),
                       decoration: InputDecoration(
                         hintText: "Qtà",
-                        hintStyle: TextStyle(color: AppColors.getHintColor(context)),
+                        hintStyle: TextStyle(color: KyboColors.textMuted(context)),
                         border: InputBorder.none,
                       ),
                     ),
@@ -121,10 +150,10 @@ class _PantryViewState extends State<PantryView> {
                   DropdownButton<String>(
                     value: _unit,
                     underline: const SizedBox(),
-                    dropdownColor: AppColors.getCardColor(context),
+                    dropdownColor: KyboColors.surface(context),
                     icon: Icon(
                       Icons.keyboard_arrow_down,
-                      color: AppColors.getIconColor(context),
+                      color: KyboColors.textMuted(context),
                     ),
                     items: ['g', 'ml', 'pz', 'vasetto', 'fette']
                         .map(
@@ -134,7 +163,7 @@ class _PantryViewState extends State<PantryView> {
                               e,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: AppColors.getTextColor(context),
+                                color: KyboColors.textPrimary(context),
                               ),
                             ),
                           ),
@@ -142,13 +171,21 @@ class _PantryViewState extends State<PantryView> {
                         .toList(),
                     onChanged: (v) => setState(() => _unit = v!),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.add_circle,
-                      color: AppColors.primary,
-                      size: 28,
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [KyboColors.primary, KyboColors.primaryDark],
+                      ),
+                      shape: BoxShape.circle,
                     ),
-                    onPressed: _handleAdd,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      onPressed: _handleAdd,
+                    ),
                   ),
                 ],
               ),
@@ -160,9 +197,24 @@ class _PantryViewState extends State<PantryView> {
             Expanded(
               child: widget.pantryItems.isEmpty
                   ? Center(
-                      child: Text(
-                        "Dispensa vuota",
-                        style: TextStyle(color: AppColors.getHintColor(context)),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: KyboColors.textMuted(context),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Dispensa vuota",
+                            style: TextStyle(
+                              color: KyboColors.textMuted(context),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : ListView.builder(
@@ -173,13 +225,17 @@ class _PantryViewState extends State<PantryView> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.getCardColor(context),
-                            borderRadius: BorderRadius.circular(12),
+                            color: KyboColors.surface(context),
+                            borderRadius: KyboBorderRadius.medium,
+                            border: Border.all(
+                              color: KyboColors.border(context),
+                              width: 1,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.getShadowColor(context),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
@@ -191,12 +247,14 @@ class _PantryViewState extends State<PantryView> {
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
                               decoration: BoxDecoration(
-                                color: AppColors.getErrorBackground(context),
-                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
+                                ),
+                                borderRadius: KyboBorderRadius.medium,
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.delete,
-                                color: AppColors.getErrorForeground(context),
+                                color: Colors.white,
                               ),
                             ),
                             child: ListTile(
@@ -205,14 +263,16 @@ class _PantryViewState extends State<PantryView> {
                                 vertical: 4,
                               ),
                               leading: Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  gradient: LinearGradient(
+                                    colors: [KyboColors.primary, KyboColors.primaryDark],
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
                                   Icons.inventory_2_outlined,
-                                  color: AppColors.primary,
+                                  color: Colors.white,
                                   size: 20,
                                 ),
                               ),
@@ -220,15 +280,23 @@ class _PantryViewState extends State<PantryView> {
                                 item.name,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.getTextColor(context),
+                                  fontSize: 15,
+                                  color: KyboColors.textPrimary(context),
                                 ),
                               ),
-                              trailing: Text(
-                                "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                  fontSize: 15,
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: KyboColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: KyboBorderRadius.medium,
+                                ),
+                                child: Text(
+                                  "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: KyboColors.primary,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ),
