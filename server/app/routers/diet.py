@@ -7,7 +7,7 @@ import uuid
 from typing import Optional, List
 
 import firebase_admin
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from fastapi.responses import JSONResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import Json
@@ -137,7 +137,6 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
 
 @router.post("/upload-diet", response_model=DietResponse)
 async def upload_diet(
-    request: Request,
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
     token: dict = Depends(verify_token)
@@ -209,7 +208,6 @@ async def upload_diet(
 
 @router.post("/upload-diet/{target_uid}", response_model=DietResponse)
 async def upload_diet_admin(
-    request: Request,
     target_uid: str,
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
@@ -298,7 +296,6 @@ async def upload_diet_admin(
 
 @router.post("/scan-receipt")
 async def scan_receipt(
-    request: Request,
     file: UploadFile = File(...),
     allowed_foods: Json[List[str]] = Form(...),
     user_id: str = Depends(get_current_uid)
