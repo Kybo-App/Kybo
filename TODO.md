@@ -52,10 +52,9 @@
 - [x] Onboarding personalizzato per tipo utente (indipendente vs cliente)
 - [x] Deep link per aprire direttamente una sezione dell'app
 
-### 13. Client - Badge & Achievement
-> ⚠️ Dipende dal completamento di "Tracking & Statistiche"
-- [ ] Badge e achievement (7 giorni consecutivi, primo receipt scan, etc.)
-- [ ] Streak di aderenza alla dieta
+### 13. Client - Badge & Achievement ✅
+- [x] Badge e achievement (7 giorni consecutivi, primo receipt scan, etc.)
+- [x] Streak di aderenza alla dieta
 
 ### 14. Client - Accessibilità
 - [ ] Accessibilita screen reader (VoiceOver/TalkBack) completa
