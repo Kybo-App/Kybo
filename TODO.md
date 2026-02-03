@@ -11,8 +11,8 @@
 - [x] Error tracking (Sentry integration)
 - [x] Alerting automatico (Slack/email su errori critici) - gratis con Sentry
 
-### 3. Backend - Health Check
-- [ ] Health check avanzato (controlla Firebase, Gemini, Tesseract)
+### 3. Backend - Health Check ✅
+- [x] Health check avanzato (controlla Firebase, Gemini, Tesseract)
 
 ### 4. Backend - CI/CD
 - [ ] CI/CD pipeline (GitHub Actions per test + deploy automatico)
