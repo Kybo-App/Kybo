@@ -324,7 +324,7 @@ class _MessageBubble extends StatelessWidget {
                           ),
                   ),
                   child: Text(
-                    message.text,
+                    message.message,
                     style: TextStyle(
                       color: isClient
                           ? Colors.white

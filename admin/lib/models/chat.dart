@@ -74,7 +74,8 @@ class ChatMessage {
       id: doc.id,
       senderId: data['senderId'] ?? '',
       senderType: data['senderType'] ?? 'client',
-      message: data['message'] ?? '',
+      // Supporta sia 'message' (nuovo) che 'text' (legacy client) per backward compatibility
+      message: data['message'] ?? data['text'] ?? '',
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       read: data['read'] ?? false,
     );

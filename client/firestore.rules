@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function hasRole(roleName) { return isSignedIn() && request.auth.token.role == roleName; }
@@ -26,9 +26,9 @@ service cloud.firestore {
     match /users/{userId} {
       // READ: Invariato
       allow read: if isOwner(userId) ||
-                  hasRole('admin') || 
+                  hasRole('admin') ||
                   (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
-      
+
       // [SECURITY FIX] Create: Solo il proprio profilo con validazione campi
       allow create: if isOwner(userId) &&
                        request.resource.data.keys().hasAll(['uid', 'email', 'role']) &&
@@ -36,10 +36,10 @@ service cloud.firestore {
                        request.resource.data.role in ['independent', 'user'];
 
       // UPDATE: Invariato
-      allow update: if (isOwner(userId) && 
+      allow update: if (isOwner(userId) &&
                         request.resource.data.diff(resource.data).affectedKeys()
                         .hasOnly(['first_name', 'last_name'])) ||
-                       hasRole('admin') || 
+                       hasRole('admin') ||
                        (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
 
       // DELETE: Invariato
@@ -48,25 +48,25 @@ service cloud.firestore {
 
       // [MODIFICATO] DIETS: Ora l'utente PUÒ scrivere (Create/Update) le sue diete
       match /diets/{dietId} {
-        allow read: if isOwner(userId) || 
+        allow read: if isOwner(userId) ||
                    (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
-        
+
         // QUI ERA IL BLOCCO: Aggiunto "isOwner(userId)" per permettere il salvataggio app
-        allow write: if isOwner(userId) || 
-                     hasRole('admin') || 
+        allow write: if isOwner(userId) ||
+                     hasRole('admin') ||
                      (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
       }
-      
+
       // Manteniamo history per retrocompatibilità o se usato altrove
       match /history/{docId} {
         allow read: if isOwner(userId) ||
                    (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
-        
-        allow create: if isOwner(userId) || 
-                      hasRole('admin') || 
+
+        allow create: if isOwner(userId) ||
+                      hasRole('admin') ||
                       (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
 
-        allow update, delete: if hasRole('admin') || 
+        allow update, delete: if hasRole('admin') ||
                               (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
       }
 
@@ -80,54 +80,78 @@ service cloud.firestore {
       allow create: if hasRole('nutritionist') || hasRole('admin');
       allow delete: if hasRole('admin');
     }
-    
-    // Chat Rules
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CHAT RULES - Participant-based access
+    // ═══════════════════════════════════════════════════════════════════════
     match /chats/{chatId} {
-      // chatId format: {userId}_nutritionist
-      function getChatUserId() {
-        return chatId.split('_')[0];
+      // Helper: check if user is a participant of this chat
+      function isParticipant() {
+        return resource.data.participants.clientId == request.auth.uid ||
+               resource.data.participants.nutritionistId == request.auth.uid;
       }
-      
-      // Clients can read/write their own chat
-      // Nutritionists can read/write all chats
+
+      // Helper for create (document doesn't exist yet, use request.resource)
+      function isParticipantOnCreate() {
+        return request.resource.data.participants.clientId == request.auth.uid ||
+               request.resource.data.participants.nutritionistId == request.auth.uid;
+      }
+
+      // Read: participant or admin
       allow read: if isSignedIn() && (
-        isOwner(getChatUserId()) || 
-        hasRole('nutritionist') || 
+        isParticipant() ||
         hasRole('admin')
       );
-      
-      allow write: if isSignedIn() && (
-        isOwner(getChatUserId()) || 
-        hasRole('nutritionist') || 
+
+      // Create: participant or admin
+      allow create: if isSignedIn() && (
+        isParticipantOnCreate() ||
         hasRole('admin')
       );
-      
+
+      // Update: participant or admin
+      allow update: if isSignedIn() && (
+        isParticipant() ||
+        hasRole('admin')
+      );
+
+      // No chat deletion
+      allow delete: if hasRole('admin');
+
       // Messages subcollection
       match /messages/{messageId} {
+        // Helper: check if user is a participant of parent chat
+        function isChatParticipant() {
+          let chat = get(/databases/$(database)/documents/chats/$(chatId)).data;
+          return chat.participants.clientId == request.auth.uid ||
+                 chat.participants.nutritionistId == request.auth.uid;
+        }
+
+        // Read: any chat participant or admin
         allow read: if isSignedIn() && (
-          isOwner(getChatUserId()) || 
-          hasRole('nutritionist') || 
+          isChatParticipant() ||
           hasRole('admin')
         );
-        
-        // Clients can only create messages as 'client' type
-        // Nutritionists can only create messages as 'nutritionist' type
+
+        // Create: must be a participant AND senderId must match auth uid
         allow create: if isSignedIn() && (
-          (isOwner(getChatUserId()) && request.resource.data.senderType == 'client' && request.resource.data.senderId == request.auth.uid) ||
-          ((hasRole('nutritionist') || hasRole('admin')) && request.resource.data.senderType == 'nutritionist' && request.resource.data.senderId == request.auth.uid)
+          request.resource.data.senderId == request.auth.uid &&
+          (isChatParticipant() || hasRole('admin'))
         );
-        
-        // Only allow updating 'read' field
-        allow update: if isSignedIn() && affectsOnly(['read']);
-        
+
+        // Update: only allow updating 'read' field by participants
+        allow update: if isSignedIn() &&
+                      affectsOnly(['read']) &&
+                      (isChatParticipant() || hasRole('admin'));
+
         // No message deletion
         allow delete: if false;
       }
     }
-    
+
     match /access_logs/{logId} {
        allow read: if hasRole('admin');
-       allow create, update, delete: if false; 
+       allow create, update, delete: if false;
     }
 
     match /{document=**} { allow read, write: if false; }
