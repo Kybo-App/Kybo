@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     ENV: str = os.getenv("ENV", "DEV") # [NUOVO] Legge l'ambiente (DEV o PROD)
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")  # Error tracking
     
     _dev_origins: list[str] = [
         "http://localhost:3000",

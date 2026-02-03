@@ -31,6 +31,24 @@ from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
 
+# --- SENTRY ERROR TRACKING ---
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENV,  # DEV, STAGING, PROD
+        integrations=[
+            FastApiIntegration(),
+            StarletteIntegration(),
+        ],
+        traces_sample_rate=0.1,  # 10% delle richieste per performance monitoring
+        send_default_pii=False,  # Non inviare dati personali
+    )
+    logger.info("sentry_init_success", environment=settings.ENV)
+
 
 # --- FIREBASE INIT ---
 if not firebase_admin._apps:
@@ -156,3 +174,12 @@ async def start_background_tasks():
 async def health_check():
     """Endpoint di health check per monitoring."""
     return {"status": "healthy", "version": "2.0.0"}
+
+
+# --- SENTRY DEBUG (rimuovere dopo test) ---
+@app.get("/sentry-debug")
+async def trigger_error():
+    """Endpoint per testare Sentry. Rimuovere dopo verifica."""
+    division_by_zero = 1 / 0
+    return {"this": "will never happen"}
+
