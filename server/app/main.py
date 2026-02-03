@@ -173,13 +173,6 @@ async def start_background_tasks():
 @app.get("/health")
 async def health_check():
     """Endpoint di health check per monitoring."""
-    return {"status": "healthy", "version": "2.0.0"}
+    return {"status": "healthy", "version": "2.0.0", "sentry": bool(settings.SENTRY_DSN)}
 
-
-# --- SENTRY DEBUG (rimuovere dopo test) ---
-@app.get("/sentry-debug")
-async def trigger_error():
-    """Endpoint per testare Sentry. Rimuovere dopo verifica."""
-    division_by_zero = 1 / 0
-    return {"this": "will never happen"}
 
