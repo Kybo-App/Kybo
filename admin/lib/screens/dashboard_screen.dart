@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../providers/admin_notification_provider.dart';
 import '../widgets/design_system.dart';
 import '../widgets/diet_logo.dart';
 import 'user_management_view.dart';
@@ -17,6 +19,23 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => AdminNotificationProvider(),
+      child: const _DashboardContent(),
+    );
+  }
+}
+
+class _DashboardContent extends StatefulWidget {
+  const _DashboardContent();
+
+  @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent> {
   int _selectedIndex = 0;
   String _userName = "Caricamento...";
   String _userRole = "Utente";
@@ -100,17 +119,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Build navigation items based on role
     // Use theme key to force rebuild when theme changes
     final themeKey = KyboColors.isDark ? 'dark' : 'light';
+    final notifProvider = context.watch<AdminNotificationProvider>();
 
     final List<_NavItem> navItems = [
       _NavItem(
         icon: Icons.people_alt_rounded,
         label: "Utenti",
         view: UserManagementView(key: ValueKey('users_$themeKey')),
+        badgeCount: notifProvider.expiringDiets,
       ),
       _NavItem(
         icon: Icons.chat_bubble_rounded,
         label: "Chat",
         view: ChatManagementView(key: ValueKey('chat_$themeKey')),
+        badgeCount: notifProvider.unreadChats,
       ),
       _NavItem(
         icon: Icons.calculate_rounded,
@@ -255,6 +277,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               label: item.label,
               icon: item.icon,
               isSelected: _selectedIndex == index,
+              badgeCount: item.badgeCount,
               onTap: () => _onNavSelected(index),
             ),
           );
@@ -354,6 +377,12 @@ class _NavItem {
   final IconData icon;
   final String label;
   final Widget view;
+  final int badgeCount;
 
-  _NavItem({required this.icon, required this.label, required this.view});
+  _NavItem({
+    required this.icon, 
+    required this.label, 
+    required this.view, 
+    this.badgeCount = 0,
+  });
 }

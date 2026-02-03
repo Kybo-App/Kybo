@@ -44,9 +44,9 @@
 ### 10. Admin - Allegati Chat ✅
 - [x] Allegati nella chat (immagini, PDF)
 
-### 11. Admin - Notifiche In-App
-- [ ] Badge su icone nav (non solo chat)
-- [ ] Sistema notifiche unificato
+### 11. Admin - Notifiche In-App ✅
+- [x] Badge su icone nav (non solo chat)
+- [x] Sistema notifiche unificato
 
 ### 12. Client - Deep Link & Onboarding
 - [ ] Onboarding personalizzato per tipo utente (indipendente vs cliente)
