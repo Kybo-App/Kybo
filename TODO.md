@@ -13,9 +13,10 @@
 
 ### 3. Backend - Health Check ✅
 - [x] Health check avanzato (controlla Firebase, Gemini, Tesseract)
+- [ ] ⚠️ TODO: Fixare Tesseract su Render dev (cambiare a Docker o configurare build script)
 
-### 4. Backend - CI/CD
-- [ ] CI/CD pipeline (GitHub Actions per test + deploy automatico)
+### 4. Backend - CI/CD ✅
+- [x] CI/CD pipeline (GitHub Actions per test + lint server)
 
 ### 5. GDPR Base (Obbligo Legale)
 - [ ] Consenso privacy tracciato con timestamp
