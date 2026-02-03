@@ -7,6 +7,38 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "uploadedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participants.nutritionistId", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chatType", "order": "ASCENDING" },
+        { "fieldPath": "participants.clientId", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "read", "order": "ASCENDING" },
+        { "fieldPath": "senderType", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
