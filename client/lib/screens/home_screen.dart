@@ -10,10 +10,11 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/chat_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-import '../constants.dart' show AppColors;
+import '../widgets/design_system.dart';
 import '../core/error_handler.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
@@ -21,6 +22,8 @@ import 'shopping_list_view.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
 import 'change_password_screen.dart';
+import 'chat_screen.dart';
+import 'settings_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/jailbreak_service.dart';
 
@@ -91,22 +94,34 @@ class _MainScreenContentState extends State<MainScreenContent>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Notifiche Pasti 🍽️'),
-        content: const Text(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text(
+          'Notifiche Pasti 🍽️',
+          style: TextStyle(color: KyboColors.textPrimary(context)),
+        ),
+        content: Text(
           'Per ricordarti i pasti e controllare la dispensa, Kybo ha bisogno delle notifiche.\n\n'
           'Per favore, attivale nelle impostazioni del telefono.',
+          style: TextStyle(color: KyboColors.textSecondary(context)),
         ),
         actions: [
-          TextButton(
+          PillButton(
+            label: 'Annulla',
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 44,
           ),
-          FilledButton(
+          PillButton(
+            label: 'Impostazioni',
             onPressed: () {
-              openAppSettings(); // Apre le impostazioni Android/iOS
+              openAppSettings();
               Navigator.pop(context);
             },
-            child: const Text('Impostazioni'),
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            height: 44,
           ),
         ],
       ),
@@ -204,20 +219,31 @@ class _MainScreenContentState extends State<MainScreenContent>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Privacy Policy"),
-        content: const SingleChildScrollView(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text(
+          "Privacy Policy",
+          style: TextStyle(color: KyboColors.textPrimary(context)),
+        ),
+        content: SingleChildScrollView(
           child: Text(
             "Informativa sulla Privacy\n\n"
             "I tuoi dati (email, nome, piano alimentare) sono utilizzati esclusivamente per fornirti il servizio Kybo.\n"
             "I dati sensibili sono protetti e accessibili solo al personale autorizzato per scopi di assistenza tecnica o legale.\n\n"
             "Per richiedere la cancellazione dei dati, contatta l'amministratore.",
-            style: TextStyle(fontSize: 14),
+            style: TextStyle(
+              fontSize: 14,
+              color: KyboColors.textSecondary(context),
+            ),
           ),
         ),
         actions: [
-          TextButton(
+          PillButton(
+            label: "Chiudi",
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Chiudi"),
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            height: 44,
           ),
         ],
       ),
@@ -229,14 +255,19 @@ class _MainScreenContentState extends State<MainScreenContent>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
         title: Row(
-          children: const [
-            Icon(Icons.security, color: Colors.orange, size: 28),
-            SizedBox(width: 12),
+          children: [
+            Icon(Icons.security, color: KyboColors.warning, size: 28),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 "Dispositivo Non Sicuro",
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: KyboColors.textPrimary(context),
+                ),
               ),
             ),
           ],
@@ -245,33 +276,40 @@ class _MainScreenContentState extends State<MainScreenContent>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 "Il tuo dispositivo risulta modificato (jailbreak/root).",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: KyboColors.textPrimary(context),
+                ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
                 "Questo comporta rischi per la sicurezza dei tuoi dati medici:",
+                style: TextStyle(color: KyboColors.textSecondary(context)),
               ),
-              SizedBox(height: 8),
-              Text("• Malware può accedere ai tuoi dati"),
-              Text("• Le chiavi di cifratura potrebbero essere compromesse"),
-              Text("• App di terze parti possono intercettare informazioni"),
-              SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Text("• Malware può accedere ai tuoi dati", style: TextStyle(color: KyboColors.textSecondary(context))),
+              Text("• Le chiavi di cifratura potrebbero essere compromesse", style: TextStyle(color: KyboColors.textSecondary(context))),
+              Text("• App di terze parti possono intercettare informazioni", style: TextStyle(color: KyboColors.textSecondary(context))),
+              const SizedBox(height: 16),
               Text(
                 "Ti consigliamo vivamente di:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: KyboColors.textPrimary(context),
+                ),
               ),
-              SizedBox(height: 8),
-              Text("• Usare un dispositivo non modificato"),
-              Text("• Ripristinare il dispositivo alle impostazioni originali"),
-              Text("• Contattare il supporto per assistenza"),
-              SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Text("• Usare un dispositivo non modificato", style: TextStyle(color: KyboColors.textSecondary(context))),
+              Text("• Ripristinare il dispositivo alle impostazioni originali", style: TextStyle(color: KyboColors.textSecondary(context))),
+              Text("• Contattare il supporto per assistenza", style: TextStyle(color: KyboColors.textSecondary(context))),
+              const SizedBox(height: 16),
               Text(
                 "Continuando, accetti che i tuoi dati potrebbero non essere completamente protetti.",
                 style: TextStyle(
-                  color: Colors.red,
+                  color: KyboColors.error,
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
                 ),
@@ -280,9 +318,9 @@ class _MainScreenContentState extends State<MainScreenContent>
           ),
         ),
         actions: [
-          TextButton(
+          PillButton(
+            label: "Ho capito, continua comunque",
             onPressed: () {
-              // ✅ Log accettazione warning
               FirebaseAnalytics.instance.logEvent(
                 name: 'jailbreak_warning_accepted',
                 parameters: {
@@ -291,10 +329,9 @@ class _MainScreenContentState extends State<MainScreenContent>
               );
               Navigator.pop(ctx);
             },
-            child: const Text(
-              "Ho capito, continua comunque",
-              style: TextStyle(color: Colors.orange),
-            ),
+            backgroundColor: KyboColors.warning,
+            textColor: Colors.white,
+            height: 44,
           ),
         ],
       ),
@@ -319,20 +356,20 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
+      backgroundColor: KyboColors.background(context),
       appBar: _currentIndex == 1
           ? AppBar(
-              backgroundColor: AppColors.getSurface(context),
+              backgroundColor: KyboColors.surface(context),
               elevation: 0,
               title: Text(
                 "Kybo",
                 style: TextStyle(
-                  color: AppColors.getTextColor(context),
+                  color: KyboColors.textPrimary(context),
                   fontWeight: FontWeight.bold,
                   fontSize: 22,
                 ),
               ),
-              iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
+              iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
               leading: Builder(
                 builder: (context) {
                   return Showcase(
@@ -358,7 +395,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                     icon: Icon(
                       provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
                       color: provider.isTranquilMode
-                          ? AppColors.primary
+                          ? KyboColors.primary
                           : Colors.grey,
                     ),
                     onPressed: provider.toggleTranquilMode,
@@ -368,9 +405,9 @@ class _MainScreenContentState extends State<MainScreenContent>
               bottom: TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                labelColor: AppColors.primary,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: AppColors.primary,
+                labelColor: KyboColors.primary,
+                unselectedLabelColor: KyboColors.textMuted(context),
+                indicatorColor: KyboColors.primary,
                 indicatorWeight: 3,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                 tabs: provider.getDays()
@@ -381,56 +418,47 @@ class _MainScreenContentState extends State<MainScreenContent>
           : null,
       drawer: _buildDrawer(context, user),
       body: _buildBody(provider),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          indicatorColor: AppColors.primary.withValues(alpha: 0.1),
-          iconTheme: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: AppColors.primary);
-            }
-            return const IconThemeData(color: Colors.grey);
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              );
-            }
-            return TextStyle(color: AppColors.getSecondaryTextColor(context), fontSize: 12);
-          }),
-          backgroundColor: AppColors.getSurface(context),
-          elevation: 5,
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (i) => setState(() => _currentIndex = i),
-          destinations: [
-            NavigationDestination(
-              icon: Showcase(
-                key: _pantryTabKey,
-                title: 'Dispensa',
-                description:
-                    'Tieni traccia di ciò che hai in casa.\nScorri per eliminare, + per aggiungere.',
-                child: const Icon(Icons.kitchen),
-              ),
-              label: 'Dispensa',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_today),
-              label: 'Piano',
-            ),
-            NavigationDestination(
-              icon: Showcase(
-                key: _shoppingTabKey,
-                title: 'Lista della Spesa',
-                description: 'Generata in automatico dalla tua dieta.',
-                child: const Icon(Icons.shopping_cart),
-              ),
-              label: 'Lista',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: KyboColors.surface(context),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
           ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(
+                  icon: Icons.kitchen,
+                  label: 'Dispensa',
+                  index: 0,
+                  showcaseKey: _pantryTabKey,
+                  showcaseTitle: 'Dispensa',
+                  showcaseDesc: 'Tieni traccia di ciò che hai in casa.\nScorri per eliminare, + per aggiungere.',
+                ),
+                _buildNavItem(
+                  icon: Icons.calendar_today,
+                  label: 'Piano',
+                  index: 1,
+                ),
+                _buildNavItem(
+                  icon: Icons.shopping_cart,
+                  label: 'Lista',
+                  index: 2,
+                  showcaseKey: _shoppingTabKey,
+                  showcaseTitle: 'Lista della Spesa',
+                  showcaseDesc: 'Generata in automatico dalla tua dieta.',
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -475,6 +503,62 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
   }
 
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+    GlobalKey? showcaseKey,
+    String? showcaseTitle,
+    String? showcaseDesc,
+  }) {
+    final isSelected = _currentIndex == index;
+    
+    Widget navItem = InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      borderRadius: KyboBorderRadius.large,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? KyboColors.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: KyboBorderRadius.large,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? KyboColors.primary : Colors.grey,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? KyboColors.primary : Colors.grey,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (showcaseKey != null && showcaseTitle != null && showcaseDesc != null) {
+      return Showcase(
+        key: showcaseKey,
+        title: showcaseTitle,
+        description: showcaseDesc,
+        child: navItem,
+      );
+    }
+
+    return navItem;
+  }
+
   Widget _buildDrawer(BuildContext drawerCtx, User? user) {
     final String initial = (user?.email != null && user!.email!.isNotEmpty)
         ? user.email![0].toUpperCase()
@@ -496,140 +580,233 @@ class _MainScreenContentState extends State<MainScreenContent>
         final bool canUpload = (role == 'independent' || role == 'admin');
 
         return Drawer(
-          backgroundColor: AppColors.getSurface(drawerCtx),
+          backgroundColor: KyboColors.background(drawerCtx),
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              UserAccountsDrawerHeader(
-                accountName: const Text(
-                  "Kybo",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      KyboColors.primary,
+                      KyboColors.primaryDark,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                accountEmail: Text(
-                  user?.email ?? "Ospite",
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      fontSize: 30.0,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                decoration: const BoxDecoration(color: AppColors.primary),
-              ),
-              if (user != null) ...[
-                ListTile(
-                  leading: const Icon(Icons.history),
-                  title: const Text("Cronologia Diete"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    Navigator.push(
-                      drawerCtx,
-                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text("Cambia Password"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    Navigator.push(
-                      drawerCtx,
-                      MaterialPageRoute(
-                        builder: (_) => const ChangePasswordScreen(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
-                if (canUpload)
-                  ListTile(
-                    leading: const Icon(
-                      Icons.upload_file,
-                      color: Colors.orange,
+                      child: Center(
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: KyboColors.primary,
+                          ),
+                        ),
+                      ),
                     ),
-                    title: const Text("Carica Dieta PDF"),
-                    onTap: () {
-                      Navigator.pop(drawerCtx);
-                      _uploadDiet(drawerCtx);
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Kybo",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user?.email ?? "Ospite",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (user != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+                    builder: (context, snapshot) {
+                      // Determine if user has a nutritionist by checking parent_id or created_by
+                      // If user has parent_id/created_by, they are a client with nutritionist → Show Chat
+                      // If user doesn't have parent_id, they are independent → Show Upload
+                      bool hasNutritionist = false;
+                      if (snapshot.hasData && snapshot.data!.exists) {
+                        final data = snapshot.data!.data() as Map<String, dynamic>?;
+                        hasNutritionist = ((data?['parent_id'] != null && (data?['parent_id'].toString().isNotEmpty ?? false)) ||
+                                         (data?['created_by'] != null && (data?['created_by'].toString().isNotEmpty ?? false)));
+                      }
+                      
+                      return Column(
+                        children: [
+                          // 💬 Chat OR 📤 Upload (mutually exclusive)
+                          if (hasNutritionist) ...[
+                            // User has nutritionist → Show Chat
+                            Consumer<ChatProvider>(
+                              builder: (context, chatProvider, _) {
+                                final unreadCount = chatProvider.unreadCount;
+                                return PillListTile(
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: KyboColors.primary.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        const Icon(Icons.chat_bubble, color: KyboColors.primary, size: 20),
+                                        if (unreadCount > 0)
+                                          Positioned(
+                                            top: -2,
+                                            right: -2,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: const BoxDecoration(
+                                                color: KyboColors.error,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              constraints: const BoxConstraints(
+                                                minWidth: 16,
+                                                minHeight: 16,
+                                              ),
+                                              child: Text(
+                                                unreadCount > 9 ? '9+' : '$unreadCount',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  title: "Chat",
+                                  subtitle: unreadCount > 0 
+                                      ? "$unreadCount ${unreadCount == 1 ? 'messaggio' : 'messaggi'} non letto" 
+                                      : "Parla con il tuo nutrizionista",
+                                  onTap: () {
+                                    Navigator.pop(drawerCtx);
+                                    Navigator.push(
+                                      drawerCtx,
+                                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ] else ...[
+                            // User is independent → Show Upload Diet
+                            PillListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: KyboColors.warning.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.upload_file, color: KyboColors.warning, size: 20),
+                              ),
+                              title: "Carica Dieta PDF",
+                              subtitle: "Importa una nuova dieta",
+                              onTap: () {
+                                Navigator.pop(drawerCtx);
+                                _uploadDiet(drawerCtx);
+                              },
+                            ),
+                          ],
+
+                          // 📜 Cronologia
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.accent.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.history, color: KyboColors.accent, size: 20),
+                            ),
+                            title: "Cronologia",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                              );
+                            },
+                          ),
+
+                          // ⚙️ Impostazioni
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.success.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.settings, color: KyboColors.success, size: 20),
+                            ),
+                            title: "Impostazioni",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                              );
+                            },
+                          ),
+
+                          // 🚪 Esci
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.error.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.logout, color: KyboColors.error, size: 20),
+                            ),
+                            title: "Esci",
+                            onTap: () async {
+                              Navigator.pop(drawerCtx);
+                              await context.read<DietProvider>().clearData();
+                              await _auth.signOut();
+                              if (mounted) {
+                                Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      );
                     },
                   ),
-                ListTile(
-                  leading: const Icon(Icons.notifications_active),
-                  title: const Text("Gestisci Allarmi"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    _openTimeSettings();
-                  },
-                ),
-
-                // --- DARK MODE TOGGLE ---
-                Consumer<ThemeProvider>(
-                  builder: (context, themeProvider, _) => SwitchListTile(
-                    secondary: Icon(
-                      themeProvider.isDarkMode
-                          ? Icons.dark_mode
-                          : Icons.light_mode,
-                      color: themeProvider.isDarkMode
-                          ? Colors.amber
-                          : Colors.blueGrey,
-                    ),
-                    title: const Text("Modalità Scura"),
-                    value: themeProvider.isDarkMode,
-                    onChanged: (_) => themeProvider.toggleTheme(),
-                  ),
-                ),
-
-                // --- PRIVACY POLICY NEL MENU ---
-                ListTile(
-                  leading: const Icon(
-                    Icons.privacy_tip,
-                    color: Colors.blueGrey,
-                  ),
-                  title: const Text("Privacy Policy"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    _showPrivacyDialog();
-                  },
-                ),
-
-                const Divider(),
-
-                // TASTO RESET TUTORIAL
-                ListTile(
-                  leading: const Icon(
-                    Icons.replay_circle_filled,
-                    color: Colors.green,
-                  ),
-                  title: const Text("Riavvia Tutorial"),
-                  onTap: () {
-                    Navigator.pop(drawerCtx);
-                    _resetTutorial();
-                  },
-                ),
-
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text("Esci"),
-                  onTap: () async {
-                    Navigator.pop(drawerCtx);
-                    await context.read<DietProvider>().clearData();
-                    await _auth.signOut();
-                    if (mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    }
-                  },
                 ),
               ],
             ],
@@ -663,7 +840,12 @@ class _MainScreenContentState extends State<MainScreenContent>
           builder: (dialogContext) => PopScope(
             canPop: false,
             child: AlertDialog(
-              title: const Text("Caricamento Dieta"),
+              backgroundColor: KyboColors.surface(context),
+              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+              title: Text(
+                "Caricamento Dieta",
+                style: TextStyle(color: KyboColors.textPrimary(context)),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -676,28 +858,32 @@ class _MainScreenContentState extends State<MainScreenContent>
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.primary,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: KyboColors.border(context),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                KyboColors.primary,
+                              ),
+                              minHeight: 8,
                             ),
-                            minHeight: 8,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             "$percentage%",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
+                              color: KyboColors.primary,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             fileName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: KyboColors.textMuted(context),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -708,9 +894,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                             percentage < 95
                                 ? "Upload in corso..."
                                 : "Elaborazione AI...",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey,
+                              color: KyboColors.textSecondary(context),
                             ),
                           ),
                         ],
@@ -734,7 +920,7 @@ class _MainScreenContentState extends State<MainScreenContent>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("✅ Dieta caricata con successo!"),
-            backgroundColor: AppColors.primary,
+            backgroundColor: KyboColors.primary,
             duration: Duration(seconds: 2),
           ),
         );
@@ -764,7 +950,7 @@ class _MainScreenContentState extends State<MainScreenContent>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Aggiunti $count prodotti!"),
-              backgroundColor: AppColors.primary,
+              backgroundColor: KyboColors.primary,
             ),
           );
         }
@@ -839,11 +1025,16 @@ class _MainScreenContentState extends State<MainScreenContent>
         return StatefulBuilder(
           builder: (innerCtx, setDialogState) {
             return AlertDialog(
+              backgroundColor: KyboColors.surface(context),
+              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
               title: Row(
                 children: [
-                  const Icon(Icons.notifications_active, color: AppColors.primary),
+                  Icon(Icons.notifications_active, color: KyboColors.primary),
                   const SizedBox(width: 8),
-                  const Text("Promemoria Pasti"),
+                  Text(
+                    "Promemoria Pasti",
+                    style: TextStyle(color: KyboColors.textPrimary(context)),
+                  ),
                 ],
               ),
               content: SizedBox(
@@ -857,7 +1048,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                         child: Text(
                           "Attiva i promemoria per ricevere notifiche all'orario dei pasti.",
                           style: TextStyle(
-                            color: AppColors.getSecondaryTextColor(innerCtx),
+                            color: KyboColors.textSecondary(innerCtx),
                             fontSize: 13,
                           ),
                         ),
@@ -870,13 +1061,13 @@ class _MainScreenContentState extends State<MainScreenContent>
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
                             color: isEnabled
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : AppColors.getCardColor(innerCtx),
-                            borderRadius: BorderRadius.circular(12),
+                                ? KyboColors.primary.withValues(alpha: 0.1)
+                                : KyboColors.surface(innerCtx),
+                            borderRadius: KyboBorderRadius.medium,
                             border: Border.all(
                               color: isEnabled
-                                  ? AppColors.primary.withValues(alpha: 0.3)
-                                  : Colors.grey.withValues(alpha: 0.2),
+                                  ? KyboColors.primary.withValues(alpha: 0.3)
+                                  : KyboColors.border(innerCtx),
                             ),
                           ),
                           child: ListTile(
@@ -886,9 +1077,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                             ),
                             leading: Switch(
                               value: isEnabled,
-                              activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+                              activeTrackColor: KyboColors.primary.withValues(alpha: 0.5),
                               thumbColor: WidgetStateProperty.resolveWith((states) {
-                                if (states.contains(WidgetState.selected)) return AppColors.primary;
+                                if (states.contains(WidgetState.selected)) return KyboColors.primary;
                                 return Colors.grey;
                               }),
                               onChanged: (val) {
@@ -900,8 +1091,8 @@ class _MainScreenContentState extends State<MainScreenContent>
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: isEnabled
-                                    ? AppColors.primary
-                                    : AppColors.getSecondaryTextColor(innerCtx),
+                                    ? KyboColors.primary
+                                    : KyboColors.textSecondary(innerCtx),
                               ),
                             ),
                             trailing: isEnabled
@@ -922,7 +1113,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary,
+                                        color: KyboColors.primary,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -948,15 +1139,16 @@ class _MainScreenContentState extends State<MainScreenContent>
                 ),
               ),
               actions: [
-                TextButton(
+                PillButton(
+                  label: "Annulla",
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Annulla"),
+                  backgroundColor: KyboColors.surface(context),
+                  textColor: KyboColors.textPrimary(context),
+                  height: 44,
                 ),
-                FilledButton.icon(
-                  icon: const Icon(Icons.save, size: 18),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
+                PillButton(
+                  icon: Icons.save,
+                  label: "Salva",
                   onPressed: () async {
                     Navigator.pop(ctx);
 
@@ -986,13 +1178,17 @@ class _MainScreenContentState extends State<MainScreenContent>
                                   ? "Promemoria disattivati"
                                   : "Attivati ${toSave.length} promemoria",
                             ),
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: KyboColors.primary,
+                            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+                            behavior: SnackBarBehavior.floating,
                           ),
                         );
                       }
                     }
                   },
-                  label: const Text("Salva"),
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  height: 44,
                 ),
               ],
             );

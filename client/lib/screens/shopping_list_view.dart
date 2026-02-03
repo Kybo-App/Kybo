@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:kybo/models/diet_models.dart';
+import 'package:provider/provider.dart';
+import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
-import '../constants.dart' show AppColors, italianDays, orderedMealTypes;
+import '../widgets/design_system.dart';
+import '../constants.dart' show italianDays, orderedMealTypes;
 import '../logic/diet_calculator.dart';
 
 // Fallback constants sono importati ma usati solo se config non disponibile
@@ -32,26 +35,15 @@ class ShoppingListView extends StatefulWidget {
 class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
 
-  /// Restituisce i giorni dalla config della dieta, o fallback a hardcoded
+  /// Restituisce i giorni dalla config della dieta usando il Provider per consistenza
   List<String> _getDays() {
-    final config = widget.dietPlan?.config;
-    if (config != null && config.days.isNotEmpty) {
-      return config.days;
-    }
-    // Fallback: estrai dalle chiavi del piano se presenti
-    if (widget.dietPlan != null && widget.dietPlan!.plan.isNotEmpty) {
-      return widget.dietPlan!.plan.keys.toList();
-    }
-    return italianDays;
+    // [FIX] Usa la logica centralizzata del Provider (Global Config -> Diet Config -> Fallback)
+    return context.read<DietProvider>().getDays();
   }
 
-  /// Restituisce i pasti dalla config della dieta, o fallback a hardcoded
+  /// Restituisce i pasti dalla config della dieta
   List<String> _getMeals() {
-    final config = widget.dietPlan?.config;
-    if (config != null && config.meals.isNotEmpty) {
-      return config.meals;
-    }
-    return orderedMealTypes;
+    return context.read<DietProvider>().getMeals();
   }
 
   List<String> _getOrderedDays() {
@@ -80,7 +72,12 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text("Genera Lista Spesa"),
+              backgroundColor: KyboColors.surface(context),
+              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+              title: Text(
+                "Genera Lista Spesa",
+                style: TextStyle(color: KyboColors.textPrimary(context)),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView.builder(
@@ -115,9 +112,12 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     );
 
                     return ExpansionTile(
+                      collapsedIconColor: KyboColors.textMuted(context),
+                      iconColor: KyboColors.primary,
                       leading: Checkbox(
                         value: areAllSelected,
-                        activeColor: AppColors.primary,
+                        activeColor: KyboColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         onChanged: (bool? value) {
                           setStateDialog(() {
                             if (value == true) {
@@ -133,17 +133,21 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         style: TextStyle(
                           fontWeight:
                               i == 0 ? FontWeight.bold : FontWeight.normal,
-                          color: i == 0 ? AppColors.primary : AppColors.getTextColor(context),
+                          color: i == 0 ? KyboColors.primary : KyboColors.textPrimary(context),
                         ),
                       ),
                       children: mealNames.map((meal) {
                         final key = "$day::$meal";
                         final isSelected = _selectedMealKeys.contains(key);
                         return CheckboxListTile(
-                          title: Text(meal),
+                          title: Text(
+                            meal,
+                            style: TextStyle(color: KyboColors.textSecondary(context)),
+                          ),
                           value: isSelected,
                           dense: true,
-                          activeColor: AppColors.primary,
+                          activeColor: KyboColors.primary,
+                           checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                           contentPadding: const EdgeInsets.only(
                             left: 60,
                             right: 20,
@@ -164,19 +168,22 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                 ),
               ),
               actions: [
-                TextButton(
+                PillButton(
+                  label: "Annulla",
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Annulla"),
+                  backgroundColor: KyboColors.surface(context),
+                  textColor: KyboColors.textPrimary(context),
+                  height: 40,
                 ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
+                PillButton(
+                  label: "Importa",
                   onPressed: () {
                     _generateListFromSelection();
                     Navigator.pop(context);
                   },
-                  child: const Text("Importa"),
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  height: 40,
                 ),
               ],
             );
@@ -396,7 +403,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("$count prodotti nel frigo!"),
-          backgroundColor: AppColors.primary,
+          backgroundColor: KyboColors.primary,
         ),
       );
     }
@@ -407,7 +414,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     bool hasCheckedItems = widget.shoppingList.any((i) => i.startsWith("OK_"));
 
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
+      backgroundColor: KyboColors.background(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -416,14 +423,21 @@ class _ShoppingListViewState extends State<ShoppingListView> {
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  const Icon(Icons.shopping_cart, size: 28, color: AppColors.primary),
-                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: KyboColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.shopping_cart, size: 24, color: KyboColors.primary),
+                  ),
+                  const SizedBox(width: 12),
                   Text(
                     "Lista della Spesa",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.getTextColor(context),
+                      color: KyboColors.textPrimary(context),
                     ),
                   ),
                 ],
@@ -440,11 +454,15 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           Icon(
                             Icons.list_alt,
                             size: 60,
-                            color: AppColors.getHintColor(context),
+                            color: KyboColors.textMuted(context),
                           ),
+                          const SizedBox(height: 16),
                           Text(
                             "Lista Vuota",
-                            style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                            style: TextStyle(
+                              color: KyboColors.textSecondary(context),
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
@@ -460,18 +478,23 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.getCardColor(context),
-                            borderRadius: BorderRadius.circular(12),
+                            color: KyboColors.surface(context),
+                            borderRadius: KyboBorderRadius.medium,
+                            border: Border.all(
+                              color: KyboColors.border(context),
+                              width: 1,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.getShadowColor(context),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
                           child: Dismissible(
                             key: Key(raw + index.toString()),
+                            direction: DismissDirection.endToStart,
                             onDismissed: (_) {
                               var list = List<String>.from(widget.shoppingList);
                               list.removeAt(index);
@@ -479,17 +502,20 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                             },
                             background: Container(
                               decoration: BoxDecoration(
-                                color: AppColors.getErrorBackground(context),
-                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
+                                ),
+                                borderRadius: KyboBorderRadius.medium,
                               ),
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
-                              child: Icon(Icons.delete, color: AppColors.getErrorForeground(context)),
+                              child: const Icon(Icons.delete, color: Colors.white),
                             ),
                             child: CheckboxListTile(
                               value: isChecked,
-                              activeColor: AppColors.primary,
+                              activeColor: KyboColors.primary,
                               checkColor: Colors.white,
+                              checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 2,
@@ -501,8 +527,8 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                                       ? TextDecoration.lineThrough
                                       : null,
                                   color: isChecked
-                                      ? AppColors.getHintColor(context)
-                                      : AppColors.getTextColor(context),
+                                      ? KyboColors.textMuted(context)
+                                      : KyboColors.textPrimary(context),
                                   fontWeight: isChecked
                                       ? FontWeight.normal
                                       : FontWeight.w500,
@@ -526,37 +552,30 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             // FOOTER CON BOTTONI
             Container(
               padding: const EdgeInsets.all(16),
-              color: AppColors.getCardColor(context),
+              decoration: BoxDecoration(
+                color: KyboColors.surface(context),
+                border: Border(top: BorderSide(color: KyboColors.border(context))),
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            hasCheckedItems ? AppColors.primary : Colors.grey,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                    child: PillButton(
+                      label: "Sposta nel Frigo",
                       onPressed: hasCheckedItems ? _moveCheckedToPantry : null,
-                      icon: const Icon(Icons.kitchen, color: Colors.white),
-                      label: const Text(
-                        "Sposta nel Frigo",
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      backgroundColor: hasCheckedItems ? KyboColors.primary : Colors.grey,
+                      textColor: Colors.white,
+                      icon: Icons.kitchen,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: const BorderSide(color: AppColors.accent),
-                      ),
+                    child: PillButton(
+                      label: "Da Dieta",
                       onPressed: _showImportDialog,
-                      icon: const Icon(Icons.download, color: AppColors.accent),
-                      label: const Text(
-                        "Importa da Dieta",
-                        style: TextStyle(color: AppColors.accent),
-                      ),
+                      backgroundColor: Colors.transparent,
+                      textColor: KyboColors.primary,
+                      icon: Icons.download,
+                      borderColor: KyboColors.primary,
                     ),
                   ),
                 ],

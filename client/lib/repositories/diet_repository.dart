@@ -8,7 +8,7 @@ class DietRepository {
   final ApiClient _client = ApiClient();
   final UploadClient _uploadClient = UploadClient();
 
-  Future<DietPlan> uploadDiet(
+  Future<Map<String, dynamic>> uploadDiet(
     String filePath, {
     String? fcmToken,
     Function(double progress)? onProgress, // ✅ AGGIUNGI callback
@@ -26,7 +26,7 @@ class DietRepository {
       onProgress: onProgress, // ✅ Passa callback
     );
 
-    return DietPlan.fromJson(response);
+    return response;
   }
 
   Future<List<dynamic>> scanReceipt(

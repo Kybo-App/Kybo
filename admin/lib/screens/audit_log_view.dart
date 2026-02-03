@@ -252,6 +252,7 @@ class AuditLogView extends StatelessWidget {
 
         return PillCard(
           padding: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias, // Masks content to pill shape
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: SingleChildScrollView(

@@ -6,6 +6,7 @@ import '../widgets/diet_logo.dart';
 import 'user_management_view.dart';
 import 'config_view.dart';
 import 'audit_log_view.dart';
+import 'chat_management_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -104,6 +105,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.people_alt_rounded,
         label: "Utenti",
         view: UserManagementView(key: ValueKey('users_$themeKey')),
+      ),
+      _NavItem(
+        icon: Icons.chat_bubble_rounded,
+        label: "Chat",
+        view: ChatManagementView(key: ValueKey('chat_$themeKey')),
       ),
       if (_isAdmin)
         _NavItem(

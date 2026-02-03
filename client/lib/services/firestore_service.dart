@@ -245,4 +245,65 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  // --- CONFIGURAZIONE GLOBALE (Step 11 & 12) ---
+  Future<Map<String, dynamic>?> fetchGlobalConfig() async {
+    try {
+      // Usa una collection pubblica o accessibile agli utenti autenticati
+      final doc = await _db.collection('app_config').doc('constants').get();
+      if (doc.exists) {
+        debugPrint("🌍 Global Config caricata da Firestore");
+        return doc.data();
+      }
+    } catch (e) {
+      debugPrint("⚠️ Errore caricamento Global Config: $e");
+    }
+    return null;
+  }
+
+  // --- UTILITY ADMIN (Da usare solo per init) ---
+  Future<void> uploadDefaultGlobalConfig() async {
+    try {
+      final List<String> foods = [
+        "mela", "mele", "pera", "pere", "banana", "banane", "arancia", "arance",
+        "mandarino", "mandarini", "clementina", "clementine", "pompelmo", "pompelmi",
+        "limone", "limoni", "succo di limone", "lime",
+        "ananas", "kiwi", "pesca", "pesche", "albicocca", "albicocche", "prugna", "prugne",
+        "fragola", "fragole", "ciliegia", "ciliegie", "frutti di bosco", "mirtilli", "lamponi", "more",
+        "fichi", "uva", "caco", "cachi", "anguria", "melone", "melone giallo", "melone retato",
+        "zucchina", "zucchine", "melanzana", "melanzane", "pomodoro", "pomodori", "pomodorini",
+        "cetriolo", "cetrioli", "finocchio", "finocchi", "sedano", "gambo di sedano",
+        "lattuga", "insalata", "insalata mista", "iceberg", "rucola", "valeriana", "radicchio", "indivia", "scarola",
+        "spinaci", "bieta", "bietole", "cicoria", "cime di rapa", "friarielli",
+        "broccolo", "broccoli", "cavolfiore", "cavolfiori", "verza", "cavolo cappuccio", "cavolo nero", "cavoletti di bruxelles",
+        "fagiolini", "taccole", "asparagi", "carciofo", "carciofi",
+        "zucca", "fiori di zucca",
+        "peperone", "peperoni", "friggitelli",
+        "carota", "carote", "ravanelli",
+        "funghi", "champignon", "porcini",
+        "minestrone", "minestrone di verdure", "passato di verdure", "vellutata di verdure", "ortaggi", "verdure grigliate",
+        "caffè", "caffe", "caffe amaro", "caffè senza zucchero",
+        "tè", "the", "tè verde", "tisana", "infuso",
+        "acqua", "acqua naturale", "acqua frizzante",
+        "aceto", "aceto di mele", "aceto balsamico", "succo di limone", "spezie", "erbe aromatiche"
+      ];
+      
+      final List<String> days = [
+        "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"
+      ];
+      
+      final List<String> meals = [
+        "Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"
+      ];
+
+      await _db.collection('app_config').doc('constants').set({
+        'relaxable_foods': foods,
+        'default_days': days,
+        'default_meals': meals,
+      });
+      debugPrint("✅ Configurazione Globale caricata su Firestore!");
+    } catch (e) {
+      debugPrint("❌ Errore upload config: $e");
+    }
+  }
 }

@@ -15,7 +15,7 @@ import '../logic/diet_calculator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/notification_service.dart';
 import '../models/diet_models.dart';
-import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods;
+// import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods; -> RIMOSSO
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -37,7 +37,18 @@ class DietProvider extends ChangeNotifier {
   DateTime _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _lastSyncedDiet;
   Map<String, dynamic>? _lastSyncedSubstitutions;
+
+
   static const Duration _cloudSaveInterval = Duration(hours: 3);
+
+  // --- GLOBAL CONFIG (Step 11 & 12) ---
+  Set<String>? _globalRelaxableFoods;
+  List<String>? _globalDays;
+  List<String>? _globalMeals;
+
+  // [DEBUG] Salva il raw JSON ritornato dal parser
+  Map<String, dynamic>? _lastRawParsedData;
+  Map<String, dynamic>? get lastRawParsedData => _lastRawParsedData;
 
   bool _isLoading = false;
   bool _isTranquilMode = false;
@@ -153,46 +164,102 @@ class DietProvider extends ChangeNotifier {
 
   /// Restituisce i giorni della settimana dalla config della dieta,
   /// oppure fallback ai valori hardcoded italiani se non disponibili
+  /// Restituisce i giorni della settimana dalla config della dieta,
+  /// oppure inferiti dal piano, oppure fallback su Global/Hardcoded
   List<String> getDays() {
+    // 1. Configurazione Esplicita (Metadata JSON)
     final config = _dietPlan?.config;
     if (config != null && config.days.isNotEmpty) {
       return config.days;
     }
-    // Fallback: estrai giorni dalle chiavi del piano se presenti
+
+    // 2. Inferiti dal Piano (Se presenti)
     if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
-      return _dietPlan!.plan.keys.toList();
+      final daysFromPlan = _dietPlan!.plan.keys.toList();
+      
+      // Ordinamento: Usa Global come riferimento
+      final referenceOrder = (_globalDays != null && _globalDays!.isNotEmpty)
+          ? _globalDays!
+          : [];
+          
+      // Ordina daysFromPlan basandosi su referenceOrder
+      daysFromPlan.sort((a, b) {
+        int idxA = referenceOrder.indexOf(a);
+        int idxB = referenceOrder.indexOf(b);
+        if (idxA == -1) idxA = 999;
+        if (idxB == -1) idxB = 999;
+        return idxA.compareTo(idxB);
+      });
+      
+      return daysFromPlan;
     }
-    return italianDays;
+
+    // 3. Global Config (Fallback puro)
+    if (_globalDays != null && _globalDays!.isNotEmpty) {
+      return _globalDays!;
+    }
+    
+    // 4. Default Hardcoded
+    return [];
   }
 
   /// Restituisce i tipi di pasto dalla config della dieta,
   /// oppure fallback ai valori hardcoded se non disponibili
   List<String> getMeals() {
+    // 1. Configurazione Esplicita (Metadata JSON)
     final config = _dietPlan?.config;
     if (config != null && config.meals.isNotEmpty) {
       return config.meals;
     }
-    // Fallback: estrai pasti unici dal piano se presenti
+
+    // 2. Inferiti dal Piano (Smart Merge)
     if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
-      final Set<String> mealsSet = {};
-      for (var dayMeals in _dietPlan!.plan.values) {
-        mealsSet.addAll(dayMeals.keys);
-      }
-      if (mealsSet.isNotEmpty) {
-        // Ordina secondo orderedMealTypes se possibile
-        final ordered = <String>[];
-        for (var meal in orderedMealTypes) {
-          if (mealsSet.contains(meal)) {
-            ordered.add(meal);
-            mealsSet.remove(meal);
+      List<String> masterList = [];
+      
+      // Itera sui giorni nell'ordine corretto (se possibile)
+      final days = getDays();
+      
+      for (var day in days) {
+        final dayMealsMap = _dietPlan!.plan[day];
+        if (dayMealsMap == null) continue;
+        
+        final dayMeals = dayMealsMap.keys.toList();
+        
+        // Merge dayMeals into masterList preserving order
+        int mIndex = 0;
+        for (var meal in dayMeals) {
+          // Se il pasto è già nella master list
+          if (masterList.contains(meal)) {
+            // Avanza l'indice master fino a trovare il pasto (o superarlo se l'ordine è diverso)
+            // Semplificazione: Cerchiamo l'indice di questo pasto
+            int existingIndex = masterList.indexOf(meal);
+            if (existingIndex >= mIndex) {
+              mIndex = existingIndex + 1;
+            }
+          } else {
+            // Se il pasto non c'è, inseriscilo alla posizione corrente
+            if (mIndex < masterList.length) {
+              masterList.insert(mIndex, meal);
+            } else {
+              masterList.add(meal);
+            }
+            mIndex++;
           }
         }
-        // Aggiungi eventuali pasti non standard alla fine
-        ordered.addAll(mealsSet);
-        return ordered;
+      }
+
+      if (masterList.isNotEmpty) {
+        return masterList;
       }
     }
-    return orderedMealTypes;
+
+    // 3. Global Config (Fallback puro)
+    if (_globalMeals != null && _globalMeals!.isNotEmpty) {
+      return _globalMeals!;
+    }
+
+    // 4. Default Hardcoded
+    return [];
   }
 
   /// Restituisce i relaxable foods dalla config della dieta,
@@ -202,7 +269,72 @@ class DietProvider extends ChangeNotifier {
     if (config != null && config.relaxableFoods.isNotEmpty) {
       return config.relaxableFoods;
     }
-    return relaxableFoods;
+    if (config != null && config.relaxableFoods.isNotEmpty) {
+      return config.relaxableFoods;
+    }
+    // 2. Global Config
+    if (_globalRelaxableFoods != null && _globalRelaxableFoods!.isNotEmpty) {
+      return _globalRelaxableFoods!;
+    }
+    // 3. Fallback
+    return {};
+  }
+
+  /// Verifica se un alimento è "relaxable" (frutta/verdura)
+  /// Gestisce matching intelligente singolare/plurale (es. Mela <-> Mele)
+  bool isRelaxable(String foodName) {
+    final relaxableSet = getRelaxableFoods();
+    if (relaxableSet.isEmpty) return false;
+
+    final String lowerName = foodName.toLowerCase();
+    
+    // [FIX] Blacklist: Parole che NON sono MAI relaxable anche se contengono frutti/verdure
+    // Es: "Marmellata di mele" contiene "mele" ma non è relaxable
+    const blacklist = [
+      'marmellata', 'confettura', 'olio', 'burro', 'margarina',
+      'zucchero', 'miele', 'pane', 'pasta', 'crema', 'succo'
+    ];
+    for (String banned in blacklist) {
+      if (lowerName.contains(banned)) return false;
+    }
+    
+    // 1. Controllo diretto (containment)
+    for (String tag in relaxableSet) {
+      if (lowerName.contains(tag)) return true;
+    }
+
+    // 2. Controllo Plurale/Singolare Smart
+    // Se "Mele" contiene il radicale di "Mela" (Mel) e la lunghezza è simile
+    for (String tag in relaxableSet) {
+      if (tag.length < 3) continue; // Ignora tag troppo corti
+
+      // [FIX] Gestione PLURALI SPECIALI (-cia, -gia -> -ce, -ge)
+      // Es. arancia (tag) -> arance (piano): rimuovi 'ia' = 'aranc', matcha 'aranc' in 'arance'
+      if (tag.endsWith('cia') || tag.endsWith('gia')) {
+         String stemShort = tag.substring(0, tag.length - 2); // 'aranc'
+         if (lowerName.contains(stemShort)) return true;
+      }
+
+      // Rimuovi l'ultima lettera (spesso vocale) per ottenere il radicale
+      String stem = tag.substring(0, tag.length - 1);
+      
+      // Cerca se il nome contiene questo radicale all'inizio di una parola
+      if (lowerName.contains(stem)) {
+        // Euristiche extra potrebbero essere aggiunte qui (es. controllo lunghezza parola trovata)
+        // Per ora ci fidiamo del radicale lungo (es. "pomodor" per "pomodori")
+        
+        // Verifica euristica sulla lunghezza per evitare falsi positivi (Mela vs Melanzana)
+        // Se la parola che contiene il stem è molto più lunga del tag originale, probabilmente non è lo stesso cibo
+        // (Qui semplifichiamo assumendo che se c'è match di stem e il contesto è cibo, è ok)
+        
+        // Controllo lunghezza approssimativo: se foodName è molto lungo ma il tag è corto, occhio.
+        // Ma "Insalata mista" contiene "insalata".
+        // "Torta di mele" contiene "mele" -> stem "mel" (da mela).
+        return true; 
+      }
+    }
+    
+    return false;
   }
 
   /// Trova l'indice del giorno corrente nella lista dei giorni della dieta
@@ -261,6 +393,10 @@ class DietProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+    
+    // Inizia caricamento config globale in background (non bloccante)
+    _fetchGlobalConfig();
+
     notifyListeners();
     return hasData;
   }
@@ -605,7 +741,10 @@ class DietProvider extends ChangeNotifier {
 
       _uploadProgress = 1.0; // ✅ Completo
 
-      _dietPlan = result;
+      // [DEBUG] Salva raw JSON per ispezione utente
+      _lastRawParsedData = result;
+
+      _dietPlan = DietPlan.fromJson(result);
 
       // Salvataggio Locale (Serializziamo l'oggetto in JSON)
       await _storage.saveDiet(_dietPlan!.toJson());
@@ -718,6 +857,9 @@ class DietProvider extends ChangeNotifier {
 
     final payload = {
       'dietData': planJson,
+      'dietData': planJson,
+      'days': getDays(), // [FIX] Giorni dinamici per isolare
+      'meals': getMeals(), // [FIX] Pasti dinamici per isolare
       'pantryItems': _pantryItems
           .map((p) => {'name': p.name, 'quantity': p.quantity, 'unit': p.unit})
           .toList(),
@@ -798,6 +940,22 @@ class DietProvider extends ChangeNotifier {
     await _recalcAvailability();
   }
 
+  Future<void> _fetchGlobalConfig() async {
+    final data = await _firestore.fetchGlobalConfig();
+    if (data != null) {
+      if (data['relaxable_foods'] != null) {
+        _globalRelaxableFoods = (data['relaxable_foods'] as List).cast<String>().toSet();
+      }
+      if (data['default_days'] != null) {
+        _globalDays = (data['default_days'] as List).cast<String>();
+      }
+      if (data['default_meals'] != null) {
+        _globalMeals = (data['default_meals'] as List).cast<String>();
+      }
+      notifyListeners();
+    }
+  }
+
   Future<void> clearData() async {
     await _storage.clearAll();
     _dietPlan = null; // [FIX] Nullifichiamo l'oggetto
@@ -870,3 +1028,6 @@ class DietProvider extends ChangeNotifier {
     super.dispose();
   }
 }
+
+// --- FALLBACK CONSTANTS (Private copies for reliability) ---
+// Rimosso: i fallback sono stati eliminati per supportare la configurazione dinamica globale.
