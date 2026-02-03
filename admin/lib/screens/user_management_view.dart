@@ -1166,6 +1166,24 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
+    // --- EXPIRING DIET CHECK ---
+    bool isDietExpired = false;
+    String? dietDateStr;
+    if (showDiet && data['last_diet_update'] != null) {
+      try {
+        final lastUpdate = DateTime.tryParse(data['last_diet_update'].toString());
+        if (lastUpdate != null) {
+          dietDateStr = DateFormat('dd MMM').format(lastUpdate);
+          final diff = DateTime.now().difference(lastUpdate).inDays;
+          if (diff >= 30) {
+            isDietExpired = true;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     return PillCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1265,19 +1283,31 @@ class _UserCardState extends State<_UserCard> {
 
           const Spacer(),
 
-          // ─────────────────────────────────────────────────────────────────
+            // ─────────────────────────────────────────────────────────────────
           // STATUS BADGES
           // ─────────────────────────────────────────────────────────────────
-          if (requiresPassChange)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: PillBadge(
-                label: "Password da cambiare",
-                color: KyboColors.warning,
-                icon: Icons.warning_amber_rounded,
-                small: true,
-              ),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (requiresPassChange)
+                PillBadge(
+                  label: "Password da cambiare",
+                  color: KyboColors.warning,
+                  icon: Icons.warning_amber_rounded,
+                  small: true,
+                ),
+              if (isDietExpired)
+                PillBadge(
+                  label: "Dieta Scaduta ($dietDateStr)",
+                  color: KyboColors.error,
+                  icon: Icons.timer_off_outlined,
+                  small: true,
+                ),
+            ],
+          ),
+          if (requiresPassChange || isDietExpired)
+            const SizedBox(height: 12),
 
           // ─────────────────────────────────────────────────────────────────
           // ACTIONS ROW

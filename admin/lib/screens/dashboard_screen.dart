@@ -7,6 +7,7 @@ import 'user_management_view.dart';
 import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
+import 'nutritional_calculator_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -110,6 +111,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.chat_bubble_rounded,
         label: "Chat",
         view: ChatManagementView(key: ValueKey('chat_$themeKey')),
+      ),
+      _NavItem(
+        icon: Icons.calculate_rounded,
+        label: "Calcolatrice",
+        view: NutritionalCalculatorView(key: ValueKey('calc_$themeKey')),
       ),
       if (_isAdmin)
         _NavItem(

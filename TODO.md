@@ -29,9 +29,9 @@
 - [x] Obiettivi personalizzati con progress bar (es. "bevi 2L acqua al giorno")
 - [x] Diario alimentare (note libere per ogni pasto)
 
-### 7. Admin - Calcolatrice Nutrizionale & Alert Diete
-- [ ] Calcolatrice nutrizionale integrata (macro/micro nutrienti per pasto)
-- [ ] Alert automatico quando una dieta scade (es. dopo 30 giorni)
+### 7. Admin - Calcolatrice Nutrizionale & Alert Diete ✅
+- [x] Calcolatrice nutrizionale integrata (macro/micro nutrienti per pasto)
+- [x] Alert automatico quando una dieta scade (es. dopo 30 giorni)
 
 ### 8. Backend - Riconoscimento Allergeni
 - [ ] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
