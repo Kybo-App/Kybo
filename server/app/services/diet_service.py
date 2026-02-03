@@ -2,7 +2,6 @@ import json
 import re
 import io
 import pdfplumber
-import os
 import hashlib
 from google import genai
 from google.genai import types

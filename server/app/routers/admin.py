@@ -10,7 +10,7 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import auth, firestore
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ class LogAccessRequest(BaseModel):
 
 # --- SYNC USERS ---
 @router.post("/sync-users")
-async def admin_sync_users(request: Request, requester: dict = Depends(verify_admin)):
+async def admin_sync_users(requester: dict = Depends(verify_admin)):
     """Sincronizza utenti Firebase Auth con Firestore."""
     try:
         db = firebase_admin.firestore.client()
