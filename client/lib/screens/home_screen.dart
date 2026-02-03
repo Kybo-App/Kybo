@@ -52,7 +52,8 @@ class MainScreenContent extends StatefulWidget {
 class _MainScreenContentState extends State<MainScreenContent>
     with TickerProviderStateMixin {
   int _currentIndex = 1;
-  late TabController _tabController;
+  TabController? _tabController;
+  int _lastDaysCount = 0;
   final AuthService _auth = AuthService();
 
   // CHIAVI TUTORIAL
@@ -67,18 +68,47 @@ class _MainScreenContentState extends State<MainScreenContent>
   void initState() {
     super.initState();
     _initialPermissionCheck();
-    int today = DateTime.now().weekday - 1;
-    _tabController = TabController(
-      length: 7,
-      initialIndex: today < 0 ? 0 : today,
-      vsync: this,
-    );
+    // TabController viene creato/aggiornato in _ensureTabController()
+    // dopo che getDays() ha i dati reali
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkJailbreak();
       _initAppData();
       _checkTutorial();
     });
+  }
+
+  /// Crea o ricrea il TabController quando il numero di giorni cambia.
+  /// Calcola l'initialIndex trovando il nome del giorno corrente nella lista.
+  void _ensureTabController(List<String> days) {
+    if (days.isEmpty) return;
+    if (_tabController != null && days.length == _lastDaysCount) return;
+
+    // Mappa weekday di Dart (1=Mon..7=Sun) ai nomi italiani standard
+    const italianWeekdays = [
+      'lunedì', 'martedì', 'mercoledì', 'giovedì',
+      'venerdì', 'sabato', 'domenica',
+    ];
+
+    final todayWeekday = DateTime.now().weekday; // 1=Mon..7=Sun
+    final todayName = italianWeekdays[todayWeekday - 1];
+
+    // Trova l'indice del giorno corrente nella lista della dieta
+    int initialIndex = 0;
+    for (int i = 0; i < days.length; i++) {
+      if (days[i].toLowerCase() == todayName) {
+        initialIndex = i;
+        break;
+      }
+    }
+
+    _tabController?.dispose();
+    _tabController = TabController(
+      length: days.length,
+      initialIndex: initialIndex,
+      vsync: this,
+    );
+    _lastDaysCount = days.length;
   }
 
   Future<void> _initialPermissionCheck() async {
@@ -346,6 +376,10 @@ class _MainScreenContentState extends State<MainScreenContent>
     // [FIX 2] Definito user per passarlo al drawer
     final user = FirebaseAuth.instance.currentUser;
 
+    // [FIX TAB] Crea/aggiorna il TabController basandosi sui giorni reali
+    final days = provider.getDays();
+    _ensureTabController(days);
+
     // 2. CONTROLLO REATTIVO: Se serve il permesso, mostra il dialog
     if (provider.needsNotificationPermissions) {
       // Usiamo 'provider' qui
@@ -357,7 +391,7 @@ class _MainScreenContentState extends State<MainScreenContent>
 
     return Scaffold(
       backgroundColor: KyboColors.background(context),
-      appBar: _currentIndex == 1
+      appBar: _currentIndex == 1 && _tabController != null
           ? AppBar(
               backgroundColor: KyboColors.surface(context),
               elevation: 0,
@@ -474,7 +508,12 @@ class _MainScreenContentState extends State<MainScreenContent>
           onScanTap: () => _scanReceipt(provider),
         );
       case 1:
-        // [FIX] Passiamo dietPlan invece di dietData/substitutions
+        // [FIX] TabController null = giorni non ancora caricati
+        if (_tabController == null || provider.getDays().isEmpty) {
+          return Center(
+            child: CircularProgressIndicator(color: KyboColors.primary),
+          );
+        }
         return TabBarView(
           controller: _tabController,
           children: provider.getDays().map((day) {
