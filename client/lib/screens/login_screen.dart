@@ -6,7 +6,14 @@ import '../widgets/design_system.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? inviteCode;
+  final bool isIndependent;
+
+  const LoginScreen({
+    super.key,
+    this.inviteCode,
+    this.isIndependent = false,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -18,6 +25,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _auth = AuthService();
   bool _isLogin = true;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.inviteCode != null || widget.isIndependent) {
+      _isLogin = false; // Switch to register automatically
+    }
+  }
 
   Future<void> _googleLogin() async {
     setState(() => _isLoading = true);
@@ -59,7 +74,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isLogin) {
         await _auth.signIn(email, pass);
       } else {
-        await _auth.signUp(email, pass);
+        await _auth.signUp(
+          email, 
+          pass,
+          role: widget.inviteCode != null ? 'client' : 'independent',
+          additionalData: widget.inviteCode != null ? {'invite_code': widget.inviteCode} : null,
+        );
       }
 
       if (mounted) {
@@ -152,6 +172,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: KyboColors.textSecondary(context),
                     ),
                   ),
+                  if (widget.inviteCode != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: KyboColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: KyboColors.success),
+                      ),
+                      child: Text(
+                        "Codice Invito applicato: ${widget.inviteCode}",
+                        style: const TextStyle(
+                          color: KyboColors.success,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 40),
 
                   // Email Field
