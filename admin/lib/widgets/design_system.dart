@@ -257,6 +257,7 @@ class PillNavItem extends StatefulWidget {
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
+  final int? badgeCount;
 
   const PillNavItem({
     super.key,
@@ -264,6 +265,7 @@ class PillNavItem extends StatefulWidget {
     required this.icon,
     required this.isSelected,
     required this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -321,6 +323,29 @@ class _PillNavItemState extends State<PillNavItem> {
                   fontSize: 14,
                 ),
               ),
+                ),
+              ),
+              if (widget.badgeCount != null && widget.badgeCount! > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: KyboColors.error,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  child: Center(
+                    child: Text(
+                      widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
