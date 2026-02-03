@@ -104,7 +104,6 @@ Extract the following metadata and include in "config" field:
    - Include common vegetables: insalata, pomodoro, zucchina, carota, spinaci, etc.
    - Keep names in lowercase, singular form when possible.
    Example: ["mela", "banana", "arancia", "insalata", "pomodoro", "carote", "spinaci"]
-   Example: ["mela", "banana", "arancia", "insalata", "pomodoro", "carote", "spinaci"]
 
 ALLERGEN EXTRACTION (REQUIRED):
 Extract any allergens or intolerances EXPLICITLY mentioned in the document header, notes, or introduction.
