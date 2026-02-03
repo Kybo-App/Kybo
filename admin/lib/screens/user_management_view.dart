@@ -204,33 +204,72 @@ class _UserManagementViewState extends State<UserManagementView> {
     String currentEmail,
     String currentFirst,
     String currentLast,
+    Map<String, dynamic> userData,
   ) async {
     final emailCtrl = TextEditingController(text: currentEmail);
     final firstCtrl = TextEditingController(text: currentFirst);
     final lastCtrl = TextEditingController(text: currentLast);
+    
+    // Nutritionist specific
+    final isNutritionist = userData['role'] == 'nutritionist';
+    final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
+    final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
+    final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
+    final limitCtrl = TextEditingController(text: (userData['max_clients'] ?? 50).toString());
 
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Modifica Account"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: firstCtrl,
-              decoration: const InputDecoration(labelText: "Nome"),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: lastCtrl,
-              decoration: const InputDecoration(labelText: "Cognome"),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstCtrl,
+                decoration: const InputDecoration(labelText: "Nome"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: lastCtrl,
+                decoration: const InputDecoration(labelText: "Cognome"),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: "Email"),
+              ),
+              if (isNutritionist) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const Text("Profilo Professionale", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                 TextField(
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(labelText: "Telefono", prefixIcon: Icon(Icons.phone)),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: bioCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: "Bio (presentazione)"),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: specCtrl,
+                  decoration: const InputDecoration(labelText: "Specializzazioni (es. Sportivo, Vegano)"),
+                ),
+                if (_currentUserRole == 'admin') ...[
+                   const SizedBox(height: 8),
+                   TextField(
+                    controller: limitCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: "Limite Clienti (Admin Only)"),
+                  ),
+                ]
+              ]
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -242,11 +281,20 @@ class _UserManagementViewState extends State<UserManagementView> {
               Navigator.pop(ctx);
               setState(() => _isLoading = true);
               try {
+                int? maxClients;
+                if (isNutritionist && _currentUserRole == 'admin') {
+                    maxClients = int.tryParse(limitCtrl.text);
+                }
+
                 await _repo.updateUser(
                   uid,
                   email: emailCtrl.text,
                   firstName: firstCtrl.text,
                   lastName: lastCtrl.text,
+                  bio: isNutritionist ? bioCtrl.text : null,
+                  specializations: isNutritionist ? specCtrl.text : null,
+                  phone: isNutritionist ? phoneCtrl.text : null,
+                  maxClients: maxClients,
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -912,6 +960,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         currentUserRole: _currentUserRole,
                         currentUserId: _currentUserId,
                         roleColor: _getRoleColor('nutritionist'),
+                        clientCount: clients.length,
                       ),
                     ),
                   ),
@@ -1059,7 +1108,7 @@ class _UserCard extends StatefulWidget {
   final Function(String) onUploadDiet;
   final Function(String) onUploadParser;
   final Function(String) onHistory;
-  final Function(String, String, String, String) onEdit;
+  final Function(String, String, String, String, Map<String, dynamic>) onEdit;
   final Function(String)? onAssign;
   final String currentUserRole;
   final String currentUserId;
@@ -1076,7 +1125,10 @@ class _UserCard extends StatefulWidget {
     required this.currentUserRole,
     required this.currentUserId,
     required this.roleColor,
+    this.clientCount,
   });
+
+  final int? clientCount;
 
   @override
   State<_UserCard> createState() => _UserCardState();
@@ -1166,6 +1218,24 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
+    // --- EXPIRING DIET CHECK ---
+    bool isDietExpired = false;
+    String? dietDateStr;
+    if (showDiet && data['last_diet_update'] != null) {
+      try {
+        final lastUpdate = DateTime.tryParse(data['last_diet_update'].toString());
+        if (lastUpdate != null) {
+          dietDateStr = DateFormat('dd MMM').format(lastUpdate);
+          final diff = DateTime.now().difference(lastUpdate).inDays;
+          if (diff >= 30) {
+            isDietExpired = true;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     return PillCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1213,6 +1283,20 @@ class _UserCardState extends State<_UserCard> {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (role == 'nutritionist' && data['specializations'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          "${data['specializations']}",
+                          style: TextStyle(
+                             color: KyboColors.primary,
+                             fontSize: 11,
+                             fontWeight: FontWeight.w500
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     const SizedBox(height: 2),
                     Text(
                       displayEmail,
@@ -1233,6 +1317,18 @@ class _UserCardState extends State<_UserCard> {
                         ),
                       ),
                     ],
+                      ),
+                    if (role == 'nutritionist' && widget.clientCount != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          "${widget.clientCount} / ${data['max_clients'] ?? 50} Clienti",
+                          style: TextStyle(
+                            color: KyboColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1265,19 +1361,31 @@ class _UserCardState extends State<_UserCard> {
 
           const Spacer(),
 
-          // ─────────────────────────────────────────────────────────────────
+            // ─────────────────────────────────────────────────────────────────
           // STATUS BADGES
           // ─────────────────────────────────────────────────────────────────
-          if (requiresPassChange)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: PillBadge(
-                label: "Password da cambiare",
-                color: KyboColors.warning,
-                icon: Icons.warning_amber_rounded,
-                small: true,
-              ),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (requiresPassChange)
+                PillBadge(
+                  label: "Password da cambiare",
+                  color: KyboColors.warning,
+                  icon: Icons.warning_amber_rounded,
+                  small: true,
+                ),
+              if (isDietExpired)
+                PillBadge(
+                  label: "Dieta Scaduta ($dietDateStr)",
+                  color: KyboColors.error,
+                  icon: Icons.timer_off_outlined,
+                  small: true,
+                ),
+            ],
+          ),
+          if (requiresPassChange || isDietExpired)
+            const SizedBox(height: 12),
 
           // ─────────────────────────────────────────────────────────────────
           // ACTIONS ROW
@@ -1339,6 +1447,7 @@ class _UserCardState extends State<_UserCard> {
                       realEmail,
                       data['first_name'] ?? '',
                       data['last_name'] ?? '',
+                      data,
                     ),
                     size: 36,
                   ),

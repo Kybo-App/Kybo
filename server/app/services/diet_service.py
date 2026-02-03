@@ -54,6 +54,7 @@ class OutputDietaCompleto(typing.TypedDict):
     piano_settimanale: list[GiornoDieta]
     tabella_sostituzioni: list[GruppoSostituzione]
     config: ConfigDieta  # Configurazione dinamica
+    allergeni: list[str] # Lista allergeni rilevati
 
 class DietParser:
     # [OPTIMIZATION] Cache L1 in RAM (condivisa tra richieste)
@@ -103,6 +104,13 @@ Extract the following metadata and include in "config" field:
    - Include common vegetables: insalata, pomodoro, zucchina, carota, spinaci, etc.
    - Keep names in lowercase, singular form when possible.
    Example: ["mela", "banana", "arancia", "insalata", "pomodoro", "carote", "spinaci"]
+
+ALLERGEN EXTRACTION (REQUIRED):
+Extract any allergens or intolerances EXPLICITLY mentioned in the document header, notes, or introduction.
+- Look for keywords like: "Intolleranze", "Allergie", "Allergeni", "No a...".
+- Return as a simple list of strings.
+- Example: ["Glutine", "Lattosio", "Nichel"]
+- If none found, return empty list [].
 """
 
     # --- 1.4 SANITIZZAZIONE GDPR (Migliorata) ---

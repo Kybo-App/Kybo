@@ -54,9 +54,9 @@ class ChatMessage {
   final String id;
   final String senderId;
   final String senderType; // 'client' or 'nutritionist'
-  final String message;
-  final DateTime timestamp;
-  final bool read;
+  final String? attachmentUrl;
+  final String? attachmentType; // 'image' or 'pdf'
+  final String? fileName;
 
   ChatMessage({
     required this.id,
@@ -65,6 +65,9 @@ class ChatMessage {
     required this.message,
     required this.timestamp,
     required this.read,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.fileName,
   });
 
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
@@ -74,10 +77,12 @@ class ChatMessage {
       id: doc.id,
       senderId: data['senderId'] ?? '',
       senderType: data['senderType'] ?? 'client',
-      // Supporta sia 'message' (nuovo) che 'text' (legacy client) per backward compatibility
       message: data['message'] ?? data['text'] ?? '',
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       read: data['read'] ?? false,
+      attachmentUrl: data['attachmentUrl'],
+      attachmentType: data['attachmentType'],
+      fileName: data['fileName'],
     );
   }
 
@@ -88,6 +93,9 @@ class ChatMessage {
       'message': message,
       'timestamp': Timestamp.fromDate(timestamp),
       'read': read,
+      if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+      if (attachmentType != null) 'attachmentType': attachmentType,
+      if (fileName != null) 'fileName': fileName,
     };
   }
 }

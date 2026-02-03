@@ -53,6 +53,10 @@ class UpdateUserRequest(BaseModel):
     email: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    bio: Optional[str] = None
+    specializations: Optional[str] = None
+    phone: Optional[str] = None
+    max_clients: Optional[int] = None
 
 
 class AssignUserRequest(BaseModel):
@@ -159,6 +163,14 @@ async def admin_update_user(
             fs_update['first_name'] = body.first_name
         if body.last_name:
             fs_update['last_name'] = body.last_name
+        if body.bio is not None:
+            fs_update['bio'] = body.bio
+        if body.specializations is not None:
+            fs_update['specializations'] = body.specializations
+        if body.phone is not None:
+            fs_update['phone'] = body.phone
+        if body.max_clients is not None:
+            fs_update['max_clients'] = body.max_clients
 
         if fs_update:
             db.collection('users').document(target_uid).update(fs_update)
@@ -177,13 +189,25 @@ async def admin_assign_user(
     """Assegna un utente a un nutrizionista."""
     try:
         db = firebase_admin.firestore.client()
-        db.collection('access_logs').add({
-            'requester_id': requester['uid'],
-            'target_uid': body.target_uid,
-            'action': 'ASSIGN_USER',
-            'reason': f"Assigned to {body.nutritionist_id}",
             'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
         })
+
+        # --- CHECK CLIENT LIMIT ---
+        nut_doc = db.collection('users').document(body.nutritionist_id).get()
+        if nut_doc.exists:
+            nut_data = nut_doc.to_dict()
+            max_clients = nut_data.get('max_clients', 50)  # Default limit 50
+            
+            # Count current clients
+            clients_query = db.collection('users').where('parent_id', '==', body.nutritionist_id).count()
+            current_clients = clients_query.get()[0][0].value
+            
+            if current_clients >= max_clients:
+               raise HTTPException(
+                   status_code=400, 
+                   detail=f"Nutrizionista pieno! ({current_clients}/{max_clients} clienti)"
+               )
+
         db.collection('users').document(body.target_uid).update({
             'role': 'user',
             'parent_id': body.nutritionist_id,

@@ -30,6 +30,26 @@ from app.core.logging import logger, sanitize_error_message
 from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
+from app.routers.gdpr import router as gdpr_router
+from app.routers.chat import router as chat_router
+
+# --- SENTRY ERROR TRACKING ---
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENV,  # DEV, STAGING, PROD
+        integrations=[
+            FastApiIntegration(),
+            StarletteIntegration(),
+        ],
+        traces_sample_rate=0.1,  # 10% delle richieste per performance monitoring
+        send_default_pii=False,  # Non inviare dati personali
+    )
+    logger.info("sentry_init_success", environment=settings.ENV)
 
 
 # --- FIREBASE INIT ---
@@ -102,6 +122,8 @@ app.add_middleware(
 app.include_router(diet_router)
 app.include_router(users_router)
 app.include_router(admin_router)
+app.include_router(gdpr_router)
+app.include_router(chat_router)
 
 
 # --- BACKGROUND WORKER ---
@@ -154,5 +176,82 @@ async def start_background_tasks():
 # --- HEALTH CHECK ---
 @app.get("/health")
 async def health_check():
-    """Endpoint di health check per monitoring."""
+    """Endpoint di health check base per load balancer."""
     return {"status": "healthy", "version": "2.0.0"}
+
+
+@app.get("/health/detailed")
+async def health_check_detailed():
+    """
+    Health check avanzato che verifica tutti i servizi dipendenti.
+    Usato per debugging e monitoring dettagliato.
+    """
+    import subprocess
+    import shutil
+    from google import genai
+    
+    checks = {
+        "firebase": {"status": "unknown", "message": ""},
+        "gemini": {"status": "unknown", "message": ""},
+        "tesseract": {"status": "unknown", "message": ""},
+        "sentry": {"status": "unknown", "message": ""},
+    }
+    
+    # Check Firebase
+    try:
+        db = firestore.client()
+        # Prova a leggere il documento config
+        doc = db.collection("config").document("global").get()
+        if doc.exists:
+            checks["firebase"] = {"status": "ok", "message": "Connected"}
+        else:
+            checks["firebase"] = {"status": "ok", "message": "Connected (no config doc)"}
+    except Exception as e:
+        checks["firebase"] = {"status": "error", "message": str(e)[:100]}
+    
+    # Check Gemini API
+    try:
+        client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        # Prova a listare i modelli (operazione leggera)
+        models = list(client.models.list())
+        if models:
+            checks["gemini"] = {"status": "ok", "message": f"{len(models)} models available"}
+        else:
+            checks["gemini"] = {"status": "warning", "message": "No models found"}
+    except Exception as e:
+        checks["gemini"] = {"status": "error", "message": str(e)[:100]}
+    
+    # Check Tesseract
+    try:
+        tesseract_path = shutil.which("tesseract")
+        if tesseract_path:
+            result = subprocess.run(
+                ["tesseract", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            version = result.stdout.split('\n')[0] if result.stdout else "unknown"
+            checks["tesseract"] = {"status": "ok", "message": version}
+        else:
+            checks["tesseract"] = {"status": "error", "message": "Not found in PATH"}
+    except Exception as e:
+        checks["tesseract"] = {"status": "error", "message": str(e)[:100]}
+    
+    # Check Sentry
+    checks["sentry"] = {
+        "status": "ok" if settings.SENTRY_DSN else "disabled",
+        "message": "Configured" if settings.SENTRY_DSN else "No DSN set"
+    }
+    
+    # Overall status
+    errors = [k for k, v in checks.items() if v["status"] == "error"]
+    overall = "unhealthy" if errors else "healthy"
+    
+    return {
+        "status": overall,
+        "version": "2.0.0",
+        "environment": settings.ENV,
+        "checks": checks,
+        "errors": errors if errors else None
+    }
