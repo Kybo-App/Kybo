@@ -32,3 +32,4 @@ class DietResponse(BaseModel):
     plan: Dict[str, Dict[str, List[Dish]]]
     substitutions: Dict[str, SubstitutionGroup]
     config: Optional[DietConfig] = None  # Configurazione dinamica opzionale
+    allergens: List[str] = Field(default_factory=list)  # Allergeni estratti
