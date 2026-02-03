@@ -3,9 +3,7 @@ name: Firestore Daily Backup
 on:
   schedule:
     - cron: '0 3 * * *'  # Ogni giorno alle 3:00 UTC
-  workflow_dispatch:      # Trigger manuale per test
-  push:
-    branches: [dev]       # TEMP: per testare, rimuovere dopo
+  workflow_dispatch:      # Trigger manuale
 
 jobs:
   backup:
