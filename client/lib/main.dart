@@ -13,6 +13,8 @@ import 'providers/chat_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
+import 'services/notification_service.dart';
+import 'services/badge_service.dart';
 import 'widgets/design_system.dart';
 
 void main() {
@@ -55,6 +57,9 @@ void main() {
             ),
             ChangeNotifierProvider<ChatProvider>(
               create: (_) => ChatProvider()..initializeChat(),
+            ),
+            ChangeNotifierProvider<BadgeService>(
+              create: (_) => BadgeService(),
             ),
           ],
           child: const DietApp(),

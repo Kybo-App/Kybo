@@ -11,9 +11,11 @@ import 'package:showcaseview/showcaseview.dart';
 import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
+import '../providers/chat_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/badge_service.dart';
 import '../widgets/design_system.dart';
 import '../core/error_handler.dart';
 import 'diet_view.dart';
@@ -25,6 +27,7 @@ import 'change_password_screen.dart';
 import 'chat_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
+import 'badges_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/jailbreak_service.dart';
 
@@ -180,7 +183,13 @@ class _MainScreenContentState extends State<MainScreenContent>
           await context.read<DietProvider>().scheduleMealNotifications();
         }
       }
+      }
     } catch (_) {}
+
+    // Check Badges (First Login, Streak)
+    if (mounted) {
+      context.read<BadgeService>().checkLoginStreak();
+    }
   }
 
 // Fix #2: Usa direttamente JailbreakService invece di cercare Provider<bool>
@@ -797,6 +806,26 @@ class _MainScreenContentState extends State<MainScreenContent>
                               Navigator.push(
                                 drawerCtx,
                                 MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                              );
+                            },
+                          ),
+
+                          // 🏆 Traguardi / Badges
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.warning.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.emoji_events_rounded, color: KyboColors.warning, size: 20),
+                            ),
+                            title: "Traguardi",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const BadgesScreen()),
                               );
                             },
                           ),
