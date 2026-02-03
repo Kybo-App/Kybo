@@ -1,17 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Represents a single message in the chat
+/// Campo unificato: 'message' (identico al modello admin)
 class ChatMessage {
   final String id;
-  final String text;
+  final String message;
   final String senderId;
-  final String senderType; // 'client' | 'nutritionist'
+  final String senderType; // 'client' | 'nutritionist' | 'admin'
   final DateTime timestamp;
   final bool read;
 
   ChatMessage({
     required this.id,
-    required this.text,
+    required this.message,
     required this.senderId,
     required this.senderType,
     required this.timestamp,
@@ -23,10 +24,11 @@ class ChatMessage {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
       id: doc.id,
-      text: data['text'] ?? '',
+      // Supporta sia 'message' (nuovo) che 'text' (legacy) per backward compatibility
+      message: data['message'] ?? data['text'] ?? '',
       senderId: data['senderId'] ?? '',
       senderType: data['senderType'] ?? 'client',
-      timestamp: (data['timestamp'] as Timestamp).toDate(),
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       read: data['read'] ?? false,
     );
   }
@@ -34,7 +36,7 @@ class ChatMessage {
   /// Convert to Firestore format
   Map<String, dynamic> toFirestore() {
     return {
-      'text': text,
+      'message': message,
       'senderId': senderId,
       'senderType': senderType,
       'timestamp': Timestamp.fromDate(timestamp),
@@ -45,7 +47,7 @@ class ChatMessage {
   /// Create a copy with modified fields
   ChatMessage copyWith({
     String? id,
-    String? text,
+    String? message,
     String? senderId,
     String? senderType,
     DateTime? timestamp,
@@ -53,7 +55,7 @@ class ChatMessage {
   }) {
     return ChatMessage(
       id: id ?? this.id,
-      text: text ?? this.text,
+      message: message ?? this.message,
       senderId: senderId ?? this.senderId,
       senderType: senderType ?? this.senderType,
       timestamp: timestamp ?? this.timestamp,
