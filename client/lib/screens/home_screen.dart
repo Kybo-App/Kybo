@@ -24,6 +24,7 @@ import 'history_screen.dart';
 import 'change_password_screen.dart';
 import 'chat_screen.dart';
 import 'settings_screen.dart';
+import 'statistics_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/jailbreak_service.dart';
 
@@ -816,6 +817,27 @@ class _MainScreenContentState extends State<MainScreenContent>
                               Navigator.push(
                                 drawerCtx,
                                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                              );
+                            },
+                          ),
+
+                          // 📊 Statistiche
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.analytics, color: Colors.purple, size: 20),
+                            ),
+                            title: "Statistiche",
+                            subtitle: "Progressi e tracking peso",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const StatisticsScreen()),
                               );
                             },
                           ),
