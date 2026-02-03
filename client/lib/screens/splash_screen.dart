@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'onboarding_screen.dart';
 import '../services/auth_service.dart';
+import '../services/deep_link_service.dart';
 import '../widgets/design_system.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,7 +21,21 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // Attesa minima per mostrare il brand
+    // 1. Check Deep Link first (can happen cold start)
+    final initialUri = await DeepLinkService().init();
+    final inviteCode = DeepLinkService.getInviteCode(initialUri);
+
+    if (inviteCode != null && mounted) {
+      // Deep Link Invite -> Go directly to Login/Register with code
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => LoginScreen(inviteCode: inviteCode),
+        ),
+      );
+      return;
+    }
+
+    // 2. Normal flow with min delay
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -27,13 +43,14 @@ class _SplashScreenState extends State<SplashScreen> {
     final user = AuthService().currentUser;
 
     if (user != null) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScreen()));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     } else {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      // Not logged in -> Onboarding
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
     }
   }
 

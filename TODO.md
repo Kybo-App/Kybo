@@ -48,9 +48,9 @@
 - [x] Badge su icone nav (non solo chat)
 - [x] Sistema notifiche unificato
 
-### 12. Client - Deep Link & Onboarding
-- [ ] Onboarding personalizzato per tipo utente (indipendente vs cliente)
-- [ ] Deep link per aprire direttamente una sezione dell'app
+### 12. Client - Deep Link & Onboarding ✅
+- [x] Onboarding personalizzato per tipo utente (indipendente vs cliente)
+- [x] Deep link per aprire direttamente una sezione dell'app
 
 ### 13. Client - Badge & Achievement
 > ⚠️ Dipende dal completamento di "Tracking & Statistiche"
