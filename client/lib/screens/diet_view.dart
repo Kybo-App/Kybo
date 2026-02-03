@@ -8,6 +8,8 @@ import '../models/diet_models.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
 import '../widgets/design_system.dart';
+import '../services/tracking_service.dart';
+import '../models/tracking_models.dart';
 
 class DietView extends StatelessWidget {
   final String day;
@@ -117,6 +119,7 @@ class DietView extends StatelessWidget {
               onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
               onEdit: (index, name, qty) => provider
                   .updateDietMeal(day, mealType, index, name, qty),
+              onNote: () => _showNoteDialog(context, day, mealType),
             );
           }).toList(),
         ),
@@ -359,6 +362,118 @@ class DietView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  // --- DIARIO ALIMENTARE ---
+  void _showNoteDialog(BuildContext context, String day, String mealType) {
+    final trackingService = TrackingService();
+    final noteController = TextEditingController();
+    String? selectedMood;
+
+    // Carica nota esistente
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final noteId = '${today}_${day}_$mealType';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: KyboColors.surface(context),
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Row(
+            children: [
+              Icon(Icons.edit_note, color: Colors.purple),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Diario - $mealType',
+                  style: TextStyle(color: KyboColors.textPrimary(context)),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: noteController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Come ti sei sentito? Cosa hai mangiato?',
+                  hintStyle: TextStyle(color: KyboColors.textMuted(context)),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Come stai?',
+                style: TextStyle(color: KyboColors.textSecondary(context)),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: ['😊', '😐', '😔'].map((emoji) {
+                  final isSelected = selectedMood == emoji;
+                  return InkWell(
+                    onTap: () => setDialogState(() => selectedMood = emoji),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.purple.withOpacity(0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.purple
+                              : KyboColors.border(context),
+                        ),
+                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            PillButton(
+              label: 'Annulla',
+              onPressed: () => Navigator.pop(ctx),
+              backgroundColor: KyboColors.surface(context),
+              textColor: KyboColors.textPrimary(context),
+              height: 44,
+            ),
+            PillButton(
+              label: 'Salva',
+              onPressed: () async {
+                if (noteController.text.trim().isNotEmpty) {
+                  final note = MealNote(
+                    id: noteId,
+                    date: DateTime.now(),
+                    day: day,
+                    mealType: mealType,
+                    note: noteController.text.trim(),
+                    mood: selectedMood,
+                  );
+                  await trackingService.saveMealNote(note);
+                  if (context.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Nota salvata! 📝')),
+                    );
+                  }
+                }
+              },
+              backgroundColor: Colors.purple,
+              textColor: Colors.white,
+              height: 44,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
