@@ -26,7 +26,7 @@
 - [x] Dashboard progressi settimanale (pasti consumati, aderenza alla dieta)
 - [x] Grafici trend calorie/peso
 - [x] Tracking peso con storico)
-- [ ] Obiettivi personalizzati con progress bar (es. "bevi 2L acqua al giorno")
+- [x] Obiettivi personalizzati con progress bar (es. "bevi 2L acqua al giorno")
 - [ ] Diario alimentare (note libere per ogni pasto)
 - [ ] Tracking peso con grafico storico
 

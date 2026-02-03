@@ -17,6 +17,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   
   WeeklyStats? _weeklyStats;
   List<WeightEntry> _weightHistory = [];
+  List<UserGoal> _goals = [];
   bool _isLoading = true;
 
   @override
@@ -34,6 +35,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     _trackingService.getWeightHistory(days: 30).listen((history) {
       if (mounted) {
         setState(() => _weightHistory = history);
+      }
+    });
+
+    // Goals stream
+    _trackingService.getGoals().listen((goals) {
+      if (mounted) {
+        setState(() => _goals = goals);
       }
     });
 
@@ -68,6 +76,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildWeeklyOverview(),
+              const SizedBox(height: 24),
+              _buildGoalsSection(),
               const SizedBox(height: 24),
               _buildWeightSection(),
               const SizedBox(height: 24),
@@ -359,6 +369,209 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
     );
   }
+
+  Widget _buildGoalsSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.flag, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Obiettivi',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle, color: Colors.green),
+                  onPressed: _showAddGoalDialog,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_goals.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text(
+                    'Nessun obiettivo. Tocca + per aggiungere!',
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              )
+            else
+              ...(_goals.map((goal) => _buildGoalTile(goal)).toList()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoalTile(UserGoal goal) {
+    final progress = goal.progressPercent / 100;
+    final color = goal.isCompleted
+        ? Colors.green
+        : progress >= 0.7
+            ? Colors.orange
+            : Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  goal.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: goal.isCompleted ? Colors.grey : null,
+                    decoration: goal.isCompleted ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    '${goal.currentValue.toStringAsFixed(0)}/${goal.targetValue.toStringAsFixed(0)} ${goal.unit}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  if (!goal.isCompleted) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => _incrementGoal(goal),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.add, size: 18, color: color),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _incrementGoal(UserGoal goal) async {
+    final newValue = goal.currentValue + 1;
+    await _trackingService.updateGoalProgress(goal.id, newValue);
+    
+    if (newValue >= goal.targetValue && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('🎉 Obiettivo "${goal.title}" completato!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showAddGoalDialog() async {
+    final titleController = TextEditingController();
+    final targetController = TextEditingController();
+    String selectedUnit = 'L';
+    
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Nuovo Obiettivo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Titolo',
+                  hintText: 'es. Bevi acqua',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: targetController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Obiettivo',
+                        hintText: '2',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  DropdownButton<String>(
+                    value: selectedUnit,
+                    items: ['L', 'kg', 'km', 'min', 'pasti', 'porzioni']
+                        .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedUnit = v!),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annulla'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Crea'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true && titleController.text.isNotEmpty) {
+      final target = double.tryParse(targetController.text) ?? 1;
+      final goal = UserGoal(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: titleController.text,
+        targetValue: target,
+        currentValue: 0,
+        unit: selectedUnit,
+      );
+      await _trackingService.saveGoal(goal);
+    }
+  }
+
 
   Future<void> _saveWeight() async {
     final text = _weightController.text.trim();
