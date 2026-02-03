@@ -7,7 +7,7 @@ import '../models/pantry_item.dart';
 import '../models/diet_models.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
-import '../constants.dart' show AppColors;
+import '../widgets/design_system.dart';
 
 class DietView extends StatelessWidget {
   final String day;
@@ -52,11 +52,11 @@ class DietView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.description_outlined, size: 60, color: AppColors.getHintColor(context)),
+            Icon(Icons.description_outlined, size: 60, color: KyboColors.textMuted(context)),
             const SizedBox(height: 10),
             Text(
               "Nessuna dieta caricata.",
-              style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+              style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
           ],
         ),
@@ -71,11 +71,11 @@ class DietView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bed_outlined, size: 60, color: AppColors.getHintColor(context)),
+            Icon(Icons.bed_outlined, size: 60, color: KyboColors.textMuted(context)),
             const SizedBox(height: 10),
             Text(
               "Riposo (nessun piano per $day)",
-              style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+              style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
           ],
         ),
@@ -85,18 +85,23 @@ class DietView extends StatelessWidget {
     final bool isCurrentDay = _isToday(context, day);
     final provider = context.read<DietProvider>();
     final orderedMeals = provider.getMeals();
-    final relaxableFoods = provider.getRelaxableFoods();
+    // relaxableFoods rimosso qui, usiamo provider.isRelaxable direttamente nel MealCard
+
+    // [FIX] Calcola la lista finale dei pasti da mostrare
+    // 1. Pasti conosciuti (nell'ordine corretto) che esistono nel piano di oggi
+    final knownMeals = orderedMeals.where((m) => mealsOfDay.containsKey(m)).toList();
+    // 2. Pasti extra nel piano (non presenti in config)
+    final extraMeals = mealsOfDay.keys.where((m) => !orderedMeals.contains(m)).toList();
+    // 3. Unione
+    final displayMeals = [...knownMeals, ...extraMeals];
 
     return Container(
-      color: AppColors.getScaffoldBackground(context),
+      color: KyboColors.background(context),
       child: RefreshIndicator(
         onRefresh: () async => provider.refreshAvailability(),
         child: ListView(
           padding: const EdgeInsets.only(top: 10, bottom: 80),
-          children: orderedMeals.map((mealType) {
-            if (!mealsOfDay.containsKey(mealType)) {
-              return const SizedBox.shrink();
-            }
+          children: displayMeals.map((mealType) {
 
             return MealCard(
               day: day,
@@ -106,7 +111,7 @@ class DietView extends StatelessWidget {
               availabilityMap: context.watch<DietProvider>().availabilityMap,
               isTranquilMode: isTranquilMode,
               isToday: isCurrentDay,
-              relaxableFoods: relaxableFoods,
+              isRelaxable: provider.isRelaxable, // [FIX] Callback intelligente
               orderedMeals: orderedMeals,
               onEat: (index) => _handleConsume(context, day, mealType, index),
               onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
@@ -145,21 +150,33 @@ class DietView extends StatelessWidget {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text("Ingrediente Mancante"),
+            backgroundColor: KyboColors.surface(context),
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: Text(
+              "Ingrediente Mancante",
+              style: TextStyle(color: KyboColors.textPrimary(context)),
+            ),
             content: Text(
               "${e.message}\n\nVuoi segnarlo come consumato ugualmente?",
+              style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
             actions: [
-              TextButton(
+              PillButton(
+                label: "No",
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text("No"),
+                backgroundColor: KyboColors.surface(context),
+                textColor: KyboColors.textPrimary(context),
+                height: 44,
               ),
-              FilledButton(
+              PillButton(
+                label: "Sì, consuma",
                 onPressed: () {
                   Navigator.pop(ctx);
                   provider.consumeMeal(day, mealType, index, force: true);
                 },
-                child: const Text("Sì, consuma"),
+                backgroundColor: KyboColors.primary,
+                textColor: Colors.white,
+                height: 44,
               ),
             ],
           ),
@@ -183,35 +200,48 @@ class DietView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Conversione Unità"),
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text(
+          "Conversione Unità",
+          style: TextStyle(color: KyboColors.textPrimary(context)),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               "La dieta usa '${e.requiredUnit}' ma in dispensa hai '${e.item.unit}'.",
+              style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
             const SizedBox(height: 10),
             Text(
               "A quanti ${e.item.unit} corrisponde 1 ${e.requiredUnit}?",
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: KyboColors.textPrimary(context),
+              ),
             ),
             const SizedBox(height: 10),
-            TextField(
+            PillTextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                suffixText: e.item.unit,
-                border: const OutlineInputBorder(),
+              suffix: Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Text(e.item.unit),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
+          PillButton(
+            label: "Annulla",
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Annulla"),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 44,
           ),
-          FilledButton(
+          PillButton(
+            label: "Salva",
             onPressed: () {
               double? val = double.tryParse(
                 controller.text.replaceAll(',', '.'),
@@ -231,7 +261,9 @@ class DietView extends StatelessWidget {
                 );
               }
             },
-            child: const Text("Salva"),
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            height: 44,
           ),
         ],
       ),
@@ -251,14 +283,23 @@ class DietView extends StatelessWidget {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text("Nessuna Sostituzione"),
-          content: const Text(
+          backgroundColor: KyboColors.surface(context),
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Text(
+            "Nessuna Sostituzione",
+            style: TextStyle(color: KyboColors.textPrimary(context)),
+          ),
+          content: Text(
             "Il nutrizionista non ha indicato alternative per questo alimento.",
+            style: TextStyle(color: KyboColors.textSecondary(context)),
           ),
           actions: [
-            TextButton(
+            PillButton(
+              label: "OK",
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("OK"),
+              backgroundColor: KyboColors.primary,
+              textColor: Colors.white,
+              height: 44,
             ),
           ],
         ),
@@ -273,25 +314,49 @@ class DietView extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
-        return ListView.builder(
-          itemCount: options.length,
-          itemBuilder: (ctx, idx) {
-            final opt = options[idx]; // SubstitutionOption object
-            return ListTile(
-              title: Text(opt.name), // .name
-              subtitle: Text(opt.qty), // .qty
-              onTap: () {
-                final newSwap = ActiveSwap(
-                  name: opt.name,
-                  qty: opt.qty,
-                  unit: "",
-                  swappedIngredients: [],
-                );
-                context.read<DietProvider>().swapMeal(swapKey, newSwap);
-                Navigator.pop(ctx);
-              },
-            );
-          },
+        return Container(
+          decoration: BoxDecoration(
+            color: KyboColors.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: options.length,
+                  itemBuilder: (ctx, idx) {
+                    final opt = options[idx];
+                    return PillListTile(
+                      title: opt.name,
+                      subtitle: opt.qty,
+                      leading: Icon(Icons.swap_horiz, color: KyboColors.warning),
+                      onTap: () {
+                        final newSwap = ActiveSwap(
+                          name: opt.name,
+                          qty: opt.qty,
+                          unit: "",
+                          swappedIngredients: [],
+                        );
+                        context.read<DietProvider>().swapMeal(swapKey, newSwap);
+                        Navigator.pop(ctx);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

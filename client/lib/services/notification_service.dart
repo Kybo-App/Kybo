@@ -9,7 +9,6 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/diet_models.dart'; // Fondamentale per i nuovi oggetti Dish
-import '../constants.dart' show italianDays;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -173,8 +172,8 @@ class NotificationService {
     int notificationId = 0;
     final now = DateTime.now();
 
-    // Usa giorni dalla config o fallback a italianDays
-    final effectiveDays = days ?? (plan.isNotEmpty ? plan.keys.toList() : italianDays);
+    // Usa giorni dalla config o da mappa chiavi
+    final effectiveDays = days ?? (plan.isNotEmpty ? plan.keys.toList() : []);
 
     // Costruisce daysMap (index 0 = Lunedì = weekday 1)
     final daysMap = {

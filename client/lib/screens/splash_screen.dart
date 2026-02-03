@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
-import '../constants.dart'; // Importante per i colori del brand
+import '../widgets/design_system.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
+      backgroundColor: KyboColors.background(context),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 return const Icon(
                   Icons.eco,
                   size: 100,
-                  color: AppColors.primary,
+                  color: KyboColors.primary,
                 );
               },
             ),
@@ -65,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
             // Loading con colore del brand
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation<Color>(KyboColors.primary),
             ),
           ],
         ),

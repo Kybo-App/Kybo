@@ -609,7 +609,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: KyboColors.background,
-                    borderRadius: KyboBorderRadius.pill,
+                    borderRadius: BorderRadius.circular(99),
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -646,7 +646,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: KyboColors.background,
-                    borderRadius: KyboBorderRadius.pill,
+                    borderRadius: BorderRadius.circular(99),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
