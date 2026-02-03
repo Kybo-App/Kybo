@@ -7,7 +7,7 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import auth, firestore
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr, field_validator
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -88,7 +88,6 @@ def _delete_collection_documents(coll_ref, batch_size=500):
 
 @router.post("/create-user")
 async def admin_create_user(
-    request: Request,
     body: CreateUserRequest,
     requester: dict = Depends(verify_professional)
 ):
@@ -226,7 +225,6 @@ async def admin_unassign_user(
 
 @router.delete("/delete-user/{target_uid}")
 async def admin_delete_user(
-    request: Request,
     target_uid: str,
     requester: dict = Depends(verify_professional)
 ):

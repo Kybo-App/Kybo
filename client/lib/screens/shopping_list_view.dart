@@ -5,10 +5,7 @@ import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
 import '../widgets/design_system.dart';
-import '../constants.dart' show italianDays, orderedMealTypes;
 import '../logic/diet_calculator.dart';
-
-// Fallback constants sono importati ma usati solo se config non disponibile
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
