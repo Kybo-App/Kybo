@@ -6,7 +6,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
 import '../models/pantry_item.dart';
-import '../constants.dart' show italianDays;
 
 const String taskInventoryCheck = "inventoryCheck";
 
@@ -120,17 +119,16 @@ List<String> _extractDays(Map<String, dynamic> dietFull) {
       return plan.keys.cast<String>().toList();
     }
   }
-  // Ultimo fallback: hardcoded
-  return italianDays;
+  // Ultimo fallback: vuoto
+  return [];
 }
 
 String _getDayName(int weekday, List<String> days) {
   // weekday 1 = Monday = index 0
-  final index = weekday - 1;
   if (index >= 0 && index < days.length) {
     return days[index];
   }
-  return days.isNotEmpty ? days.first : italianDays[weekday - 1];
+  return days.isNotEmpty ? days.first : ""; // Fallback sicuro
 }
 
 bool _checkMissingIngredients(

@@ -158,6 +158,7 @@ class PillButton extends StatelessWidget {
   final bool isLoading;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? borderColor;
   final double height;
   final double? minWidth;
   final bool expanded;
@@ -171,6 +172,7 @@ class PillButton extends StatelessWidget {
     this.isLoading = false,
     this.backgroundColor,
     this.textColor,
+    this.borderColor,
     this.height = 52,
     this.minWidth,
     this.expanded = false,
@@ -198,12 +200,14 @@ class PillButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: KyboBorderRadius.pill,
+              border: borderColor != null
+                  ? Border.all(color: borderColor!, width: 2)
+                  : (!isSelected
+                      ? Border.all(color: KyboColors.border(context), width: 1)
+                      : null),
               boxShadow: isSelected
                   ? KyboColors.mediumShadow(context)
                   : KyboColors.softShadow(context),
-              border: !isSelected
-                  ? Border.all(color: KyboColors.border(context), width: 1)
-                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -223,13 +227,17 @@ class PillButton extends StatelessWidget {
                   Icon(icon, color: fgColor, size: 22),
                   const SizedBox(width: 12),
                 ],
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: fgColor,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 15,
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: fgColor,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
               ],

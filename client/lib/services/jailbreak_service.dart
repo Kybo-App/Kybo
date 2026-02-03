@@ -22,12 +22,12 @@ class JailbreakService {
       debugPrint('  Jailbroken/Rooted: $_isJailbroken');
       debugPrint('  Real Device: $_isRealDevice');
 
-      // Log su Firebase Analytics
+      // Log su Firebase Analytics (must use String or num, not bool)
       await FirebaseAnalytics.instance.logEvent(
         name: 'device_security_check',
         parameters: {
-          'jailbroken': _isJailbroken ?? false,
-          'real_device': _isRealDevice ?? true,
+          'jailbroken': (_isJailbroken ?? false).toString(),
+          'real_device': (_isRealDevice ?? true).toString(),
         },
       );
 

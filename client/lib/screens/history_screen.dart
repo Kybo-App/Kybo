@@ -7,7 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../services/firestore_service.dart';
 import '../providers/diet_provider.dart';
 import '../core/error_handler.dart'; // [IMPORTANTE]
-import '../constants.dart' show AppColors;
+import '../widgets/design_system.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -35,29 +35,38 @@ class HistoryScreen extends StatelessWidget {
         expand: false,
         builder: (_, controller) => Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: KyboColors.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "JSON Dieta Corrente",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: KyboColors.textPrimary(context)),
                   ),
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.copy),
+                        icon: Icon(Icons.copy, color: KyboColors.textPrimary(context)),
                         tooltip: "Copia",
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: jsonString));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("JSON copiato!")),
+                            SnackBar(
+                              content: const Text("JSON copiato!"),
+                              backgroundColor: KyboColors.success,
+                              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+                              behavior: SnackBarBehavior.floating,
+                            ),
                           );
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.share),
+                        icon: Icon(Icons.share, color: KyboColors.textPrimary(context)),
                         tooltip: "Condividi",
                         onPressed: () async {
                           try {
@@ -75,7 +84,7 @@ class HistoryScreen extends StatelessWidget {
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close, color: KyboColors.textPrimary(context)),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
@@ -88,9 +97,10 @@ class HistoryScreen extends StatelessWidget {
                   controller: controller,
                   child: SelectableText(
                     jsonString,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 12,
+                      color: KyboColors.textSecondary(context),
                     ),
                   ),
                 ),
@@ -107,20 +117,44 @@ class HistoryScreen extends StatelessWidget {
     final firestore = FirestoreService();
 
     return Scaffold(
-      backgroundColor: AppColors.getScaffoldBackground(context),
+      backgroundColor: KyboColors.background(context),
       appBar: AppBar(
-        backgroundColor: AppColors.getSurface(context),
+        backgroundColor: KyboColors.surface(context),
         title: Text(
           "Cronologia Diete",
-          style: TextStyle(color: AppColors.getTextColor(context)),
+          style: TextStyle(color: KyboColors.textPrimary(context)),
         ),
-        iconTheme: IconThemeData(color: AppColors.getTextColor(context)),
+        iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
         actions: [
           // Bottone per vedere JSON dieta corrente
           IconButton(
             icon: const Icon(Icons.data_object),
             tooltip: "Vedi JSON Dieta Corrente",
             onPressed: () => _showCurrentDietJson(context),
+          ),
+          // [DEBUG] Vedi RAW AI Response
+          Consumer<DietProvider>(
+            builder: (_, provider, __) {
+              if (provider.lastRawParsedData == null) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.bug_report, color: Colors.orange),
+                tooltip: "Debug RAW AI Response",
+                onPressed: () => _showRawAiResponse(context),
+              );
+            },
+          ),
+          // ADMIN: Upload Config Init
+          IconButton(
+            icon: const Icon(Icons.cloud_upload_outlined),
+            tooltip: "Admin Init Config",
+            onPressed: () async {
+              await firestore.uploadDefaultGlobalConfig();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("✅ Config Globale caricata su Firestore!")),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -146,12 +180,13 @@ class HistoryScreen extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result),
-              backgroundColor:
-                  result.contains('✅') ||
+              backgroundColor: result.contains('✅') ||
                       result.contains('☁️') ||
                       result.contains('🆕')
-                  ? Colors.green
-                  : Colors.amber[900],
+                  ? KyboColors.success
+                  : KyboColors.warning,
+              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+              behavior: SnackBarBehavior.floating,
             ),
           );
         },
@@ -190,11 +225,11 @@ class HistoryScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 50, color: AppColors.getHintColor(context)),
+                  Icon(Icons.history, size: 50, color: KyboColors.textMuted(context)),
                   const SizedBox(height: 10),
                   Text(
                     "Nessuna dieta salvata nel cloud.",
-                    style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                    style: TextStyle(color: KyboColors.textSecondary(context)),
                   ),
                 ],
               ),
@@ -213,20 +248,22 @@ class HistoryScreen extends StatelessWidget {
               final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(date);
 
               return Card(
+                elevation: 2,
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: AppColors.getCardColor(context),
+                color: KyboColors.surface(context),
+                shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
                 child: ListTile(
-                  leading: const Icon(Icons.cloud_done, color: Colors.blue),
+                  leading: Icon(Icons.cloud_done, color: KyboColors.primary),
                   title: Text(
                     "Dieta del $dateStr",
-                    style: TextStyle(color: AppColors.getTextColor(context)),
+                    style: TextStyle(color: KyboColors.textPrimary(context), fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
                     "Tocca per ripristinare",
-                    style: TextStyle(color: AppColors.getSecondaryTextColor(context)),
+                    style: TextStyle(color: KyboColors.textSecondary(context)),
                   ),
                   trailing: IconButton(
-                    icon: Icon(Icons.delete, color: AppColors.getErrorForeground(context)),
+                    icon: Icon(Icons.delete, color: KyboColors.error),
                     onPressed: () async {
                       try {
                         await firestore.deleteDiet(diet['id']);
@@ -245,33 +282,45 @@ class HistoryScreen extends StatelessWidget {
                     showDialog(
                       context: context,
                       builder: (c) => AlertDialog(
-                        title: const Text("Ripristina Dieta"),
-                        content: const Text(
+                        backgroundColor: KyboColors.surface(context),
+                        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+                        title: Text(
+                          "Ripristina Dieta",
+                          style: TextStyle(color: KyboColors.textPrimary(context)),
+                        ),
+                        content: Text(
                           "Vuoi sostituire la dieta attuale con questa versione salvata?",
+                          style: TextStyle(color: KyboColors.textSecondary(context)),
                         ),
                         actions: [
-                          TextButton(
+                          PillButton(
+                            label: "Annulla",
                             onPressed: () => Navigator.pop(c),
-                            child: const Text("Annulla"),
+                            backgroundColor: KyboColors.surface(context),
+                            textColor: KyboColors.textPrimary(context),
+                            height: 44,
                           ),
-                          FilledButton(
+                          PillButton(
+                            label: "Ripristina",
                             onPressed: () {
                               context.read<DietProvider>().loadHistoricalDiet(
                                 diet, // I dati
-                                diet['id'], // L'ID Firestore (che abbiamo aggiunto nel map del service)
+                                diet['id'], // L'ID Firestore
                               );
                               Navigator.pop(c);
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Dieta ripristinata con successo!",
-                                  ),
+                                SnackBar(
+                                  content: const Text("Dieta ripristinata con successo!"),
                                   behavior: SnackBarBehavior.floating,
+                                  backgroundColor: KyboColors.success,
+                                  shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
                                 ),
                               );
                             },
-                            child: const Text("Ripristina"),
+                            backgroundColor: KyboColors.primary,
+                            textColor: Colors.white,
+                            height: 44,
                           ),
                         ],
                       ),
@@ -282,6 +331,38 @@ class HistoryScreen extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  void _showRawAiResponse(BuildContext context) {
+    final provider = context.read<DietProvider>();
+    final data = provider.lastRawParsedData;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text("RAW AI Response", style: TextStyle(color: KyboColors.textPrimary(context))),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              const JsonEncoder.withIndent('  ').convert(data),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+        ),
+        actions: [
+          PillButton(
+            label: "Chiudi",
+            onPressed: () => Navigator.pop(ctx),
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            height: 44,
+          ),
+        ],
       ),
     );
   }

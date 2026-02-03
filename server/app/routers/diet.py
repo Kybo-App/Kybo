@@ -31,10 +31,7 @@ router = APIRouter(tags=["diet"])
 diet_parser = DietParser()
 notification_service = NotificationService()
 
-MEAL_ORDER = [
-    "Colazione", "Seconda Colazione", "Spuntino", "Pranzo",
-    "Merenda", "Cena", "Spuntino Serale", "Nell'Arco Della Giornata"
-]
+# MEAL_ORDER rimosso per supportare config dinamica completamente
 
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
@@ -102,12 +99,8 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             else:
                 app_plan[day_name][m_name] = dishes
 
-    # Ordina pasti
-    for d, meals in app_plan.items():
-        app_plan[d] = {k: meals[k] for k in MEAL_ORDER if k in meals}
-        for k in meals:
-            if k not in app_plan[d]:
-                app_plan[d][k] = meals[k]
+    # Ordina pasti: Rimosso forzatura MEAL_ORDER. Ci fidiamo dell'ordine del parser (cioè del PDF)
+    # se l'IA rispetta l'ordine di apparizione, il dizionario lo mantiene (Python 3.7+)
 
     # 3. Estrazione Config dinamica
     app_config = None
@@ -135,7 +128,7 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
 
         app_config = DietConfig(
             days=config_days if config_days else list(app_plan.keys()),
-            meals=config_meals if config_meals else MEAL_ORDER,
+            meals=config_meals, # Rimosso fallback a MEAL_ORDER
             relaxable_foods=config_relaxable
         )
 

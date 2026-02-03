@@ -471,6 +471,7 @@ class PillCard extends StatefulWidget {
   final VoidCallback? onTap;
   final Color? backgroundColor;
   final bool elevated;
+  final Clip clipBehavior;
 
   const PillCard({
     super.key,
@@ -479,6 +480,7 @@ class PillCard extends StatefulWidget {
     this.onTap,
     this.backgroundColor,
     this.elevated = true,
+    this.clipBehavior = Clip.none,
   });
 
   @override
@@ -495,6 +497,7 @@ class _PillCardState extends State<PillCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        clipBehavior: widget.clipBehavior,
         transform: Matrix4.identity()
           ..scale(_isHovered && widget.onTap != null ? 1.01 : 1.0),
         transformAlignment: Alignment.center,
