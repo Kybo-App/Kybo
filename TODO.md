@@ -7,9 +7,9 @@
 ### 1. Backend - Backup Firestore ✅
 - [x] Backup automatico Firestore giornaliero (export verso Cloud Storage)
 
-### 2. Backend - Sentry & Alerting
-- [ ] Error tracking (Sentry integration)
-- [ ] Alerting automatico (Slack/email su errori critici) - gratis con Sentry
+### 2. Backend - Sentry & Alerting ✅
+- [x] Error tracking (Sentry integration)
+- [x] Alerting automatico (Slack/email su errori critici) - gratis con Sentry
 
 ### 3. Backend - Health Check
 - [ ] Health check avanzato (controlla Firebase, Gemini, Tesseract)
