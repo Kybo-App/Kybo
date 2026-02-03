@@ -18,9 +18,9 @@
 ### 4. Backend - CI/CD ✅
 - [x] CI/CD pipeline (GitHub Actions per test + lint server)
 
-### 5. GDPR Base (Obbligo Legale)
-- [ ] Consenso privacy tracciato con timestamp
-- [ ] Export dati cliente completo (GDPR data portability)
+### 5. GDPR Base (Obbligo Legale) ✅
+- [x] Consenso privacy tracciato con timestamp
+- [x] Export dati cliente completo (GDPR data portability)
 
 ### 6. Client - Tracking & Statistiche
 - [ ] Dashboard progressi settimanale (pasti consumati, aderenza alla dieta)
