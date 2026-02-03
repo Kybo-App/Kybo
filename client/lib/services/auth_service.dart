@@ -17,7 +17,7 @@ class AuthService {
   }
 
   // Crea il documento utente se non esiste (Self-healing)
-  Future<void> _ensureUserDoc(User user) async {
+  Future<void> _ensureUserDoc(User user, {String role = 'independent', Map<String, dynamic>? additionalData}) async {
     try {
       final docRef = _db.collection('users').doc(user.uid);
       final doc = await docRef.get();
@@ -26,12 +26,13 @@ class AuthService {
         await docRef.set({
           'uid': user.uid,
           'email': user.email,
-          'role': 'independent',
+          'role': role,
           'first_name': user.displayName?.split(' ').first ?? 'User',
           'last_name': '',
           'is_active': true,
           'created_at': FieldValue.serverTimestamp(),
           'platform': defaultTargetPlatform.toString(),
+          if (additionalData != null) ...additionalData,
         });
       }
     } catch (e) {
@@ -81,14 +82,14 @@ class AuthService {
     }
   }
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> signUp(String email, String password, {String role = 'independent', Map<String, dynamic>? additionalData}) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       if (credential.user != null) {
-        await _ensureUserDoc(credential.user!);
+        await _ensureUserDoc(credential.user!, role: role, additionalData: additionalData);
       }
     } catch (e) {
       rethrow;

@@ -1,0 +1,39 @@
+name: Firestore Daily Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Ogni giorno alle 3:00 UTC
+  workflow_dispatch:      # Trigger manuale
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env: test
+            project: mydiet-6d55b
+            bucket: mydiet-6d55b-backups
+            secret: GCP_SA_KEY_TEST
+          - env: production
+            project: kybo-production
+            bucket: kybo-production-backups
+            secret: GCP_SA_KEY_PROD
+    
+    name: Backup ${{ matrix.env }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets[matrix.secret] }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Export Firestore to Cloud Storage
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          echo "🔄 Backing up ${{ matrix.env }} (project: ${{ matrix.project }})"
+          gcloud firestore export gs://${{ matrix.bucket }}/firestore/$TIMESTAMP \
+            --project=${{ matrix.project }}
+          echo "✅ Backup ${{ matrix.env }} completed: $TIMESTAMP"

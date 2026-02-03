@@ -132,7 +132,10 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             relaxable_foods=config_relaxable
         )
 
-    return DietResponse(plan=app_plan, substitutions=app_substitutions, config=app_config)
+    # 4. Allergeni
+    allergens = gemini_output.get('allergeni', [])
+
+    return DietResponse(plan=app_plan, substitutions=app_substitutions, config=app_config, allergens=allergens)
 
 
 @router.post("/upload-diet", response_model=DietResponse)
@@ -185,6 +188,12 @@ async def upload_diet(
 
             user_diets_ref.document('current').set(diet_payload)
             user_diets_ref.add(diet_payload)
+
+            # Update user's main doc
+            db.collection('users').document(user_id).set({
+                'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
+                'allergies': dict_data.get('allergens', [])
+            }, merge=True)
 
             db.collection('diet_history').add({
                 'userId': user_id,
@@ -281,6 +290,12 @@ async def upload_diet_admin(
             'config': dict_data.get('config'),  # Config dinamica
             'uploadedBy': 'nutritionist'
         })
+
+        # Update user's main doc for "expiring diet" alerts AND allergens
+        db.collection('users').document(target_uid).set({
+            'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
+            'allergies': dict_data.get('allergens', [])
+        }, merge=True)
 
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)

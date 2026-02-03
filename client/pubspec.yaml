@@ -22,6 +22,8 @@ dependencies:
   intl: ^0.18.1
   # [NEW] Robust network retries
   retry: ^3.1.2
+  # [NEW] Charts for statistics
+  fl_chart: ^0.68.0
 
   # Firebase (Versioni aggiornate per risolvere errore Pigeon)
   firebase_core: ^3.6.0
@@ -33,6 +35,7 @@ dependencies:
   crypto: ^3.0.3
   share_plus: ^7.2.2
   safe_device: ^1.1.7
+  app_links: ^6.3.0
 
   # Notifications & Background Tasks
   flutter_local_notifications: ^18.0.1
