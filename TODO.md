@@ -38,8 +38,8 @@
 - [x] Limite massimo clienti per nutrizionista (configurabile)
 - [x] Controllo limite durante assegnazione
 
-### 9. Backend - Riconoscimento Allergeni
-- [ ] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
+### 9. Backend - Riconoscimento Allergeni ✅
+- [x] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
 
 ### 10. Admin - Allegati Chat
 - [ ] Allegati nella chat (immagini, PDF)
