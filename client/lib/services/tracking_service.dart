@@ -228,4 +228,62 @@ class TrackingService {
       rethrow;
     }
   }
+
+  // --- MEAL NOTES (DIARIO ALIMENTARE) ---
+  /// Salva una nota per un pasto
+  Future<void> saveMealNote(MealNote note) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('meal_notes')
+          .doc(note.id)
+          .set(note.toJson());
+
+      debugPrint("✅ Nota pasto salvata: ${note.mealType}");
+    } catch (e) {
+      debugPrint("❌ Errore salvataggio nota: $e");
+      rethrow;
+    }
+  }
+
+  /// Recupera nota per un giorno/pasto specifico
+  Future<MealNote?> getMealNote(String day, String mealType) async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final noteId = '${today}_${day}_$mealType';
+
+    final doc = await _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('meal_notes')
+        .doc(noteId)
+        .get();
+
+    if (!doc.exists) return null;
+    return MealNote.fromJson(doc.data()!);
+  }
+
+  /// Stream note del giorno
+  Stream<List<MealNote>> getTodayNotes() {
+    final user = _auth.currentUser;
+    if (user == null) return Stream.value([]);
+
+    final today = DateTime.now().toIso8601String().split('T')[0];
+
+    return _db
+        .collection('users')
+        .doc(user.uid)
+        .collection('meal_notes')
+        .where('date', isGreaterThanOrEqualTo: today)
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => MealNote.fromJson(doc.data())).toList());
+  }
 }

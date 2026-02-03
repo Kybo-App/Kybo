@@ -144,3 +144,42 @@ class UserGoal {
         'is_completed': isCompleted,
       };
 }
+
+/// Nota del diario alimentare per un singolo pasto
+class MealNote {
+  final String id;
+  final DateTime date;
+  final String day; // es. "Lunedì"
+  final String mealType; // es. "Pranzo"
+  final String note;
+  final String? mood; // emoji opzionale: 😊, 😐, 😔
+
+  MealNote({
+    required this.id,
+    required this.date,
+    required this.day,
+    required this.mealType,
+    required this.note,
+    this.mood,
+  });
+
+  factory MealNote.fromJson(Map<String, dynamic> json) {
+    return MealNote(
+      id: json['id'] ?? '',
+      date: DateTime.parse(json['date']),
+      day: json['day'] ?? '',
+      mealType: json['meal_type'] ?? '',
+      note: json['note'] ?? '',
+      mood: json['mood'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date.toIso8601String(),
+        'day': day,
+        'meal_type': mealType,
+        'note': note,
+        if (mood != null) 'mood': mood,
+      };
+}

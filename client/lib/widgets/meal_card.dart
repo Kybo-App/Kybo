@@ -16,6 +16,8 @@ class MealCard extends StatelessWidget {
   final Function(int) onEat;
   final Function(String, int) onSwap;
   final Function(int, String, String) onEdit;
+  final VoidCallback? onNote; // Callback per diario alimentare
+  final String? currentNote; // Nota attuale per questo pasto
 
   const MealCard({
     super.key,
@@ -31,6 +33,8 @@ class MealCard extends StatelessWidget {
     required this.onEat,
     required this.onSwap,
     required this.onEdit,
+    this.onNote,
+    this.currentNote,
   });
 
   @override
@@ -111,10 +115,39 @@ class MealCard extends StatelessWidget {
                               ),
                             )
                           else
-                            Icon(
-                              Icons.restaurant,
-                              color: KyboColors.textMuted(context),
-                              size: 18,
+                            Row(
+                              children: [
+                                // Icona Nota Pasto
+                                if (onNote != null)
+                                  InkWell(
+                                    onTap: onNote,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: currentNote != null
+                                            ? Colors.purple.withValues(alpha: 0.1)
+                                            : KyboColors.surface(context),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        currentNote != null
+                                            ? Icons.edit_note
+                                            : Icons.note_add_outlined,
+                                        color: currentNote != null
+                                            ? Colors.purple
+                                            : KyboColors.textMuted(context),
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.restaurant,
+                                  color: KyboColors.textMuted(context),
+                                  size: 18,
+                                ),
+                              ],
                             ),
                         ],
                       ),

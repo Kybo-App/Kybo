@@ -25,10 +25,9 @@
 ### 6. Client - Tracking & Statistiche ✅
 - [x] Dashboard progressi settimanale (pasti consumati, aderenza alla dieta)
 - [x] Grafici trend calorie/peso
-- [x] Tracking peso con storico)
+- [x] Tracking peso con grafico storico
 - [x] Obiettivi personalizzati con progress bar (es. "bevi 2L acqua al giorno")
-- [ ] Diario alimentare (note libere per ogni pasto)
-- [ ] Tracking peso con grafico storico
+- [x] Diario alimentare (note libere per ogni pasto)
 
 ### 7. Admin - Calcolatrice Nutrizionale & Alert Diete
 - [ ] Calcolatrice nutrizionale integrata (macro/micro nutrienti per pasto)
