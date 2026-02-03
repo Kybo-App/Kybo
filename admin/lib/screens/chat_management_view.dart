@@ -12,21 +12,8 @@ class ChatManagementView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AdminChatProvider(),
-      child: Scaffold(
-        body: const _ChatManagementContent(),
-        floatingActionButton: Builder(
-          builder: (context) => FloatingActionButton.extended(
-            onPressed: () {
-              context.read<AdminChatProvider>().debugCreateTestChat();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tentativo creazione chat test...')),
-              );
-            },
-            label: const Text('Crea Chat Test'),
-            icon: const Icon(Icons.add_comment),
-            backgroundColor: Colors.orange,
-          ),
-        ),
+      child: const Scaffold(
+        body: _ChatManagementContent(),
       ),
     );
   }
@@ -40,26 +27,47 @@ class _ChatManagementContent extends StatelessWidget {
     return Row(
       children: [
         // ════════════════════════════════════════════════════════════════
-        // LEFT PANEL: Client List
+        // LEFT PANEL: Chat List
         // ════════════════════════════════════════════════════════════════
         SizedBox(
           width: 350,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header with new chat button
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Messaggi',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: KyboColors.textPrimary,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Messaggi',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: KyboColors.textPrimary,
+                      ),
+                    ),
+                    Builder(
+                      builder: (ctx) {
+                        // watch per ricostruire quando userRole diventa disponibile
+                        final provider = ctx.watch<AdminChatProvider>();
+                        if (provider.userRole == 'admin') {
+                          return PillIconButton(
+                            icon: Icons.add_comment_rounded,
+                            tooltip: 'Nuova chat',
+                            color: KyboColors.primary,
+                            onPressed: () => _showNewChatDialog(ctx),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ],
                 ),
               ),
-              const Divider(height: 1),
-              Expanded(child: _ClientList()),
+              Divider(height: 1, color: KyboColors.border),
+              Expanded(child: _ChatList()),
             ],
           ),
         ),
@@ -76,24 +84,178 @@ class _ChatManagementContent extends StatelessWidget {
       ],
     );
   }
+
+  void _showNewChatDialog(BuildContext context) async {
+    final provider = context.read<AdminChatProvider>();
+    final nutritionists = await provider.getNutritionists();
+
+    if (!context.mounted) return;
+
+    if (nutritionists.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Nessun nutrizionista trovato'),
+          backgroundColor: KyboColors.error,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: KyboColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text(
+          'Nuova Chat',
+          style: TextStyle(color: KyboColors.textPrimary),
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Seleziona un nutrizionista',
+                style: TextStyle(
+                  color: KyboColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...nutritionists.map((nutri) => _NutritionistTile(
+                    name: nutri['name'] ?? 'N/A',
+                    email: nutri['email'] ?? '',
+                    onTap: () async {
+                      Navigator.pop(dialogCtx);
+                      try {
+                        await provider.createChatWithNutritionist(
+                          nutritionistId: nutri['uid'],
+                          nutritionistName: nutri['name'] ?? 'Nutrizionista',
+                          nutritionistEmail: nutri['email'] ?? '',
+                        );
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Errore: $e'),
+                              backgroundColor: KyboColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// CLIENT LIST
-// ════════════════════════════════════════════════════════════════════════
-class _ClientList extends StatefulWidget {
+class _NutritionistTile extends StatefulWidget {
+  final String name;
+  final String email;
+  final VoidCallback onTap;
+
+  const _NutritionistTile({
+    required this.name,
+    required this.email,
+    required this.onTap,
+  });
+
   @override
-  State<_ClientList> createState() => _ClientListState();
+  State<_NutritionistTile> createState() => _NutritionistTileState();
 }
 
-class _ClientListState extends State<_ClientList> {
+class _NutritionistTileState extends State<_NutritionistTile> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? KyboColors.primary.withValues(alpha: 0.08)
+                : KyboColors.surfaceElevated,
+            borderRadius: KyboBorderRadius.medium,
+            border: Border.all(color: KyboColors.border),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor:
+                    KyboColors.roleNutritionist.withValues(alpha: 0.2),
+                child: Icon(
+                  Icons.health_and_safety,
+                  color: KyboColors.roleNutritionist,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.name.isEmpty ? 'Nutrizionista' : widget.name,
+                      style: TextStyle(
+                        color: KyboColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (widget.email.isNotEmpty)
+                      Text(
+                        widget.email,
+                        style: TextStyle(
+                          color: KyboColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chat_bubble_outline,
+                color: KyboColors.textMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CHAT LIST
+// ════════════════════════════════════════════════════════════════════════
+class _ChatList extends StatefulWidget {
+  @override
+  State<_ChatList> createState() => _ChatListState();
+}
+
+class _ChatListState extends State<_ChatList> {
   late Stream<List<Chat>> _chatsStream;
 
   @override
   void initState() {
     super.initState();
-    // Cache the stream to prevent recreation on rebuilds
-    _chatsStream = context.read<AdminChatProvider>().getChatsForNutritionist();
+    _chatsStream = context.read<AdminChatProvider>().getChatsForCurrentUser();
   }
 
   @override
@@ -107,7 +269,13 @@ class _ClientListState extends State<_ClientList> {
 
         if (snapshot.hasError) {
           return Center(
-            child: Text('Errore: ${snapshot.error}'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Errore: ${snapshot.error}',
+                style: TextStyle(color: KyboColors.error),
+              ),
+            ),
           );
         }
 
@@ -118,11 +286,13 @@ class _ClientListState extends State<_ClientList> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+                Icon(Icons.chat_bubble_outline,
+                    size: 64, color: KyboColors.textMuted),
                 const SizedBox(height: 16),
                 Text(
                   'Nessun messaggio',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  style:
+                      TextStyle(color: KyboColors.textSecondary, fontSize: 16),
                 ),
               ],
             ),
@@ -150,41 +320,54 @@ class _ChatListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminChatProvider>();
     final isSelected = provider.selectedChatId == chat.id;
-    final hasUnread = chat.unreadCountNutritionist > 0;
+    final unread = provider.getMyUnreadCount(chat);
+    final hasUnread = unread > 0;
 
-    // Determine correct display name based on context
+    // Determine display name and type
     String displayName = chat.clientName;
     bool isSupportChat = false;
-    
-    // If I am a nutritionist and this is an admin chat, the "clientName" is ME.
-    // So I should see "Supporto Admin" instead.
-    if (provider.userRole != 'admin' && chat.chatType == 'admin-nutritionist') {
-      displayName = "Supporto Admin";
+
+    if (provider.userRole != 'admin' &&
+        chat.chatType == 'admin-nutritionist') {
+      displayName = 'Supporto Admin';
       isSupportChat = true;
     }
 
+    // For nutritionist viewing a nutritionist-client chat, show client name
+    if (provider.userRole != 'admin' &&
+        chat.chatType == 'nutritionist-client') {
+      displayName =
+          chat.clientName.isNotEmpty ? chat.clientName : chat.clientEmail;
+    }
+
     return Material(
-      color: isSelected ? KyboColors.primary.withValues(alpha: 0.1) : Colors.transparent,
+      color: isSelected
+          ? KyboColors.primary.withValues(alpha: 0.1)
+          : Colors.transparent,
       child: InkWell(
         onTap: () => provider.selectChat(chat.id),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: KyboColors.border.withValues(alpha: 0.3)),
+              bottom:
+                  BorderSide(color: KyboColors.border.withValues(alpha: 0.3)),
             ),
           ),
           child: Row(
             children: [
               // Avatar
               CircleAvatar(
-                backgroundColor: isSupportChat 
+                backgroundColor: isSupportChat
                     ? KyboColors.roleAdmin.withValues(alpha: 0.2)
                     : KyboColors.primary.withValues(alpha: 0.2),
                 child: isSupportChat
-                    ? const Icon(Icons.security_rounded, size: 20, color: KyboColors.roleAdmin)
+                    ? const Icon(Icons.security_rounded,
+                        size: 20, color: KyboColors.roleAdmin)
                     : Text(
-                        displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : '?',
+                        displayName.isNotEmpty
+                            ? displayName.substring(0, 1).toUpperCase()
+                            : '?',
                         style: TextStyle(
                           color: KyboColors.primary,
                           fontWeight: FontWeight.bold,
@@ -204,8 +387,10 @@ class _ChatListTile extends StatelessWidget {
                           child: Text(
                             displayName,
                             style: TextStyle(
-                              fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
+                              fontWeight:
+                                  hasUnread ? FontWeight.bold : FontWeight.w500,
                               fontSize: 15,
+                              color: KyboColors.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -215,7 +400,7 @@ class _ChatListTile extends StatelessWidget {
                           _formatTime(chat.lastMessageTime),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: KyboColors.textMuted,
                           ),
                         ),
                       ],
@@ -225,8 +410,9 @@ class _ChatListTile extends StatelessWidget {
                       chat.lastMessage,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[700],
-                        fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                        color: KyboColors.textSecondary,
+                        fontWeight:
+                            hasUnread ? FontWeight.w500 : FontWeight.normal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -244,11 +430,10 @@ class _ChatListTile extends StatelessWidget {
                     color: KyboColors.primary,
                     shape: BoxShape.circle,
                   ),
-                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                  constraints:
+                      const BoxConstraints(minWidth: 20, minHeight: 20),
                   child: Text(
-                    chat.unreadCountNutritionist > 9
-                        ? '9+'
-                        : '${chat.unreadCountNutritionist}',
+                    unread > 9 ? '9+' : '$unread',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -308,8 +493,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
     if (chatId != null && message.isNotEmpty) {
       provider.sendMessage(chatId, message);
       _messageController.clear();
-      
-      // Scroll to bottom after sending
+
       Future.delayed(const Duration(milliseconds: 300), () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
@@ -332,11 +516,11 @@ class _ChatInterfaceState extends State<_ChatInterface> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_rounded, size: 64, color: Colors.grey[400]),
+            Icon(Icons.chat_rounded, size: 64, color: KyboColors.textMuted),
             const SizedBox(height: 16),
             Text(
               'Seleziona una chat per iniziare',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              style: TextStyle(color: KyboColors.textSecondary, fontSize: 16),
             ),
           ],
         ),
@@ -360,15 +544,15 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                 return Center(
                   child: Text(
                     'Nessun messaggio',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: KyboColors.textSecondary),
                   ),
                 );
               }
 
-              // Auto-scroll to bottom when messages change
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (_scrollController.hasClients) {
-                  _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                  _scrollController
+                      .jumpTo(_scrollController.position.maxScrollExtent);
                 }
               });
 
@@ -395,11 +579,24 @@ class _ChatInterfaceState extends State<_ChatInterface> {
               Expanded(
                 child: TextField(
                   controller: _messageController,
+                  style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Scrivi un messaggio...',
+                    hintStyle: TextStyle(color: KyboColors.textMuted),
+                    filled: true,
+                    fillColor: KyboColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide:
+                          BorderSide(color: KyboColors.primary, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -414,7 +611,10 @@ class _ChatInterfaceState extends State<_ChatInterface> {
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [KyboColors.primary, KyboColors.primary.withValues(alpha: 0.8)],
+                    colors: [
+                      KyboColors.primary,
+                      KyboColors.primary.withValues(alpha: 0.8)
+                    ],
                   ),
                   shape: BoxShape.circle,
                 ),
@@ -453,18 +653,20 @@ class _MessageBubble extends StatelessWidget {
           if (!isMe) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.grey[300],
-              child: const Icon(Icons.person, size: 18, color: Colors.grey),
+              backgroundColor: KyboColors.surfaceElevated,
+              child: Icon(Icons.person,
+                  size: 18, color: KyboColors.textSecondary),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: isMe
                     ? KyboColors.primary
-                    : (KyboColors.isDark ? Colors.grey[800] : Colors.grey[200]),
+                    : KyboColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -473,9 +675,7 @@ class _MessageBubble extends StatelessWidget {
                   Text(
                     message.message,
                     style: TextStyle(
-                      color: isMe 
-                          ? Colors.white 
-                          : KyboColors.textPrimary,
+                      color: isMe ? Colors.white : KyboColors.textPrimary,
                       fontSize: 14,
                     ),
                   ),
@@ -485,7 +685,7 @@ class _MessageBubble extends StatelessWidget {
                     style: TextStyle(
                       color: isMe
                           ? Colors.white.withValues(alpha: 0.7)
-                          : Colors.grey[600],
+                          : KyboColors.textMuted,
                       fontSize: 11,
                     ),
                   ),
