@@ -248,9 +248,22 @@ class PillButton extends StatelessWidget {
     );
 
     if (expanded) {
-      return SizedBox(width: double.infinity, child: button);
+      return SizedBox(
+        width: double.infinity,
+        child: Semantics(
+          button: true,
+          label: label,
+          enabled: onPressed != null,
+          child: button,
+        ),
+      );
     }
-    return button;
+    return Semantics(
+      button: true,
+      label: label,
+      enabled: onPressed != null,
+      child: button,
+    );
   }
 }
 
@@ -300,9 +313,22 @@ class PillIconButton extends StatelessWidget {
     );
 
     if (tooltip != null) {
-      return Tooltip(message: tooltip!, child: button);
+      return Tooltip(
+        message: tooltip!,
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          enabled: onPressed != null,
+          child: button,
+        ),
+      );
     }
-    return button;
+    return Semantics(
+      button: true,
+      label: 'Icona', // Fallback generico se non c'e tooltip
+      enabled: onPressed != null,
+      child: button,
+    );
   }
 }
 
@@ -405,31 +431,34 @@ class PillBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: small ? 10 : 14,
-        vertical: small ? 4 : 6,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: KyboBorderRadius.pill,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: small ? 12 : 14, color: color),
-            SizedBox(width: small ? 4 : 6),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontSize: small ? 10 : 12,
+    return Semantics(
+      label: "Stato: $label",
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: small ? 10 : 14,
+          vertical: small ? 4 : 6,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: KyboBorderRadius.pill,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: small ? 12 : 14, color: color),
+              SizedBox(width: small ? 4 : 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: small ? 10 : 12,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -642,54 +671,59 @@ class PillListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: backgroundColor ?? KyboColors.surface(context),
-        borderRadius: KyboBorderRadius.medium,
-        border: Border.all(color: KyboColors.border(context), width: 1),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: KyboBorderRadius.medium,
-        child: InkWell(
-          onTap: onTap,
+    return Semantics(
+      label: "$title. $subtitle",
+      button: onTap != null,
+      enabled: onTap != null,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor ?? KyboColors.surface(context),
           borderRadius: KyboBorderRadius.medium,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                if (leading != null) ...[
-                  leading!,
-                  const SizedBox(width: 16),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          color: KyboColors.textPrimary(context),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
+          border: Border.all(color: KyboColors.border(context), width: 1),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: KyboBorderRadius.medium,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: KyboBorderRadius.medium,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  if (leading != null) ...[
+                    leading!,
+                    const SizedBox(width: 16),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          subtitle!,
+                          title,
                           style: TextStyle(
-                            color: KyboColors.textSecondary(context),
-                            fontSize: 13,
+                            color: KyboColors.textPrimary(context),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
                           ),
                         ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            style: TextStyle(
+                              color: KyboColors.textSecondary(context),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                if (trailing != null) trailing!,
-              ],
+                  if (trailing != null) trailing!,
+                ],
+              ),
             ),
           ),
         ),

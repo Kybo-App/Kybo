@@ -435,6 +435,11 @@ class _MainScreenContentState extends State<MainScreenContent>
                   description:
                       'Tocca la foglia per nascondere le calorie\ne ridurre lo stress.',
                   targetShapeBorder: const CircleBorder(),
+                child: Semantics(
+                  label: "Modalità Relax",
+                  selected: provider.isTranquilMode,
+                  hint: "Nasconde le calorie per ridurre lo stress",
+                  button: true,
                   child: IconButton(
                     icon: Icon(
                       provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
@@ -444,6 +449,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                     ),
                     onPressed: provider.toggleTranquilMode,
                   ),
+                ),
                 ),
               ],
               bottom: TabBar(
@@ -565,33 +571,38 @@ class _MainScreenContentState extends State<MainScreenContent>
     Widget navItem = InkWell(
       onTap: () => setState(() => _currentIndex = index),
       borderRadius: KyboBorderRadius.large,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? KyboColors.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: KyboBorderRadius.large,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? KyboColors.primary : Colors.grey,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
+      child: Semantics(
+        label: label,
+        selected: isSelected,
+        button: true,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? KyboColors.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: KyboBorderRadius.large,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
                 color: isSelected ? KyboColors.primary : Colors.grey,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                size: 24,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? KyboColors.primary : Colors.grey,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -56,8 +56,10 @@
 - [x] Badge e achievement (7 giorni consecutivi, primo receipt scan, etc.)
 - [x] Streak di aderenza alla dieta
 
-### 14. Client - Accessibilità
-- [ ] Accessibilita screen reader (VoiceOver/TalkBack) completa
+### 14. Client - Accessibilità ✅
+- [x] Accessibilita screen reader (VoiceOver/TalkBack) completa
+- [x] Semantics su componenti custom (PillButton, NavItem)
+- [x] Touch targets minimi 48dp
 
 ---
  
