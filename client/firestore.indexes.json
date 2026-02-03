@@ -32,13 +32,6 @@
         { "fieldPath": "read", "order": "ASCENDING" },
         { "fieldPath": "senderType", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

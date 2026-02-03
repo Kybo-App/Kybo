@@ -4,7 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/chat.dart';
 
 /// Provider for managing chat functionality in admin dashboard
-/// Supporta sia chat admin-nutritionist che nutritionist-client
+///
+/// Visibilità chat per ruolo:
+/// - ADMIN: vede solo chat admin-nutritionist dove è partecipante (clientId)
+/// - NUTRITIONIST: vede tutte le chat dove è nutritionistId
+///   (sia nutritionist-client che admin-nutritionist)
 class AdminChatProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -16,37 +20,44 @@ class AdminChatProvider with ChangeNotifier {
   String? get userRole => _userRole;
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Get all chats for current user (filtered by role)
-  Stream<List<Chat>> getChatsForNutritionist() async* {
+  /// Initialize: fetch user role
+  Future<void> _ensureRole() async {
+    if (_userRole != null) return;
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final userDoc =
+          await _firestore.collection('users').doc(user.uid).get();
+      _userRole = userDoc.data()?['role'] as String?;
+      notifyListeners(); // Notify UI that role is now available
+    } catch (e) {
+      debugPrint('Error fetching user role: $e');
+      _userRole = 'nutritionist';
+      notifyListeners();
+    }
+  }
+
+  /// Get chats for current user, filtered by role
+  Stream<List<Chat>> getChatsForCurrentUser() async* {
     final user = _auth.currentUser;
     if (user == null) {
       yield [];
       return;
     }
 
-    // Detect user role from Firestore
-    if (_userRole == null) {
-      try {
-        final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
-        _userRole = userDoc.data()?['role'] as String?;
-      } catch (e) {
-        debugPrint('Error fetching user role: $e');
-        _userRole = 'nutritionist';
-      }
-    }
+    await _ensureRole();
 
-    // Filter chats based on role
     Query query;
     if (_userRole == 'admin') {
-      // Admin sees all chats (both admin-nutritionist and nutritionist-client)
-      // For now, show admin-nutritionist chats + all nutritionist-client chats for oversight
+      // Admin vede SOLO le chat admin-nutritionist dove è clientId
       query = _firestore
           .collection('chats')
+          .where('chatType', isEqualTo: 'admin-nutritionist')
+          .where('participants.clientId', isEqualTo: user.uid)
           .orderBy('lastMessageTime', descending: true);
     } else {
-      // Nutritionist sees chats where they are the nutritionistId
-      // This includes: nutritionist-client chats AND admin-nutritionist chats
+      // Nutritionist vede tutte le chat dove è nutritionistId
       query = _firestore
           .collection('chats')
           .where('participants.nutritionistId', isEqualTo: user.uid)
@@ -54,10 +65,19 @@ class AdminChatProvider with ChangeNotifier {
     }
 
     yield* query.snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => Chat.fromFirestore(doc))
-          .toList();
+      return snapshot.docs.map((doc) => Chat.fromFirestore(doc)).toList();
     });
+  }
+
+  /// Get the correct unread count for current user based on role + chatType
+  int getMyUnreadCount(Chat chat) {
+    if (_userRole == 'admin') {
+      // Admin: unread stored in 'client' field (admin is clientId)
+      return chat.unreadCountClient;
+    } else {
+      // Nutritionist: unread stored in 'nutritionist' field
+      return chat.unreadCountNutritionist;
+    }
   }
 
   /// Get messages for a specific chat
@@ -68,8 +88,9 @@ class AdminChatProvider with ChangeNotifier {
         .collection('messages')
         .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => ChatMessage.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ChatMessage.fromFirestore(doc))
+            .toList());
   }
 
   /// Send a message as nutritionist or admin
@@ -78,7 +99,6 @@ class AdminChatProvider with ChangeNotifier {
     if (user == null || messageText.trim().isEmpty) return;
 
     try {
-      // Determine sender type based on role
       final senderType = _userRole == 'admin' ? 'admin' : 'nutritionist';
 
       final message = ChatMessage(
@@ -90,49 +110,37 @@ class AdminChatProvider with ChangeNotifier {
         read: false,
       );
 
-      // Add message to subcollection
       await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
           .add(message.toMap());
 
-      // Determine who the "other side" is for unread count
-      // Read the chat doc to understand the structure
+      // Determine unread update based on chatType
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
-      final chatData = chatDoc.data();
-      final chatType = chatData?['chatType'] ?? 'nutritionist-client';
+      final chatType = chatDoc.data()?['chatType'] ?? 'nutritionist-client';
 
       Map<String, dynamic> unreadUpdate;
       if (chatType == 'admin-nutritionist') {
-        // In admin-nutritionist chats:
-        // - admin is the "client" (clientId)
-        // - nutritionist is the "nutritionist" (nutritionistId)
         if (_userRole == 'admin') {
-          // Admin sends -> reset admin's unread, increment nutritionist's
           unreadUpdate = {
-            'client': 0, // admin's count reset
+            'client': 0,
             'nutritionist': FieldValue.increment(1),
           };
         } else {
-          // Nutritionist sends -> reset nutritionist's unread, increment admin's
           unreadUpdate = {
-            'client': FieldValue.increment(1), // admin's count incremented
+            'client': FieldValue.increment(1),
             'nutritionist': 0,
           };
         }
       } else {
-        // In nutritionist-client chats:
-        // - client is the "client" (clientId)
-        // - nutritionist is the "nutritionist" (nutritionistId)
-        // Nutritionist/admin sends -> increment client's unread, reset own
+        // nutritionist-client: nutri sends -> increment client, reset nutri
         unreadUpdate = {
           'client': FieldValue.increment(1),
           'nutritionist': 0,
         };
       }
 
-      // Update chat metadata
       await _firestore.collection('chats').doc(chatId).set({
         'lastMessage': messageText.trim(),
         'lastMessageTime': Timestamp.now(),
@@ -145,33 +153,31 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Mark all messages in a chat as read for current user
+  /// Mark messages as read for current user
   Future<void> markAsRead(String chatId) async {
     try {
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
       final chatData = chatDoc.data();
-      final chatType = chatData?['chatType'] ?? 'nutritionist-client';
+      if (chatData == null) return;
 
-      // Determine which senderTypes to mark as read
-      // (messages from the OTHER side)
+      final chatType = chatData['chatType'] ?? 'nutritionist-client';
+
       List<String> otherSenderTypes;
       String unreadField;
 
       if (chatType == 'admin-nutritionist') {
         if (_userRole == 'admin') {
           otherSenderTypes = ['nutritionist'];
-          unreadField = 'unreadCount.client'; // admin's unread
+          unreadField = 'unreadCount.client';
         } else {
           otherSenderTypes = ['admin'];
           unreadField = 'unreadCount.nutritionist';
         }
       } else {
-        // nutritionist-client: nutritionist reads client messages
         otherSenderTypes = ['client'];
         unreadField = 'unreadCount.nutritionist';
       }
 
-      // Get unread messages from the other side
       final messagesSnapshot = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -188,7 +194,6 @@ class AdminChatProvider with ChangeNotifier {
         await batch.commit();
       }
 
-      // Reset unread count
       await _firestore.collection('chats').doc(chatId).update({
         unreadField: 0,
       });
@@ -197,70 +202,87 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Select a chat (for UI state)
+  /// Select a chat
   void selectChat(String? chatId) {
     _selectedChatId = chatId;
     notifyListeners();
 
-    // Mark as read when selected
     if (chatId != null) {
       markAsRead(chatId);
     }
   }
 
-  /// Create a test admin-nutritionist chat (DEBUG only)
-  Future<void> debugCreateTestChat() async {
+  /// Get list of nutritionists for creating a new chat (admin only)
+  Future<List<Map<String, dynamic>>> getNutritionists() async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'nutritionist')
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'uid': doc.id,
+          'name':
+              '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'.trim(),
+          'email': data['email'] ?? '',
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('Error fetching nutritionists: $e');
+      return [];
+    }
+  }
+
+  /// Create a new admin-nutritionist chat
+  Future<void> createChatWithNutritionist({
+    required String nutritionistId,
+    required String nutritionistName,
+    required String nutritionistEmail,
+  }) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     try {
-      final nutriSnapshot = await _firestore
-          .collection('users')
-          .where('role', isEqualTo: 'nutritionist')
+      // Check if chat already exists
+      final existing = await _firestore
+          .collection('chats')
+          .where('chatType', isEqualTo: 'admin-nutritionist')
+          .where('participants.clientId', isEqualTo: user.uid)
+          .where('participants.nutritionistId', isEqualTo: nutritionistId)
           .limit(1)
           .get();
 
-      if (nutriSnapshot.docs.isEmpty) {
-        debugPrint('No nutritionist found to chat with');
+      if (existing.docs.isNotEmpty) {
+        // Chat already exists, select it
+        selectChat(existing.docs.first.id);
         return;
       }
 
-      final nutriDoc = nutriSnapshot.docs.first;
-      final nutriData = nutriDoc.data();
-      final nutriId = nutriDoc.id;
-      final nutriName = nutriData['name'] ?? nutriData['first_name'] ?? 'Nutrizionista';
-      final nutriEmail = nutriData['email'] ?? '';
-
+      // Create new chat
       final chatRef = _firestore.collection('chats').doc();
       await chatRef.set({
         'chatType': 'admin-nutritionist',
         'participants': {
           'clientId': user.uid,
-          'nutritionistId': nutriId,
+          'nutritionistId': nutritionistId,
         },
-        'clientName': nutriName,
-        'clientEmail': nutriEmail,
-        'lastMessage': 'Chat di test admin-nutrizionista',
+        'clientName': nutritionistName,
+        'clientEmail': nutritionistEmail,
+        'lastMessage': '',
         'lastMessageTime': FieldValue.serverTimestamp(),
-        'lastMessageSender': 'admin',
+        'lastMessageSender': '',
         'unreadCount': {
           'client': 0,
-          'nutritionist': 1,
+          'nutritionist': 0,
         },
       });
 
-      await chatRef.collection('messages').add({
-        'senderId': user.uid,
-        'senderType': 'admin',
-        'message': 'Benvenuto nella chat di supporto Admin!',
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-      });
-
-      debugPrint('Test chat created: ${chatRef.id}');
-      notifyListeners();
+      selectChat(chatRef.id);
     } catch (e) {
-      debugPrint('Error creating test chat: $e');
+      debugPrint('Error creating chat: $e');
+      rethrow;
     }
   }
 }
