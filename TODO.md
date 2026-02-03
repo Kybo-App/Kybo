@@ -33,13 +33,13 @@
 - [x] Calcolatrice nutrizionale integrata (macro/micro nutrienti per pasto)
 - [x] Alert automatico quando una dieta scade (es. dopo 30 giorni)
 
-### 8. Backend - Riconoscimento Allergeni
-- [ ] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
+### 8. Admin - Gestione Nutrizionisti ✅
+- [x] Profilo nutrizionista con bio, specializzazioni
+- [x] Limite massimo clienti per nutrizionista (configurabile)
+- [x] Controllo limite durante assegnazione
 
-### 9. Admin - Gestione Nutrizionisti
-- [ ] Profilo nutrizionista con bio, specializzazioni, orari di disponibilita
-- [ ] Limite massimo clienti per nutrizionista (configurabile)
-- [ ] Notifica automatica quando un nutrizionista raggiunge il limite
+### 9. Backend - Riconoscimento Allergeni
+- [ ] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
 
 ### 10. Admin - Allegati Chat
 - [ ] Allegati nella chat (immagini, PDF)
