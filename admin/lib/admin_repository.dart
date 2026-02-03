@@ -329,4 +329,58 @@ class AdminRepository {
       throw Exception("Errore Profilo Secure (${response.statusCode})");
     }
   }
+
+  // --- CHAT ATTACHMENTS ---
+  
+  Future<Map<String, dynamic>> uploadChatAttachment(PlatformFile file) async {
+    final token = await _getToken();
+    var uri = Uri.parse('$_baseUrl/chat/upload-attachment');
+    var request = http.MultipartRequest('POST', uri);
+
+    request.headers['Authorization'] = 'Bearer $token';
+
+    if (file.bytes != null) {
+      // Web or bytes available
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        file.bytes!,
+        filename: file.name,
+        contentType: _getMediaType(file.extension),
+      ));
+    } else if (file.path != null) {
+      // Mobile/Desktop with path
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path!,
+        filename: file.name,
+        contentType: _getMediaType(file.extension),
+      ));
+    } else {
+       throw Exception("File vuoto o invalido");
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Upload fallito: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  MediaType? _getMediaType(String? extension) {
+    if (extension == null) return null;
+    switch (extension.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'pdf':
+        return MediaType('application', 'pdf');
+      default:
+        return null;
+    }
+  }
 }

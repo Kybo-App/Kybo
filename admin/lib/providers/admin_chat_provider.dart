@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/chat.dart';
+import '../admin_repository.dart';
 
 /// Provider for managing chat functionality in admin dashboard
 ///
@@ -12,6 +14,7 @@ import '../models/chat.dart';
 class AdminChatProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AdminRepository _repo = AdminRepository();
 
   String? _selectedChatId;
   String? _userRole;
@@ -94,9 +97,15 @@ class AdminChatProvider with ChangeNotifier {
   }
 
   /// Send a message as nutritionist or admin
-  Future<void> sendMessage(String chatId, String messageText) async {
+  Future<void> sendMessage(
+    String chatId, 
+    String messageText, {
+    String? attachmentUrl,
+    String? attachmentType,
+    String? fileName,
+  }) async {
     final user = _auth.currentUser;
-    if (user == null || messageText.trim().isEmpty) return;
+    if (user == null || (messageText.trim().isEmpty && attachmentUrl == null)) return;
 
     try {
       final senderType = _userRole == 'admin' ? 'admin' : 'nutritionist';
@@ -107,7 +116,12 @@ class AdminChatProvider with ChangeNotifier {
         senderType: senderType,
         message: messageText.trim(),
         timestamp: DateTime.now(),
+        message: messageText.trim(),
+        timestamp: DateTime.now(),
         read: false,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        fileName: fileName,
       );
 
       await _firestore
@@ -284,5 +298,15 @@ class AdminChatProvider with ChangeNotifier {
       debugPrint('Error creating chat: $e');
       rethrow;
     }
+  }
+    } catch (e) {
+      debugPrint('Error creating chat: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload a file attachment
+  Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
+    return await _repo.uploadChatAttachment(file);
   }
 }

@@ -31,6 +31,7 @@ from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
 from app.routers.gdpr import router as gdpr_router
+from app.routers.chat import router as chat_router
 
 # --- SENTRY ERROR TRACKING ---
 import sentry_sdk
@@ -122,6 +123,7 @@ app.include_router(diet_router)
 app.include_router(users_router)
 app.include_router(admin_router)
 app.include_router(gdpr_router)
+app.include_router(chat_router)
 
 
 # --- BACKGROUND WORKER ---

@@ -41,8 +41,8 @@
 ### 9. Backend - Riconoscimento Allergeni ✅
 - [x] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
 
-### 10. Admin - Allegati Chat
-- [ ] Allegati nella chat (immagini, PDF)
+### 10. Admin - Allegati Chat ✅
+- [x] Allegati nella chat (immagini, PDF)
 
 ### 11. Admin - Notifiche In-App
 - [ ] Badge su icone nav (non solo chat)

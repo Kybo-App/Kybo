@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/chat.dart';
 import '../providers/admin_chat_provider.dart';
 import '../widgets/design_system.dart';
@@ -477,6 +479,8 @@ class _ChatInterface extends StatefulWidget {
 class _ChatInterfaceState extends State<_ChatInterface> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  PlatformFile? _pickedFile;
+  bool _isUploading = false;
 
   @override
   void dispose() {
@@ -485,14 +489,52 @@ class _ChatInterfaceState extends State<_ChatInterface> {
     super.dispose();
   }
 
-  void _sendMessage() {
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    );
+    if (result != null) {
+      setState(() => _pickedFile = result.files.first);
+    }
+  }
+
+  void _removeFile() {
+    setState(() => _pickedFile = null);
+  }
+
+  Future<void> _sendMessage() async {
     final provider = context.read<AdminChatProvider>();
     final chatId = provider.selectedChatId;
     final message = _messageController.text.trim();
 
-    if (chatId != null && message.isNotEmpty) {
-      provider.sendMessage(chatId, message);
+    if (chatId == null) return;
+    if (message.isEmpty && _pickedFile == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      String? attachmentUrl;
+      String? attachmentType;
+      String? fileName;
+
+      if (_pickedFile != null) {
+        final uploadResult = await provider.uploadAttachment(_pickedFile!);
+        attachmentUrl = uploadResult['url'];
+        attachmentType = uploadResult['fileType']; // 'image' or 'pdf'
+        fileName = uploadResult['fileName'];
+      }
+
+      await provider.sendMessage(
+        chatId, 
+        message,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        fileName: fileName,
+      );
+      
       _messageController.clear();
+      _removeFile();
 
       Future.delayed(const Duration(milliseconds: 300), () {
         if (_scrollController.hasClients) {
@@ -503,6 +545,12 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           );
         }
       });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore invio: $e'), backgroundColor: KyboColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -577,8 +625,34 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _messageController,
+                child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     if (_pickedFile != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: KyboColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: KyboColors.primary),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.attach_file, size: 16, color: KyboColors.primary),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text(_pickedFile!.name, overflow: TextOverflow.ellipsis)),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: _removeFile,
+                                child: Icon(Icons.close, size: 16, color: KyboColors.textMuted),
+                              )
+                            ],
+                          ),
+                        ),
+                     TextField(
+                      controller: _messageController,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Scrivi un messaggio...',
@@ -608,6 +682,14 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                 ),
               ),
               const SizedBox(width: 12),
+              // Attachment Button
+              IconButton(
+                icon: const Icon(Icons.attach_file_rounded),
+                color: _pickedFile != null ? KyboColors.primary : KyboColors.textSecondary,
+                onPressed: _isUploading ? null : _pickFile,
+              ),
+              const SizedBox(width: 8),
+              // Send Button
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -618,10 +700,19 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.send, color: Colors.white),
-                  onPressed: _sendMessage,
-                ),
+                child: _isUploading 
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 24, 
+                        height: 24, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      ),
+                    )
+                  : IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    onPressed: _sendMessage,
+                  ),
               ),
             ],
           ),
@@ -639,10 +730,18 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message});
 
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.read<AdminChatProvider>();
     final isMe = message.senderId == provider.currentUserId;
+    final hasAttachment = message.attachmentUrl != null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -672,13 +771,18 @@ class _MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message.message,
-                    style: TextStyle(
-                      color: isMe ? Colors.white : KyboColors.textPrimary,
-                      fontSize: 14,
+                  if (hasAttachment) ...[
+                    _buildAttachmentPreview(context, isMe),
+                    if (message.message.isNotEmpty) const SizedBox(height: 8),
+                  ],
+                  if (message.message.isNotEmpty)
+                    Text(
+                      message.message,
+                      style: TextStyle(
+                        color: isMe ? Colors.white : KyboColors.textPrimary,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('HH:mm').format(message.timestamp),
@@ -704,5 +808,70 @@ class _MessageBubble extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildAttachmentPreview(BuildContext context, bool isMe) {
+    final isImage = message.attachmentType == 'image';
+    
+    if (isImage) {
+      return GestureDetector(
+        onTap: () => _launchUrl(message.attachmentUrl!),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            message.attachmentUrl!,
+            height: 150,
+            width: 200,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+            loadingBuilder: (_, child, prog) {
+              if (prog == null) return child;
+              return Container(
+                height: 150,
+                width: 200,
+                color: Colors.black12,
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            },
+          ),
+        ),
+      );
+    } else {
+      // PDF or other
+      return InkWell(
+        onTap: () => _launchUrl(message.attachmentUrl!),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isMe ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isMe ? Colors.white.withValues(alpha: 0.3) : KyboColors.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.picture_as_pdf, 
+                color: isMe ? Colors.white : KyboColors.error,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  message.fileName ?? 'Documento',
+                  style: TextStyle(
+                    color: isMe ? Colors.white : KyboColors.textPrimary,
+                    decoration: TextDecoration.underline,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
