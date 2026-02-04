@@ -73,6 +73,31 @@ service cloud.firestore {
       match /parser_history/{docId} {
         allow read, write: if hasRole('admin');
       }
+
+      // --- TRACKING COLLECTIONS ---
+      match /weight_history/{docId} {
+        allow read: if isOwner(userId) ||
+                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if isOwner(userId);
+      }
+
+      match /daily_stats/{docId} {
+        allow read: if isOwner(userId) ||
+                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if isOwner(userId);
+      }
+
+      match /goals/{docId} {
+        allow read: if isOwner(userId) ||
+                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if isOwner(userId);
+      }
+
+      match /meal_notes/{docId} {
+        allow read: if isOwner(userId) ||
+                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if isOwner(userId);
+      }
     }
 
     match /diet_history/{docId} {
