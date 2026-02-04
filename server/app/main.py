@@ -164,7 +164,7 @@ async def maintenance_worker():
         except Exception as e:
             logger.error("maintenance_worker_error", error=sanitize_error_message(e))
 
-        await asyncio.sleep(60)
+        await asyncio.sleep(settings.MAINTENANCE_POLL_INTERVAL)
 
 
 @app.on_event("startup")

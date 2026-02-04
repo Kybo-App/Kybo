@@ -60,8 +60,8 @@ class DietParser:
     # [OPTIMIZATION] Cache L1 in RAM (condivisa tra richieste)
     # Chiave: content_hash, Valore: (result, timestamp)
     _memory_cache: dict = {}
-    _MEMORY_CACHE_MAX_SIZE = 100  # Limita dimensione cache in RAM
-    _MEMORY_CACHE_TTL_SECONDS = 3600  # 1 ora TTL per cache RAM
+    _MEMORY_CACHE_MAX_SIZE = settings.MEMORY_CACHE_SIZE
+    _MEMORY_CACHE_TTL_SECONDS = settings.MEMORY_CACHE_TTL
 
     def __init__(self):
         api_key = settings.GOOGLE_API_KEY
@@ -181,8 +181,8 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         try:
             # Apriamo direttamente l'oggetto in memoria senza toccare il disco
             with pdfplumber.open(file_obj) as pdf:
-                if len(pdf.pages) > 50:
-                    raise ValueError("Il PDF ha troppe pagine (Max 50).")
+                if len(pdf.pages) > settings.MAX_PDF_PAGES:
+                    raise ValueError(f"Il PDF ha troppe pagine (Max {settings.MAX_PDF_PAGES}).")
                 
                 for page in pdf.pages:
                     extracted = page.extract_text(layout=True) 
@@ -341,7 +341,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                         if cache_time.tzinfo is None:
                             cache_time = cache_time.replace(tzinfo=timezone.utc)
                         age = now - cache_time
-                        if age > timedelta(days=30):
+                        if age > timedelta(days=settings.FIRESTORE_CACHE_DAYS):
                             # Cache scaduta, eliminala
                             cache_ref.delete()
                             return None

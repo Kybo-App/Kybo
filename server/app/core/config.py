@@ -37,6 +37,16 @@ class Settings(BaseSettings):
             # [FIX] DEV permette SOLO localhost per evitare confusione
             return self._dev_origins
 
+    # Limits
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    MAX_PDF_PAGES: int = 50
+    MEMORY_CACHE_SIZE: int = 100
+    MEMORY_CACHE_TTL: int = 3600  # seconds
+    FIRESTORE_CACHE_DAYS: int = 30
+    DEFAULT_MAX_CLIENTS: int = 50
+    MAX_CONCURRENT_HEAVY_TASKS: int = 2
+    MAINTENANCE_POLL_INTERVAL: int = 60  # seconds
+
     # Paths
     DIET_PDF_PATH: str = "temp_dieta.pdf"
     RECEIPT_PATH_PREFIX: str = "temp_scontrino"

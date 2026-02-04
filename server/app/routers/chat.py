@@ -5,7 +5,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from firebase_admin import storage
-from app.core.dependencies import verify_professional
+from app.core.dependencies import verify_professional, MAX_FILE_SIZE
 from app.core.logging import logger, sanitize_error_message
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -24,10 +24,10 @@ async def upload_attachment(
         raise HTTPException(status_code=400, detail="Formato file non supportato. Usa JPG, PNG o PDF.")
 
     try:
-        # Limite dimensione: 5MB
         file_content = await file.read()
-        if len(file_content) > 5_000_000:
-            raise HTTPException(status_code=413, detail="File troppo grande. Massimo 5MB.")
+        if len(file_content) > MAX_FILE_SIZE:
+            max_mb = MAX_FILE_SIZE // (1024 * 1024)
+            raise HTTPException(status_code=413, detail=f"File troppo grande. Massimo {max_mb}MB.")
 
         bucket = storage.bucket()
 
