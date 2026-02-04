@@ -11,7 +11,6 @@ import 'package:showcaseview/showcaseview.dart';
 import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
-import '../providers/chat_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';

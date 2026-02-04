@@ -31,7 +31,7 @@ class AuthService {
           'last_name': '',
           'is_active': true,
           'created_at': FieldValue.serverTimestamp(),
-          'platform': defaultTargetPlatform.toString(),
+          'platform': defaultTargetPlatform.name,
           if (additionalData != null) ...additionalData,
         });
       }
