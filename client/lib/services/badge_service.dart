@@ -68,11 +68,9 @@ class BadgeService extends ChangeNotifier {
 
     // Persist to Firestore
     try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'unlocked_badges': {
-          badgeId: FieldValue.serverTimestamp(), // Store as timestamp
-        }
-      }, SetOptions(merge: true));
+      await _firestore.collection('users').doc(user.uid).update({
+        'unlocked_badges.$badgeId': FieldValue.serverTimestamp(),
+      });
       
       debugPrint("🏆 Badge Unlocked: ${badge.title}");
     } catch (e) {

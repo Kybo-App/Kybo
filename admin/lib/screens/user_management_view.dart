@@ -971,34 +971,41 @@ class _UserManagementViewState extends State<UserManagementView> {
                     ),
                   ),
                 if (clients.isNotEmpty)
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth <= 0) {
+                        return const SizedBox.shrink();
+                      }
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 400,
                           mainAxisExtent: 240,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                    itemCount: clients.length,
-                    padding: const EdgeInsets.all(12),
-                    itemBuilder: (ctx, idx) => _UserCard(
-                      user: clients[idx],
-                      onDelete: _deleteUser,
-                      onUploadDiet: _uploadDiet,
-                      onUploadParser: _uploadParser,
-                      onHistory: (uid) => _showUserHistory(
-                        uid,
-                        clients[idx]['first_name'] ?? 'Client',
-                      ),
-                      onEdit: _editUser,
-                      onAssign: (uid) =>
-                          _showManageAssignmentDialog(uid, nutNameMap),
-                      currentUserRole: _currentUserRole,
-                      currentUserId: _currentUserId,
-                      roleColor: _getRoleColor('user'),
-                    ),
+                        itemCount: clients.length,
+                        padding: const EdgeInsets.all(12),
+                        itemBuilder: (ctx, idx) => _UserCard(
+                          user: clients[idx],
+                          onDelete: _deleteUser,
+                          onUploadDiet: _uploadDiet,
+                          onUploadParser: _uploadParser,
+                          onHistory: (uid) => _showUserHistory(
+                            uid,
+                            clients[idx]['first_name'] ?? 'Client',
+                          ),
+                          onEdit: _editUser,
+                          onAssign: (uid) =>
+                              _showManageAssignmentDialog(uid, nutNameMap),
+                          currentUserRole: _currentUserRole,
+                          currentUserId: _currentUserId,
+                          roleColor: _getRoleColor('user'),
+                        ),
+                      );
+                    },
                   ),
               ],
             ),
@@ -1025,32 +1032,40 @@ class _UserManagementViewState extends State<UserManagementView> {
               subtitle: "${independents.length} Utenti",
               initiallyExpanded: false,
               children: [
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 400,
-                    mainAxisExtent: 240,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: independents.length,
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (ctx, idx) => _UserCard(
-                    user: independents[idx],
-                    onDelete: _deleteUser,
-                    onUploadDiet: _uploadDiet,
-                    onUploadParser: _uploadParser,
-                    onHistory: (uid) => _showUserHistory(
-                      uid,
-                      independents[idx]['first_name'] ?? 'User',
-                    ),
-                    onEdit: _editUser,
-                    onAssign: (uid) => _assignUser(uid, nutNameMap),
-                    currentUserRole: _currentUserRole,
-                    currentUserId: _currentUserId,
-                    roleColor: _getRoleColor('independent'),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 400,
+                        mainAxisExtent: 240,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: independents.length,
+                      padding: const EdgeInsets.all(12),
+                      itemBuilder: (ctx, idx) => _UserCard(
+                        user: independents[idx],
+                        onDelete: _deleteUser,
+                        onUploadDiet: _uploadDiet,
+                        onUploadParser: _uploadParser,
+                        onHistory: (uid) => _showUserHistory(
+                          uid,
+                          independents[idx]['first_name'] ?? 'User',
+                        ),
+                        onEdit: _editUser,
+                        onAssign: (uid) => _assignUser(uid, nutNameMap),
+                        currentUserRole: _currentUserRole,
+                        currentUserId: _currentUserId,
+                        roleColor: _getRoleColor('independent'),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1076,29 +1091,37 @@ class _UserManagementViewState extends State<UserManagementView> {
               subtitle: "${admins.length} Admin",
               initiallyExpanded: false,
               children: [
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 400,
-                    mainAxisExtent: 240,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: admins.length,
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (ctx, idx) => _UserCard(
-                    user: admins[idx],
-                    onDelete: _deleteUser,
-                    onUploadDiet: _uploadDiet,
-                    onUploadParser: _uploadParser,
-                    onHistory: (_) {},
-                    onEdit: _editUser,
-                    onAssign: null,
-                    currentUserRole: _currentUserRole,
-                    currentUserId: _currentUserId,
-                    roleColor: _getRoleColor('admin'),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 400,
+                        mainAxisExtent: 240,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: admins.length,
+                      padding: const EdgeInsets.all(12),
+                      itemBuilder: (ctx, idx) => _UserCard(
+                        user: admins[idx],
+                        onDelete: _deleteUser,
+                        onUploadDiet: _uploadDiet,
+                        onUploadParser: _uploadParser,
+                        onHistory: (_) {},
+                        onEdit: _editUser,
+                        onAssign: null,
+                        currentUserRole: _currentUserRole,
+                        currentUserId: _currentUserId,
+                        roleColor: _getRoleColor('admin'),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
