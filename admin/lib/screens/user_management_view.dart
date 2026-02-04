@@ -38,6 +38,12 @@ class _UserManagementViewState extends State<UserManagementView> {
     _checkCurrentUser();
   }
 
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   // UPDATED: Usa i claims del token, zero letture DB!
   Future<void> _checkCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;

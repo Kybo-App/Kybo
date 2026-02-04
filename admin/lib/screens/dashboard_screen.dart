@@ -10,6 +10,7 @@ import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
 import 'nutritional_calculator_view.dart';
+import 'analytics_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -138,6 +139,11 @@ class _DashboardContentState extends State<_DashboardContent> {
         icon: Icons.calculate_rounded,
         label: "Calcolatrice",
         view: NutritionalCalculatorView(key: ValueKey('calc_$themeKey')),
+      ),
+      _NavItem(
+        icon: Icons.analytics_rounded,
+        label: "Analytics",
+        view: AnalyticsView(key: ValueKey('analytics_$themeKey')),
       ),
       if (_isAdmin)
         _NavItem(

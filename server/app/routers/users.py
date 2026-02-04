@@ -9,9 +9,8 @@ import firebase_admin
 from firebase_admin import auth, firestore
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr, field_validator
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
+from app.core.config import settings
 from app.core.dependencies import verify_admin, verify_professional
 from app.core.logging import logger, sanitize_error_message
 
@@ -194,7 +193,7 @@ async def admin_assign_user(
         nut_doc = db.collection('users').document(body.nutritionist_id).get()
         if nut_doc.exists:
             nut_data = nut_doc.to_dict()
-            max_clients = nut_data.get('max_clients', 50)  # Default limit 50
+            max_clients = nut_data.get('max_clients', settings.DEFAULT_MAX_CLIENTS)
             
             # Count current clients
             clients_query = db.collection('users').where('parent_id', '==', body.nutritionist_id).count()

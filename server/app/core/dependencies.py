@@ -9,11 +9,13 @@ from fastapi import Header, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from firebase_admin import auth
 
+from app.core.config import settings
+
 # Semaforo per limitare operazioni pesanti
-heavy_tasks_semaphore = asyncio.Semaphore(2)
+heavy_tasks_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_HEAVY_TASKS)
 
 # Costanti di sicurezza
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
 # Magic bytes per validazione file

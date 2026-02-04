@@ -3,7 +3,6 @@ fastapi>=0.109.1
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 pdfplumber==0.10.3
-thefuzz==0.20.0
 # [SECURITY] Patched Buffer Overflow Vulnerability
 Pillow>=10.3.0
 pytesseract==0.3.10
@@ -12,11 +11,8 @@ google-genai==1.0.0
 pydantic==2.6.0
 pydantic-settings==2.1.0
 python-dotenv==1.0.1
-aiofiles==23.2.1
 firebase-admin==6.4.0
-opencv-python-headless==4.9.0.80
 email-validator==2.1.0
-python-Levenshtein==0.23.0
 slowapi==0.1.9
 structlog==24.1.0
 sentry-sdk[fastapi]==1.40.0
