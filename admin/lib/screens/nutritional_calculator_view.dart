@@ -110,7 +110,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
                       ),
                       const Spacer(),
                       PillButton(
-                        labelText:"Aggiungi Ingrediente",
+                        label: "Aggiungi Ingrediente",
                         icon: Icons.add,
                         onPressed: _addIngredient,
                         height: 36,
