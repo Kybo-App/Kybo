@@ -1,4 +1,11 @@
 {
+  "firestore": {
+    "rules": "client/firestore.rules",
+    "indexes": "client/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "client/storage.rules"
+  },
   "hosting": {
     "target": "landing",
     "public": "landing",
