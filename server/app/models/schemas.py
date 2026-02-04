@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional, Set
-import uuid  # <--- AGGIUNGI QUESTO IMPORT
+import uuid
 from pydantic import BaseModel, Field
 
 class Ingredient(BaseModel):

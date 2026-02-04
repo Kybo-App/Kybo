@@ -31,14 +31,20 @@ class BadgeModel {
 
   factory BadgeModel.fromJson(Map<String, dynamic> json) {
     return BadgeModel(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      icon: IconData(json['icon_code'], fontFamily: 'MaterialIcons'),
-      type: BadgeType.values.firstWhere((e) => e.toString() == json['type']),
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      icon: IconData(
+        json['icon_code'] as int? ?? Icons.star.codePoint,
+        fontFamily: 'MaterialIcons',
+      ),
+      type: BadgeType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => BadgeType.action,
+      ),
       isUnlocked: json['is_unlocked'] ?? false,
-      unlockedAt: json['unlocked_at'] != null 
-          ? DateTime.parse(json['unlocked_at']) 
+      unlockedAt: json['unlocked_at'] != null
+          ? DateTime.tryParse(json['unlocked_at'])
           : null,
     );
   }

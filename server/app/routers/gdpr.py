@@ -92,9 +92,9 @@ async def get_consents(user_data: dict = Depends(verify_token)):
         if not user_doc.exists:
             raise HTTPException(status_code=404, detail="User not found")
         
-        data = user_doc.to_dict()
+        data = user_doc.to_dict() or {}
         consents = {}
-        
+
         for key, value in data.items():
             if key.startswith("consent_") and isinstance(value, dict):
                 consent_type = key.replace("consent_", "")
@@ -139,7 +139,7 @@ async def export_user_data(user_data: dict = Depends(verify_token)):
             export_data["profile"] = profile
         
         # 2. Dieta corrente (subcollection)
-        current_diet = db.collection('users').document(user_id).collection('diet').get()
+        current_diet = db.collection('users').document(user_id).collection('diets').get()
         for doc in current_diet:
             data = doc.to_dict()
             data['_doc_id'] = doc.id

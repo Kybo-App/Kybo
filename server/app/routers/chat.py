@@ -23,27 +23,30 @@ async def upload_attachment(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Formato file non supportato. Usa JPG, PNG o PDF.")
 
-    # Limite dimensione (es. 5MB) - Idealmente da gestire prima ma ok qui
-    # Per ora ci fidiamo del client o gestiamo eccezioni stream
-
     try:
+        # Limite dimensione: 5MB
+        file_content = await file.read()
+        if len(file_content) > 5_000_000:
+            raise HTTPException(status_code=413, detail="File troppo grande. Massimo 5MB.")
+
         bucket = storage.bucket()
-        
+
         # Genera nome file univoco
         ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "bin"
         filename = f"{uuid.uuid4()}.{ext}"
         blob_path = f"chat_uploads/{filename}"
-        
+
         blob = bucket.blob(blob_path)
-        
+
         # Upload
-        blob.upload_from_file(file.file, content_type=file.content_type)
-        
-        # Make public (semplificazione per task #10)
-        blob.make_public()
-        
+        blob.upload_from_string(file_content, content_type=file.content_type)
+
+        # Genera signed URL (valido 7 giorni) invece di rendere pubblico
+        from datetime import timedelta
+        signed_url = blob.generate_signed_url(expiration=timedelta(days=7))
+
         return {
-            "url": blob.public_url,
+            "url": signed_url,
             "fileName": file.filename,
             "fileType": "pdf" if file.content_type == "application/pdf" else "image"
         }
