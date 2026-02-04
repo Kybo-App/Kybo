@@ -384,6 +384,79 @@ class AdminRepository {
     }
   }
 
+  // --- NUTRITIONIST REPORTS ---
+
+  /// Fetches monthly report for a nutritionist
+  Future<Map<String, dynamic>> getMonthlyReport({
+    required String nutritionistId,
+    required String month, // YYYY-MM format
+  }) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/reports/monthly?nutritionist_id=$nutritionistId&month=$month'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Report (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Lists available reports
+  Future<List<dynamic>> listReports({
+    String? nutritionistId,
+    int limit = 12,
+  }) async {
+    final token = await _getToken();
+    var url = '$_baseUrl/admin/reports/list?limit=$limit';
+    if (nutritionistId != null) {
+      url += '&nutritionist_id=$nutritionistId';
+    }
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return data['reports'] as List<dynamic>? ?? [];
+    } else {
+      throw Exception("Errore Lista Report (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Generates (or regenerates) a report
+  Future<Map<String, dynamic>> generateReport({
+    required String nutritionistId,
+    required int year,
+    required int month,
+    bool forceRegenerate = false,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/reports/generate'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'nutritionist_id': nutritionistId,
+        'year': year,
+        'month': month,
+        'force_regenerate': forceRegenerate,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Generazione Report (${response.statusCode}): ${response.body}");
+    }
+  }
+
   // --- GDPR RETENTION POLICY ---
 
   /// Fetches GDPR dashboard with retention statistics

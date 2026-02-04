@@ -12,6 +12,7 @@ import 'chat_management_view.dart';
 import 'nutritional_calculator_view.dart';
 import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
+import 'reports_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -145,6 +146,11 @@ class _DashboardContentState extends State<_DashboardContent> {
         icon: Icons.analytics_rounded,
         label: "Analytics",
         view: AnalyticsView(key: ValueKey('analytics_$themeKey')),
+      ),
+      _NavItem(
+        icon: Icons.assessment_rounded,
+        label: "Report",
+        view: ReportsView(key: ValueKey('reports_$themeKey')),
       ),
       if (_isAdmin)
         _NavItem(
