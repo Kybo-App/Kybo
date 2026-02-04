@@ -14,6 +14,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _passCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
   bool _obscurePassword = true;    // [NEW] Toggle visibilità password
   bool _obscureConfirm = true;     // [NEW] Toggle visibilità conferma
 

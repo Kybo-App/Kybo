@@ -1,192 +1,235 @@
 # Kybo - Roadmap
- 
+
 ---
- 
-## SUBITO
+
+## SUBITO (completato)
 
 ### 1. Backend - Backup Firestore ✅
-- [x] Backup automatico Firestore giornaliero (export verso Cloud Storage)
-
 ### 2. Backend - Sentry & Alerting ✅
-- [x] Error tracking (Sentry integration)
-- [x] Alerting automatico (Slack/email su errori critici) - gratis con Sentry
-
 ### 3. Backend - Health Check ✅
-- [x] Health check avanzato (controlla Firebase, Gemini, Tesseract)
 - [ ] ⚠️ TODO: Fixare Tesseract su Render dev (cambiare a Docker o configurare build script)
-
 ### 4. Backend - CI/CD ✅
-- [x] CI/CD pipeline (GitHub Actions per test + lint server)
-
 ### 5. GDPR Base (Obbligo Legale) ✅
-- [x] Consenso privacy tracciato con timestamp
-- [x] Export dati cliente completo (GDPR data portability)
-
 ### 6. Client - Tracking & Statistiche ✅
-- [x] Dashboard progressi settimanale (pasti consumati, aderenza alla dieta)
-- [x] Grafici trend calorie/peso
-- [x] Tracking peso con grafico storico
-- [x] Obiettivi personalizzati con progress bar (es. "bevi 2L acqua al giorno")
-- [x] Diario alimentare (note libere per ogni pasto)
-
 ### 7. Admin - Calcolatrice Nutrizionale & Alert Diete ✅
-- [x] Calcolatrice nutrizionale integrata (macro/micro nutrienti per pasto)
-- [x] Alert automatico quando una dieta scade (es. dopo 30 giorni)
-
 ### 8. Admin - Gestione Nutrizionisti ✅
-- [x] Profilo nutrizionista con bio, specializzazioni
-- [x] Limite massimo clienti per nutrizionista (configurabile)
-- [x] Controllo limite durante assegnazione
-
 ### 9. Backend - Riconoscimento Allergeni ✅
-- [x] Riconoscimento allergeni automatico dal PDF durante parsing Gemini
-
 ### 10. Admin - Allegati Chat ✅
-- [x] Allegati nella chat (immagini, PDF)
-
 ### 11. Admin - Notifiche In-App ✅
-- [x] Badge su icone nav (non solo chat)
-- [x] Sistema notifiche unificato
-
 ### 12. Client - Deep Link & Onboarding ✅
-- [x] Onboarding personalizzato per tipo utente (indipendente vs cliente)
-- [x] Deep link per aprire direttamente una sezione dell'app
-
 ### 13. Client - Badge & Achievement ✅
-- [x] Badge e achievement (7 giorni consecutivi, primo receipt scan, etc.)
-- [x] Streak di aderenza alla dieta
-
 ### 14. Client - Accessibilità ✅
-- [x] Accessibilita screen reader (VoiceOver/TalkBack) completa
-- [x] Semantics su componenti custom (PillButton, NavItem)
-- [x] Touch targets minimi 48dp
 
 ---
- 
-## FUTURO (alta priorita)
 
-### GDPR Avanzato
-- [ ] Retention policy automatica (elimina dati dopo X mesi di inattivita)
-- [ ] Dashboard GDPR con stato consensi di tutti gli utenti
+## FUTURO (alta priorità)
 
-### Backend - 2FA
-- [ ] 2FA (Two-Factor Authentication) per admin e nutrizionisti
-
-### Admin - Report Nutrizionisti
-- [ ] Report mensile automatico per ogni nutrizionista (PDF/email)
-
-### Admin - Analytics Dashboard
-- [ ] Dashboard home con grafici riassuntivi (utenti attivi, diete caricate, messaggi)
-- [ ] Grafico trend upload diete nel tempo (giornaliero/settimanale/mensile)
-- [ ] Mappa attivita per nutrizionista (quanti clienti, quante diete, tempo risposta chat)
-- [ ] Widget "utenti inattivi" (non aprono l'app da X giorni)
-- [ ] Tasso di completamento pasti per cliente (quanti pasti consumati vs pianificati)
+> Ogni feature è organizzata per implementazione end-to-end:
+> backend → admin/client → test. Per le feature admin, il ruolo che
+> può accedervi è indicato con 🔴 Admin only, 🟡 Entrambi (admin + nutritionist).
 
 ---
- 
-## FUTURO
 
-### Admin - Gestione Diete Avanzata
-- [ ] Editor dieta visuale drag-and-drop (creare diete direttamente nel webapp senza PDF)
+### Feature 1: Analytics Dashboard
+> Nuovo tab nel pannello admin. 🟡 Entrambi (admin vede tutto, nutritionist vede solo i propri clienti)
+
+**Backend:**
+- [ ] Endpoint `GET /admin/analytics/overview` → utenti attivi, diete caricate, messaggi totali (🟡 verify_professional, filtro per nutritionist)
+- [ ] Endpoint `GET /admin/analytics/diet-trend` → trend upload diete nel tempo con parametro period (daily/weekly/monthly)
+- [ ] Endpoint `GET /admin/analytics/nutritionist-activity` → mappa attività per nutrizionista (clienti, diete, tempo risposta chat) — admin vede tutti, nutritionist vede solo sé stesso
+- [ ] Endpoint `GET /admin/analytics/inactive-users?days=X` → lista utenti inattivi
+- [ ] Endpoint `GET /admin/analytics/meal-completion/{uid}` → tasso completamento pasti per cliente
+
+**Admin:**
+- [ ] Nuovo tab "Analytics" nella navigazione (visibile a entrambi i ruoli)
+- [ ] Widget cards riassuntive in alto (utenti attivi, diete, messaggi)
+- [ ] Grafico trend upload diete (line chart, con selettore periodo)
+- [ ] Tabella/grafico attività nutrizionisti (admin) o propria attività (nutritionist)
+- [ ] Widget "Utenti inattivi" con lista e azione rapida (invia messaggio)
+- [ ] Grafico tasso completamento pasti per cliente
+
+---
+
+### Feature 2: GDPR Avanzato
+> Estensione del GDPR base. 🔴 Admin only (compliance di sistema)
+
+**Backend:**
+- [ ] Servizio retention policy: cloud function o cron che elimina dati dopo X mesi di inattività
+- [ ] Endpoint `GET /admin/gdpr/dashboard` → stato consensi di tutti gli utenti, date ultimo accesso, dati da eliminare (🔴 verify_admin)
+- [ ] Endpoint `POST /admin/gdpr/retention-config` → configura periodo retention (🔴 verify_admin)
+- [ ] Endpoint `POST /admin/gdpr/purge-inactive` → elimina manualmente dati utenti inattivi (🔴 verify_admin)
+
+**Admin:**
+- [ ] Nuovo sotto-tab o sezione in Settings → "GDPR & Privacy" (admin only)
+- [ ] Dashboard con tabella consensi (utente, data consenso, ultimo accesso, stato)
+- [ ] Configurazione retention policy (input mesi + toggle attiva/disattiva)
+- [ ] Pulsante purge manuale con conferma doppia
+- [ ] Indicatore visivo utenti prossimi alla scadenza retention
+
+---
+
+### Feature 3: Report Nutrizionisti
+> Report mensile automatico. 🟡 Entrambi (admin vede tutti i nutrizionisti, nutritionist vede il proprio)
+
+**Backend:**
+- [ ] Servizio generazione report: raccoglie dati mese (clienti gestiti, diete caricate, messaggi, tempo risposta medio)
+- [ ] Endpoint `GET /admin/reports/monthly?nutritionist_id=X&month=YYYY-MM` → genera/scarica report (🟡 verify_professional)
+- [ ] Endpoint `GET /admin/reports/list` → lista report disponibili
+- [ ] Opzionale: invio automatico email con PDF allegato a fine mese
+
+**Admin:**
+- [ ] Sezione "Report" accessibile da entrambi i ruoli (tab o sotto-sezione)
+- [ ] Selezione mese e nutrizionista (admin) o solo mese (nutritionist)
+- [ ] Visualizzazione report con metriche chiave
+- [ ] Pulsante download PDF
+- [ ] Storico report passati
+
+---
+
+### Feature 4: 2FA (Two-Factor Authentication)
+> Sicurezza login admin panel. 🟡 Entrambi (tutti gli utenti admin/nutritionist devono poterlo attivare)
+
+**Backend:**
+- [ ] Endpoint `POST /admin/2fa/setup` → genera secret TOTP e QR code (🟡 verify_professional)
+- [ ] Endpoint `POST /admin/2fa/verify` → verifica codice TOTP e attiva 2FA
+- [ ] Endpoint `POST /admin/2fa/disable` → disattiva 2FA (con verifica password)
+- [ ] Middleware: se utente ha 2FA attivo, richiedere codice dopo login Firebase
+- [ ] Campo `two_factor_enabled` e `two_factor_secret` nel documento utente Firestore
+
+**Admin:**
+- [ ] Schermata setup 2FA (mostra QR code, input codice verifica)
+- [ ] Step aggiuntivo nel flusso di login: dopo email/password, chiedi codice TOTP
+- [ ] Sezione in profilo utente per attivare/disattivare 2FA
+- [ ] Admin può vedere quali utenti hanno 2FA attivo (nella lista utenti)
+
+---
+
+## FUTURO (media priorità)
+
+---
+
+### Feature 5: Gestione Diete Avanzata
+> Strumenti avanzati per diete nel pannello admin. 🟡 Entrambi
+
+**Admin:**
+- [ ] Editor dieta visuale drag-and-drop (creare diete direttamente senza PDF)
 - [ ] Template diete riutilizzabili (il nutrizionista salva modelli base)
 - [ ] Duplica dieta da un cliente all'altro con modifiche
 - [ ] Confronto side-by-side tra due versioni di dieta
 
-### Admin - Comunicazione
-- [ ] Messaggi broadcast del nutrizionista a tutti i suoi clienti
-- [ ] Notifica email quando il cliente non legge i messaggi da X giorni
-- [ ] Note interne sul cliente (visibili solo al nutrizionista, non al cliente)
+**Backend:**
+- [ ] Endpoint CRUD per template diete (`/admin/diet-templates`)
+- [ ] Endpoint duplicazione dieta (`POST /admin/duplicate-diet`)
+- [ ] Endpoint confronto diete (`GET /admin/compare-diets?id1=X&id2=Y`)
 
-### Admin - UX
-- [ ] Scorciatoie da tastiera (Ctrl+N nuovo utente, Ctrl+K ricerca, etc.)
-- [ ] Ricerca globale (cerca in utenti, diete, chat, log)
-- [ ] Multi-lingua (attualmente solo italiano)
+---
 
-### Client - UX Avanzata
+### Feature 6: Comunicazione Avanzata
+> Miglioramenti chat e comunicazione. 🟡 Entrambi (ma usato principalmente dal nutritionist)
+
+**Backend:**
+- [ ] Endpoint `POST /admin/broadcast` → messaggio a tutti i clienti del nutrizionista (🟡 verify_professional, nutritionist invia solo ai propri)
+- [ ] Servizio notifica email per messaggi non letti dopo X giorni
+- [ ] Endpoint CRUD note interne sul cliente (visibili solo al professionista)
+
+**Admin:**
+- [ ] Pulsante "Broadcast" nella chat → invia messaggio a tutti i propri clienti
+- [ ] Sezione "Note interne" nel profilo cliente (campo note visibile solo a admin/nutritionist)
+- [ ] Configurazione alert email per messaggi non letti
+
+---
+
+### Feature 7: Admin UX
+> Miglioramenti usabilità pannello. 🟡 Entrambi
+
+**Admin:**
+- [ ] Scorciatoie da tastiera (Ctrl+N nuovo utente, Ctrl+K ricerca, Ctrl+1/2/3 cambio tab)
+- [ ] Ricerca globale (cerca in utenti, diete, chat, log) con dialog Ctrl+K
+- [ ] Multi-lingua admin panel (italiano + inglese)
+
+---
+
+### Feature 8: Client - UX & Features
+> Miglioramenti app mobile.
+
 - [ ] Widget home screen (prossimo pasto, lista spesa)
-- [ ] Modalita tablet con layout ottimizzato
-
-### Client - Shopping List
+- [ ] Modalità tablet con layout ottimizzato
 - [ ] Condivisione lista spesa via link/WhatsApp
-- [ ] Raggruppamento per corsia del supermercato (frutta, latticini, carne...)
+- [ ] Raggruppamento lista spesa per corsia del supermercato
 - [ ] Prezzi stimati e budget tracking (forse)
+- [ ] Sfide settimanali gamification ("prova 3 nuove ricette questa settimana")
 
-### Client - Gamification
-- [ ] Sfide settimanali ("prova 3 nuove ricette questa settimana")
+---
 
-### Client - Integrazioni
+### Feature 9: Integrazioni Esterne
+> Connessioni con servizi terzi. Client + Backend.
+
 - [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate)
 - [ ] Export dieta in formato PDF/calendario
 - [ ] Import dieta da altre app (MyFitnessPal, Yazio)
 - [ ] Integrazione con bilancia smart (peso automatico)
 
-### Landing - Design
+---
+
+### Feature 10: Landing Page
+> Rifacimento completo landing.
+
+**Design:**
 - [ ] Sezione comparison table (Kybo vs gestione manuale vs altri tool)
 - [ ] Mockup interattivo dell'app (click-through prototype embedded)
 - [ ] Animazione scroll-triggered per le feature cards
 - [ ] Dark mode per la landing page
-- [ ] Pagina pricing dedicata con toggle mensile/annuale e feature comparison
+- [ ] Pagina pricing dedicata con toggle mensile/annuale
 
-### Landing - SEO & Performance
+**SEO & Performance:**
 - [ ] Metadata OpenGraph e Twitter Card per condivisione social
 - [ ] Schema.org markup (SoftwareApplication, Organization)
 - [ ] Sitemap.xml e robots.txt ottimizzati
 - [ ] i18n (versione inglese della landing page)
 - [ ] Lazy loading immagini e componenti below-the-fold
-- [ ] Lighthouse score optimization (target 95+ su tutte le categorie)
+- [ ] Lighthouse score optimization (target 95+)
 
-### Backend - Performance
+**Business Page:**
+- [ ] Form richiesta demo funzionante con calendar booking (Calendly embed)
+- [ ] Calcolatrice ROI ("quanto tempo risparmi con Kybo")
+- [ ] Sezione sicurezza e compliance dettagliata
+- [ ] Documentazione API pubblica per piano Enterprise
+
+---
+
+### Feature 11: Backend Infrastructure
+> Miglioramenti tecnici backend.
+
+**Performance:**
 - [ ] Redis cache layer (sostituire o affiancare L1 in-memory)
 - [ ] Queue system per parsing diete (Celery/RQ invece di semaphore)
 
-### Backend - Monitoring
+**Monitoring:**
 - [ ] APM (Application Performance Monitoring)
 - [ ] Dashboard metriche API (latenza, error rate, throughput)
 
-### Backend - AI / ML
+**AI / ML:**
 - [ ] Suggerimenti pasti basati su preferenze storiche dell'utente
 - [ ] OCR migliorato con pre-processing immagine (contrast, rotation, crop)
 
-### Backend - Sicurezza
+**Sicurezza:**
 - [ ] Session management avanzato (forza logout da altri dispositivi)
 - [ ] Penetration test report e remediation
 
-### Backend - DevOps
+**DevOps:**
 - [ ] Database migration strategy
 - [ ] Load testing (k6/Locust)
 - [ ] Docker containerization per sviluppo locale
 
 ---
- 
-## FUTURO (bassa priorita)
 
-### Client - Wearables & Voice (Progetti Separati)
+## FUTURO (bassa priorità)
+
+### Client - Wearables & Voice
 - [ ] Apple Watch / Wear OS companion (prossimo pasto, reminder)
 - [ ] Siri/Google Assistant integration ("cosa mangio a pranzo?")
 
-### Landing - Pagina Business (Nutrizionisti)
-- [ ] Form richiesta demo funzionante con calendar booking (Calendly embed)
-- [ ] Calcolatrice ROI ("quanto tempo risparmi con Kybo")
-- [ ] Sezione sicurezza e compliance dettagliata (GDPR, encryption, audit)
-- [ ] Documentazione API pubblica per piano Enterprise
-
-### Landing - Contenuti
-- [ ] Sezione testimonianze / recensioni utenti
-- [ ] Video demo dell'app (embedded YouTube/Vimeo)
-- [ ] Blog / articoli su nutrizione (SEO content marketing)
-- [ ] Sezione FAQ espandibile
-- [ ] Pagina "Chi Siamo" con storia e mission
-- [ ] Case study nutrizionisti (come Kybo ha migliorato il loro workflow)
-
-### Landing - Conversione
-- [ ] Form contatto funzionante (con backend per ricevere richieste demo)
-- [ ] Newsletter signup con integrazione email marketing (Mailchimp/Resend)
-- [ ] Popup/banner "prova gratuita" con timer
-- [ ] Chat widget per supporto live (Crisp/Intercom/custom)
-- [ ] Link diretto a App Store e Google Play quando l'app sara pubblicata
-- [ ] QR code per download diretto dell'app
-
-### Client - Shopping List (bassa)
+### Client - Shopping List (extra)
 - [ ] Preferenze supermercato (salva il tuo negozio preferito)
 - [ ] Lista spesa collaborativa (famiglia/coinquilini)
 
@@ -196,3 +239,19 @@
 - [ ] Porzioni scalabili (cucino per 2, 4, 6 persone)
 - [ ] Meal prep planner (prepara domenica per tutta la settimana)
 - [ ] Salva piatti preferiti per richiederli al nutrizionista
+
+### Landing - Contenuti
+- [ ] Sezione testimonianze / recensioni utenti
+- [ ] Video demo dell'app (embedded YouTube/Vimeo)
+- [ ] Blog / articoli su nutrizione (SEO content marketing)
+- [ ] Sezione FAQ espandibile
+- [ ] Pagina "Chi Siamo" con storia e mission
+- [ ] Case study nutrizionisti
+
+### Landing - Conversione
+- [ ] Form contatto funzionante (backend per ricevere richieste demo)
+- [ ] Newsletter signup con integrazione email marketing
+- [ ] Popup/banner "prova gratuita" con timer
+- [ ] Chat widget per supporto live
+- [ ] Link diretto a App Store e Google Play
+- [ ] QR code per download diretto dell'app

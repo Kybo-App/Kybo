@@ -1,7 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, messaging
 import os
-import json
 
 class NotificationService:
     _initialized = False
