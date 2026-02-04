@@ -1,7 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import '../core/env.dart';
 import '../models/chat_message.dart';
 
 /// Provider for managing chat with nutritionist
@@ -14,6 +19,7 @@ import '../models/chat_message.dart';
 ///     - unreadCount: { client, nutritionist }
 ///   /chats/{chatId}/messages/{msgId}
 ///     - senderId, senderType, message, timestamp, read
+///     - attachmentUrl, attachmentType, fileName (opzionali)
 class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -167,9 +173,67 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  /// Send a new message
-  Future<void> sendMessage(String text) async {
-    if (_currentChatId == null || text.trim().isEmpty) return;
+  /// Upload attachment via backend API, returns {url, fileType, fileName}
+  Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
+    final token = await _auth.currentUser?.getIdToken();
+    if (token == null) throw Exception('Non autenticato');
+
+    final uri = Uri.parse('${Env.apiUrl}/chat/upload-attachment');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+
+    if (file.bytes != null) {
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        file.bytes!,
+        filename: file.name,
+        contentType: _getMediaType(file.extension),
+      ));
+    } else if (file.path != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path!,
+        filename: file.name,
+        contentType: _getMediaType(file.extension),
+      ));
+    } else {
+      throw Exception('File vuoto o invalido');
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Upload fallito: ${response.statusCode}');
+    }
+  }
+
+  MediaType? _getMediaType(String? extension) {
+    if (extension == null) return null;
+    switch (extension.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'pdf':
+        return MediaType('application', 'pdf');
+      default:
+        return null;
+    }
+  }
+
+  /// Send a new message (with optional attachment)
+  Future<void> sendMessage(
+    String text, {
+    String? attachmentUrl,
+    String? attachmentType,
+    String? fileName,
+  }) async {
+    if (_currentChatId == null) return;
+    if (text.trim().isEmpty && attachmentUrl == null) return;
 
     final user = _auth.currentUser;
     if (user == null) return;
@@ -182,6 +246,9 @@ class ChatProvider extends ChangeNotifier {
         senderType: 'client',
         timestamp: DateTime.now(),
         read: false,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        fileName: fileName,
       );
 
       // Add message to subcollection
@@ -190,6 +257,12 @@ class ChatProvider extends ChangeNotifier {
           .doc(_currentChatId)
           .collection('messages')
           .add(message.toFirestore());
+
+      // Build lastMessage preview
+      String lastMessagePreview = text.trim();
+      if (lastMessagePreview.isEmpty && attachmentType != null) {
+        lastMessagePreview = attachmentType == 'pdf' ? '📄 Documento' : '📷 Immagine';
+      }
 
       // Update chat metadata
       await _firestore.collection('chats').doc(_currentChatId).set({
@@ -200,13 +273,14 @@ class ChatProvider extends ChangeNotifier {
         },
         'clientName': _clientName ?? 'Utente',
         'clientEmail': _clientEmail ?? '',
-        'lastMessage': text.trim(),
+        'lastMessage': lastMessagePreview,
         'lastMessageTime': Timestamp.now(),
         'lastMessageSender': 'client',
         'unreadCount': {
           'client': 0, // Reset own unread
           'nutritionist': FieldValue.increment(1), // Increment other side
         },
+        'messageCount': FieldValue.increment(1),
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Error sending message: $e');
