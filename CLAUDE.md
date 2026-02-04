@@ -1,180 +1,107 @@
-# Kybo - Project Context for Claude Code
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
-Kybo is a diet management platform for nutritionists and their clients. It consists of:
-- **Client App**: Flutter mobile app (iOS/Android) for end users to view diets, track meals, chat with nutritionists
-- **Admin Panel**: Flutter web app for nutritionists/admins to manage users, upload diets, chat, view analytics
-- **Backend API**: Python FastAPI server with Firebase integration
-- **Landing Page**: Static marketing site
 
-## Tech Stack
+Kybo is a diet management platform for nutritionists and clients with four components:
+- **client/** - Flutter mobile app (iOS/Android) for viewing diets, tracking meals, chatting
+- **admin/** - Flutter web app for nutritionists/admins to manage users, upload diets, view analytics
+- **server/** - Python FastAPI backend with Firebase + Google Gemini AI integration
+- **landing/** - Next.js marketing site with GSAP animations
 
-| Component | Technology |
-|-----------|------------|
-| Client App | Flutter 3.5+, Dart, Firebase Auth/Firestore/Messaging |
-| Admin Panel | Flutter Web, same libraries |
-| Backend | Python 3.11+, FastAPI, Firebase Admin SDK, OpenAI API |
-| Database | Firebase Firestore |
-| Storage | Firebase Storage (for PDFs, images) |
-| Auth | Firebase Authentication |
-| Hosting | Render (backend), Firebase Hosting (landing) |
+## Development Commands
 
-## Project Structure
-
-```
-Kybo/
-├── client/           # Flutter mobile app
-│   ├── lib/
-│   │   ├── models/       # Data models (User, Diet, ChatMessage, etc.)
-│   │   ├── providers/    # State management (ChangeNotifier providers)
-│   │   ├── screens/      # UI screens
-│   │   ├── services/     # API services
-│   │   ├── widgets/      # Reusable widgets
-│   │   └── core/         # Design system (KyboColors, etc.)
-│   └── pubspec.yaml
-│
-├── admin/            # Flutter web admin panel
-│   ├── lib/
-│   │   ├── models/       # Shared/admin-specific models
-│   │   ├── providers/    # Admin state management
-│   │   ├── screens/      # Admin screens (dashboard, users, chat, etc.)
-│   │   ├── services/     # Admin API services
-│   │   └── widgets/      # Design system (PillCard, PillButton, etc.)
-│   └── pubspec.yaml
-│
-├── server/           # FastAPI backend
-│   ├── app/
-│   │   ├── main.py           # App entry point, router registration
-│   │   ├── core/
-│   │   │   ├── config.py     # Settings (env vars)
-│   │   │   ├── firebase.py   # Firebase Admin SDK init
-│   │   │   └── security.py   # Auth dependencies (verify_admin, verify_professional)
-│   │   ├── routers/          # API endpoints by domain
-│   │   │   ├── admin.py      # User management
-│   │   │   ├── analytics.py  # Analytics endpoints
-│   │   │   ├── auth.py       # Authentication
-│   │   │   ├── chat.py       # Chat & attachments
-│   │   │   ├── diet.py       # Diet CRUD & parsing
-│   │   │   └── ...
-│   │   └── services/         # Business logic
-│   └── requirements.txt
-│
-├── landing/          # Static landing page
-│   └── public/
-│
-├── TODO.md           # Task roadmap (feature-based)
-└── README.md         # Setup instructions
+### Client App (Flutter Mobile)
+```bash
+cd client && flutter pub get
+flutter run --flavor dev              # Run dev flavor on device
+flutter run --flavor prod             # Run prod flavor on device
+flutter build apk --flavor dev        # Android dev build
+flutter build apk --flavor prod --release  # Android prod release
+flutter build ios --flavor prod --release  # iOS prod release
 ```
 
-## Design System
+### Admin Panel (Flutter Web)
+```bash
+cd admin && flutter pub get
+flutter run -d chrome                 # Run in browser
+flutter build web --release           # Production build
+```
 
-### Admin Panel (Pill-shaped design)
-- **Colors**: Use `KyboColors` from `widgets/design_system.dart`
-  - `KyboColors.primary` - Green (#2E7D32)
-  - `KyboColors.surface` - White cards
-  - `KyboColors.text` - Dark text
-  - `KyboColors.textLight` - Secondary text
-  - `KyboColors.error` - Red for errors
-  - `KyboColors.warning` - Orange for warnings
+### Backend (FastAPI)
+```bash
+cd server && pip install -r requirements.txt
+uvicorn app.main:app --reload         # Local dev server
+```
 
-- **Widgets**:
-  - `PillCard` - Container with rounded corners (radius 24)
-  - `PillButton` - Primary action button
-  - `PillTextField` - Text input
-  - `PillBadge` - Status badges
-  - `StatCard` - Metric display card
+### Landing Page (Next.js)
+```bash
+cd landing && npm install
+npm run dev                           # Local dev server
+npm run build                         # Production build
+npm run lint                          # Run ESLint
+```
 
-### Client App
-- **Colors**: Use `KyboColors.background(context)` - context-aware for dark mode
-- Similar widget patterns adapted for mobile
+## Architecture
+
+**Data Flow**: Client/Admin → FastAPI → Firebase (Auth/Firestore/Storage) + Gemini AI (diet parsing) + Tesseract (receipt OCR)
+
+**Auth dependencies** (in `server/app/core/dependencies.py`):
+- `verify_token` - any authenticated user
+- `verify_admin` - admin role only
+- `verify_professional` - admin OR nutritionist roles
+- `get_current_uid` - returns current user's UID
+
+**User roles**: `client` | `nutritionist` | `admin` | `independent`
+
+**API Base URLs**:
+- Dev: `https://kybo-test.onrender.com`
+- Prod: `https://kybo.onrender.com`
+- Client reads from `Env.apiUrl` (.env), Admin from `ApiService.baseUrl`
 
 ## Key Patterns
 
-### Authentication & Authorization
-```python
-# Backend: Two auth levels
-from app.core.security import verify_admin, verify_professional
+### Flutter State Management
+Both apps use Provider with ChangeNotifier. Providers in `lib/providers/`, services in `lib/services/`.
 
-@router.get("/admin-only")
-async def admin_only(user=Depends(verify_admin)):  # Only role="admin"
-    ...
+### Design System
+Both apps use pill-shaped UI components from `lib/widgets/design_system.dart`:
+- **Admin**: Uses `KyboColors` static getters (e.g., `KyboColors.background`) and widgets (`PillCard`, `PillButton`, `PillTextField`, `PillBadge`, `StatCard`)
+- **Client**: Uses `KyboColors` with context for dark mode (e.g., `KyboColors.background(context)`) - requires `ThemeProvider`
+- Colors are synchronized between both apps (same hex values)
 
-@router.get("/both-roles")
-async def both_roles(user=Depends(verify_professional)):  # admin OR nutritionist
-    ...
+### Firestore Collections
+```
+users/{uid}           → role, email, parent_id (nutritionist), custom_parser_prompt
+  └── diets/current   → Active diet (encrypted)
+  └── diets/{id}      → Historical diets (encrypted)
+chats/{chatId}        → participants, chatType, unreadCount
+  └── messages/{id}   → message, senderId, timestamp, attachmentUrl?
+diet_history/{id}     → userId, uploadedBy, parsedData
+config/global         → maintenance_mode, scheduled_maintenance_start
+access_logs/{id}      → Audit trail for PII access
+gemini_cache/{hash}   → AI response cache (30-day TTL)
 ```
 
-### Firestore Structure
-```
-users/{uid}
-  ├── role: "client" | "nutritionist" | "admin"
-  ├── email, displayName, ...
-  └── assigned_nutritionist: uid (for clients)
-
-diets/{dietId}
-  ├── userId, nutritionistId
-  ├── meals: [...]
-  └── createdAt, updatedAt
-
-chats/{chatId}
-  ├── participants: [uid1, uid2]
-  └── messages/{messageId}
-        ├── senderId, text, timestamp
-        └── attachmentUrl?, attachmentType?, fileName?
-```
-
-### API Base URLs
-- **Client**: `Env.apiUrl` from `.env` file
-- **Admin**: `ApiService.baseUrl` configured in code
-- **Production**: `https://kybo-api.onrender.com`
-
-## Useful Commands
-
-### Client App
-```bash
-cd client
-flutter pub get
-flutter run                    # Run on connected device
-flutter build apk --release    # Build Android APK
-flutter build ios --release    # Build iOS
-```
-
-### Admin Panel
-```bash
-cd admin
-flutter pub get
-flutter run -d chrome          # Run in browser
-flutter build web --release    # Build for deployment
-```
-
-### Backend
-```bash
-cd server
-pip install -r requirements.txt
-uvicorn app.main:app --reload  # Local development
-```
-
-### Git
-```bash
-git status
-git add <files>
-git commit -m "type(scope): message"
-git push origin <branch>
-```
+### Backend Services
+- Diet parsing: PDF → pdfplumber → Gemini AI (gemini-2.5-flash) with GDPR sanitization
+- Receipt scanning: Image → Tesseract OCR (Italian) → Gemini fuzzy matching
+- Caching: L1 in-memory (100 entries, 1h) + L2 Firestore (30 days)
+- Rate limiting: slowapi with IP + user ID composite key
 
 ## Environment Variables
 
-### Backend (server/.env or Render)
+### Backend (server/.env)
 ```
-OPENAI_API_KEY=sk-...
 FIREBASE_CREDENTIALS={"type":"service_account",...}
 STORAGE_BUCKET=your-bucket.appspot.com
 SENTRY_DSN=https://...@sentry.io/...
 ```
 
-### Client (client/.env)
+### Flutter Apps (.env)
 ```
-API_URL=https://kybo-api.onrender.com
+API_URL=https://kybo-test.onrender.com
 ```
 
 ## Commit Convention
@@ -185,5 +112,8 @@ Types: feat, fix, refactor, docs, style, test, chore
 Scopes: client, admin, server, landing
 ```
 
-## Current Task List
-See `TODO.md` for the full roadmap organized by feature.
+## Important Notes
+- Always work on `dev` branch, not production
+- Client diet data is AES-256 encrypted at rest
+- No test suite currently exists - feature roadmap includes adding tests
+- See `TODO.md` for feature roadmap
