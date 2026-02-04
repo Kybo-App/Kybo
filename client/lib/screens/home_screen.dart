@@ -182,7 +182,6 @@ class _MainScreenContentState extends State<MainScreenContent>
           await context.read<DietProvider>().scheduleMealNotifications();
         }
       }
-      }
     } catch (_) {}
 
     // Check Badges (First Login, Streak)
