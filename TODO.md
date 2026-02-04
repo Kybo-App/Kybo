@@ -19,6 +19,8 @@
 ### 12. Client - Deep Link & Onboarding ✅
 ### 13. Client - Badge & Achievement ✅
 ### 14. Client - Accessibilità ✅
+### 15. Admin - Analytics Dashboard ✅
+### 16. Client - Chat Media Support ✅
 
 ---
 
@@ -30,27 +32,7 @@
 
 ---
 
-### Feature 1: Analytics Dashboard
-> Nuovo tab nel pannello admin. 🟡 Entrambi (admin vede tutto, nutritionist vede solo i propri clienti)
-
-**Backend:**
-- [ ] Endpoint `GET /admin/analytics/overview` → utenti attivi, diete caricate, messaggi totali (🟡 verify_professional, filtro per nutritionist)
-- [ ] Endpoint `GET /admin/analytics/diet-trend` → trend upload diete nel tempo con parametro period (daily/weekly/monthly)
-- [ ] Endpoint `GET /admin/analytics/nutritionist-activity` → mappa attività per nutrizionista (clienti, diete, tempo risposta chat) — admin vede tutti, nutritionist vede solo sé stesso
-- [ ] Endpoint `GET /admin/analytics/inactive-users?days=X` → lista utenti inattivi
-- [ ] Endpoint `GET /admin/analytics/meal-completion/{uid}` → tasso completamento pasti per cliente
-
-**Admin:**
-- [ ] Nuovo tab "Analytics" nella navigazione (visibile a entrambi i ruoli)
-- [ ] Widget cards riassuntive in alto (utenti attivi, diete, messaggi)
-- [ ] Grafico trend upload diete (line chart, con selettore periodo)
-- [ ] Tabella/grafico attività nutrizionisti (admin) o propria attività (nutritionist)
-- [ ] Widget "Utenti inattivi" con lista e azione rapida (invia messaggio)
-- [ ] Grafico tasso completamento pasti per cliente
-
----
-
-### Feature 2: GDPR Avanzato
+### Feature 1: GDPR Avanzato
 > Estensione del GDPR base. 🔴 Admin only (compliance di sistema)
 
 **Backend:**
@@ -68,7 +50,7 @@
 
 ---
 
-### Feature 3: Report Nutrizionisti
+### Feature 2: Report Nutrizionisti
 > Report mensile automatico. 🟡 Entrambi (admin vede tutti i nutrizionisti, nutritionist vede il proprio)
 
 **Backend:**
@@ -86,7 +68,7 @@
 
 ---
 
-### Feature 4: 2FA (Two-Factor Authentication)
+### Feature 3: 2FA (Two-Factor Authentication)
 > Sicurezza login admin panel. 🟡 Entrambi (tutti gli utenti admin/nutritionist devono poterlo attivare)
 
 **Backend:**
@@ -108,7 +90,7 @@
 
 ---
 
-### Feature 5: Gestione Diete Avanzata
+### Feature 4: Gestione Diete Avanzata
 > Strumenti avanzati per diete nel pannello admin. 🟡 Entrambi
 
 **Admin:**
@@ -124,7 +106,7 @@
 
 ---
 
-### Feature 6: Comunicazione Avanzata
+### Feature 5: Comunicazione Avanzata
 > Miglioramenti chat e comunicazione. 🟡 Entrambi (ma usato principalmente dal nutritionist)
 
 **Backend:**
@@ -139,7 +121,7 @@
 
 ---
 
-### Feature 7: Admin UX
+### Feature 6: Admin UX
 > Miglioramenti usabilità pannello. 🟡 Entrambi
 
 **Admin:**
@@ -149,7 +131,7 @@
 
 ---
 
-### Feature 8: Client - UX & Features
+### Feature 7: Client - UX & Features
 > Miglioramenti app mobile.
 
 - [ ] Widget home screen (prossimo pasto, lista spesa)
@@ -161,7 +143,7 @@
 
 ---
 
-### Feature 9: Integrazioni Esterne
+### Feature 8: Integrazioni Esterne
 > Connessioni con servizi terzi. Client + Backend.
 
 - [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate)
@@ -171,7 +153,7 @@
 
 ---
 
-### Feature 10: Landing Page
+### Feature 9: Landing Page
 > Rifacimento completo landing.
 
 **Design:**
@@ -197,7 +179,7 @@
 
 ---
 
-### Feature 11: Backend Infrastructure
+### Feature 10: Backend Infrastructure
 > Miglioramenti tecnici backend.
 
 **Performance:**
