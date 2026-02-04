@@ -66,6 +66,7 @@ class AuthService {
 
       if (userCred.user != null) {
         await _ensureUserDoc(userCred.user!);
+        await updateLastLogin(userCred.user!.uid);
       }
       return userCred;
     } catch (e) {
@@ -76,7 +77,10 @@ class AuthService {
 
   Future<void> signIn(String email, String password) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      if (cred.user != null) {
+        await updateLastLogin(cred.user!.uid);
+      }
     } catch (e) {
       rethrow;
     }
@@ -90,6 +94,7 @@ class AuthService {
       );
       if (credential.user != null) {
         await _ensureUserDoc(credential.user!, role: role, additionalData: additionalData);
+        await updateLastLogin(credential.user!.uid);
       }
     } catch (e) {
       rethrow;
@@ -99,5 +104,17 @@ class AuthService {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
+  }
+
+  /// Aggiorna il timestamp di ultimo accesso
+  Future<void> updateLastLogin(String uid) async {
+    try {
+      await _db.collection('users').doc(uid).update({
+        'last_login': FieldValue.serverTimestamp(),
+        'is_active': true,
+      });
+    } catch (e) {
+      debugPrint("⚠️ Failed to update last_login: $e");
+    }
   }
 }

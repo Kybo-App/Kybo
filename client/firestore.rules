@@ -38,7 +38,7 @@ service cloud.firestore {
       // UPDATE: Invariato
       allow update: if (isOwner(userId) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['first_name', 'last_name'])) ||
+                        .hasOnly(['first_name', 'last_name', 'last_login', 'is_active', 'unlocked_badges'])) ||
                        hasRole('admin') ||
                        (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
 
