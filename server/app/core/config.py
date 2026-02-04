@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_HEAVY_TASKS: int = 2
     MAINTENANCE_POLL_INTERVAL: int = 60  # seconds
 
+    # GDPR Retention Policy
+    GDPR_RETENTION_MONTHS: int = 24  # Default: 2 years
+    GDPR_RETENTION_WARNING_DAYS: int = 30  # Days before deadline to warn
+
     # Paths
     DIET_PDF_PATH: str = "temp_dieta.pdf"
     RECEIPT_PATH_PREFIX: str = "temp_scontrino"
