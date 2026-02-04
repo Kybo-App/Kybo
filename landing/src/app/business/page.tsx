@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import styles from './page.module.css';
 
 export default function BusinessPage() {
@@ -11,7 +12,7 @@ export default function BusinessPage() {
       <nav className={styles.nav}>
         <div className={styles.navContainer}>
           <Link href="/" className={styles.logo}>
-            <span className={styles.logoIcon}>🥗</span>
+            <Image src="/logo.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} />
             <span className={styles.logoText}>Kybo</span>
           </Link>
           <Link href="/" className={styles.backBtn}>

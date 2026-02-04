@@ -680,6 +680,8 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                   maxLines: null,
                   onSubmitted: (_) => _sendMessage(),
                 ),
+                   ],
+                ),
               ),
               const SizedBox(width: 12),
               // Attachment Button

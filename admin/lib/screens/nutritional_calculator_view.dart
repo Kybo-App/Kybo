@@ -110,7 +110,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
                       ),
                       const Spacer(),
                       PillButton(
-                        label: "Aggiungi Ingrediente",
+                        labelText:"Aggiungi Ingrediente",
                         icon: Icons.add,
                         onPressed: _addIngredient,
                         height: 36,
@@ -139,7 +139,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
 
   Widget _buildTotalsCard() {
     return PillCard(
-      color: KyboColors.primary.withValues(alpha: 0.05),
+      backgroundColor: KyboColors.primary.withValues(alpha: 0.05),
       padding: const EdgeInsets.all(24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -198,8 +198,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         Expanded(
           flex: 2,
           child: PillTextField(
-            label: "Nome Ingrediente",
-            hint: "es. Pollo",
+            labelText:"Nome Ingrediente",
+            hintText:"es. Pollo",
             onChanged: (val) => ingredient.name = val,
           ),
         ),
@@ -208,8 +208,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         // Quantity (g)
         Expanded(
           child: PillTextField(
-            label: "Quantità (g)",
-            hint: "100",
+            labelText:"Quantità (g)",
+            hintText:"100",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.quantity = double.tryParse(val) ?? 0;
@@ -222,7 +222,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         // Macros (per 100g)
         Expanded(
           child: PillTextField(
-            label: "Kcal/100g",
+            labelText:"Kcal/100g",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.kcal100 = double.tryParse(val) ?? 0;
@@ -233,7 +233,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            label: "Prot/100g",
+            labelText:"Prot/100g",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.protein100 = double.tryParse(val) ?? 0;
@@ -244,7 +244,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            label: "Carb/100g",
+            labelText:"Carb/100g",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.carbs100 = double.tryParse(val) ?? 0;
@@ -255,7 +255,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            label: "Fat/100g",
+            labelText:"Fat/100g",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.fat100 = double.tryParse(val) ?? 0;
