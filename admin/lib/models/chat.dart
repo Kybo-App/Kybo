@@ -54,6 +54,9 @@ class ChatMessage {
   final String id;
   final String senderId;
   final String senderType; // 'client' or 'nutritionist'
+  final String message;
+  final DateTime timestamp;
+  final bool read;
   final String? attachmentUrl;
   final String? attachmentType; // 'image' or 'pdf'
   final String? fileName;

@@ -116,8 +116,6 @@ class AdminChatProvider with ChangeNotifier {
         senderType: senderType,
         message: messageText.trim(),
         timestamp: DateTime.now(),
-        message: messageText.trim(),
-        timestamp: DateTime.now(),
         read: false,
         attachmentUrl: attachmentUrl,
         attachmentType: attachmentType,
@@ -294,11 +292,6 @@ class AdminChatProvider with ChangeNotifier {
       });
 
       selectChat(chatRef.id);
-    } catch (e) {
-      debugPrint('Error creating chat: $e');
-      rethrow;
-    }
-  }
     } catch (e) {
       debugPrint('Error creating chat: $e');
       rethrow;

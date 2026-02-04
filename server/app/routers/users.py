@@ -189,8 +189,6 @@ async def admin_assign_user(
     """Assegna un utente a un nutrizionista."""
     try:
         db = firebase_admin.firestore.client()
-            'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
-        })
 
         # --- CHECK CLIENT LIMIT ---
         nut_doc = db.collection('users').document(body.nutritionist_id).get()
