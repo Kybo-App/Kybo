@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import styles from './Navbar.module.css';
@@ -26,7 +27,7 @@ export default function Navbar() {
     <nav ref={navRef} className={`${styles.nav} ${isScrolled ? styles.scrolled : ''}`}>
       <div className={styles.container}>
         <div className={styles.logo}>
-          <span className={styles.logoIcon}>🥗</span>
+          <Image src="/logo.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} />
           <span className={styles.logoText}>Kybo</span>
         </div>
 

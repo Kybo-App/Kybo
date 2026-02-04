@@ -78,6 +78,11 @@ class KyboColors {
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
 
+  // Macro nutrient colors
+  static const Color protein = Color(0xFF3B82F6);
+  static const Color carbs = Color(0xFFF59E0B);
+  static const Color fat = Color(0xFFEF4444);
+
   // Role Colors (same for both modes)
   static const Color roleAdmin = Color(0xFF8B5CF6);
   static const Color roleNutritionist = Color(0xFF3B82F6);
@@ -757,6 +762,7 @@ class PillTextField extends StatefulWidget {
   final bool obscureText;
   final bool showPasswordToggle;
   final TextInputAction? textInputAction;
+  final TextInputType? keyboardType;
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
 
@@ -769,6 +775,7 @@ class PillTextField extends StatefulWidget {
     this.obscureText = false,
     this.showPasswordToggle = false,
     this.textInputAction,
+    this.keyboardType,
     this.onSubmitted,
     this.onChanged,
   });
@@ -817,6 +824,7 @@ class _PillTextFieldState extends State<PillTextField> {
                 ? _obscureText
                 : widget.obscureText,
             textInputAction: widget.textInputAction,
+            keyboardType: widget.keyboardType,
             onSubmitted: widget.onSubmitted,
             onChanged: widget.onChanged,
             style: TextStyle(color: KyboColors.textPrimary, fontSize: 15),
