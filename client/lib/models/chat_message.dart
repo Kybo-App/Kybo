@@ -9,6 +9,9 @@ class ChatMessage {
   final String senderType; // 'client' | 'nutritionist' | 'admin'
   final DateTime timestamp;
   final bool read;
+  final String? attachmentUrl;
+  final String? attachmentType; // 'image' | 'pdf'
+  final String? fileName;
 
   ChatMessage({
     required this.id,
@@ -17,7 +20,12 @@ class ChatMessage {
     required this.senderType,
     required this.timestamp,
     this.read = false,
+    this.attachmentUrl,
+    this.attachmentType,
+    this.fileName,
   });
+
+  bool get hasAttachment => attachmentUrl != null;
 
   /// Create ChatMessage from Firestore document
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
@@ -30,6 +38,9 @@ class ChatMessage {
       senderType: data['senderType'] ?? 'client',
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       read: data['read'] ?? false,
+      attachmentUrl: data['attachmentUrl'],
+      attachmentType: data['attachmentType'],
+      fileName: data['fileName'],
     );
   }
 
@@ -41,6 +52,9 @@ class ChatMessage {
       'senderType': senderType,
       'timestamp': Timestamp.fromDate(timestamp),
       'read': read,
+      if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+      if (attachmentType != null) 'attachmentType': attachmentType,
+      if (fileName != null) 'fileName': fileName,
     };
   }
 
@@ -52,6 +66,9 @@ class ChatMessage {
     String? senderType,
     DateTime? timestamp,
     bool? read,
+    String? attachmentUrl,
+    String? attachmentType,
+    String? fileName,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -60,6 +77,9 @@ class ChatMessage {
       senderType: senderType ?? this.senderType,
       timestamp: timestamp ?? this.timestamp,
       read: read ?? this.read,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentType: attachmentType ?? this.attachmentType,
+      fileName: fileName ?? this.fileName,
     );
   }
 }
