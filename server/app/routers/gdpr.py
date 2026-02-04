@@ -12,8 +12,9 @@ from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from app.core.dependencies import verify_token, verify_professional
+from app.core.dependencies import verify_token, verify_professional, verify_admin
 from app.core.logging import logger, sanitize_error_message
+from app.services.gdpr_retention_service import GDPRRetentionService
 
 router = APIRouter(prefix="/gdpr", tags=["gdpr"])
 
@@ -213,3 +214,246 @@ async def admin_export_user_data(
     except Exception as e:
         logger.error("admin_export_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'export dei dati")
+
+
+# =============================================================================
+# GDPR RETENTION POLICY ENDPOINTS (Admin Only)
+# =============================================================================
+
+# --- SCHEMAS RETENTION ---
+class RetentionConfigRequest(BaseModel):
+    retention_months: int  # Mesi di inattività prima della purge
+    is_enabled: bool  # Se la retention automatica è attiva
+    dry_run: bool = True  # Se True, simula senza eliminare
+    exclude_roles: list[str] = ["admin", "nutritionist"]  # Ruoli esclusi
+
+
+class PurgeRequest(BaseModel):
+    dry_run: bool = True  # Se True, simula senza eliminare
+    target_uid: Optional[str] = None  # Se specificato, elimina solo questo utente
+
+
+# --- RETENTION DASHBOARD ---
+@router.get("/admin/dashboard")
+async def get_retention_dashboard(
+    admin: dict = Depends(verify_admin)
+):
+    """
+    Ritorna la dashboard GDPR con statistiche retention.
+    Include: configurazione, utenti inattivi, utenti prossimi alla scadenza.
+
+    Solo Admin.
+    """
+    try:
+        service = GDPRRetentionService()
+        dashboard = await service.get_retention_dashboard()
+
+        logger.info(
+            "gdpr_dashboard_accessed",
+            admin_id=admin['uid'],
+            inactive_count=dashboard['statistics']['inactive_users_count']
+        )
+
+        return dashboard
+
+    except Exception as e:
+        logger.error("gdpr_dashboard_error", error=sanitize_error_message(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante il caricamento della dashboard GDPR"
+        )
+
+
+# --- RETENTION CONFIG ---
+@router.get("/admin/retention-config")
+async def get_retention_config(
+    admin: dict = Depends(verify_admin)
+):
+    """
+    Ritorna la configurazione retention corrente.
+
+    Solo Admin.
+    """
+    try:
+        service = GDPRRetentionService()
+        config = await service.get_retention_config()
+
+        return {
+            "retention_months": config.retention_months,
+            "is_enabled": config.is_enabled,
+            "dry_run": config.dry_run,
+            "exclude_roles": config.exclude_roles
+        }
+
+    except Exception as e:
+        logger.error("gdpr_config_get_error", error=sanitize_error_message(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante il recupero della configurazione"
+        )
+
+
+@router.post("/admin/retention-config")
+async def set_retention_config(
+    body: RetentionConfigRequest,
+    admin: dict = Depends(verify_admin)
+):
+    """
+    Configura la retention policy GDPR.
+
+    Args:
+        retention_months: Mesi di inattività dopo cui eliminare i dati
+        is_enabled: Se la retention automatica è attiva
+        dry_run: Se True, simula l'eliminazione senza cancellare
+        exclude_roles: Ruoli esclusi dalla purge (default: admin, nutritionist)
+
+    Solo Admin.
+    """
+    try:
+        # Validazione
+        if body.retention_months < 6:
+            raise HTTPException(
+                status_code=400,
+                detail="Il periodo di retention deve essere almeno 6 mesi"
+            )
+        if body.retention_months > 120:
+            raise HTTPException(
+                status_code=400,
+                detail="Il periodo di retention non può superare 10 anni"
+            )
+
+        service = GDPRRetentionService()
+        success = await service.set_retention_config(
+            retention_months=body.retention_months,
+            is_enabled=body.is_enabled,
+            dry_run=body.dry_run,
+            exclude_roles=body.exclude_roles,
+            updated_by=admin['uid']
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Errore durante il salvataggio della configurazione"
+            )
+
+        logger.info(
+            "gdpr_config_updated",
+            admin_id=admin['uid'],
+            retention_months=body.retention_months,
+            is_enabled=body.is_enabled
+        )
+
+        return {
+            "message": "Configurazione retention aggiornata",
+            "config": {
+                "retention_months": body.retention_months,
+                "is_enabled": body.is_enabled,
+                "dry_run": body.dry_run,
+                "exclude_roles": body.exclude_roles
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("gdpr_config_set_error", error=sanitize_error_message(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante l'aggiornamento della configurazione"
+        )
+
+
+# --- PURGE INACTIVE USERS ---
+@router.post("/admin/purge-inactive")
+async def purge_inactive_users(
+    body: PurgeRequest,
+    admin: dict = Depends(verify_admin)
+):
+    """
+    Elimina manualmente i dati degli utenti inattivi (GDPR Art. 17).
+
+    Se target_uid è specificato, elimina solo quell'utente.
+    Altrimenti, elimina tutti gli utenti inattivi oltre il periodo di retention.
+
+    ATTENZIONE: Operazione irreversibile se dry_run=False!
+
+    Solo Admin.
+    """
+    try:
+        service = GDPRRetentionService()
+        admin_id = admin['uid']
+
+        # Purge singolo utente
+        if body.target_uid:
+            result = await service.purge_user(
+                uid=body.target_uid,
+                reason="Manual GDPR purge by admin",
+                requester_id=admin_id,
+                dry_run=body.dry_run
+            )
+
+            logger.info(
+                "gdpr_single_purge",
+                admin_id=admin_id,
+                target_uid=body.target_uid,
+                dry_run=body.dry_run,
+                success=result.success
+            )
+
+            return {
+                "message": "Purge completato" if not body.dry_run else "Simulazione purge completata",
+                "dry_run": body.dry_run,
+                "result": {
+                    "uid": result.uid,
+                    "success": result.success,
+                    "deleted_collections": result.deleted_collections,
+                    "error": result.error
+                }
+            }
+
+        # Purge batch di tutti gli utenti inattivi
+        results = await service.purge_inactive_users(
+            dry_run=body.dry_run,
+            requester_id=admin_id
+        )
+
+        successful = sum(1 for r in results if r.success)
+        failed = len(results) - successful
+
+        logger.info(
+            "gdpr_batch_purge",
+            admin_id=admin_id,
+            dry_run=body.dry_run,
+            total=len(results),
+            successful=successful,
+            failed=failed
+        )
+
+        return {
+            "message": "Purge batch completato" if not body.dry_run else "Simulazione purge batch completata",
+            "dry_run": body.dry_run,
+            "summary": {
+                "total_processed": len(results),
+                "successful": successful,
+                "failed": failed
+            },
+            "results": [
+                {
+                    "uid": r.uid,
+                    "success": r.success,
+                    "deleted_collections": r.deleted_collections,
+                    "error": r.error
+                }
+                for r in results
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("gdpr_purge_error", error=sanitize_error_message(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante la purge dei dati"
+        )
