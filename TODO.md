@@ -32,56 +32,56 @@
 
 ---
 
-### Feature 1: GDPR Avanzato
+### Feature 1: GDPR Avanzato ✅
 > Estensione del GDPR base. 🔴 Admin only (compliance di sistema)
 
 **Backend:**
-- [ ] Servizio retention policy: cloud function o cron che elimina dati dopo X mesi di inattività
-- [ ] Endpoint `GET /admin/gdpr/dashboard` → stato consensi di tutti gli utenti, date ultimo accesso, dati da eliminare (🔴 verify_admin)
-- [ ] Endpoint `POST /admin/gdpr/retention-config` → configura periodo retention (🔴 verify_admin)
-- [ ] Endpoint `POST /admin/gdpr/purge-inactive` → elimina manualmente dati utenti inattivi (🔴 verify_admin)
+- [x] Servizio retention policy: cloud function o cron che elimina dati dopo X mesi di inattività
+- [x] Endpoint `GET /admin/gdpr/dashboard` → stato consensi di tutti gli utenti, date ultimo accesso, dati da eliminare (🔴 verify_admin)
+- [x] Endpoint `POST /admin/gdpr/retention-config` → configura periodo retention (🔴 verify_admin)
+- [x] Endpoint `POST /admin/gdpr/purge-inactive` → elimina manualmente dati utenti inattivi (🔴 verify_admin)
 
 **Admin:**
-- [ ] Nuovo sotto-tab o sezione in Settings → "GDPR & Privacy" (admin only)
-- [ ] Dashboard con tabella consensi (utente, data consenso, ultimo accesso, stato)
-- [ ] Configurazione retention policy (input mesi + toggle attiva/disattiva)
-- [ ] Pulsante purge manuale con conferma doppia
-- [ ] Indicatore visivo utenti prossimi alla scadenza retention
+- [x] Nuovo sotto-tab o sezione in Settings → "GDPR & Privacy" (admin only)
+- [x] Dashboard con tabella consensi (utente, data consenso, ultimo accesso, stato)
+- [x] Configurazione retention policy (input mesi + toggle attiva/disattiva)
+- [x] Pulsante purge manuale con conferma doppia
+- [x] Indicatore visivo utenti prossimi alla scadenza retention
 
 ---
 
-### Feature 2: Report Nutrizionisti
+### Feature 2: Report Nutrizionisti ✅
 > Report mensile automatico. 🟡 Entrambi (admin vede tutti i nutrizionisti, nutritionist vede il proprio)
 
 **Backend:**
-- [ ] Servizio generazione report: raccoglie dati mese (clienti gestiti, diete caricate, messaggi, tempo risposta medio)
-- [ ] Endpoint `GET /admin/reports/monthly?nutritionist_id=X&month=YYYY-MM` → genera/scarica report (🟡 verify_professional)
-- [ ] Endpoint `GET /admin/reports/list` → lista report disponibili
+- [x] Servizio generazione report: raccoglie dati mese (clienti gestiti, diete caricate, messaggi, tempo risposta medio)
+- [x] Endpoint `GET /admin/reports/monthly?nutritionist_id=X&month=YYYY-MM` → genera/scarica report (🟡 verify_professional)
+- [x] Endpoint `GET /admin/reports/list` → lista report disponibili
 - [ ] Opzionale: invio automatico email con PDF allegato a fine mese
 
 **Admin:**
-- [ ] Sezione "Report" accessibile da entrambi i ruoli (tab o sotto-sezione)
-- [ ] Selezione mese e nutrizionista (admin) o solo mese (nutritionist)
-- [ ] Visualizzazione report con metriche chiave
+- [x] Sezione "Report" accessibile da entrambi i ruoli (tab o sotto-sezione)
+- [x] Selezione mese e nutrizionista (admin) o solo mese (nutritionist)
+- [x] Visualizzazione report con metriche chiave
 - [ ] Pulsante download PDF
-- [ ] Storico report passati
+- [x] Storico report passati
 
 ---
 
-### Feature 3: 2FA (Two-Factor Authentication)
+### Feature 3: 2FA (Two-Factor Authentication) ✅
 > Sicurezza login admin panel. 🟡 Entrambi (tutti gli utenti admin/nutritionist devono poterlo attivare)
 
 **Backend:**
-- [ ] Endpoint `POST /admin/2fa/setup` → genera secret TOTP e QR code (🟡 verify_professional)
-- [ ] Endpoint `POST /admin/2fa/verify` → verifica codice TOTP e attiva 2FA
-- [ ] Endpoint `POST /admin/2fa/disable` → disattiva 2FA (con verifica password)
-- [ ] Middleware: se utente ha 2FA attivo, richiedere codice dopo login Firebase
-- [ ] Campo `two_factor_enabled` e `two_factor_secret` nel documento utente Firestore
+- [x] Endpoint `POST /admin/2fa/setup` → genera secret TOTP e QR code (🟡 verify_professional)
+- [x] Endpoint `POST /admin/2fa/verify` → verifica codice TOTP e attiva 2FA
+- [x] Endpoint `POST /admin/2fa/disable` → disattiva 2FA (con verifica password)
+- [x] Endpoint `POST /admin/2fa/validate` → valida codice per login
+- [x] Campo `two_factor_enabled` e `two_factor_secret` nel documento utente Firestore
 
 **Admin:**
-- [ ] Schermata setup 2FA (mostra QR code, input codice verifica)
+- [x] Schermata setup 2FA (mostra QR code, input codice verifica)
 - [ ] Step aggiuntivo nel flusso di login: dopo email/password, chiedi codice TOTP
-- [ ] Sezione in profilo utente per attivare/disattivare 2FA
+- [x] Sezione in profilo utente per attivare/disattivare 2FA
 - [ ] Admin può vedere quali utenti hanno 2FA attivo (nella lista utenti)
 
 ---
