@@ -23,6 +23,14 @@ class AdminChatProvider with ChangeNotifier {
   String? get userRole => _userRole;
   String? get currentUserId => _auth.currentUser?.uid;
 
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
   /// Initialize: fetch user role
   Future<void> _ensureRole() async {
     if (_userRole != null) return;
@@ -32,10 +40,12 @@ class AdminChatProvider with ChangeNotifier {
     try {
       final userDoc =
           await _firestore.collection('users').doc(user.uid).get();
+      if (_isDisposed) return;
       _userRole = userDoc.data()?['role'] as String?;
       notifyListeners(); // Notify UI that role is now available
     } catch (e) {
       debugPrint('Error fetching user role: $e');
+      if (_isDisposed) return;
       _userRole = 'nutritionist';
       notifyListeners();
     }

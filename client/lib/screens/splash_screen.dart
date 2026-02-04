@@ -43,6 +43,9 @@ class _SplashScreenState extends State<SplashScreen> {
     final user = AuthService().currentUser;
 
     if (user != null) {
+      // Aggiorna l'ultimo accesso anche se l'utente è già loggato
+      AuthService().updateLastLogin(user.uid);
+      
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
