@@ -32,6 +32,7 @@ from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
 from app.routers.gdpr import router as gdpr_router
 from app.routers.chat import router as chat_router
+from app.routers.analytics import router as analytics_router
 
 # --- SENTRY ERROR TRACKING ---
 import sentry_sdk
@@ -124,6 +125,7 @@ app.include_router(users_router)
 app.include_router(admin_router)
 app.include_router(gdpr_router)
 app.include_router(chat_router)
+app.include_router(analytics_router)
 
 
 # --- BACKGROUND WORKER ---
