@@ -323,8 +323,6 @@ class _PillNavItemState extends State<PillNavItem> {
                   fontSize: 14,
                 ),
               ),
-                ),
-              ),
               if (widget.badgeCount != null && widget.badgeCount! > 0) ...[
                 const SizedBox(width: 8),
                 Container(

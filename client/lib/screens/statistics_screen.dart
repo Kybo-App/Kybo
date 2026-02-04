@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/tracking_service.dart';
@@ -14,7 +15,8 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   final TrackingService _trackingService = TrackingService();
   final TextEditingController _weightController = TextEditingController();
-  
+  final List<StreamSubscription> _subscriptions = [];
+
   WeeklyStats? _weeklyStats;
   List<WeightEntry> _weightHistory = [];
   List<UserGoal> _goals = [];
@@ -26,24 +28,37 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _weightController.dispose();
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     final stats = await _trackingService.calculateWeeklyStats();
-    
+
     // Weight history stream
-    _trackingService.getWeightHistory(days: 30).listen((history) {
-      if (mounted) {
-        setState(() => _weightHistory = history);
-      }
-    });
+    _subscriptions.add(
+      _trackingService.getWeightHistory(days: 30).listen((history) {
+        if (mounted) {
+          setState(() => _weightHistory = history);
+        }
+      }),
+    );
 
     // Goals stream
-    _trackingService.getGoals().listen((goals) {
-      if (mounted) {
-        setState(() => _goals = goals);
-      }
-    });
+    _subscriptions.add(
+      _trackingService.getGoals().listen((goals) {
+        if (mounted) {
+          setState(() => _goals = goals);
+        }
+      }),
+    );
 
     if (mounted) {
       setState(() {

@@ -1317,7 +1317,6 @@ class _UserCardState extends State<_UserCard> {
                         ),
                       ),
                     ],
-                      ),
                     if (role == 'nutritionist' && widget.clientCount != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
