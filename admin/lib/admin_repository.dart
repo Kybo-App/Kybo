@@ -383,4 +383,88 @@ class AdminRepository {
         return null;
     }
   }
+
+  // --- GDPR RETENTION POLICY ---
+
+  /// Fetches GDPR dashboard with retention statistics
+  Future<Map<String, dynamic>> getGDPRDashboard() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/gdpr/admin/dashboard'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore GDPR Dashboard (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Gets current retention configuration
+  Future<Map<String, dynamic>> getRetentionConfig() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/gdpr/admin/retention-config'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Retention Config (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Updates retention configuration
+  Future<void> setRetentionConfig({
+    required int retentionMonths,
+    required bool isEnabled,
+    required bool dryRun,
+    List<String>? excludeRoles,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/gdpr/admin/retention-config'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'retention_months': retentionMonths,
+        'is_enabled': isEnabled,
+        'dry_run': dryRun,
+        if (excludeRoles != null) 'exclude_roles': excludeRoles,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Errore Salvataggio Config (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Purges inactive users (batch or single)
+  Future<Map<String, dynamic>> purgeInactiveUsers({
+    bool dryRun = true,
+    String? targetUid,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/gdpr/admin/purge-inactive'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'dry_run': dryRun,
+        if (targetUid != null) 'target_uid': targetUid,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Purge (${response.statusCode}): ${response.body}");
+    }
+  }
 }

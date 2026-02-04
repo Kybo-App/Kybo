@@ -11,6 +11,7 @@ import 'audit_log_view.dart';
 import 'chat_management_view.dart';
 import 'nutritional_calculator_view.dart';
 import 'analytics_view.dart';
+import 'gdpr_privacy_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -150,6 +151,12 @@ class _DashboardContentState extends State<_DashboardContent> {
           icon: Icons.settings_rounded,
           label: "Impostazioni",
           view: ConfigView(key: ValueKey('config_$themeKey')),
+        ),
+      if (_isAdmin)
+        _NavItem(
+          icon: Icons.privacy_tip_rounded,
+          label: "GDPR",
+          view: GDPRPrivacyView(key: ValueKey('gdpr_$themeKey')),
         ),
       if (_isAdmin)
         _NavItem(
