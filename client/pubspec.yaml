@@ -36,6 +36,8 @@ dependencies:
   share_plus: ^7.2.2
   safe_device: ^1.1.7
   app_links: ^6.3.0
+  url_launcher: ^6.2.0
+  http_parser: ^4.0.2
 
   # Notifications & Background Tasks
   flutter_local_notifications: ^18.0.1
