@@ -384,6 +384,119 @@ class AdminRepository {
     }
   }
 
+  // --- TWO-FACTOR AUTHENTICATION ---
+
+  /// Initiates 2FA setup
+  Future<Map<String, dynamic>> setup2FA() async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/2fa/setup'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Setup 2FA (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Verifies code and enables 2FA
+  Future<Map<String, dynamic>> verify2FA({
+    required String code,
+    required String secret,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/2fa/verify'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'code': code,
+        'secret': secret,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Verifica 2FA (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Validates 2FA code for login
+  Future<bool> validate2FA(String code) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/2fa/validate'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'code': code}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return data['valid'] == true;
+    }
+    return false;
+  }
+
+  /// Disables 2FA
+  Future<void> disable2FA(String code) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/2fa/disable'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Errore Disabilita 2FA (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Gets 2FA status
+  Future<bool> get2FAStatus() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/2fa/status'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return data['enabled'] == true;
+    }
+    return false;
+  }
+
+  /// Regenerates backup codes
+  Future<List<String>> regenerateBackupCodes(String code) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/2fa/backup-codes/regenerate'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'code': code}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return List<String>.from(data['backup_codes'] ?? []);
+    } else {
+      throw Exception("Errore Rigenera Backup (${response.statusCode}): ${response.body}");
+    }
+  }
+
   // --- NUTRITIONIST REPORTS ---
 
   /// Fetches monthly report for a nutritionist
