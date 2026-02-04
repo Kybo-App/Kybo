@@ -91,7 +91,7 @@ class AdminNotificationProvider with ChangeNotifier {
     Query userQuery = _firestore.collection('users');
     
     if (_userRole == 'nutritionist') {
-       userQuery = userQuery.where('assigned_nutritionist', isEqualTo: uid);
+       userQuery = userQuery.where('parent_id', isEqualTo: uid);
     } 
     // If admin, we see all users (or maybe filtered context? Assuming all for dashboard badge)
 

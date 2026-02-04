@@ -60,12 +60,16 @@ if not firebase_admin._apps:
 
         if key_path and os.path.exists(key_path):
             cred = credentials.Certificate(key_path)
-            firebase_admin.initialize_app(cred)
-            logger.info("firebase_init_success", method="service_account_file", path=key_path)
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': settings.STORAGE_BUCKET
+            })
+            logger.info("firebase_init_success", method="service_account_file", path=key_path, bucket=settings.STORAGE_BUCKET)
         else:
             cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred)
-            logger.info("firebase_init_success", method="adc")
+            firebase_admin.initialize_app(cred, {
+                'storageBucket': settings.STORAGE_BUCKET
+            })
+            logger.info("firebase_init_success", method="adc", bucket=settings.STORAGE_BUCKET)
 
     except Exception as e:
         error_msg = str(e)

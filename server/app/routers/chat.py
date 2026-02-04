@@ -29,7 +29,8 @@ async def upload_attachment(
             max_mb = MAX_FILE_SIZE // (1024 * 1024)
             raise HTTPException(status_code=413, detail=f"File troppo grande. Massimo {max_mb}MB.")
 
-        bucket = storage.bucket()
+        from app.core.config import settings
+        bucket = storage.bucket(name=settings.STORAGE_BUCKET)
 
         # Genera nome file univoco
         ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "bin"
