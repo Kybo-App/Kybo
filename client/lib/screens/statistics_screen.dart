@@ -610,9 +610,4 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _weightController.dispose();
-    super.dispose();
-  }
 }

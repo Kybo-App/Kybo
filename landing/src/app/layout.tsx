@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Kybo - La tua nutrizione semplificata',
   description: 'Gestisci dieta, spesa e dispensa in un\'unica app intelligente',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({

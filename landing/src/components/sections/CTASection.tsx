@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import styles from './CTASection.module.css';
 
 export default function CTASection() {
@@ -43,7 +44,7 @@ export default function CTASection() {
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>
-                <span className={styles.footerLogoIcon}>🥗</span>
+                <Image src="/logo.png" alt="Kybo" width={32} height={32} className={styles.footerLogoIcon} />
                 <span className={styles.footerLogoText}>Kybo</span>
               </div>
               <p className={styles.footerTagline}>
