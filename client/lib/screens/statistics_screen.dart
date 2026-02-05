@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
+import '../services/badge_service.dart';
+import 'package:provider/provider.dart';
 
 /// Screen per visualizzare statistiche e progressi
 class StatisticsScreen extends StatefulWidget {
@@ -601,6 +603,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
 
     await _trackingService.saveWeight(weight);
+    
+    // Trigger Badge Check
+    if (mounted) {
+      context.read<BadgeService>().onWeightLogged();
+    }
+
     _weightController.clear();
     
     if (mounted) {

@@ -89,4 +89,10 @@ class BadgeService extends ChangeNotifier {
   Future<void> onWeightLogged() async {
     await unlockBadge('weight_log_1');
   }
+
+  Future<void> checkDailyGoals(int planned, int consumed) async {
+    if (planned > 0 && consumed == planned) {
+       await unlockBadge('daily_perfection'); // Assumes this badge ID exists
+    }
+  }
 }
