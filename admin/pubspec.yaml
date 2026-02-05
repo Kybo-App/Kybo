@@ -46,6 +46,7 @@ dependencies:
   path_provider: ^2.1.5
   url_launcher: ^6.2.0
   fl_chart: ^0.70.2
+  pdf: ^3.11.1
 
 dev_dependencies:
   flutter_test:

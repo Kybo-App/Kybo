@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'dart:typed_data';
+import 'package:universal_html/html.dart' as html;
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
@@ -549,6 +553,13 @@ class _ReportsViewState extends State<ReportsView> {
                 ),
               ),
               PillIconButton(
+                icon: Icons.download_rounded,
+                tooltip: "Scarica PDF",
+                color: KyboColors.success,
+                onPressed: _downloadPdf,
+              ),
+              const SizedBox(width: 4),
+              PillIconButton(
                 icon: Icons.refresh_rounded,
                 tooltip: "Rigenera Report",
                 onPressed: _generateReport,
@@ -662,7 +673,7 @@ class _ReportsViewState extends State<ReportsView> {
                   children: [
                     Expanded(
                       child: Text(
-                        clientId.substring(0, 8) + "...",
+                        "${clientId.substring(0, 8)}...",
                         style: TextStyle(
                           fontSize: 13,
                           color: KyboColors.textSecondary,
@@ -704,6 +715,197 @@ class _ReportsViewState extends State<ReportsView> {
     } catch (e) {
       return month;
     }
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_selectedReport == null) return;
+
+    final report = _selectedReport!;
+    final month = report['month'] ?? '';
+    final name = report['nutritionist_name'] ?? 'Nutrizionista';
+
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(40),
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Header
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Kybo - Report Mensile',
+                          style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          name,
+                          style: const pw.TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    pw.Text(
+                      _formatMonth(month),
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blueGrey700,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Divider(thickness: 2),
+                pw.SizedBox(height: 20),
+
+                // Stats grid
+                pw.Text(
+                  'Riepilogo',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Row(
+                  children: [
+                    _pdfStatBox('Clienti Totali', '${report['total_clients'] ?? 0}'),
+                    pw.SizedBox(width: 12),
+                    _pdfStatBox('Nuovi Clienti', '${report['new_clients'] ?? 0}'),
+                    pw.SizedBox(width: 12),
+                    _pdfStatBox('Clienti Attivi', '${report['active_clients'] ?? 0}'),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+                pw.Row(
+                  children: [
+                    _pdfStatBox('Diete Caricate', '${report['diets_uploaded'] ?? 0}'),
+                    pw.SizedBox(width: 12),
+                    _pdfStatBox('Messaggi Inviati', '${report['total_messages_sent'] ?? 0}'),
+                    pw.SizedBox(width: 12),
+                    _pdfStatBox('Tempo Risposta', _formatResponseTime(report['average_response_time_hours'])),
+                  ],
+                ),
+                pw.SizedBox(height: 24),
+
+                // Diets by client
+                if ((report['diets_by_client'] as Map<String, dynamic>?)?.isNotEmpty ?? false) ...[
+                  pw.Text(
+                    'Diete per Cliente',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.TableHelper.fromTextArray(
+                    headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                    headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    cellPadding: const pw.EdgeInsets.all(6),
+                    headers: ['Cliente ID', 'Diete Caricate'],
+                    data: (report['diets_by_client'] as Map<String, dynamic>)
+                        .entries
+                        .map((e) => [
+                              '${e.key.substring(0, 8)}...',
+                              '${e.value}',
+                            ])
+                        .toList(),
+                  ),
+                ],
+
+                pw.Spacer(),
+
+                // Footer
+                pw.Divider(color: PdfColors.grey400),
+                pw.SizedBox(height: 8),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Generato il ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
+                      style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                    ),
+                    pw.Text(
+                      'Kybo Diet Management',
+                      style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      final bytes = await pdf.save();
+      final blob = html.Blob([Uint8List.fromList(bytes)], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final fileName = 'report_${name.replaceAll(' ', '_')}_$month.pdf';
+
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+
+      html.Url.revokeObjectUrl(url);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("PDF scaricato"),
+            backgroundColor: KyboColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Errore generazione PDF: $e"),
+            backgroundColor: KyboColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  pw.Expanded _pdfStatBox(String label, String value) {
+    return pw.Expanded(
+      child: pw.Container(
+        padding: const pw.EdgeInsets.all(12),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: PdfColors.grey300),
+          borderRadius: pw.BorderRadius.circular(8),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.Text(
+              value,
+              style: pw.TextStyle(
+                fontSize: 20,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              label,
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _formatResponseTime(dynamic hours) {
