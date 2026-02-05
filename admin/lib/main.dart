@@ -1,4 +1,5 @@
 import 'package:kybo_admin/guards/admin_password_guard.dart';
+import 'package:kybo_admin/guards/two_factor_guard.dart';
 import 'package:kybo_admin/screens/dashboard_screen.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -91,7 +92,9 @@ class AuthGate extends StatelessWidget {
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
-        return AdminPasswordGuard(child: const RoleCheckScreen());
+        return AdminPasswordGuard(
+          child: TwoFactorGuard(child: const RoleCheckScreen()),
+        );
       },
     );
   }
