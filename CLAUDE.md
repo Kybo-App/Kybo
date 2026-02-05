@@ -110,10 +110,10 @@ type(scope): description
 
 Types: feat, fix, refactor, docs, style, test, chore
 Scopes: client, admin, server, landing
-```
 
 ## Important Notes
 - Always work on `dev` branch, not production
 - Client diet data is AES-256 encrypted at rest
+- Always push to `dev` branch once a task is finished
 - No test suite currently exists - feature roadmap includes adding tests
 - See `TODO.md` for feature roadmap

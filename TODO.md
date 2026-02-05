@@ -88,23 +88,6 @@
 
 ## FUTURO (media priorità)
 
----
-
-### Feature 4: Gestione Diete Avanzata
-> Strumenti avanzati per diete nel pannello admin. 🟡 Entrambi
-
-**Admin:**
-- [ ] Editor dieta visuale drag-and-drop (creare diete direttamente senza PDF)
-- [ ] Template diete riutilizzabili (il nutrizionista salva modelli base)
-- [ ] Duplica dieta da un cliente all'altro con modifiche
-- [ ] Confronto side-by-side tra due versioni di dieta
-
-**Backend:**
-- [ ] Endpoint CRUD per template diete (`/admin/diet-templates`)
-- [ ] Endpoint duplicazione dieta (`POST /admin/duplicate-diet`)
-- [ ] Endpoint confronto diete (`GET /admin/compare-diets?id1=X&id2=Y`)
-
----
 
 ### Feature 5: Comunicazione Avanzata
 > Miglioramenti chat e comunicazione. 🟡 Entrambi (ma usato principalmente dal nutritionist)
