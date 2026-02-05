@@ -1396,6 +1396,13 @@ class _UserCardState extends State<_UserCard> {
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (data['two_factor_enabled'] == true)
+                PillBadge(
+                  label: "2FA Attivo",
+                  color: KyboColors.success,
+                  icon: Icons.verified_user_rounded,
+                  small: true,
+                ),
               if (requiresPassChange)
                 PillBadge(
                   label: "Password da cambiare",
@@ -1412,7 +1419,7 @@ class _UserCardState extends State<_UserCard> {
                 ),
             ],
           ),
-          if (requiresPassChange || isDietExpired)
+          if (data['two_factor_enabled'] == true || requiresPassChange || isDietExpired)
             const SizedBox(height: 12),
 
           // ─────────────────────────────────────────────────────────────────

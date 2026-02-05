@@ -63,7 +63,7 @@
 - [x] Sezione "Report" accessibile da entrambi i ruoli (tab o sotto-sezione)
 - [x] Selezione mese e nutrizionista (admin) o solo mese (nutritionist)
 - [x] Visualizzazione report con metriche chiave
-- [ ] Pulsante download PDF
+- [x] Pulsante download PDF
 - [x] Storico report passati
 
 ---
@@ -82,7 +82,7 @@
 - [x] Schermata setup 2FA (mostra QR code, input codice verifica)
 - [ ] Step aggiuntivo nel flusso di login: dopo email/password, chiedi codice TOTP
 - [x] Sezione in profilo utente per attivare/disattivare 2FA
-- [ ] Admin può vedere quali utenti hanno 2FA attivo (nella lista utenti)
+- [x] Admin può vedere quali utenti hanno 2FA attivo (nella lista utenti)
 
 ---
 
