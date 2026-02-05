@@ -174,6 +174,16 @@ async def admin_update_user(
             fs_update['max_clients'] = body.max_clients
 
         if fs_update:
+            # Audit Log per modifiche sensibili
+            if 'max_clients' in fs_update:
+                db.collection('access_logs').add({
+                    'requester_id': requester['uid'],
+                    'target_uid': target_uid,
+                    'action': 'UPDATE_USER_LIMIT',
+                    'reason': f"Limit changed to {fs_update['max_clients']}",
+                    'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
+                })
+
             db.collection('users').document(target_uid).update(fs_update)
 
         return {"message": "User updated"}
