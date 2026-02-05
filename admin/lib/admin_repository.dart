@@ -90,6 +90,7 @@ class AdminRepository {
     required String role,
     required String firstName,
     required String lastName,
+    int? maxClients,
   }) async {
     final token = await _getToken();
     final response = await http.post(
@@ -104,6 +105,7 @@ class AdminRepository {
         'role': role,
         'first_name': firstName,
         'last_name': lastName,
+        if (maxClients != null) 'max_clients': maxClients,
       }),
     );
     if (response.statusCode != 200) {

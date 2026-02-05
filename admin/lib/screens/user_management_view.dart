@@ -221,7 +221,11 @@ class _UserManagementViewState extends State<UserManagementView> {
     final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
     final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
     final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
-    final limitCtrl = TextEditingController(text: (userData['max_clients'] ?? 50).toString());
+    // [NUOVO] Controller per limite clienti
+    final limitCtrl = TextEditingController(
+      text: (userData['max_clients'] ?? 50).toString(),
+    );
+
 
     await showDialog(
       context: context,
@@ -505,6 +509,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     final passCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
     final surnameCtrl = TextEditingController();
+    final limitCtrl = TextEditingController(); // [NUOVO]
     String role = 'user';
 
     List<DropdownMenuItem<String>> allowedRoles = [
@@ -575,6 +580,17 @@ class _UserManagementViewState extends State<UserManagementView> {
                     items: allowedRoles,
                     onChanged: (v) => setDialogState(() => role = v!),
                   ),
+                  if (role == 'nutritionist') ...[
+                     const SizedBox(height: 8),
+                     TextField(
+                      controller: limitCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: "Limite Clienti (Opzionale)",
+                        hintText: "Default: 50",
+                      ),
+                    ),
+                  ]
                 ],
               ),
             ),
@@ -595,6 +611,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     role: role,
                     firstName: nameCtrl.text,
                     lastName: surnameCtrl.text,
+                    maxClients: int.tryParse(limitCtrl.text),
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -663,7 +680,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: KyboColors.background,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: BorderRadius.circular(100),
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -1231,9 +1248,8 @@ class _UserCardState extends State<_UserCard> {
     bool canDelete =
         isAdmin ||
         (role == 'user' && data['parent_id'] == widget.currentUserId);
-    bool canEdit =
-        requiresPassChange &&
-        (isAdmin || data['created_by'] == widget.currentUserId);
+    bool canEdit = isAdmin ||
+        (data['created_by'] == widget.currentUserId);
     bool canAssign =
         (role == 'independent' || role == 'user') && widget.onAssign != null;
 
