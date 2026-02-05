@@ -206,11 +206,11 @@ class ReportService:
             # Check if active (has diet history or messages in period)
             # For simplicity, check diet_history
             history = self.db.collection('diet_history').where(
-                'userId', '==', client.id
+                filter=firestore.FieldFilter('userId', '==', client.id)
             ).where(
-                'uploadedAt', '>=', period_start
+                filter=firestore.FieldFilter('uploadedAt', '>=', period_start)
             ).where(
-                'uploadedAt', '<=', period_end
+                filter=firestore.FieldFilter('uploadedAt', '<=', period_end)
             ).limit(1).stream()
 
             if any(True for _ in history):
@@ -230,11 +230,11 @@ class ReportService:
 
         # Get diet_history uploaded by this nutritionist in the period
         diets = self.db.collection('diet_history').where(
-            'uploadedBy', '==', nutritionist_id
+            filter=firestore.FieldFilter('uploadedBy', '==', nutritionist_id)
         ).where(
-            'uploadedAt', '>=', period_start
+            filter=firestore.FieldFilter('uploadedAt', '>=', period_start)
         ).where(
-            'uploadedAt', '<=', period_end
+            filter=firestore.FieldFilter('uploadedAt', '<=', period_end)
         ).stream()
 
         for diet in diets:
@@ -268,9 +268,9 @@ class ReportService:
             messages = self.db.collection('chats').document(chat_id).collection(
                 'messages'
             ).where(
-                'timestamp', '>=', period_start
+                filter=firestore.FieldFilter('timestamp', '>=', period_start)
             ).where(
-                'timestamp', '<=', period_end
+                filter=firestore.FieldFilter('timestamp', '<=', period_end)
             ).order_by('timestamp').stream()
 
             prev_msg = None

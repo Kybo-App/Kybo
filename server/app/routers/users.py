@@ -25,6 +25,7 @@ class CreateUserRequest(BaseModel):
     first_name: str
     last_name: str
     parent_id: Optional[str] = None
+    max_clients: Optional[int] = None
 
     @field_validator('password')
     @classmethod
@@ -123,7 +124,8 @@ async def admin_create_user(
             'is_active': True,
             'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'created_by': requester['uid'],
-            'requires_password_change': True
+            'requires_password_change': True,
+            'max_clients': body.max_clients
         })
         return {"uid": user.uid, "message": "User created"}
     except Exception as e:
