@@ -191,6 +191,7 @@ class _DashboardContentState extends State<_DashboardContent> {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: PillCard(
+                key: ValueKey('content_card_$themeKey'),
                 padding: const EdgeInsets.all(24),
                 child: navItems[_selectedIndex].view,
               ),
