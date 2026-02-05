@@ -80,7 +80,7 @@
 
 **Admin:**
 - [x] Schermata setup 2FA (mostra QR code, input codice verifica)
-- [ ] Step aggiuntivo nel flusso di login: dopo email/password, chiedi codice TOTP
+- [x] Step aggiuntivo nel flusso di login: dopo email/password, chiedi codice TOTP
 - [x] Sezione in profilo utente per attivare/disattivare 2FA
 - [x] Admin può vedere quali utenti hanno 2FA attivo (nella lista utenti)
 
