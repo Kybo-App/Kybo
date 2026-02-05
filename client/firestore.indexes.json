@@ -32,6 +32,30 @@
         { "fieldPath": "read", "order": "ASCENDING" },
         { "fieldPath": "senderType", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "nutritionist_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutritionist_id", "order": "ASCENDING" },
+        { "fieldPath": "month", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "diet_history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "diet_history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uploadedBy", "order": "ASCENDING" },
+        { "fieldPath": "uploadedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

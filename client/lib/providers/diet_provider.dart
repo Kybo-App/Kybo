@@ -15,6 +15,9 @@ import '../logic/diet_calculator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/notification_service.dart';
 import '../models/diet_models.dart';
+import '../services/tracking_service.dart';
+import '../models/tracking_models.dart';
+import '../services/badge_service.dart';
 // import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods; -> RIMOSSO
 
 class DietProvider extends ChangeNotifier {
@@ -22,6 +25,8 @@ class DietProvider extends ChangeNotifier {
   final StorageService _storage = StorageService();
   final FirestoreService _firestore = FirestoreService();
   final AuthService _auth = AuthService();
+  final TrackingService _trackingService = TrackingService();
+  final BadgeService _badgeService = BadgeService(); // [FIX] Instance for logic calls
 
   DietPlan?
       _dietPlan; // Oggetto unico che contiene sia il piano che le sostituzioni
@@ -456,6 +461,7 @@ class DietProvider extends ChangeNotifier {
 
           _recalcAvailability();
           await scheduleMealNotifications();
+          await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo sync
           notifyListeners();
           debugPrint("☁️ Sync Cloud completato (da 'current')");
         }
@@ -567,6 +573,7 @@ class DietProvider extends ChangeNotifier {
       await _triggerSmartSyncCheck();
 
       await _recalcAvailability();
+      await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo modifica
       notifyListeners();
     }
   }
@@ -675,6 +682,7 @@ class DietProvider extends ChangeNotifier {
     await _storage.saveDiet(_dietPlan!.toJson());
 
     await _recalcAvailability();
+    await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo consumo
     // Non serve notifyListeners() perché _recalcAvailability lo fa già
   }
 
@@ -701,6 +709,47 @@ class DietProvider extends ChangeNotifier {
       }
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Calcola e salva le statistiche giornaliere
+  Future<void> _updateDailyStats() async {
+    if (_dietPlan == null) return;
+    
+    // 1. Identifica giorno corrente nel piano
+    final todayName = getTodayName();
+    if (todayName.isEmpty || !_dietPlan!.plan.containsKey(todayName)) return;
+
+    final dayMeals = _dietPlan!.plan[todayName]!;
+    
+    int planned = 0;
+    int consumed = 0;
+
+    // 2. Conta pasti pianificati e consumati
+    dayMeals.forEach((mealType, dishes) {
+      if (dishes.isNotEmpty) {
+        planned++; // Conta come 1 pasto se ha piatti
+        // Un pasto è "consumato" se TUTTI i suoi piatti sono consumati
+        if (dishes.every((d) => d.isConsumed)) {
+          consumed++;
+        }
+      }
+    });
+
+    // 3. Salva tramite TrackingService
+    try {
+      final stats = DailyMealStats(
+        date: DateTime.now(),
+        mealsPlanned: planned,
+        mealsConsumed: consumed,
+        mealCompletion: {}, // [FIX] Aggiunta mappa vuota per ora, implementare logica
+      );
+      await _trackingService.saveDailyStats(stats);
+      
+      // Trigger Badge Check (Direct call)
+      await _badgeService.checkDailyGoals(planned, consumed);
+    } catch (e) {
+      debugPrint("⚠️ Errore aggiornamento stats: $e");
     }
   }
 

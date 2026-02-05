@@ -6,6 +6,7 @@ import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/design_system.dart';
 import 'change_password_screen.dart';
+import '../widgets/meal_reminder_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -215,14 +216,9 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _openTimeSettings(BuildContext context) {
-    // This would normally open the time settings dialog from home_screen
-    // For now, show a simple message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Gestione Allarmi verrà implementata qui'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
-      ),
+    showDialog(
+      context: context,
+      builder: (context) => const MealReminderDialog(),
     );
   }
 
