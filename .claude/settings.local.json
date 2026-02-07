@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ralph-loop:ralph-loop)",
+      "Bash(python -m py_compile:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(flutter analyze:*)",
+      "Skill(ralph-loop:cancel-ralph)",
+      "Bash(flutter pub get:*)",
+      "Bash(git push:*)",
+      "Bash(find:*)"
+    ]
+  }
+}

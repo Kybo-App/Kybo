@@ -93,13 +93,13 @@
 > Miglioramenti chat e comunicazione. 🟡 Entrambi (ma usato principalmente dal nutritionist)
 
 **Backend:**
-- [ ] Endpoint `POST /admin/broadcast` → messaggio a tutti i clienti del nutrizionista (🟡 verify_professional, nutritionist invia solo ai propri)
+- [x] Endpoint `POST /admin/communication/broadcast` → messaggio a tutti i clienti del nutrizionista (🟡 verify_professional, nutritionist invia solo ai propri)
 - [ ] Servizio notifica email per messaggi non letti dopo X giorni
-- [ ] Endpoint CRUD note interne sul cliente (visibili solo al professionista)
+- [x] Endpoint CRUD note interne sul cliente (visibili solo al professionista) → `/admin/communication/notes/{client_uid}`
 
 **Admin:**
-- [ ] Pulsante "Broadcast" nella chat → invia messaggio a tutti i propri clienti
-- [ ] Sezione "Note interne" nel profilo cliente (campo note visibile solo a admin/nutritionist)
+- [x] Pulsante "Broadcast" nella chat → invia messaggio a tutti i propri clienti
+- [x] Sezione "Note interne" nel profilo cliente (campo note visibile solo a admin/nutritionist)
 - [ ] Configurazione alert email per messaggi non letti
 
 ---

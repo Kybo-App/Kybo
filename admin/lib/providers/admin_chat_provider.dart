@@ -312,4 +312,9 @@ class AdminChatProvider with ChangeNotifier {
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
     return await _repo.uploadChatAttachment(file);
   }
+
+  /// Send a broadcast message to all clients
+  Future<Map<String, dynamic>> broadcastMessage(String message) async {
+    return await _repo.broadcastMessage(message);
+  }
 }
