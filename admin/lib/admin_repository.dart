@@ -655,4 +655,112 @@ class AdminRepository {
       throw Exception("Errore Purge (${response.statusCode}): ${response.body}");
     }
   }
+
+  // --- COMMUNICATION: BROADCAST ---
+
+  /// Sends a broadcast message to all clients
+  Future<Map<String, dynamic>> broadcastMessage(String message) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/communication/broadcast'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'message': message}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Broadcast (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  // --- COMMUNICATION: INTERNAL NOTES ---
+
+  /// Fetches internal notes for a client
+  Future<List<dynamic>> getClientNotes(String clientUid) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/communication/notes/$clientUid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return data['notes'] as List<dynamic>? ?? [];
+    } else {
+      throw Exception("Errore Note (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Creates a new internal note for a client
+  Future<Map<String, dynamic>> createClientNote({
+    required String clientUid,
+    required String content,
+    String category = 'general',
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/communication/notes/$clientUid'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'content': content,
+        'category': category,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Creazione Nota (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Updates an internal note
+  Future<void> updateClientNote({
+    required String clientUid,
+    required String noteId,
+    String? content,
+    String? category,
+    bool? pinned,
+  }) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('$_baseUrl/admin/communication/notes/$clientUid/$noteId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        if (content != null) 'content': content,
+        if (category != null) 'category': category,
+        if (pinned != null) 'pinned': pinned,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Errore Aggiornamento Nota (${response.statusCode}): ${response.body}");
+    }
+  }
+
+  /// Deletes an internal note
+  Future<void> deleteClientNote({
+    required String clientUid,
+    required String noteId,
+  }) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/admin/communication/notes/$clientUid/$noteId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Errore Eliminazione Nota (${response.statusCode}): ${response.body}");
+    }
+  }
 }
