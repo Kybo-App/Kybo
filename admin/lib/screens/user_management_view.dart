@@ -205,6 +205,18 @@ class _UserManagementViewState extends State<UserManagementView> {
     );
   }
 
+  void _showClientNotes(String clientUid, String clientName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ClientNotesScreen(
+          clientUid: clientUid,
+          clientName: clientName,
+        ),
+      ),
+    );
+  }
+
   Future<void> _editUser(
     String uid,
     String currentEmail,
@@ -897,6 +909,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               _showUserHistory(uid, users[index]['first_name'] ?? 'User'),
           onEdit: _editUser,
           onAssign: null,
+          onNotes: _showClientNotes,
           currentUserRole: _currentUserRole,
           currentUserId: _currentUserId,
           roleColor: _getRoleColor(users[index]['role'] ?? 'user'),
@@ -1017,6 +1030,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           onEdit: _editUser,
                           onAssign: (uid) =>
                               _showManageAssignmentDialog(uid, nutNameMap),
+                          onNotes: _showClientNotes,
                           currentUserRole: _currentUserRole,
                           currentUserId: _currentUserId,
                           roleColor: _getRoleColor('user'),
@@ -1077,6 +1091,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         ),
                         onEdit: _editUser,
                         onAssign: (uid) => _assignUser(uid, nutNameMap),
+                        onNotes: _showClientNotes,
                         currentUserRole: _currentUserRole,
                         currentUserId: _currentUserId,
                         roleColor: _getRoleColor('independent'),
@@ -1156,6 +1171,7 @@ class _UserCard extends StatefulWidget {
   final Function(String) onHistory;
   final Function(String, String, String, String, Map<String, dynamic>) onEdit;
   final Function(String)? onAssign;
+  final Function(String, String)? onNotes;
   final String currentUserRole;
   final String currentUserId;
   final Color roleColor;
@@ -1168,6 +1184,7 @@ class _UserCard extends StatefulWidget {
     required this.onHistory,
     required this.onEdit,
     this.onAssign,
+    this.onNotes,
     required this.currentUserRole,
     required this.currentUserId,
     required this.roleColor,
@@ -1252,6 +1269,7 @@ class _UserCardState extends State<_UserCard> {
         (data['created_by'] == widget.currentUserId);
     bool canAssign =
         (role == 'independent' || role == 'user') && widget.onAssign != null;
+    bool showNotes = (role == 'user' || role == 'independent') && widget.onNotes != null;
 
     String dateStr = '-';
     if (data['created_at'] != null) {
@@ -1462,6 +1480,14 @@ class _UserCardState extends State<_UserCard> {
                     color: KyboColors.accent,
                     tooltip: "Assegna",
                     onPressed: () => widget.onAssign!(uid),
+                    size: 36,
+                  ),
+                if (showNotes)
+                  PillIconButton(
+                    icon: Icons.note_alt_outlined,
+                    color: KyboColors.primary,
+                    tooltip: "Note Interne",
+                    onPressed: () => widget.onNotes!(uid, realName),
                     size: 36,
                   ),
                 if (showDiet) ...[
@@ -1952,6 +1978,533 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
           Text(
             "Step ${_currentStep + 1} di ${_steps.length}",
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CLIENT NOTES SCREEN
+// ══════════════════════════════════════════════════════════════════════════
+
+class _ClientNotesScreen extends StatefulWidget {
+  final String clientUid;
+  final String clientName;
+
+  const _ClientNotesScreen({
+    required this.clientUid,
+    required this.clientName,
+  });
+
+  @override
+  State<_ClientNotesScreen> createState() => _ClientNotesScreenState();
+}
+
+class _ClientNotesScreenState extends State<_ClientNotesScreen> {
+  final AdminRepository _repo = AdminRepository();
+  late Future<List<dynamic>> _notesFuture;
+  bool _isLoading = false;
+
+  static const _categories = [
+    {'value': 'general', 'label': 'Generale', 'icon': Icons.notes_rounded, 'color': Colors.blue},
+    {'value': 'medical', 'label': 'Medico', 'icon': Icons.medical_services_rounded, 'color': Colors.red},
+    {'value': 'dietary', 'label': 'Alimentare', 'icon': Icons.restaurant_rounded, 'color': Colors.green},
+    {'value': 'follow-up', 'label': 'Follow-up', 'icon': Icons.event_note_rounded, 'color': Colors.orange},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _notesFuture = _repo.getClientNotes(widget.clientUid);
+  }
+
+  void _refreshNotes() {
+    setState(() {
+      _notesFuture = _repo.getClientNotes(widget.clientUid);
+    });
+  }
+
+  Map<String, dynamic> _getCategoryInfo(String category) {
+    return _categories.firstWhere(
+      (c) => c['value'] == category,
+      orElse: () => _categories.first,
+    );
+  }
+
+  Future<void> _showAddNoteDialog() async {
+    final contentCtrl = TextEditingController();
+    String selectedCategory = 'general';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: KyboColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            "Nuova Nota",
+            style: TextStyle(color: KyboColors.textPrimary),
+          ),
+          content: SizedBox(
+            width: 450,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Categoria",
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: _categories.map((cat) {
+                    final isSelected = selectedCategory == cat['value'];
+                    return ChoiceChip(
+                      label: Text(cat['label'] as String),
+                      avatar: Icon(
+                        cat['icon'] as IconData,
+                        size: 16,
+                        color: isSelected ? Colors.white : cat['color'] as Color,
+                      ),
+                      selected: isSelected,
+                      selectedColor: cat['color'] as Color,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : KyboColors.textPrimary,
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() => selectedCategory = cat['value'] as String);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentCtrl,
+                  maxLines: 5,
+                  style: TextStyle(color: KyboColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: "Scrivi la nota...",
+                    hintStyle: TextStyle(color: KyboColors.textMuted),
+                    filled: true,
+                    fillColor: KyboColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text("Annulla", style: TextStyle(color: KyboColors.textSecondary)),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (contentCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                setState(() => _isLoading = true);
+                try {
+                  await _repo.createClientNote(
+                    clientUid: widget.clientUid,
+                    content: contentCtrl.text.trim(),
+                    category: selectedCategory,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Nota creata!")),
+                    );
+                    _refreshNotes();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              },
+              child: const Text("Salva"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editNote(Map<String, dynamic> note) async {
+    final contentCtrl = TextEditingController(text: note['content'] ?? '');
+    String selectedCategory = note['category'] ?? 'general';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: KyboColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            "Modifica Nota",
+            style: TextStyle(color: KyboColors.textPrimary),
+          ),
+          content: SizedBox(
+            width: 450,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Categoria",
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: _categories.map((cat) {
+                    final isSelected = selectedCategory == cat['value'];
+                    return ChoiceChip(
+                      label: Text(cat['label'] as String),
+                      avatar: Icon(
+                        cat['icon'] as IconData,
+                        size: 16,
+                        color: isSelected ? Colors.white : cat['color'] as Color,
+                      ),
+                      selected: isSelected,
+                      selectedColor: cat['color'] as Color,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : KyboColors.textPrimary,
+                      ),
+                      onSelected: (_) {
+                        setDialogState(() => selectedCategory = cat['value'] as String);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentCtrl,
+                  maxLines: 5,
+                  style: TextStyle(color: KyboColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: "Scrivi la nota...",
+                    hintStyle: TextStyle(color: KyboColors.textMuted),
+                    filled: true,
+                    fillColor: KyboColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: KyboColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text("Annulla", style: TextStyle(color: KyboColors.textSecondary)),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (contentCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                setState(() => _isLoading = true);
+                try {
+                  await _repo.updateClientNote(
+                    clientUid: widget.clientUid,
+                    noteId: note['id'],
+                    content: contentCtrl.text.trim(),
+                    category: selectedCategory,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Nota aggiornata!")),
+                    );
+                    _refreshNotes();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              },
+              child: const Text("Salva"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteNote(String noteId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text("Elimina Nota"),
+        content: const Text("Sei sicuro di voler eliminare questa nota?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text("Annulla"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text("Elimina"),
+          ),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _repo.deleteClientNote(
+        clientUid: widget.clientUid,
+        noteId: noteId,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Nota eliminata.")),
+        );
+        _refreshNotes();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _togglePin(Map<String, dynamic> note) async {
+    try {
+      await _repo.updateClientNote(
+        clientUid: widget.clientUid,
+        noteId: note['id'],
+        pinned: !(note['pinned'] == true),
+      );
+      _refreshNotes();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Note - ${widget.clientName}"),
+        actions: [
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: "Nuova Nota",
+              onPressed: _showAddNoteDialog,
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_isLoading)
+            const LinearProgressIndicator(),
+          Expanded(
+            child: FutureBuilder<List<dynamic>>(
+              future: _notesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      "Errore: ${snapshot.error}",
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+
+                final notes = snapshot.data ?? [];
+                if (notes.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.note_alt_outlined, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Nessuna nota interna",
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        FilledButton.icon(
+                          onPressed: _showAddNoteDialog,
+                          icon: const Icon(Icons.add),
+                          label: const Text("Aggiungi Nota"),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Sort: pinned first, then by date
+                final sorted = List<dynamic>.from(notes);
+                sorted.sort((a, b) {
+                  final aPinned = a['pinned'] == true ? 0 : 1;
+                  final bPinned = b['pinned'] == true ? 0 : 1;
+                  if (aPinned != bPinned) return aPinned.compareTo(bPinned);
+                  return 0; // Already sorted by date from backend
+                });
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: sorted.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (ctx, i) {
+                    final note = sorted[i] as Map<String, dynamic>;
+                    final catInfo = _getCategoryInfo(note['category'] ?? 'general');
+                    final isPinned = note['pinned'] == true;
+
+                    String dateStr = '';
+                    if (note['updated_at'] != null) {
+                      try {
+                        final d = DateTime.tryParse(note['updated_at'].toString());
+                        if (d != null) dateStr = DateFormat('dd MMM yyyy HH:mm').format(d);
+                      } catch (_) {}
+                    }
+
+                    return Card(
+                      elevation: isPinned ? 3 : 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: isPinned
+                            ? BorderSide(color: KyboColors.warning, width: 2)
+                            : BorderSide.none,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  catInfo['icon'] as IconData,
+                                  size: 18,
+                                  color: catInfo['color'] as Color,
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: (catInfo['color'] as Color).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    catInfo['label'] as String,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: catInfo['color'] as Color,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (isPinned) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.push_pin, size: 14, color: KyboColors.warning),
+                                ],
+                                const Spacer(),
+                                Text(
+                                  dateStr,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              note['content'] ?? '',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                    size: 18,
+                                  ),
+                                  color: isPinned ? KyboColors.warning : Colors.grey,
+                                  tooltip: isPinned ? "Rimuovi pin" : "Fissa",
+                                  onPressed: () => _togglePin(note),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.edit_rounded, size: 18),
+                                  color: KyboColors.primary,
+                                  tooltip: "Modifica",
+                                  onPressed: () => _editNote(note),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                  color: Colors.red,
+                                  tooltip: "Elimina",
+                                  onPressed: () => _deleteNote(note['id']),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
