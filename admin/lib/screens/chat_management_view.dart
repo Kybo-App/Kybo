@@ -52,17 +52,27 @@ class _ChatManagementContent extends StatelessWidget {
                     ),
                     Builder(
                       builder: (ctx) {
-                        // watch per ricostruire quando userRole diventa disponibile
                         final provider = ctx.watch<AdminChatProvider>();
-                        if (provider.userRole == 'admin') {
-                          return PillIconButton(
-                            icon: Icons.add_comment_rounded,
-                            tooltip: 'Nuova chat',
-                            color: KyboColors.primary,
-                            onPressed: () => _showNewChatDialog(ctx),
-                          );
-                        }
-                        return const SizedBox.shrink();
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PillIconButton(
+                              icon: Icons.campaign_rounded,
+                              tooltip: 'Broadcast',
+                              color: KyboColors.warning,
+                              onPressed: () => _showBroadcastDialog(ctx),
+                            ),
+                            if (provider.userRole == 'admin') ...[
+                              const SizedBox(width: 4),
+                              PillIconButton(
+                                icon: Icons.add_comment_rounded,
+                                tooltip: 'Nuova chat',
+                                color: KyboColors.primary,
+                                onPressed: () => _showNewChatDialog(ctx),
+                              ),
+                            ],
+                          ],
+                        );
                       },
                     ),
                   ],
@@ -84,6 +94,121 @@ class _ChatManagementContent extends StatelessWidget {
         // ════════════════════════════════════════════════════════════════
         Expanded(child: _ChatInterface()),
       ],
+    );
+  }
+
+  void _showBroadcastDialog(BuildContext context) {
+    final messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: KyboColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Row(
+          children: [
+            Icon(Icons.campaign_rounded, color: KyboColors.warning),
+            const SizedBox(width: 8),
+            Text(
+              'Broadcast',
+              style: TextStyle(color: KyboColors.textPrimary),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 450,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Invia un messaggio a tutti i tuoi clienti.',
+                style: TextStyle(
+                  color: KyboColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                maxLines: 4,
+                style: TextStyle(color: KyboColors.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Scrivi il messaggio broadcast...',
+                  hintStyle: TextStyle(color: KyboColors.textMuted),
+                  filled: true,
+                  fillColor: KyboColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: KyboColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: KyboColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: KyboColors.warning, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Il messaggio apparira in tutte le chat attive.',
+                style: TextStyle(
+                  color: KyboColors.textMuted,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              'Annulla',
+              style: TextStyle(color: KyboColors.textSecondary),
+            ),
+          ),
+          PillButton(
+            label: 'Invia Broadcast',
+            icon: Icons.send_rounded,
+            backgroundColor: KyboColors.warning,
+            textColor: Colors.white,
+            onPressed: () async {
+              final msg = messageController.text.trim();
+              if (msg.isEmpty) return;
+
+              Navigator.pop(dialogCtx);
+
+              try {
+                final provider = context.read<AdminChatProvider>();
+                final result = await provider.broadcastMessage(msg);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Broadcast inviato!'),
+                      backgroundColor: KyboColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Errore: $e'),
+                      backgroundColor: KyboColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
