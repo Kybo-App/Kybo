@@ -12,7 +12,7 @@ export default function BusinessPage() {
       <nav className={styles.nav}>
         <div className={styles.navContainer}>
           <Link href="/" className={styles.logo}>
-            <Image src="/logo.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} />
+            <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} />
             <span className={styles.logoText}>Kybo</span>
           </Link>
           <Link href="/" className={styles.backBtn}>
