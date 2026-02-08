@@ -22,44 +22,37 @@ export default function HorizontalGallery() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // Use useLayoutEffect for GSAP to prevent FOUC and handle strict mode better
+  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
+
+  useIsomorphicLayoutEffect(() => {
     if (!sectionRef.current || !scrollerRef.current) return;
 
-    const section = sectionRef.current;
-    const scroller = scrollerRef.current;
+    const ctx = gsap.context(() => {
+      const section = sectionRef.current!;
+      const scroller = scrollerRef.current!;
+      
+      // Calculate scroll width
+      const scrollWidth = scroller.scrollWidth - window.innerWidth;
 
-    // Calculate scroll width
-    const scrollWidth = scroller.scrollWidth - window.innerWidth;
-
-    // Create horizontal scroll animation
-    const horizontalScroll = gsap.to(scroller, {
-      x: -scrollWidth,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: section,
-        start: 'top top',
-        end: () => `+=${scrollWidth}`,
-        scrub: 1,
-        pin: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-      },
-    });
+      // Create horizontal scroll animation
+      gsap.to(scroller, {
+        x: -scrollWidth,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          end: () => `+=${scrollWidth}`,
+          scrub: 1,
+          // pin: true,
+          // anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      });
+    }, sectionRef); // Scope to section
 
     // Cleanup
-    return () => {
-      // Kill animation first
-      if (horizontalScroll) {
-        horizontalScroll.kill();
-      }
-      
-      // Kill ScrollTriggers with proper cleanup
-      ScrollTrigger.getAll().forEach((trigger) => {
-        if (trigger.trigger === section || !section) {
-          trigger.kill(true); // true = immediately remove pin spacer
-        }
-      });
-    };
+    return () => ctx.revert();
   }, []);
 
   return (

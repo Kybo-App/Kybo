@@ -44,7 +44,7 @@ export default function CTASection() {
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>
-                <Image src="/logo.png" alt="Kybo" width={32} height={32} className={styles.footerLogoIcon} />
+                <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.footerLogoIcon} />
                 <span className={styles.footerLogoText}>Kybo</span>
               </div>
               <p className={styles.footerTagline}>
