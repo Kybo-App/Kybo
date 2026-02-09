@@ -184,7 +184,7 @@
 
 /* Features Section */
 .features {
-  padding: 8rem 2rem;
+  padding: 8rem 2rem 10rem;
   background: #0f0f0f;
 }
 
@@ -417,13 +417,13 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-.features {
+.featuresList {
   list-style: none;
   padding: 0;
   margin-bottom: 2rem;
 }
 
-.features li {
+.featuresList li {
   padding: 0.8rem 0;
   color: rgba(255, 255, 255, 0.8);
   font-size: 1.05rem;

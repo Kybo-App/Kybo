@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import styles from './StatsSection.module.css';
 
 const stats = [
@@ -13,24 +13,6 @@ const stats = [
 export default function StatsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!statsRef.current) return;
-
-    const statElements = statsRef.current.querySelectorAll(`.${styles.stat}`);
-
-    statElements.forEach((stat, index) => {
-      const valueElement = stat.querySelector(`.${styles.value}`) as HTMLElement;
-      const targetValue = stats[index].value;
-      const suffix = stats[index].suffix;
-
-      // Set initial value immediately
-      if (valueElement) {
-        valueElement.textContent = targetValue + suffix;
-      }
-    });
-
-  }, []);
 
   return (
     <section ref={sectionRef} id="stats" className={styles.section}>
@@ -51,7 +33,7 @@ export default function StatsSection() {
                 }}
               >
                 <div className={styles.innerCircle}>
-                  <span className={styles.value}>0{stat.suffix}</span>
+                  <span className={styles.value}>{stat.value}{stat.suffix}</span>
                 </div>
               </div>
               <p className={styles.label}>{stat.label}</p>

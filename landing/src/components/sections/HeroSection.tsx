@@ -9,6 +9,8 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+const titleText = 'Kybo';
+
 export default function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -17,14 +19,8 @@ export default function HeroSection() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Title animation - split by letters
+      // Title animation - animate pre-rendered spans
       if (titleRef.current) {
-        const text = titleRef.current.textContent || '';
-        titleRef.current.innerHTML = text
-          .split('')
-          .map((char) => `<span style="display: inline-block;">${char === ' ' ? '&nbsp;' : char}</span>`)
-          .join('');
-
         const chars = titleRef.current.querySelectorAll('span');
         
         gsap.from(chars, {
@@ -74,21 +70,19 @@ export default function HeroSection() {
       {/* Content */}
       <div className={styles.content}>
         <h1 ref={titleRef} className={styles.title}>
-          Kybo
+          {titleText.split('').map((char, i) => (
+            <span key={i} style={{ display: 'inline-block' }}>
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          ))}
         </h1>
         
         <p ref={subtitleRef} className={styles.subtitle}>
           La tua nutrizione, finalmente semplificata
         </p>
 
-        <div ref={ctaRef} className={styles.cta}>
-          <button className={styles.primaryBtn}>
-            📱 Scarica l'App
-          </button>
-          <button className={styles.secondaryBtn}>
-            🎥 Guarda il Video
-          </button>
-        </div>
+
+
 
         {/* Scroll indicator */}
         <div className={styles.scrollIndicator}>
