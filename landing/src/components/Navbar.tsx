@@ -39,7 +39,7 @@ export default function Navbar() {
     <nav ref={navRef} className={`${styles.nav} ${isScrolled ? styles.scrolled : ''}`}>
       <div className={styles.container}>
         <div className={styles.logo}>
-          <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} />
+          <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} priority />
           <span className={styles.logoText}>Kybo</span>
         </div>
 

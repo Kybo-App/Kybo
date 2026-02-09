@@ -22,10 +22,7 @@ export default function HorizontalGallery() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  // Use useLayoutEffect for GSAP to prevent FOUC and handle strict mode better
-  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
-
-  useIsomorphicLayoutEffect(() => {
+  useEffect(() => {
     if (!sectionRef.current || !scrollerRef.current) return;
 
     const ctx = gsap.context(() => {
@@ -41,11 +38,11 @@ export default function HorizontalGallery() {
         ease: 'none',
         scrollTrigger: {
           trigger: section,
-          start: 'top top',
+          start: 'center center',
           end: () => `+=${scrollWidth}`,
           scrub: 1,
-          // pin: true,
-          // anticipatePin: 1,
+          pin: true,
+          anticipatePin: 1,
           invalidateOnRefresh: true,
         },
       });
