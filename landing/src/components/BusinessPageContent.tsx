@@ -15,9 +15,14 @@ export default function BusinessPageContent() {
             <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} priority />
             <span className={styles.logoText}>Kybo</span>
           </Link>
-          <Link href="/" className={styles.backBtn}>
-            ← Torna alla Home
-          </Link>
+          <div className={styles.navActions}>
+            <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.loginBtn}>
+              Accedi alla Dashboard
+            </a>
+            <Link href="/" className={styles.backBtn}>
+              ← Torna alla Home
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -160,7 +165,12 @@ export default function BusinessPageContent() {
         <div className={styles.ctaContent}>
           <h2>Pronto a trasformare la tua pratica?</h2>
           <p>Unisciti a centinaia di nutrizionisti che già usano Kybo</p>
-          <button className={styles.ctaBtn}>Richiedi una Demo Gratuita</button>
+          <div className={styles.ctaButtons}>
+            <button className={styles.ctaBtn}>Richiedi una Demo Gratuita</button>
+            <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.ctaLoginBtn}>
+              Accedi alla Dashboard →
+            </a>
+          </div>
         </div>
       </section>
 

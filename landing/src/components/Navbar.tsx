@@ -50,9 +50,14 @@ export default function Navbar() {
           <li><a href="/business">Per Nutrizionisti</a></li>
         </ul>
 
-        <button className={styles.ctaBtn}>
-          Scarica App
-        </button>
+        <div className={styles.ctaGroup}>
+          <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.loginBtn}>
+            Area Riservata
+          </a>
+          <button className={styles.ctaBtn}>
+            Scarica App
+          </button>
+        </div>
       </div>
     </nav>
   );

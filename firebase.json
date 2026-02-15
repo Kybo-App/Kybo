@@ -8,7 +8,7 @@
   },
   "hosting": {
     "target": "landing",
-    "public": "landing",
+    "public": "landing/out",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
