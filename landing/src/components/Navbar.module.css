@@ -1,0 +1,147 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 1.5rem 2rem;
+  transition: all 0.3s ease;
+}
+
+.nav.scrolled {
+  background: rgba(15, 15, 15, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 2rem;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.logoIcon {
+  font-size: 2rem;
+  filter: drop-shadow(0 0 10px rgba(102, 187, 106, 0.5));
+}
+
+.logoText {
+  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.menu {
+  display: flex;
+  gap: 3rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  position: relative;
+}
+
+.menu a::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #66BB6A, #2E7D32);
+  transition: width 0.3s ease;
+}
+
+.menu a:hover {
+  color: #66BB6A;
+}
+
+.menu a:hover::after {
+  width: 100%;
+}
+
+.ctaGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loginBtn {
+  padding: 0.8rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 100px;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.loginBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #66BB6A;
+  color: #66BB6A;
+}
+
+.ctaBtn {
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
+  color: white;
+  box-shadow: 0 5px 15px rgba(102, 187, 106, 0.3);
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+.ctaBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 187, 106, 0.4);
+}
+
+@media (max-width: 768px) {
+  .menu {
+    display: none;
+  }
+
+  .ctaGroup {
+    gap: 0.5rem;
+  }
+
+  .loginBtn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .ctaBtn {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+  }
+}
