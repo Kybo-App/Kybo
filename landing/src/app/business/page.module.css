@@ -41,6 +41,30 @@
   background-clip: text;
 }
 
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.loginBtn {
+  padding: 0.8rem 1.5rem;
+  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
+  border: none;
+  border-radius: 100px;
+  color: white;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 5px 15px rgba(102, 187, 106, 0.3);
+}
+
+.loginBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 187, 106, 0.4);
+}
+
 .backBtn {
   padding: 0.8rem 1.5rem;
   background: rgba(255, 255, 255, 0.05);
@@ -485,6 +509,28 @@
   margin-bottom: 3rem;
 }
 
+.ctaButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ctaLoginBtn {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #66BB6A;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-bottom: 2px solid transparent;
+}
+
+.ctaLoginBtn:hover {
+  border-bottom-color: #66BB6A;
+  transform: translateX(5px);
+}
+
 /* Footer */
 .footer {
   background: #0a0a0a;
@@ -554,5 +600,19 @@
 
   .pricingCard.featured {
     transform: scale(1);
+  }
+
+  .navActions {
+    gap: 0.5rem;
+  }
+
+  .loginBtn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .backBtn {
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
   }
 }
