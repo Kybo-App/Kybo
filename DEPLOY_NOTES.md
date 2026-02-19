@@ -108,4 +108,24 @@ tramite `auth.get_user(uid).tokens_valid_after_time`. Aggiunta alla roadmap come
 
 ---
 
+---
+
+## 🟡 Google Fit / Apple Health (Feature 8, futuro)
+
+**Cosa serve**:
+- Google Fit API: Google Cloud Console → abilitare Fitness API + OAuth 2.0 client ID
+- Apple HealthKit: Xcode → Info.plist → aggiungere `NSHealthShareUsageDescription`
+- Richiede developer account Apple ($99/anno) per submission App Store
+
+Funzionalità desiderate: sync passi, peso corporeo, calorie bruciate verso Kybo.
+
+---
+
+## 🟡 Bilancia Smart (Feature 8, futuro)
+
+**Esempi supportati**: Withings, Fitbit, RENPHO via le rispettive API REST
+Richiede OAuth app registrata su ciascun vendor.
+
+---
+
 *Ultimo aggiornamento: 2026-02-19*

@@ -27,7 +27,10 @@ import 'chat_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import 'badges_screen.dart';
+import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../core/env.dart';
 import '../services/jailbreak_service.dart';
 
 // --- 1. WRAPPER PRINCIPALE ---
@@ -979,6 +982,24 @@ class _MainScreenContentState extends State<MainScreenContent>
                             },
                           ),
 
+                          // 📄 Esporta Dieta PDF
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.picture_as_pdf_rounded, color: KyboColors.primary, size: 20),
+                            ),
+                            title: "Esporta Dieta PDF",
+                            subtitle: "Scarica la tua dieta in PDF",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              _exportDietPdf(drawerCtx);
+                            },
+                          ),
+
                           // ⚙️ Impostazioni
                           PillListTile(
                             leading: Container(
@@ -1174,6 +1195,58 @@ class _MainScreenContentState extends State<MainScreenContent>
             content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportDietPdf(BuildContext ctx) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final token = await user.getIdToken();
+      final uri = Uri.parse('${Env.apiUrl}/export-diet-pdf');
+
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(
+            content: Text('Generazione PDF in corso...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        // Launch the API URL with auth token as query param for direct browser download
+        final downloadUri = Uri.parse(
+          '${Env.apiUrl}/export-diet-pdf?token=${Uri.encodeComponent(token!)}',
+        );
+        if (await canLaunchUrl(downloadUri)) {
+          await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
+        }
+      } else {
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            SnackBar(
+              content: Text('Errore esportazione: ${response.statusCode}'),
+              backgroundColor: KyboColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('Errore: ${e.toString()}'),
+            backgroundColor: KyboColors.error,
           ),
         );
       }

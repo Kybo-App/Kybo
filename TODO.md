@@ -130,8 +130,8 @@
 > Connessioni con servizi terzi. Client + Backend.
 
 - [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate)
-- [ ] Export dieta in formato PDF/calendario
-- [ ] Import dieta da altre app (MyFitnessPal, Yazio)
+- [x] Export dieta in formato PDF
+- [x] Import dieta da altre app (MyFitnessPal, Yazio CSV)
 - [ ] Integrazione con bilancia smart (peso automatico)
 
 ---
