@@ -57,7 +57,7 @@
 - [x] Servizio generazione report: raccoglie dati mese (clienti gestiti, diete caricate, messaggi, tempo risposta medio)
 - [x] Endpoint `GET /admin/reports/monthly?nutritionist_id=X&month=YYYY-MM` → genera/scarica report (🟡 verify_professional)
 - [x] Endpoint `GET /admin/reports/list` → lista report disponibili
-- [ ] Opzionale: invio automatico email con PDF allegato a fine mese
+- [x] Opzionale: invio automatico email con PDF allegato a fine mese
 
 **Admin:**
 - [x] Sezione "Report" accessibile da entrambi i ruoli (tab o sotto-sezione)
