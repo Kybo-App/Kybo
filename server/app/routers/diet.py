@@ -8,7 +8,7 @@ from typing import Optional, List
 
 import firebase_admin
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import Json
 from slowapi import Limiter
@@ -342,3 +342,233 @@ async def scan_receipt(
         raise HTTPException(status_code=500, detail="Errore durante la scansione dello scontrino")
     finally:
         await file.close()
+
+
+@router.get("/export-diet-pdf")
+async def export_diet_pdf(uid: str = Depends(get_current_uid)):
+    """
+    Genera e scarica un PDF della dieta corrente dell'utente.
+    Richiede autenticazione. Il PDF include il piano settimanale completo.
+    """
+    try:
+        db = firebase_admin.firestore.client()
+        diet_doc = db.collection('users').document(uid).collection('diets').document('current').get()
+
+        if not diet_doc.exists:
+            raise HTTPException(status_code=404, detail="Nessuna dieta trovata.")
+
+        diet_data = diet_doc.to_dict() or {}
+        plan = diet_data.get('plan', {})
+
+        pdf_bytes = await run_in_threadpool(_generate_diet_pdf, plan, uid)
+
+        return StreamingResponse(
+            iter([pdf_bytes]),
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'attachment; filename="dieta-kybo.pdf"'}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("export_diet_pdf_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante l'esportazione della dieta.")
+
+
+def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
+    """Genera un PDF della dieta settimanale."""
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Header
+    pdf.set_font("Helvetica", "B", size=20)
+    pdf.set_text_color(46, 125, 50)  # Kybo green
+    pdf.cell(0, 12, "Piano Alimentare - Kybo", ln=True, align="C")
+    pdf.set_font("Helvetica", size=10)
+    pdf.set_text_color(100, 100, 100)
+    from datetime import datetime
+    pdf.cell(0, 6, f"Esportato il {datetime.now().strftime('%d/%m/%Y')}", ln=True, align="C")
+    pdf.ln(8)
+
+    if not plan:
+        pdf.set_font("Helvetica", size=12)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 10, "Nessun piano alimentare disponibile.", ln=True)
+        return bytes(pdf.output())
+
+    for day, meals in plan.items():
+        if not isinstance(meals, dict):
+            continue
+
+        # Day header
+        pdf.set_font("Helvetica", "B", size=14)
+        pdf.set_text_color(46, 125, 50)
+        pdf.cell(0, 8, day.upper(), ln=True)
+        pdf.set_draw_color(46, 125, 50)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(4)
+
+        for meal_name, dishes in meals.items():
+            if not isinstance(dishes, list) or not dishes:
+                continue
+
+            # Meal name
+            pdf.set_font("Helvetica", "B", size=11)
+            pdf.set_text_color(50, 50, 50)
+            pdf.cell(0, 7, f"  {meal_name}", ln=True)
+
+            for dish in dishes:
+                if not isinstance(dish, dict):
+                    continue
+                name = dish.get('name', '')
+                qty = dish.get('qty', '')
+                if name:
+                    pdf.set_font("Helvetica", size=10)
+                    pdf.set_text_color(80, 80, 80)
+                    qty_str = f" ({qty})" if qty and qty != 'N/A' else ""
+                    pdf.cell(10)  # indent
+                    pdf.cell(0, 6, f"- {name}{qty_str}", ln=True)
+
+            pdf.ln(3)
+
+        pdf.ln(5)
+
+    return bytes(pdf.output())
+
+
+@router.post("/import-diet")
+async def import_diet_from_file(
+    file: UploadFile = File(...),
+    uid: str = Depends(get_current_uid)
+):
+    """
+    Importa una dieta da un file CSV (formato MyFitnessPal/Yazio export).
+    Converte in formato Kybo e salva come dieta corrente.
+
+    Formato CSV atteso (MyFitnessPal):
+      Date,Meal,Food Name,Quantity,Unit,Calories,...
+
+    Formato CSV alternativo (generico):
+      Giorno,Pasto,Alimento,Quantità,Unità
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Nome file mancante.")
+
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('csv', 'txt', 'json'):
+        raise HTTPException(status_code=400, detail="Formato non supportato. Usa CSV, TXT o JSON.")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5MB max
+        raise HTTPException(status_code=413, detail="File troppo grande. Massimo 5MB.")
+
+    try:
+        text = content.decode('utf-8', errors='replace')
+        plan = await run_in_threadpool(_parse_import_file, text, ext)
+
+        if not plan:
+            raise HTTPException(status_code=422, detail="Impossibile leggere il file. Verifica il formato.")
+
+        db = firebase_admin.firestore.client()
+        db.collection('users').document(uid).collection('diets').document('current').set({
+            'plan': plan,
+            'source': 'import',
+            'imported_at': firebase_admin.firestore.SERVER_TIMESTAMP,
+            'original_filename': file.filename,
+        }, merge=True)
+
+        days = len(plan)
+        meals = sum(len(v) for v in plan.values() if isinstance(v, dict))
+        logger.info("diet_imported", uid=uid, days=days, meals=meals)
+        return {"message": f"Dieta importata con successo: {days} giorni, {meals} pasti."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("import_diet_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante l'importazione.")
+
+
+def _parse_import_file(text: str, ext: str) -> dict:
+    """
+    Parsa un file di import e ritorna un piano dieta nel formato Kybo.
+    Supporta CSV (MyFitnessPal/Yazio/generico) e JSON.
+    """
+    import csv
+    import io
+    import json as json_mod
+
+    plan: dict = {}
+
+    if ext == 'json':
+        try:
+            data = json_mod.loads(text)
+            # Se è già in formato Kybo (dict di giorni)
+            if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
+                return data
+        except Exception:
+            return {}
+
+    # CSV parsing
+    reader = csv.DictReader(io.StringIO(text))
+    if reader.fieldnames is None:
+        return {}
+
+    # Detect format
+    fieldnames_lower = [f.lower().strip() for f in reader.fieldnames]
+
+    # MyFitnessPal format: Date, Meal, Food Name, Quantity, Unit
+    is_mfp = 'date' in fieldnames_lower and 'meal' in fieldnames_lower and 'food name' in fieldnames_lower
+
+    italian_days = {
+        'monday': 'Lunedì', 'tuesday': 'Martedì', 'wednesday': 'Mercoledì',
+        'thursday': 'Giovedì', 'friday': 'Venerdì', 'saturday': 'Sabato', 'sunday': 'Domenica',
+    }
+
+    from datetime import datetime
+
+    for row in reader:
+        if is_mfp:
+            # Try to get weekday from date
+            raw_date = row.get('Date', '') or row.get('date', '')
+            meal = row.get('Meal', '') or row.get('meal', '')
+            food = row.get('Food Name', '') or row.get('food name', '')
+            qty = row.get('Quantity', '') or row.get('quantity', '1')
+            unit = row.get('Unit', '') or row.get('unit', '')
+
+            if not food or not meal:
+                continue
+
+            # Derive day name from date
+            day = 'Lunedì'
+            try:
+                for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
+                    try:
+                        dt = datetime.strptime(raw_date.strip(), fmt)
+                        wd = dt.strftime('%A').lower()
+                        day = italian_days.get(wd, f"Giorno {raw_date}")
+                        break
+                    except ValueError:
+                        continue
+            except Exception:
+                pass
+        else:
+            # Generic Italian format: Giorno, Pasto, Alimento, Quantità, Unità
+            day = row.get('Giorno', '') or row.get('giorno', '') or row.get('Day', 'Lunedì')
+            meal = row.get('Pasto', '') or row.get('pasto', '') or row.get('Meal', '')
+            food = row.get('Alimento', '') or row.get('alimento', '') or row.get('Food', '')
+            qty = row.get('Quantità', '') or row.get('quantita', '') or row.get('Quantity', '1')
+            unit = row.get('Unità', '') or row.get('unita', '') or row.get('Unit', '')
+
+            if not food or not meal:
+                continue
+
+        qty_str = f"{qty} {unit}".strip() if unit else str(qty)
+        dish = {'name': food.strip(), 'qty': qty_str, 'cadCode': 0, 'isComposed': False, 'ingredients': [], 'instance_id': ''}
+
+        plan.setdefault(day, {}).setdefault(meal, []).append(dish)
+
+    return plan
