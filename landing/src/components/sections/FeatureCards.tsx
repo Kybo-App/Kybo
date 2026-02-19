@@ -33,50 +33,79 @@ const features = [
 export default function FeatureCards() {
   const sectionRef = useRef<HTMLElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
-    if (!cardsRef.current) return;
+    if (typeof window === 'undefined') return;
 
-    const cards = cardsRef.current.querySelectorAll(`.${styles.card}`);
+    const initGsap = async () => {
+      const { gsap } = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      gsap.registerPlugin(ScrollTrigger);
 
-    // Simple hover animations only
-    const hoverListeners: Array<{ element: Element; enter: () => void; leave: () => void }> = [];
+      if (!cardsRef.current || !sectionRef.current) return;
+      const cards = cardsRef.current.querySelectorAll(`.${styles.card}`);
 
-    cards.forEach((card) => {
-      const cardElement = card as HTMLElement;
-      
-      const handleMouseEnter = () => {
-        cardElement.style.transform = 'translateY(-10px) scale(1.05)';
-      };
+      // Title & subtitle scroll-triggered fade in
+      if (titleRef.current && subtitleRef.current) {
+        gsap.fromTo(
+          [titleRef.current, subtitleRef.current],
+          { opacity: 0, y: 40 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            stagger: 0.15,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+              once: true,
+            },
+          }
+        );
+      }
 
-      const handleMouseLeave = () => {
-        cardElement.style.transform = 'translateY(0) scale(1)';
-      };
+      // Cards staggered scroll-triggered animation
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 60, scale: 0.95 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.7,
+          stagger: 0.15,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: cardsRef.current,
+            start: 'top 75%',
+            once: true,
+          },
+        }
+      );
 
-      cardElement.addEventListener('mouseenter', handleMouseEnter);
-      cardElement.addEventListener('mouseleave', handleMouseLeave);
-
-      hoverListeners.push({
-        element: cardElement,
-        enter: handleMouseEnter,
-        leave: handleMouseLeave,
-      });
-    });
-
-    // Cleanup
-    return () => {
-      hoverListeners.forEach(({ element, enter, leave }) => {
-        element.removeEventListener('mouseenter', enter);
-        element.removeEventListener('mouseleave', leave);
+      // GSAP hover animations
+      cards.forEach((card) => {
+        const el = card as HTMLElement;
+        el.addEventListener('mouseenter', () =>
+          gsap.to(el, { y: -12, scale: 1.03, duration: 0.3, ease: 'power2.out' })
+        );
+        el.addEventListener('mouseleave', () =>
+          gsap.to(el, { y: 0, scale: 1, duration: 0.4, ease: 'power2.inOut' })
+        );
       });
     };
+
+    initGsap();
   }, []);
 
   return (
     <section ref={sectionRef} id="features" className={styles.section}>
       <div className={styles.container}>
-        <h2 className={styles.title}>Tutto ciò di cui hai bisogno</h2>
-        <p className={styles.subtitle}>
+        <h2 ref={titleRef} className={styles.title}>Tutto ciò di cui hai bisogno</h2>
+        <p ref={subtitleRef} className={styles.subtitle}>
           Un ecosistema completo per gestire la tua nutrizione
         </p>
 

@@ -140,11 +140,11 @@
 > Rifacimento completo landing.
 
 **Design:**
-- [ ] Sezione comparison table (Kybo vs gestione manuale vs altri tool)
+- [x] Sezione comparison table (Kybo vs gestione manuale vs altri tool)
 - [ ] Mockup interattivo dell'app (click-through prototype embedded)
-- [ ] Animazione scroll-triggered per le feature cards
-- [ ] Dark mode per la landing page
-- [ ] Pagina pricing dedicata con toggle mensile/annuale
+- [x] Animazione scroll-triggered per le feature cards
+- [x] Dark mode per la landing page
+- [x] Pagina pricing dedicata con toggle mensile/annuale
 
 **SEO & Performance:**
 - [x] Metadata OpenGraph e Twitter Card per condivisione social

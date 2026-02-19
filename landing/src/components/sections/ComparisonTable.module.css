@@ -1,0 +1,156 @@
+.section {
+  padding: 8rem 2rem;
+  background: linear-gradient(180deg, #141414 0%, #0f0f0f 100%);
+  position: relative;
+}
+
+.section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #66BB6A 50%, transparent 100%);
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4rem;
+  font-weight: 300;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+
+.table thead tr {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.colHeader {
+  text-align: center;
+  padding: 1.25rem 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-size: 0.95rem;
+  width: 18%;
+}
+
+.featureCol {
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-size: 0.95rem;
+  width: 46%;
+}
+
+.kyboCol {
+  color: #66BB6A;
+}
+
+.kyboBadge {
+  display: inline-block;
+  background: linear-gradient(135deg, #66BB6A20, #66BB6A40);
+  border: 1px solid #66BB6A60;
+  color: #66BB6A;
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.2s ease;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.featureLabel {
+  padding: 1rem 1.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+}
+
+.cell {
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.2rem;
+}
+
+.kyboCell {
+  background: rgba(102, 187, 106, 0.04);
+}
+
+.yes {
+  color: #66BB6A;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.partial {
+  color: #FFA726;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.no {
+  color: rgba(255, 255, 255, 0.25);
+  font-weight: 400;
+  font-size: 1.1rem;
+}
+
+.legend {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 4rem 1rem;
+  }
+
+  .featureLabel {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .colHeader,
+  .featureCol {
+    padding: 1rem 0.75rem;
+    font-size: 0.85rem;
+  }
+}
