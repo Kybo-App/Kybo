@@ -1,5 +1,5 @@
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps, ImageEnhance
 import io
 from google import genai
 from google.genai import types
@@ -48,6 +48,37 @@ class ReceiptScanner:
         3. Estrai la quantità se presente, altrimenti metti "1".
         """
 
+    @staticmethod
+    def _preprocess_image(image: Image.Image) -> Image.Image:
+        """
+        Pre-processa l'immagine per migliorare l'accuratezza dell'OCR:
+        - Conversione in scala di grigi
+        - Aumento del contrasto
+        - Sharpening
+        - Ridimensionamento se troppo piccola (Tesseract lavora meglio con DPI ≥ 200)
+        """
+        # Convert to grayscale
+        image = image.convert('L')
+
+        # Auto-level (stretch histogram to full range)
+        image = ImageOps.autocontrast(image, cutoff=2)
+
+        # Increase contrast
+        enhancer = ImageEnhance.Contrast(image)
+        image = enhancer.enhance(2.0)
+
+        # Sharpen to make text crisper
+        image = image.filter(ImageFilter.SHARPEN)
+
+        # Upscale if too small (Tesseract prefers ≥ 1000px wide)
+        min_width = 1000
+        if image.width < min_width:
+            scale = min_width / image.width
+            new_size = (min_width, int(image.height * scale))
+            image = image.resize(new_size, Image.LANCZOS)
+
+        return image
+
     # [FIX I/O] Accetta file_obj (stream) invece di path
     def scan_receipt(self, file_obj) -> list[dict]:
         if not self.client:
@@ -55,9 +86,12 @@ class ReceiptScanner:
             return []
 
         try:
-            # 1. OCR con Tesseract direttamente dalla memoria (senza salvare file)
+            # 1. OCR con Tesseract e pre-processing immagine
             image = Image.open(file_obj)
-            text = pytesseract.image_to_string(image, lang='ita')
+            processed = self._preprocess_image(image)
+            # PSM 6 = assume a single uniform block of text (good for receipts)
+            custom_config = r'--oem 3 --psm 6'
+            text = pytesseract.image_to_string(processed, lang='ita', config=custom_config)
             
             if not text or len(text.strip()) < 5:
                 print("⚠️ OCR vuoto o illeggibile.")

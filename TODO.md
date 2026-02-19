@@ -175,16 +175,16 @@
 
 **AI / ML:**
 - [ ] Suggerimenti pasti basati su preferenze storiche dell'utente
-- [ ] OCR migliorato con pre-processing immagine (contrast, rotation, crop)
+- [x] OCR migliorato con pre-processing immagine (contrast, rotation, crop)
 
 **Sicurezza:**
-- [ ] Session management avanzato (forza logout da altri dispositivi)
+- [x] Session management avanzato (forza logout da altri dispositivi)
 - [ ] Penetration test report e remediation
 
 **DevOps:**
 - [ ] Database migration strategy
 - [ ] Load testing (k6/Locust)
-- [ ] Docker containerization per sviluppo locale
+- [x] Docker containerization per sviluppo locale
 
 ---
 

@@ -1,0 +1,51 @@
+version: '3.9'
+
+# Docker Compose per sviluppo locale Kybo
+# Avvia il backend FastAPI con hot-reload
+#
+# Requisiti:
+#   - Docker Desktop installato e avviato
+#   - File server/.env con le variabili di ambiente
+#   - Firebase service account in GOOGLE_APPLICATION_CREDENTIALS
+#
+# Utilizzo:
+#   docker compose up              → avvia tutto
+#   docker compose up --build      → ricostruisce l'immagine
+#   docker compose down            → ferma e rimuove i container
+
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=DEV
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - ./server/.env
+    volumes:
+      # Mount del codice per hot-reload in locale
+      - ./server:/app
+      # Esclude __pycache__ dal mount
+      - /app/__pycache__
+      - /app/app/__pycache__
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+# Rete dedicata per isolamento
+networks:
+  default:
+    name: kybo-network
