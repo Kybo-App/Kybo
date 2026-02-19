@@ -92,7 +92,25 @@ class BadgeService extends ChangeNotifier {
 
   Future<void> checkDailyGoals(int planned, int consumed) async {
     if (planned > 0 && consumed == planned) {
-       await unlockBadge('daily_perfection'); // Assumes this badge ID exists
+       await unlockBadge('daily_perfection');
+    }
+  }
+
+  Future<void> onShoppingListShared() async {
+    await unlockBadge('shopping_list_shared');
+  }
+
+  /// Checks if user has completed ≥3 meals/day for at least 5 days this week
+  Future<void> checkWeeklyChallenge(Map<String, dynamic> consumptionData) async {
+    int daysWithEnoughMeals = 0;
+    for (final entry in consumptionData.entries) {
+      final dayCount = entry.value;
+      if (dayCount is int && dayCount >= 3) {
+        daysWithEnoughMeals++;
+      }
+    }
+    if (daysWithEnoughMeals >= 5) {
+      await unlockBadge('weekly_challenge');
     }
   }
 }

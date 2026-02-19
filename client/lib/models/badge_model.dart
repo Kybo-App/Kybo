@@ -87,5 +87,19 @@ class BadgeModel {
       icon: Icons.check_circle_outline_rounded,
       type: BadgeType.milestone,
     ),
+    BadgeModel(
+      id: 'weekly_challenge',
+      title: 'Campione della Settimana',
+      description: 'Hai completato almeno 3 pasti al giorno per 5 giorni questa settimana.',
+      icon: Icons.emoji_events_rounded,
+      type: BadgeType.streak,
+    ),
+    BadgeModel(
+      id: 'shopping_list_shared',
+      title: 'Condivisione Facile',
+      description: 'Hai condiviso la lista della spesa.',
+      icon: Icons.share_rounded,
+      type: BadgeType.action,
+    ),
   ];
 }
