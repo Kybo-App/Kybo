@@ -12,7 +12,7 @@ import 'user_management_view.dart';
 import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
-import 'nutritional_calculator_view.dart';
+
 import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
 import 'reports_view.dart';
@@ -273,11 +273,7 @@ class _DashboardContentState extends State<_DashboardContent> {
         view: ChatManagementView(key: ValueKey('chat_$themeKey')),
         badgeCount: notifProvider.unreadChats,
       ),
-      _NavItem(
-        icon: Icons.calculate_rounded,
-        label: l10n.navCalculator,
-        view: NutritionalCalculatorView(key: ValueKey('calc_$themeKey')),
-      ),
+
       _NavItem(
         icon: Icons.analytics_rounded,
         label: l10n.navAnalytics,

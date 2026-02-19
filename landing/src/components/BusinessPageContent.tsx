@@ -6,6 +6,85 @@ import Image from 'next/image';
 import styles from '../app/business/page.module.css';
 import pStyles from '../app/pricing/pricing.module.css';
 
+// ===== ROI CALCULATOR =====
+function RoiCalculator() {
+  const [clients, setClients] = useState(30);
+  const [hoursPerClient, setHoursPerClient] = useState(2);
+  const [hourlyRate, setHourlyRate] = useState(60);
+
+  const hoursSaved = Math.round(clients * hoursPerClient * 0.6);
+  const moneySaved = hoursSaved * hourlyRate;
+  const extraClients = Math.floor(hoursSaved / hoursPerClient);
+  const extraRevenue = extraClients * hourlyRate * 4;
+
+  return (
+    <section className={styles.roiSection}>
+      <div className={styles.container}>
+        <h2 className={styles.sectionTitle}>Calcolatrice ROI</h2>
+        <p className={styles.sectionSubtitle}>
+          Scopri quanto tempo e denaro puoi risparmiare ogni mese con Kybo
+        </p>
+
+        <div className={styles.roiGrid}>
+          <div className={styles.roiInputs}>
+            <div className={styles.roiSliderWrapper}>
+              <label className={styles.roiLabel}>Numero di clienti attivi</label>
+              <input
+                type="range" min={5} max={200} value={clients}
+                onChange={(e) => setClients(Number(e.target.value))}
+                className={styles.roiSlider}
+              />
+              <span className={styles.roiSliderValue}>{clients} clienti</span>
+            </div>
+
+            <div className={styles.roiSliderWrapper}>
+              <label className={styles.roiLabel}>Ore spese per cliente / mese (admin)</label>
+              <input
+                type="range" min={0.5} max={8} step={0.5} value={hoursPerClient}
+                onChange={(e) => setHoursPerClient(Number(e.target.value))}
+                className={styles.roiSlider}
+              />
+              <span className={styles.roiSliderValue}>{hoursPerClient} ore/cliente</span>
+            </div>
+
+            <div className={styles.roiSliderWrapper}>
+              <label className={styles.roiLabel}>Tariffa oraria (€)</label>
+              <input
+                type="range" min={20} max={200} step={5} value={hourlyRate}
+                onChange={(e) => setHourlyRate(Number(e.target.value))}
+                className={styles.roiSlider}
+              />
+              <span className={styles.roiSliderValue}>€{hourlyRate}/ora</span>
+            </div>
+          </div>
+
+          <div className={styles.roiResults}>
+            <div className={styles.roiResultItem}>
+              <span className={styles.roiResultLabel}>⏱ Ore risparmiate / mese</span>
+              <span className={styles.roiResultValue}>{hoursSaved}h</span>
+            </div>
+            <div className={styles.roiResultItem}>
+              <span className={styles.roiResultLabel}>💰 Risparmio admin (€/mese)</span>
+              <span className={styles.roiResultValue}>€{moneySaved.toLocaleString('it-IT')}</span>
+            </div>
+            <div className={styles.roiResultItem}>
+              <span className={styles.roiResultLabel}>👥 Clienti extra gestibili</span>
+              <span className={styles.roiResultValue}>+{extraClients}</span>
+            </div>
+            <div className={styles.roiResultItem}>
+              <span className={styles.roiResultLabel}>📈 Fatturato extra potenziale</span>
+              <span className={styles.roiResultValueBig}>€{extraRevenue.toLocaleString('it-IT')}</span>
+            </div>
+            <p className={styles.roiDisclaimer}>
+              * Stime basate sull&apos;uso medio di Kybo da parte di nutrizionisti professionisti.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ===== DEMO FORM =====
 function DemoForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -527,6 +606,9 @@ export default function BusinessPageContent() {
           </div>
         </div>
       </section>
+
+      {/* ROI Calculator */}
+      <RoiCalculator />
 
       {/* Demo Form */}
       <DemoForm />
