@@ -86,11 +86,9 @@
     drop-shadow(0 0 60px rgba(102, 187, 106, 0.4));
 }
 
-/* Ogni lettera parte invisibile finché GSAP non la anima,
-   evitando il flash di testo sottile pre-hydration */
+/* Le lettere vengono animate via GSAP fromTo — nessun opacity:0 nel CSS */
 .title span {
   display: inline-block;
-  opacity: 0;
   font-weight: 900;
   will-change: transform, opacity;
 }

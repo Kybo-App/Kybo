@@ -22,37 +22,25 @@ export default function HeroSection() {
       ctx = gsap.context(() => {
         if (titleRef.current) {
           const chars = titleRef.current.querySelectorAll('span');
-          gsap.from(chars, {
-            y: 100,
-            opacity: 0,
-            rotationX: -90,
-            stagger: 0.03,
-            duration: 1,
-            ease: 'back.out(1.7)',
-            delay: 0.3,
-          });
+          gsap.fromTo(chars,
+            { y: 100, opacity: 0, rotationX: -90 },
+            { y: 0, opacity: 1, rotationX: 0, stagger: 0.03, duration: 1, ease: 'back.out(1.7)', delay: 0.3 }
+          );
         }
 
         if (subtitleRef.current) {
-          gsap.from(subtitleRef.current, {
-            y: 30,
-            opacity: 0,
-            duration: 1,
-            delay: 1,
-            ease: 'power2.out',
-          });
+          gsap.fromTo(subtitleRef.current,
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, delay: 1, ease: 'power2.out' }
+          );
         }
 
         if (ctaRef.current) {
           const buttons = ctaRef.current.querySelectorAll('button, a');
-          gsap.from(buttons, {
-            scale: 0,
-            opacity: 0,
-            stagger: 0.15,
-            duration: 0.6,
-            delay: 1.5,
-            ease: 'elastic.out(1, 0.5)',
-          });
+          gsap.fromTo(buttons,
+            { scale: 0, opacity: 0 },
+            { scale: 1, opacity: 1, stagger: 0.15, duration: 0.6, delay: 1.5, ease: 'elastic.out(1, 0.5)' }
+          );
         }
       }, heroRef);
     };
