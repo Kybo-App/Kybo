@@ -37,6 +37,7 @@ from app.routers.reports import router as reports_router
 from app.routers.twofa import router as twofa_router
 from app.routers.communication import router as communication_router
 from app.workers.unread_notifier import unread_notification_worker
+from app.workers.monthly_report_mailer import monthly_report_mailer_worker
 
 # --- SENTRY ERROR TRACKING ---
 import sentry_sdk
@@ -185,6 +186,7 @@ async def start_background_tasks():
     """Avvia task in background all'avvio del server."""
     asyncio.create_task(maintenance_worker())
     asyncio.create_task(unread_notification_worker())
+    asyncio.create_task(monthly_report_mailer_worker())
 
 
 # --- HEALTH CHECK ---
