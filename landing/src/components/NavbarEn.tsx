@@ -11,17 +11,14 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-export default function Navbar() {
+export default function NavbarEn() {
   const navRef = useRef<HTMLElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const { lenis } = useLenis();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -30,7 +27,6 @@ export default function Navbar() {
     const next = !isDark;
     setIsDark(next);
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
-    // Also update body background so dark-mode sections look right
     document.body.style.background = next ? '#1a1a1a' : '#f8fafc';
   };
 
@@ -39,8 +35,7 @@ export default function Navbar() {
     if (lenis) {
       lenis.scrollTo(targetId);
     } else {
-      const element = document.querySelector(targetId);
-      element?.scrollIntoView({ behavior: 'smooth' });
+      document.querySelector(targetId)?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -55,26 +50,26 @@ export default function Navbar() {
         <ul className={styles.menu}>
           <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Features</a></li>
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
-          <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Gallery</a></li>
-          <li><a href="/business">Per Nutrizionisti</a></li>
-          <li><a href="/pricing">Prezzi</a></li>
-          <li><a href="/en" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</a></li>
+          <li><a href="/en/business">For Nutritionists</a></li>
+          <li><a href="/en/pricing">Pricing</a></li>
+          {/* Language switcher */}
+          <li><a href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</a></li>
         </ul>
 
         <div className={styles.ctaGroup}>
           <button
             className={styles.themeToggle}
             onClick={toggleTheme}
-            aria-label={isDark ? 'Passa alla modalità chiara' : 'Passa alla modalità scura'}
-            title={isDark ? 'Modalità Chiara' : 'Modalità Scura'}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? 'Light Mode' : 'Dark Mode'}
           >
             {isDark ? '☀️' : '🌙'}
           </button>
           <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.loginBtn}>
-            Area Riservata
+            Sign In
           </a>
           <button className={styles.ctaBtn}>
-            Scarica App
+            Download App
           </button>
         </div>
       </div>

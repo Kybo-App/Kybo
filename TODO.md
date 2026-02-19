@@ -141,7 +141,7 @@
 
 **Design:**
 - [x] Sezione comparison table (Kybo vs gestione manuale vs altri tool)
-- [ ] Mockup interattivo dell'app (click-through prototype embedded)
+- [x] Mockup interattivo dell'app (click-through prototype embedded)
 - [x] Animazione scroll-triggered per le feature cards
 - [x] Dark mode per la landing page
 - [x] Pagina pricing dedicata con toggle mensile/annuale
@@ -150,15 +150,15 @@
 - [x] Metadata OpenGraph e Twitter Card per condivisione social
 - [x] Schema.org markup (SoftwareApplication, Organization, WebSite) JSON-LD
 - [x] Sitemap.xml e robots.txt ottimizzati in /public/
-- [ ] i18n (versione inglese della landing page)
+- [x] i18n (versione inglese della landing page `/en`)
 - [x] Lazy loading componenti below-the-fold con Suspense + dynamic loading
 - [x] Lighthouse score optimization: metadataBase, per-page title template, canonical URLs
 
 **Business Page:**
-- [ ] Form richiesta demo funzionante con calendar booking (Calendly embed)
-- [ ] Calcolatrice ROI ("quanto tempo risparmi con Kybo")
-- [ ] Sezione sicurezza e compliance dettagliata
-- [ ] Documentazione API pubblica per piano Enterprise
+- [x] Form richiesta demo funzionante con calendar booking (Calendly embed)
+- [x] Calcolatrice ROI ("quanto tempo risparmi con Kybo")
+- [x] Sezione sicurezza e compliance dettagliata
+- [x] Documentazione API pubblica per piano Enterprise
 
 ---
 
