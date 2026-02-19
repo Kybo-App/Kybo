@@ -28,9 +28,44 @@ Aggiungere le seguenti variabili:
 
 ---
 
-## 🟡 Da fare in futuro (bassa urgenza)
+---
 
-_(Aggiungi qui altri task manuali man mano che emergono)_
+## 🔴 OG Image — Landing Page social sharing
+
+**Quando**: Prima di andare live con la landing / quando vuoi condivisioni social ottimizzate
+
+**Cosa fare**: Creare e caricare il file `landing/public/og-image.png`
+
+**Specifiche**:
+- Dimensione: **1200 × 630 px**
+- Formato: PNG
+- Contenuto consigliato: logo Kybo + tagline "La tua nutrizione semplificata" su sfondo verde (#2E7D32) o dark
+- Il file è già referenziato nei metadata OpenGraph e Twitter Card
+
+**Dove**: salvare come `landing/public/og-image.png` e fare push su dev → il CI/CD lo include nel build.
+
+---
+
+## 🟡 Twitter/X Handle
+
+**Quando**: quando Kybo ha un account Twitter/X ufficiale
+
+**Cosa fare**: aggiornare `@kyboapp` nel file `landing/src/app/layout.tsx` (righe `site` e `creator` nei metadata Twitter) con l'handle reale.
+
+---
+
+## 🟡 Schema.org `sameAs` — Social Links
+
+**Quando**: quando Kybo ha profili social ufficiali (Instagram, LinkedIn, ecc.)
+
+**Cosa fare**: aggiungere gli URL nel campo `sameAs` dell'Organization in `landing/src/app/layout.tsx`:
+```ts
+sameAs: [
+  'https://www.instagram.com/kyboapp',
+  'https://www.linkedin.com/company/kyboapp',
+  // ...
+],
+```
 
 ---
 
