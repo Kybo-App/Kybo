@@ -182,9 +182,14 @@ class _DashboardContentState extends State<_DashboardContent> {
       }
     }
 
-    // ? → mostra dialog scorciatoie
-    if (event.logicalKey == LogicalKeyboardKey.slash &&
-        HardwareKeyboard.instance.isShiftPressed) {
+    // Shift+7 → mostra dialog scorciatoie
+    // Intercetta sia slash+shift (layout US) che digit7+shift (layout IT)
+    // e consuma l'evento per evitare che il carattere '?' venga scritto
+    final isShift = HardwareKeyboard.instance.isShiftPressed;
+    if (isShift &&
+        (event.logicalKey == LogicalKeyboardKey.slash ||
+         event.logicalKey == LogicalKeyboardKey.question ||
+         event.logicalKey == LogicalKeyboardKey.digit7)) {
       _showShortcutsDialog();
       return KeyEventResult.handled;
     }
@@ -221,7 +226,7 @@ class _DashboardContentState extends State<_DashboardContent> {
               _ShortcutRow(keys: 'Ctrl + K', description: l10n.shortcutSearch),
               _ShortcutRow(keys: 'Ctrl + N', description: l10n.shortcutNewUser),
               _ShortcutRow(keys: 'Ctrl + 1–8', description: l10n.shortcutNavigation),
-              _ShortcutRow(keys: '?', description: l10n.keyboardShortcuts),
+              _ShortcutRow(keys: 'Shift + 7', description: l10n.keyboardShortcuts),
             ],
           ),
         ),

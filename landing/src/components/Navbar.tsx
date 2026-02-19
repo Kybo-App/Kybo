@@ -51,7 +51,7 @@ export default function Navbar() {
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Gallery</a></li>
           <li><a href="/business">Per Nutrizionisti</a></li>
-          <li><a href="/pricing">Prezzi</a></li>
+          <li><a href="/business#prezzi">Prezzi</a></li>
           <li><a href="/en" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</a></li>
         </ul>
 

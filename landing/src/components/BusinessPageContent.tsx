@@ -4,85 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import styles from '../app/business/page.module.css';
-
-// ===== ROI CALCULATOR =====
-function RoiCalculator() {
-  const [clients, setClients] = useState(30);
-  const [hoursPerClient, setHoursPerClient] = useState(2);
-  const [hourlyRate, setHourlyRate] = useState(60);
-
-  const hoursSaved = Math.round(clients * hoursPerClient * 0.6); // Kybo saves ~60% of admin time
-  const moneySaved = hoursSaved * hourlyRate;
-  const extraClients = Math.floor(hoursSaved / hoursPerClient);
-  const extraRevenue = extraClients * hourlyRate * 4; // avg 4 sessions/client/month
-
-  return (
-    <section className={styles.roiSection}>
-      <div className={styles.container}>
-        <h2 className={styles.sectionTitle}>Calcolatrice ROI</h2>
-        <p className={styles.sectionSubtitle}>
-          Scopri quanto tempo e denaro puoi risparmiare ogni mese con Kybo
-        </p>
-
-        <div className={styles.roiGrid}>
-          <div className={styles.roiInputs}>
-            <div className={styles.roiSliderWrapper}>
-              <label className={styles.roiLabel}>Numero di clienti attivi</label>
-              <input
-                type="range" min={5} max={200} value={clients}
-                onChange={(e) => setClients(Number(e.target.value))}
-                className={styles.roiSlider}
-              />
-              <span className={styles.roiSliderValue}>{clients} clienti</span>
-            </div>
-
-            <div className={styles.roiSliderWrapper}>
-              <label className={styles.roiLabel}>Ore spese per cliente / mese (admin)</label>
-              <input
-                type="range" min={0.5} max={8} step={0.5} value={hoursPerClient}
-                onChange={(e) => setHoursPerClient(Number(e.target.value))}
-                className={styles.roiSlider}
-              />
-              <span className={styles.roiSliderValue}>{hoursPerClient} ore/cliente</span>
-            </div>
-
-            <div className={styles.roiSliderWrapper}>
-              <label className={styles.roiLabel}>Tariffa oraria (€)</label>
-              <input
-                type="range" min={20} max={200} step={5} value={hourlyRate}
-                onChange={(e) => setHourlyRate(Number(e.target.value))}
-                className={styles.roiSlider}
-              />
-              <span className={styles.roiSliderValue}>€{hourlyRate}/ora</span>
-            </div>
-          </div>
-
-          <div className={styles.roiResults}>
-            <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>⏱ Ore risparmiate / mese</span>
-              <span className={styles.roiResultValue}>{hoursSaved}h</span>
-            </div>
-            <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>💰 Risparmio admin (€/mese)</span>
-              <span className={styles.roiResultValue}>€{moneySaved.toLocaleString('it-IT')}</span>
-            </div>
-            <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>👥 Clienti extra gestibili</span>
-              <span className={styles.roiResultValue}>+{extraClients}</span>
-            </div>
-            <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>📈 Fatturato extra potenziale</span>
-              <span className={styles.roiResultValueBig}>€{extraRevenue.toLocaleString('it-IT')}</span>
-            </div>
-            <p className={styles.roiDisclaimer}>
-              * Stime basate sull'uso medio di Kybo da parte di nutrizionisti professionisti.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+import pStyles from '../app/pricing/pricing.module.css';
 
 // ===== DEMO FORM =====
 function DemoForm() {
@@ -380,6 +302,128 @@ const result = await response.json();
   );
 }
 
+// ===== PRICING SECTION =====
+const professionalPlans = [
+  {
+    name: 'Nutrizionista Pro',
+    icon: '👨‍⚕️',
+    monthlyPrice: 29,
+    annualPrice: 24,
+    description: 'Per professionisti che gestiscono i propri pazienti.',
+    highlight: true,
+    badge: 'Più Popolare',
+    features: [
+      'Fino a 50 pazienti',
+      'Dashboard admin completa',
+      'Upload diete PDF con AI',
+      'Chat con tutti i pazienti',
+      'Analytics avanzate',
+      'Report mensili PDF',
+      'Notifiche messaggi non letti',
+      'Note interne pazienti',
+      'Broadcast messaggi ai clienti',
+      'Supporto prioritario',
+    ],
+    cta: 'Inizia Gratis 14 giorni',
+  },
+  {
+    name: 'Studio / Clinica',
+    icon: '🏥',
+    monthlyPrice: 79,
+    annualPrice: 65,
+    description: 'Per studi con più nutrizionisti e team.',
+    highlight: false,
+    features: [
+      'Pazienti illimitati',
+      'Più nutrizionisti (team)',
+      'Tutto del piano Pro',
+      '2FA per tutti i professionisti',
+      'GDPR dashboard avanzata',
+      'SLA garantito 99.9%',
+      'Integrazione API Enterprise',
+      'Account manager dedicato',
+      'Onboarding e migrazione dati',
+    ],
+    cta: 'Contattaci',
+  },
+];
+
+function PricingSection() {
+  const [isAnnual, setIsAnnual] = useState(false);
+
+  return (
+    <section className={styles.pricingFull} id="prezzi">
+      <div className={styles.container}>
+        <h2 className={styles.sectionTitle}>Piani Tariffari</h2>
+        <p className={styles.sectionSubtitle}>
+          Scegli il piano giusto per la tua attività. Prova gratuita di 14 giorni, nessuna carta richiesta.
+        </p>
+
+        {/* Toggle mensile / annuale */}
+        <div className={pStyles.toggleWrapper}>
+          <span className={`${pStyles.toggleLabel} ${!isAnnual ? pStyles.activeLabel : ''}`}>Mensile</span>
+          <button
+            className={pStyles.toggle}
+            onClick={() => setIsAnnual(!isAnnual)}
+            aria-label="Cambia piano"
+          >
+            <span className={`${pStyles.toggleThumb} ${isAnnual ? pStyles.toggleThumbOn : ''}`} />
+          </button>
+          <span className={`${pStyles.toggleLabel} ${isAnnual ? pStyles.activeLabel : ''}`}>
+            Annuale <span className={pStyles.saveBadge}>-17%</span>
+          </span>
+        </div>
+
+        <div className={styles.pricingFullGrid}>
+          {professionalPlans.map((plan) => (
+            <div
+              key={plan.name}
+              className={`${pStyles.planCard} ${plan.highlight ? pStyles.planHighlight : ''}`}
+            >
+              {plan.badge && <div className={pStyles.planBadge}>{plan.badge}</div>}
+              <div className={pStyles.planHeader}>
+                <span className={pStyles.planIcon}>{plan.icon}</span>
+                <h2 className={pStyles.planName}>{plan.name}</h2>
+                <p className={pStyles.planDescription}>{plan.description}</p>
+              </div>
+              <div className={pStyles.priceBlock}>
+                <>
+                  <span className={pStyles.priceCurrency}>€</span>
+                  <span className={pStyles.priceAmount}>
+                    {isAnnual ? plan.annualPrice : plan.monthlyPrice}
+                  </span>
+                  <span className={pStyles.pricePeriod}>/mese</span>
+                </>
+                {isAnnual && (
+                  <p className={pStyles.annualNote}>Fatturato annualmente</p>
+                )}
+              </div>
+              <ul className={pStyles.featureList}>
+                {plan.features.map((f, i) => (
+                  <li key={i} className={pStyles.featureItem}>
+                    <span className={pStyles.checkIcon}>✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                className={`${pStyles.planCta} ${plan.highlight ? pStyles.planCtaHighlight : ''}`}
+                onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                {plan.cta}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <p className={styles.pricingNote}>
+          💚 I <strong>pazienti</strong> usano Kybo gratuitamente — il costo è solo per il professionista.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 // ===== MAIN COMPONENT =====
 export default function BusinessPageContent() {
   return (
@@ -484,9 +528,6 @@ export default function BusinessPageContent() {
         </div>
       </section>
 
-      {/* ROI Calculator */}
-      <RoiCalculator />
-
       {/* Demo Form */}
       <DemoForm />
 
@@ -497,71 +538,7 @@ export default function BusinessPageContent() {
       <ApiSection />
 
       {/* Pricing Section */}
-      <section className={styles.pricing}>
-        <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Piani Tariffari</h2>
-
-          <div className={styles.pricingGrid}>
-            <div className={styles.pricingCard}>
-              <h3>Starter</h3>
-              <div className={styles.price}>
-                <span className={styles.amount}>€29</span>
-                <span className={styles.period}>/mese</span>
-              </div>
-              <ul className={styles.featuresList}>
-                <li>✓ Fino a 30 pazienti</li>
-                <li>✓ Upload diete PDF illimitati</li>
-                <li>✓ Chat pazienti</li>
-                <li>✓ Report mensili</li>
-                <li>✓ Supporto email</li>
-              </ul>
-              <button className={styles.pricingBtn}
-                onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}>
-                Inizia Ora
-              </button>
-            </div>
-
-            <div className={`${styles.pricingCard} ${styles.featured}`}>
-              <div className={styles.badge}>Più Popolare</div>
-              <h3>Professional</h3>
-              <div className={styles.price}>
-                <span className={styles.amount}>€79</span>
-                <span className={styles.period}>/mese</span>
-              </div>
-              <ul className={styles.featuresList}>
-                <li>✓ Pazienti illimitati</li>
-                <li>✓ Tutto in Starter</li>
-                <li>✓ Analytics avanzate</li>
-                <li>✓ 2FA per tutto il team</li>
-                <li>✓ GDPR dashboard</li>
-                <li>✓ Supporto prioritario</li>
-              </ul>
-              <button className={`${styles.pricingBtn} ${styles.featuredBtn}`}
-                onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}>
-                Inizia Ora
-              </button>
-            </div>
-
-            <div className={styles.pricingCard}>
-              <h3>Enterprise</h3>
-              <div className={styles.price}>
-                <span className={styles.amount}>Custom</span>
-              </div>
-              <ul className={styles.featuresList}>
-                <li>✓ Tutto in Professional</li>
-                <li>✓ REST API accesso completo</li>
-                <li>✓ White label</li>
-                <li>✓ SLA garantito 99.9%</li>
-                <li>✓ Account manager dedicato</li>
-              </ul>
-              <button className={styles.pricingBtn}
-                onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}>
-                Contattaci
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       {/* CTA Section */}
       <section className={styles.cta}>
