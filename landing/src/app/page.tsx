@@ -22,6 +22,10 @@ const HorizontalGallery = dynamic(
   () => import('@/components/sections/HorizontalGallery'),
   { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
 );
+const ComparisonTable = dynamic(
+  () => import('@/components/sections/ComparisonTable'),
+  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
+);
 const CTASection = dynamic(
   () => import('@/components/sections/CTASection'),
   { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
@@ -41,6 +45,9 @@ export default function HomePage() {
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
           <HorizontalGallery />
+        </Suspense>
+        <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
+          <ComparisonTable />
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
           <CTASection />
