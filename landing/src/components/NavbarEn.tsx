@@ -2,14 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLenis } from './animations/SmoothScroll';
 import styles from './Navbar.module.css';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 export default function NavbarEn() {
   const navRef = useRef<HTMLElement>(null);
