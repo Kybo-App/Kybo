@@ -52,6 +52,18 @@ class Settings(BaseSettings):
     GDPR_RETENTION_MONTHS: int = 24  # Default: 2 years
     GDPR_RETENTION_WARNING_DAYS: int = 30  # Days before deadline to warn
 
+    # Email (SMTP) - opzionale, le notifiche email sono disabilitate se non configurato
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "noreply@kybo.it")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Kybo")
+
+    # Unread message notification defaults
+    UNREAD_NOTIFY_INTERVAL: int = 3600  # Check ogni ora (secondi)
+    UNREAD_NOTIFY_DEFAULT_DAYS: int = 3  # Giorni default prima di notificare
+
     # Paths
     DIET_PDF_PATH: str = "temp_dieta.pdf"
     RECEIPT_PATH_PREFIX: str = "temp_scontrino"

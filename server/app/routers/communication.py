@@ -2,6 +2,7 @@
 Router per funzionalità di comunicazione avanzata.
 - Broadcast messaggi a tutti i clienti di un nutrizionista
 - Note interne CRUD (visibili solo al professionista)
+- Configurazione alert email per messaggi non letti
 """
 from typing import Optional, List
 
@@ -10,6 +11,7 @@ from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
+from app.core.config import settings
 from app.core.dependencies import verify_professional
 from app.core.logging import logger, sanitize_error_message
 
@@ -32,6 +34,82 @@ class NoteUpdateRequest(BaseModel):
     content: Optional[str] = None
     category: Optional[str] = None
     pinned: Optional[bool] = None
+
+
+class EmailAlertConfigRequest(BaseModel):
+    enabled: bool
+    threshold_days: int = 3  # Giorni di inattività prima della notifica
+
+
+# ══════════════════════════════════════════════════════════════════════
+# EMAIL ALERT CONFIG - Configurazione notifiche email messaggi non letti
+# ══════════════════════════════════════════════════════════════════════
+
+@router.get("/email-alert-config")
+async def get_email_alert_config(
+    requester: dict = Depends(verify_professional)
+):
+    """
+    Restituisce la configurazione alert email del nutrizionista autenticato.
+    """
+    uid = requester["uid"]
+    try:
+        db = firebase_admin.firestore.client()
+        doc = db.collection("config").document("email_alerts") \
+            .collection("nutritionists").document(uid).get()
+
+        if doc.exists:
+            data = doc.to_dict()
+            return {
+                "enabled": data.get("enabled", False),
+                "threshold_days": data.get("threshold_days", settings.UNREAD_NOTIFY_DEFAULT_DAYS),
+                "email_configured": bool(settings.SMTP_HOST),
+            }
+
+        return {
+            "enabled": False,
+            "threshold_days": settings.UNREAD_NOTIFY_DEFAULT_DAYS,
+            "email_configured": bool(settings.SMTP_HOST),
+        }
+
+    except Exception as e:
+        logger.error("get_email_alert_config_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore nel recupero della configurazione.")
+
+
+@router.post("/email-alert-config")
+async def set_email_alert_config(
+    body: EmailAlertConfigRequest,
+    requester: dict = Depends(verify_professional)
+):
+    """
+    Salva la configurazione alert email per il nutrizionista autenticato.
+    threshold_days: giorni di inattività prima di inviare la notifica (min 1, max 30)
+    """
+    uid = requester["uid"]
+
+    threshold = max(1, min(30, body.threshold_days))
+
+    try:
+        db = firebase_admin.firestore.client()
+        db.collection("config").document("email_alerts") \
+            .collection("nutritionists").document(uid) \
+            .set({
+                "enabled": body.enabled,
+                "threshold_days": threshold,
+                "updated_at": firestore.SERVER_TIMESTAMP,
+            }, merge=True)
+
+        logger.info("email_alert_config_saved", uid=uid, enabled=body.enabled, days=threshold)
+        return {
+            "message": "Configurazione salvata.",
+            "enabled": body.enabled,
+            "threshold_days": threshold,
+        }
+
+    except Exception as e:
+        logger.error("set_email_alert_config_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore nel salvataggio della configurazione.")
 
 
 # ══════════════════════════════════════════════════════════════════════

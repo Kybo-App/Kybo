@@ -89,18 +89,18 @@
 ## FUTURO (media priorità)
 
 
-### Feature 5: Comunicazione Avanzata
+### Feature 5: Comunicazione Avanzata ✅
 > Miglioramenti chat e comunicazione. 🟡 Entrambi (ma usato principalmente dal nutritionist)
 
 **Backend:**
 - [x] Endpoint `POST /admin/communication/broadcast` → messaggio a tutti i clienti del nutrizionista (🟡 verify_professional, nutritionist invia solo ai propri)
-- [ ] Servizio notifica email per messaggi non letti dopo X giorni
+- [x] Servizio notifica email per messaggi non letti dopo X giorni (worker asincrono + aiosmtplib)
 - [x] Endpoint CRUD note interne sul cliente (visibili solo al professionista) → `/admin/communication/notes/{client_uid}`
 
 **Admin:**
 - [x] Pulsante "Broadcast" nella chat → invia messaggio a tutti i propri clienti
 - [x] Sezione "Note interne" nel profilo cliente (campo note visibile solo a admin/nutritionist)
-- [ ] Configurazione alert email per messaggi non letti
+- [x] Configurazione alert email per messaggi non letti (toggle + slider giorni nell'header Chat)
 
 ---
 
