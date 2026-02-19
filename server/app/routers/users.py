@@ -8,10 +8,11 @@ from typing import Optional
 import firebase_admin
 from firebase_admin import auth, firestore
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr, field_validator
 
 from app.core.config import settings
-from app.core.dependencies import verify_admin, verify_professional
+from app.core.dependencies import verify_admin, verify_professional, verify_token
 from app.core.logging import logger, sanitize_error_message
 
 router = APIRouter(prefix="/admin", tags=["users"])
@@ -352,3 +353,50 @@ async def admin_delete_diet(
     except Exception as e:
         logger.error("delete_diet_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'eliminazione della dieta.")
+
+
+# --- SESSION MANAGEMENT ---
+
+@router.post("/session/revoke/{target_uid}")
+async def revoke_user_sessions(
+    target_uid: str,
+    requester: dict = Depends(verify_admin)
+):
+    """
+    Forza il logout da tutti i dispositivi revocando tutti i refresh token.
+    Il JWT corrente rimane valido per la sua durata (max 1h),
+    ma nessun nuovo token potrà essere emesso.
+    """
+    try:
+        await run_in_threadpool(auth.revoke_refresh_tokens, target_uid)
+        db = firebase_admin.firestore.client()
+        db.collection('access_logs').add({
+            'requester_id': requester['uid'],
+            'target_uid': target_uid,
+            'action': 'REVOKE_SESSIONS',
+            'reason': 'Admin force logout',
+            'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
+        })
+        logger.info("sessions_revoked", target_uid=target_uid, by=requester['uid'])
+        return {"message": "Sessions revoked. User will be logged out from all devices."}
+    except Exception as e:
+        logger.error("revoke_sessions_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante la revoca delle sessioni.")
+
+
+@router.post("/session/revoke-self")
+async def revoke_own_sessions(token: dict = Depends(verify_token)):
+    """
+    Permette all'utente autenticato di revocare le proprie sessioni
+    (forza logout da tutti gli altri dispositivi).
+    """
+    uid = token.get('uid')
+    if not uid:
+        raise HTTPException(status_code=400, detail="UID non trovato nel token")
+    try:
+        await run_in_threadpool(auth.revoke_refresh_tokens, uid)
+        logger.info("self_sessions_revoked", uid=uid)
+        return {"message": "All other sessions revoked."}
+    except Exception as e:
+        logger.error("revoke_self_sessions_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante la revoca delle sessioni.")

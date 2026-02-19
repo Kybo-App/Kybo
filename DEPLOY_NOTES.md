@@ -69,4 +69,43 @@ sameAs: [
 
 ---
 
+---
+
+## 🟡 Redis — Cache Layer (Feature 10, opzionale)
+
+**Quando**: se vuoi sostituire/affiancare la cache in-memory con Redis per persistenza tra restart
+
+**Dove**: Render → crea un Redis database → copia la connection string
+
+**Cosa fare**:
+1. Aggiungere su Render una istanza Redis
+2. Aggiungere variabile `REDIS_URL=redis://...` nel backend
+3. Installare `redis` nel `requirements.txt`
+4. Aggiornare `diet_service.py` per usare Redis come L2 cache invece di Firestore
+
+---
+
+## 🟡 APM — Application Performance Monitoring (Feature 10, opzionale)
+
+**Quando**: quando vuoi monitorare latenza, error rate e throughput delle API
+
+**Opzioni**:
+- **Sentry Performance**: aggiungere `traces_sample_rate=1.0` al sentry_sdk.init già configurato
+- **Datadog**: aggiungere `ddtrace` in requirements.txt e configurare DD_API_KEY su Render
+- **Render Metrics**: disponibile nativamente nel dashboard Render (CPU, memoria, richieste)
+
+---
+
+## 🟡 Session Management — Revoca Sessioni (Feature 10)
+
+**Implementato**: `POST /admin/session/revoke/{uid}` (admin) e `POST /admin/session/revoke-self` (self)
+
+**Come funziona**: Firebase `auth.revoke_refresh_tokens(uid)` invalida tutti i refresh token.
+Il JWT corrente rimane valido max 1 ora, poi l'utente è forzato al login.
+
+**Nota**: per ridurre questa finestra a 0, configura il `verify_token` per controllare `valid_since`
+tramite `auth.get_user(uid).tokens_valid_after_time`. Aggiunta alla roadmap come miglioramento futuro.
+
+---
+
 *Ultimo aggiornamento: 2026-02-19*
