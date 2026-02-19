@@ -512,6 +512,139 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
+  /// Returns (mealName, dayName) of the next upcoming meal, or null if none found.
+  (String, String)? _findNextMeal(DietProvider provider) {
+    final plan = provider.dietPlan;
+    if (plan == null) return null;
+
+    final days = provider.getDays();
+    if (days.isEmpty) return null;
+
+    // Ordered meal times for determining "next" meal by name
+    const mealOrder = [
+      'Colazione', 'Seconda Colazione', 'Pranzo', 'Merenda', 'Cena',
+      'Spuntino', 'Spuntino Serale',
+    ];
+
+    // Map Italian weekday index (1=Mon) to day name
+    const italianWeekdays = [
+      'lunedì', 'martedì', 'mercoledì', 'giovedì',
+      'venerdì', 'sabato', 'domenica',
+    ];
+
+    final now = DateTime.now();
+    final todayName = italianWeekdays[now.weekday - 1];
+
+    // Find today in the plan
+    String? todayKey;
+    for (final day in days) {
+      if (day.toLowerCase() == todayName) {
+        todayKey = day;
+        break;
+      }
+    }
+    if (todayKey == null) return null;
+
+    final dayPlan = plan.plan[todayKey];
+    if (dayPlan == null || dayPlan.isEmpty) return null;
+
+    // Hour-based: estimate next meal based on current hour
+    final hour = now.hour;
+    final String nextMealName;
+    if (hour < 9) {
+      nextMealName = 'Colazione';
+    } else if (hour < 11) {
+      nextMealName = 'Seconda Colazione';
+    } else if (hour < 14) {
+      nextMealName = 'Pranzo';
+    } else if (hour < 17) {
+      nextMealName = 'Merenda';
+    } else if (hour < 21) {
+      nextMealName = 'Cena';
+    } else {
+      nextMealName = 'Spuntino Serale';
+    }
+
+    // Find in plan (case-insensitive partial match)
+    for (final mealKey in dayPlan.keys) {
+      if (mealKey.toLowerCase().contains(nextMealName.toLowerCase()) ||
+          nextMealName.toLowerCase().contains(mealKey.toLowerCase())) {
+        final dishes = dayPlan[mealKey];
+        if (dishes != null && dishes.isNotEmpty) {
+          return (mealKey, todayKey);
+        }
+      }
+    }
+
+    // Fall back to first non-consumed meal in order
+    for (final orderedMeal in mealOrder) {
+      for (final mealKey in dayPlan.keys) {
+        if (mealKey.toLowerCase().contains(orderedMeal.toLowerCase())) {
+          final dishes = dayPlan[mealKey];
+          if (dishes != null && dishes.any((d) => !d.isConsumed)) {
+            return (mealKey, todayKey);
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildNextMealBanner(DietProvider provider) {
+    final next = _findNextMeal(provider);
+    if (next == null) return const SizedBox.shrink();
+
+    final (mealName, _) = next;
+    final plan = provider.dietPlan?.plan;
+    final dishes = plan?[_findNextMeal(provider)!.$2]?[mealName] ?? [];
+    if (dishes.isEmpty) return const SizedBox.shrink();
+
+    // Show first 2 dishes as preview
+    final preview = dishes.take(2).map((d) => d.name).join(', ');
+    final more = dishes.length > 2 ? ' +${dishes.length - 2}' : '';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: KyboColors.primary.withValues(alpha: 0.08),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(color: KyboColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.restaurant_rounded, color: KyboColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Prossimo pasto: $mealName',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: KyboColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$preview$more',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: KyboColors.textSecondary(context),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody(DietProvider provider) {
     switch (_currentIndex) {
       case 0:
@@ -528,18 +661,25 @@ class _MainScreenContentState extends State<MainScreenContent>
             child: CircularProgressIndicator(color: KyboColors.primary),
           );
         }
-        return TabBarView(
-          controller: _tabController,
-          children: provider.getDays().map((day) {
-            return DietView(
-              day: day,
-              dietPlan: provider.dietPlan,
-              isLoading: provider.isLoading,
-              activeSwaps: provider.activeSwaps,
-              pantryItems: provider.pantryItems,
-              isTranquilMode: provider.isTranquilMode,
-            );
-          }).toList(),
+        return Column(
+          children: [
+            _buildNextMealBanner(provider),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: provider.getDays().map((day) {
+                  return DietView(
+                    day: day,
+                    dietPlan: provider.dietPlan,
+                    isLoading: provider.isLoading,
+                    activeSwaps: provider.activeSwaps,
+                    pantryItems: provider.pantryItems,
+                    isTranquilMode: provider.isTranquilMode,
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
         );
       case 2:
         return ShoppingListView(

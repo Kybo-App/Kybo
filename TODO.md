@@ -117,12 +117,12 @@
 ### Feature 7: Client - UX & Features
 > Miglioramenti app mobile.
 
-- [ ] Widget home screen (prossimo pasto, lista spesa)
+- [x] Widget home screen (prossimo pasto, lista spesa)
 - [ ] Modalità tablet con layout ottimizzato
-- [ ] Condivisione lista spesa via link/WhatsApp
-- [ ] Raggruppamento lista spesa per corsia del supermercato
+- [x] Condivisione lista spesa via link/WhatsApp
+- [x] Raggruppamento lista spesa per corsia del supermercato
 - [ ] Prezzi stimati e budget tracking (forse)
-- [ ] Sfide settimanali gamification ("prova 3 nuove ricette questa settimana")
+- [x] Sfide settimanali gamification ("prova 3 nuove ricette questa settimana")
 
 ---
 

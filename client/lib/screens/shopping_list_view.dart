@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:kybo/models/diet_models.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart' show Share;
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
 import '../widgets/design_system.dart';
 import '../logic/diet_calculator.dart';
+import '../services/badge_service.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
@@ -29,8 +31,47 @@ class ShoppingListView extends StatefulWidget {
   State<ShoppingListView> createState() => _ShoppingListViewState();
 }
 
+// Grocery category keywords for grouping
+const _categoryKeywords = {
+  'Frutta & Verdura': ['mela', 'pera', 'banana', 'arancia', 'limone', 'uva', 'fragola', 'pomodoro', 'insalata', 'lattuga', 'spinaci', 'broccoli', 'carota', 'zucchina', 'melanzana', 'peperone', 'cipolla', 'aglio', 'patata', 'verdura', 'frutta', 'kiwi', 'ananas', 'mango', 'avocado', 'cetriolo'],
+  'Carne & Pesce': ['pollo', 'manzo', 'maiale', 'tacchino', 'vitello', 'agnello', 'salmone', 'tonno', 'merluzzo', 'gambero', 'pesce', 'carne', 'bistecca', 'filetto', 'prosciutto', 'bresaola', 'mortadella', 'salame'],
+  'Latticini & Uova': ['latte', 'yogurt', 'formaggio', 'mozzarella', 'ricotta', 'parmigiano', 'grana', 'burro', 'uovo', 'panna', 'kefir'],
+  'Cereali & Pane': ['pane', 'pasta', 'riso', 'farro', 'quinoa', 'avena', 'orzo', 'fette biscottate', 'crackers', 'cereali', 'farina', 'piadina', 'tortilla'],
+  'Legumi': ['fagioli', 'ceci', 'lenticchie', 'piselli', 'soia', 'edamame', 'tofu'],
+  'Condimenti & Oli': ['olio', 'aceto', 'sale', 'pepe', 'spezie', 'erbe', 'salsa', 'maionese', 'senape', 'ketchup'],
+  'Frutta Secca & Semi': ['mandorle', 'noci', 'nocciole', 'anacardi', 'pistacchi', 'semi', 'tahini', 'burro di arachidi'],
+  'Bevande': ['acqua', 'succo', 'tè', 'caffè', 'latte vegetale'],
+};
+
+String _categorizeItem(String itemName) {
+  final lower = itemName.toLowerCase();
+  for (final entry in _categoryKeywords.entries) {
+    if (entry.value.any((kw) => lower.contains(kw))) {
+      return entry.key;
+    }
+  }
+  return 'Altro';
+}
+
 class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
+  bool _groupByCategory = false;
+
+  Future<void> _shareList() async {
+    if (widget.shoppingList.isEmpty) return;
+
+    final lines = widget.shoppingList.map((item) {
+      final display = item.startsWith('OK_') ? '✓ ${item.substring(3)}' : '• $item';
+      return display;
+    }).join('\n');
+
+    final text = 'Lista della Spesa Kybo:\n\n$lines';
+    await Share.share(text, subject: 'Lista della Spesa');
+
+    if (mounted) {
+      context.read<BadgeService>().onShoppingListShared();
+    }
+  }
 
   /// Restituisce i giorni dalla config della dieta usando il Provider per consistenza
   List<String> _getDays() {
@@ -406,6 +447,123 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     }
   }
 
+  Widget _buildListTile(String raw, int index) {
+    bool isChecked = raw.startsWith("OK_");
+    String display = isChecked ? raw.substring(3) : raw;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KyboColors.surface(context),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(color: KyboColors.border(context), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Dismissible(
+        key: Key(raw + index.toString()),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) {
+          var list = List<String>.from(widget.shoppingList);
+          list.removeAt(index);
+          widget.onUpdateList(list);
+        },
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
+            ),
+            borderRadius: KyboBorderRadius.medium,
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          child: const Icon(Icons.delete, color: Colors.white),
+        ),
+        child: CheckboxListTile(
+          value: isChecked,
+          activeColor: KyboColors.primary,
+          checkColor: Colors.white,
+          checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          title: Text(
+            display,
+            style: TextStyle(
+              decoration: isChecked ? TextDecoration.lineThrough : null,
+              color: isChecked ? KyboColors.textMuted(context) : KyboColors.textPrimary(context),
+              fontWeight: isChecked ? FontWeight.normal : FontWeight.w500,
+            ),
+          ),
+          onChanged: (val) {
+            var list = List<String>.from(widget.shoppingList);
+            list[index] = val == true ? "OK_$display" : display;
+            widget.onUpdateList(list);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlatList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: widget.shoppingList.length,
+      itemBuilder: (context, index) => _buildListTile(widget.shoppingList[index], index),
+    );
+  }
+
+  Widget _buildGroupedList() {
+    // Group items by category
+    final Map<String, List<int>> groups = {};
+    for (int i = 0; i < widget.shoppingList.length; i++) {
+      final raw = widget.shoppingList[i];
+      final display = raw.startsWith('OK_') ? raw.substring(3) : raw;
+      // Extract item name (before any parentheses)
+      final name = display.split('(').first.trim();
+      final category = _categorizeItem(name);
+      groups.putIfAbsent(category, () => []).add(i);
+    }
+
+    // Sort categories: "Altro" last
+    final sortedCategories = groups.keys.toList()
+      ..sort((a, b) {
+        if (a == 'Altro') return 1;
+        if (b == 'Altro') return -1;
+        return a.compareTo(b);
+      });
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: sortedCategories.length,
+      itemBuilder: (context, catIndex) {
+        final category = sortedCategories[catIndex];
+        final indices = groups[category]!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(top: catIndex == 0 ? 0 : 8, bottom: 6),
+              child: Text(
+                category,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: KyboColors.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            ...indices.map((i) => _buildListTile(widget.shoppingList[i], i)),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool hasCheckedItems = widget.shoppingList.any((i) => i.startsWith("OK_"));
@@ -429,14 +587,36 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                     child: const Icon(Icons.shopping_cart, size: 24, color: KyboColors.primary),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    "Lista della Spesa",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: KyboColors.textPrimary(context),
+                  Expanded(
+                    child: Text(
+                      "Lista della Spesa",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: KyboColors.textPrimary(context),
+                      ),
                     ),
                   ),
+                  // Group by category toggle
+                  Tooltip(
+                    message: _groupByCategory ? 'Vista lista' : 'Raggruppa per categoria',
+                    child: IconButton(
+                      icon: Icon(
+                        _groupByCategory ? Icons.list_rounded : Icons.category_rounded,
+                        color: _groupByCategory ? KyboColors.primary : KyboColors.textMuted(context),
+                      ),
+                      onPressed: () => setState(() => _groupByCategory = !_groupByCategory),
+                    ),
+                  ),
+                  // Share button
+                  if (widget.shoppingList.isNotEmpty)
+                    Tooltip(
+                      message: 'Condividi lista',
+                      child: IconButton(
+                        icon: Icon(Icons.share_rounded, color: KyboColors.textMuted(context)),
+                        onPressed: _shareList,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -464,86 +644,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: widget.shoppingList.length,
-                      itemBuilder: (context, index) {
-                        String raw = widget.shoppingList[index];
-                        bool isChecked = raw.startsWith("OK_");
-                        String display = isChecked ? raw.substring(3) : raw;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: KyboColors.surface(context),
-                            borderRadius: KyboBorderRadius.medium,
-                            border: Border.all(
-                              color: KyboColors.border(context),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Dismissible(
-                            key: Key(raw + index.toString()),
-                            direction: DismissDirection.endToStart,
-                            onDismissed: (_) {
-                              var list = List<String>.from(widget.shoppingList);
-                              list.removeAt(index);
-                              widget.onUpdateList(list);
-                            },
-                            background: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
-                                ),
-                                borderRadius: KyboBorderRadius.medium,
-                              ),
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: const Icon(Icons.delete, color: Colors.white),
-                            ),
-                            child: CheckboxListTile(
-                              value: isChecked,
-                              activeColor: KyboColors.primary,
-                              checkColor: Colors.white,
-                              checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 2,
-                              ),
-                              title: Text(
-                                display,
-                                style: TextStyle(
-                                  decoration: isChecked
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: isChecked
-                                      ? KyboColors.textMuted(context)
-                                      : KyboColors.textPrimary(context),
-                                  fontWeight: isChecked
-                                      ? FontWeight.normal
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                              onChanged: (val) {
-                                var list = List<String>.from(
-                                  widget.shoppingList,
-                                );
-                                list[index] =
-                                    val == true ? "OK_$display" : display;
-                                widget.onUpdateList(list);
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  : _groupByCategory
+                      ? _buildGroupedList()
+                      : _buildFlatList(),
             ),
 
             // FOOTER CON BOTTONI
