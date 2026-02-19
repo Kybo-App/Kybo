@@ -1,13 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import styles from './HorizontalGallery.module.css';
-
-if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 const screenshots = [
   { id: 1, title: 'Dashboard', color: '#66BB6A' },
@@ -25,31 +19,38 @@ export default function HorizontalGallery() {
   useEffect(() => {
     if (!sectionRef.current || !scrollerRef.current) return;
 
-    const ctx = gsap.context(() => {
+    let ctx: { revert: () => void } | null = null;
+
+    const initGsap = async () => {
+      const { gsap } = await import('gsap');
+      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      gsap.registerPlugin(ScrollTrigger);
+
       const section = sectionRef.current!;
       const scroller = scrollerRef.current!;
-      
-      // Calculate scroll width
-      const scrollWidth = scroller.scrollWidth - window.innerWidth;
 
-      // Create horizontal scroll animation
-      gsap.to(scroller, {
-        x: -scrollWidth,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: section,
-          start: 'center center',
-          end: () => `+=${scrollWidth}`,
-          scrub: 1,
-          pin: true,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-        },
-      });
-    }, sectionRef); // Scope to section
+      ctx = gsap.context(() => {
+        const scrollWidth = scroller.scrollWidth - window.innerWidth;
 
-    // Cleanup
-    return () => ctx.revert();
+        gsap.to(scroller, {
+          x: -scrollWidth,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: section,
+            start: 'center center',
+            end: () => `+=${scrollWidth}`,
+            scrub: 1,
+            pin: true,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+          },
+        });
+      }, sectionRef);
+    };
+
+    initGsap();
+
+    return () => { ctx?.revert(); };
   }, []);
 
   return (
