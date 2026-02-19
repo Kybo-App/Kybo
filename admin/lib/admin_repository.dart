@@ -763,4 +763,43 @@ class AdminRepository {
       throw Exception("Errore Eliminazione Nota (${response.statusCode}): ${response.body}");
     }
   }
+
+  // --- EMAIL ALERT CONFIG ---
+
+  /// Restituisce la configurazione degli alert email per messaggi non letti
+  Future<Map<String, dynamic>> getEmailAlertConfig() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/communication/email-alert-config'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception("Errore recupero config (${response.statusCode}): ${response.body}");
+  }
+
+  /// Salva la configurazione degli alert email per messaggi non letti
+  Future<void> setEmailAlertConfig({
+    required bool enabled,
+    required int thresholdDays,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/communication/email-alert-config'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'enabled': enabled,
+        'threshold_days': thresholdDays,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Errore salvataggio config (${response.statusCode}): ${response.body}");
+    }
+  }
 }

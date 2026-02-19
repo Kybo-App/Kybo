@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/chat.dart';
 import '../providers/admin_chat_provider.dart';
+import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 import 'package:intl/intl.dart';
 
@@ -57,6 +58,13 @@ class _ChatManagementContent extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             PillIconButton(
+                              icon: Icons.notifications_active_rounded,
+                              tooltip: 'Alert email messaggi non letti',
+                              color: KyboColors.primary,
+                              onPressed: () => _showEmailAlertConfigDialog(ctx),
+                            ),
+                            const SizedBox(width: 4),
+                            PillIconButton(
                               icon: Icons.campaign_rounded,
                               tooltip: 'Broadcast',
                               color: KyboColors.warning,
@@ -94,6 +102,13 @@ class _ChatManagementContent extends StatelessWidget {
         // ════════════════════════════════════════════════════════════════
         Expanded(child: _ChatInterface()),
       ],
+    );
+  }
+
+  void _showEmailAlertConfigDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => const _EmailAlertConfigDialog(),
     );
   }
 
@@ -1000,5 +1015,278 @@ class _MessageBubble extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EMAIL ALERT CONFIG DIALOG
+// Permette al nutrizionista di configurare gli alert email per messaggi non letti
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _EmailAlertConfigDialog extends StatefulWidget {
+  const _EmailAlertConfigDialog();
+
+  @override
+  State<_EmailAlertConfigDialog> createState() => _EmailAlertConfigDialogState();
+}
+
+class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
+  final AdminRepository _repo = AdminRepository();
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+  bool _emailConfigured = false;
+
+  bool _enabled = false;
+  int _thresholdDays = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    try {
+      final config = await _repo.getEmailAlertConfig();
+      if (mounted) {
+        setState(() {
+          _enabled = config['enabled'] ?? false;
+          _thresholdDays = config['threshold_days'] ?? 3;
+          _emailConfigured = config['email_configured'] ?? false;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      await _repo.setEmailAlertConfig(
+        enabled: _enabled,
+        thresholdDays: _thresholdDays,
+      );
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      nav.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Configurazione salvata'),
+          backgroundColor: KyboColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.pill),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: $e'),
+          backgroundColor: KyboColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.pill),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+      backgroundColor: KyboColors.surface,
+      title: Row(
+        children: [
+          Icon(Icons.notifications_active_rounded, color: KyboColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Text(
+            'Alert Messaggi Non Letti',
+            style: TextStyle(
+              color: KyboColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 400,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Email non configurata → warning
+                  if (!_emailConfigured) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: KyboColors.warning.withValues(alpha: 0.1),
+                        borderRadius: KyboBorderRadius.medium,
+                        border: Border.all(
+                          color: KyboColors.warning.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_rounded, color: KyboColors.warning, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Email SMTP non configurata sul server. Contatta l\'amministratore.',
+                              style: TextStyle(
+                                color: KyboColors.warning,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Toggle abilitazione
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: KyboColors.background,
+                      borderRadius: KyboBorderRadius.medium,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.email_rounded,
+                          color: _enabled ? KyboColors.primary : KyboColors.textMuted,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Notifiche email attive',
+                                style: TextStyle(
+                                  color: KyboColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                'Ricevi un\'email quando un cliente non risponde',
+                                style: TextStyle(
+                                  color: KyboColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _enabled,
+                          onChanged: !_emailConfigured
+                              ? null
+                              : (v) => setState(() => _enabled = v),
+                          activeColor: KyboColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Soglia giorni
+                  Text(
+                    'Giorni di inattività prima della notifica',
+                    style: TextStyle(
+                      color: KyboColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _thresholdDays.toDouble(),
+                          min: 1,
+                          max: 14,
+                          divisions: 13,
+                          activeColor: _enabled ? KyboColors.primary : KyboColors.textMuted,
+                          onChanged: !_enabled
+                              ? null
+                              : (v) => setState(() => _thresholdDays = v.round()),
+                        ),
+                      ),
+                      Container(
+                        width: 48,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: KyboColors.background,
+                          borderRadius: KyboBorderRadius.medium,
+                          border: Border.all(color: KyboColors.border),
+                        ),
+                        child: Text(
+                          '$_thresholdDays',
+                          style: TextStyle(
+                            color: KyboColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _thresholdDays == 1 ? 'giorno' : 'giorni',
+                        style: TextStyle(color: KyboColors.textMuted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+
+                  if (_enabled) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: KyboColors.primary.withValues(alpha: 0.08),
+                        borderRadius: KyboBorderRadius.medium,
+                      ),
+                      child: Text(
+                        'Riceverai una notifica email se un cliente non ti ha risposto da almeno $_thresholdDays ${_thresholdDays == 1 ? 'giorno' : 'giorni'}.',
+                        style: TextStyle(
+                          color: KyboColors.primary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Annulla', style: TextStyle(color: KyboColors.textSecondary)),
+        ),
+        PillButton(
+          label: 'Salva',
+          icon: Icons.save_rounded,
+          backgroundColor: KyboColors.primary,
+          textColor: Colors.white,
+          height: 40,
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _save,
+        ),
+      ],
+    );
   }
 }
