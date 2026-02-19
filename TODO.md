@@ -147,12 +147,12 @@
 - [ ] Pagina pricing dedicata con toggle mensile/annuale
 
 **SEO & Performance:**
-- [ ] Metadata OpenGraph e Twitter Card per condivisione social
-- [ ] Schema.org markup (SoftwareApplication, Organization)
-- [ ] Sitemap.xml e robots.txt ottimizzati
+- [x] Metadata OpenGraph e Twitter Card per condivisione social
+- [x] Schema.org markup (SoftwareApplication, Organization, WebSite) JSON-LD
+- [x] Sitemap.xml e robots.txt ottimizzati in /public/
 - [ ] i18n (versione inglese della landing page)
-- [ ] Lazy loading immagini e componenti below-the-fold
-- [ ] Lighthouse score optimization (target 95+)
+- [x] Lazy loading componenti below-the-fold con Suspense + dynamic loading
+- [x] Lighthouse score optimization: metadataBase, per-page title template, canonical URLs
 
 **Business Page:**
 - [ ] Form richiesta demo funzionante con calendar booking (Calendly embed)
