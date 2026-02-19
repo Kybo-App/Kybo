@@ -5,8 +5,12 @@ import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'core/env.dart';
+import 'core/app_localizations.dart';
+import 'providers/language_provider.dart';
 
 import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_prod.dart' as prod;
@@ -28,9 +32,26 @@ class AdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: LanguageProvider(),
+      child: Consumer<LanguageProvider>(
+        builder: (context, langProvider, _) => _buildMaterialApp(langProvider.locale),
+      ),
+    );
+  }
+
+  Widget _buildMaterialApp(Locale locale) {
     return MaterialApp(
       title: 'Kybo Admin',
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: const [Locale('it'), Locale('en')],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Kybo Light BG

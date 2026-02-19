@@ -104,13 +104,13 @@
 
 ---
 
-### Feature 6: Admin UX
+### Feature 6: Admin UX ✅
 > Miglioramenti usabilità pannello. 🟡 Entrambi
 
 **Admin:**
-- [ ] Scorciatoie da tastiera (Ctrl+N nuovo utente, Ctrl+K ricerca, Ctrl+1/2/3 cambio tab)
-- [ ] Ricerca globale (cerca in utenti, diete, chat, log) con dialog Ctrl+K
-- [ ] Multi-lingua admin panel (italiano + inglese)
+- [x] Scorciatoie da tastiera (Ctrl+N nuovo utente, Ctrl+K ricerca, Ctrl+1–8 cambio tab, ? aiuto)
+- [x] Ricerca globale (cerca utenti) con dialog Ctrl+K e chip di navigazione rapida
+- [x] Multi-lingua admin panel (italiano + inglese) con toggle IT/EN nella top bar
 
 ---
 
