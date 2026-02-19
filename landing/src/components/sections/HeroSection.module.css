@@ -80,10 +80,19 @@
   line-height: 1;
   margin-bottom: 2rem;
   color: #66BB6A;
-  filter: 
+  filter:
     drop-shadow(0 0 20px rgba(102, 187, 106, 0.8))
     drop-shadow(0 0 40px rgba(102, 187, 106, 0.6))
     drop-shadow(0 0 60px rgba(102, 187, 106, 0.4));
+}
+
+/* Ogni lettera parte invisibile finché GSAP non la anima,
+   evitando il flash di testo sottile pre-hydration */
+.title span {
+  display: inline-block;
+  opacity: 0;
+  font-weight: 900;
+  will-change: transform, opacity;
 }
 
 .subtitle {

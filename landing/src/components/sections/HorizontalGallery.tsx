@@ -29,23 +29,32 @@ export default function HorizontalGallery() {
       const section = sectionRef.current!;
       const scroller = scrollerRef.current!;
 
+      // Aspetta il prossimo frame di layout per misurare le dimensioni reali
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+      if (!sectionRef.current || !scrollerRef.current) return;
+
       ctx = gsap.context(() => {
-        const scrollWidth = scroller.scrollWidth - window.innerWidth;
+        const getScrollWidth = () => scroller.scrollWidth - window.innerWidth;
 
         gsap.to(scroller, {
-          x: -scrollWidth,
+          x: () => -getScrollWidth(),
           ease: 'none',
           scrollTrigger: {
             trigger: section,
-            start: 'center center',
-            end: () => `+=${scrollWidth}`,
-            scrub: 1,
+            start: 'top top',        // inizia quando la section tocca il top — nessun salto
+            end: () => `+=${getScrollWidth()}`,
+            scrub: 0.6,              // più reattivo, meno lag
             pin: true,
-            anticipatePin: 1,
+            pinSpacing: true,        // riserva spazio corretto evitando il salto di layout
+            anticipatePin: 0,        // disabilitato: causava il pre-scroll jerky
             invalidateOnRefresh: true,
+            fastScrollEnd: true,
           },
         });
       }, sectionRef);
+
+      ScrollTrigger.refresh();
     };
 
     initGsap();

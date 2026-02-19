@@ -1,8 +1,7 @@
 .section {
-  min-height: 100vh;
   background: #1a1a1a;
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden rimosso — rompe il pin di ScrollTrigger causando scatti */
   padding: 4rem 0;
 }
 
