@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useLenis } from '../animations/SmoothScroll';
 import styles from './HorizontalGallery.module.css';
 
 const screenshots = [
@@ -13,87 +14,91 @@ const screenshots = [
 ];
 
 export default function HorizontalGallery() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const { lenis } = useLenis();
 
   useEffect(() => {
-    if (!sectionRef.current || !scrollerRef.current) return;
+    const outer = outerRef.current;
+    const scroller = scrollerRef.current;
+    if (!outer || !scroller) return;
 
-    let ctx: { revert: () => void } | null = null;
-
-    const initGsap = async () => {
-      const { gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
-
-      const section = sectionRef.current!;
-      const scroller = scrollerRef.current!;
-
-      // Aspetta il prossimo frame di layout per misurare le dimensioni reali
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-
-      if (!sectionRef.current || !scrollerRef.current) return;
-
-      ctx = gsap.context(() => {
-        const getScrollWidth = () => scroller.scrollWidth - window.innerWidth;
-
-        gsap.to(scroller, {
-          x: () => -getScrollWidth(),
-          ease: 'none',
-          scrollTrigger: {
-            trigger: section,
-            start: 'top top',        // inizia quando la section tocca il top — nessun salto
-            end: () => `+=${getScrollWidth()}`,
-            scrub: 0.6,              // più reattivo, meno lag
-            pin: true,
-            pinSpacing: true,        // riserva spazio corretto evitando il salto di layout
-            anticipatePin: 0,        // disabilitato: causava il pre-scroll jerky
-            invalidateOnRefresh: true,
-            fastScrollEnd: true,
-          },
-        });
-      }, sectionRef);
-
-      ScrollTrigger.refresh();
+    // Compute and set the outer container's height so that the sticky section
+    // has enough vertical scroll space to show all cards horizontally.
+    const setHeight = () => {
+      const scrollWidth = scroller.scrollWidth - window.innerWidth;
+      outer.style.height = `${window.innerHeight + Math.max(0, scrollWidth)}px`;
     };
 
-    initGsap();
+    setHeight();
+    window.addEventListener('resize', setHeight);
 
-    return () => { ctx?.revert(); };
-  }, []);
+    // Core update: map vertical scroll progress → horizontal translateX
+    const update = (scrollY: number) => {
+      const rect = outer.getBoundingClientRect();
+      const scrollWidth = scroller.scrollWidth - window.innerWidth;
+      if (scrollWidth <= 0) return;
+
+      // rect.top is relative to viewport; when section is pinned, rect.top = 0
+      // and -rect.top grows as user scrolls into the section
+      const rawProgress = -rect.top / scrollWidth;
+      const progress = Math.min(1, Math.max(0, rawProgress));
+      scroller.style.transform = `translateX(${-progress * scrollWidth}px)`;
+    };
+
+    // Listen via Lenis (smooth scroll events) AND native scroll (fallback)
+    let lenisUnsub: (() => void) | null = null;
+
+    if (lenis) {
+      const handler = ({ scroll }: { scroll: number }) => update(scroll);
+      lenis.on('scroll', handler);
+      lenisUnsub = () => lenis.off('scroll', handler);
+    } else {
+      const handler = () => update(window.scrollY);
+      window.addEventListener('scroll', handler, { passive: true });
+      lenisUnsub = () => window.removeEventListener('scroll', handler);
+    }
+
+    return () => {
+      window.removeEventListener('resize', setHeight);
+      lenisUnsub?.();
+    };
+  }, [lenis]);
 
   return (
-    <section ref={sectionRef} id="gallery" className={styles.section}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Esplora l'app</h2>
-        <p className={styles.subtitle}>Scorri orizzontalmente per vedere tutte le funzionalità</p>
-      </div>
+    <div ref={outerRef} id="gallery" className={styles.outer}>
+      <div className={styles.sticky}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Esplora l'app</h2>
+          <p className={styles.subtitle}>Scorri per vedere tutte le funzionalità</p>
+        </div>
 
-      <div ref={scrollerRef} className={styles.scroller}>
-        {screenshots.map((screenshot, index) => (
-          <div key={screenshot.id} className={styles.card}>
-            <div 
-              className={styles.mockup}
-              style={{ background: `linear-gradient(135deg, ${screenshot.color}22 0%, ${screenshot.color}44 100%)` }}
-            >
-              <div className={styles.phone}>
-                <div className={styles.notch} />
-                <div 
-                  className={styles.screen}
-                  style={{ background: screenshot.color }}
-                >
-                  <span className={styles.screenTitle}>{screenshot.title}</span>
+        <div ref={scrollerRef} className={styles.scroller}>
+          {screenshots.map((screenshot) => (
+            <div key={screenshot.id} className={styles.card}>
+              <div
+                className={styles.mockup}
+                style={{ background: `linear-gradient(135deg, ${screenshot.color}22 0%, ${screenshot.color}44 100%)` }}
+              >
+                <div className={styles.phone}>
+                  <div className={styles.notch} />
+                  <div
+                    className={styles.screen}
+                    style={{ background: screenshot.color }}
+                  >
+                    <span className={styles.screenTitle}>{screenshot.title}</span>
+                  </div>
                 </div>
               </div>
+              <p className={styles.cardTitle}>{screenshot.title}</p>
             </div>
-            <p className={styles.cardTitle}>{screenshot.title}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className={styles.scrollHint}>
-        <span>← Scroll →</span>
+        <div className={styles.scrollHint}>
+          <span>← Scroll →</span>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
