@@ -335,6 +335,10 @@ def _parse_gemini_response(raw: str) -> list:
     # Normalizza: rimuovi BOM, whitespace iniziale/finale
     cleaned = raw.strip().lstrip('\ufeff')
 
+    # Gemini a volte escapa gli apostrofi con \' (non valido in JSON)
+    # Sostituisci \' con ' solo fuori dalle chiavi JSON (dentro i valori stringa)
+    cleaned = cleaned.replace("\\'", "'")
+
     # Tentativo 1: JSON diretto sul testo pulito
     try:
         parsed = json.loads(cleaned)
