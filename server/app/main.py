@@ -37,6 +37,7 @@ from app.routers.reports import router as reports_router
 from app.routers.twofa import router as twofa_router
 from app.routers.communication import router as communication_router
 from app.routers.suggestions import router as suggestions_router
+from app.core.cache import redis_cache
 from app.workers.unread_notifier import unread_notification_worker
 from app.workers.monthly_report_mailer import monthly_report_mailer_worker
 
@@ -189,6 +190,14 @@ async def start_background_tasks():
     asyncio.create_task(maintenance_worker())
     asyncio.create_task(unread_notification_worker())
     asyncio.create_task(monthly_report_mailer_worker())
+    # Inizializza connessione Redis (graceful: no-op se non configurato)
+    await redis_cache._ensure_connected()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Chiude le connessioni al shutdown del server."""
+    await redis_cache.close()
 
 
 # --- HEALTH CHECK ---
@@ -221,6 +230,7 @@ async def health_check_detailed():
     checks = {
         "firebase": {"status": "unknown", "message": ""},
         "gemini": {"status": "unknown", "message": ""},
+        "redis": {"status": "unknown", "message": ""},
         "tesseract": {"status": "unknown", "message": ""},
         "sentry": {"status": "unknown", "message": ""},
     }
@@ -249,6 +259,19 @@ async def health_check_detailed():
     except Exception as e:
         checks["gemini"] = {"status": "error", "message": str(e)[:100]}
     
+    # Check Redis
+    if settings.REDIS_URL:
+        try:
+            redis_ok = await redis_cache.ping()
+            checks["redis"] = {
+                "status": "ok" if redis_ok else "error",
+                "message": "Connected" if redis_ok else "Ping failed"
+            }
+        except Exception as e:
+            checks["redis"] = {"status": "error", "message": str(e)[:100]}
+    else:
+        checks["redis"] = {"status": "disabled", "message": "REDIS_URL not configured"}
+
     # Check Tesseract
     try:
         tesseract_path = shutil.which("tesseract")

@@ -15,6 +15,7 @@ import time
 from app.core.dependencies import verify_token, get_current_uid
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.cache import redis_cache
 
 router = APIRouter(tags=["suggestions"])
 
@@ -51,21 +52,21 @@ class SuggerimentiOutput(typing.TypedDict):
     suggestions: list[SuggeritoDish]
 
 
-# ─── Cache in-memory (30 min TTL) ────────────────────────────────────────────
+# ─── Cache L1 in-memory (fallback quando Redis non disponibile) ───────────────
 
 _suggestions_cache: dict = {}
 _CACHE_TTL = 1800  # 30 minuti
 
 
-def _get_from_cache(key: str):
+def _get_from_memory_cache(key: str):
     entry = _suggestions_cache.get(key)
     if entry and (time.time() - entry["ts"]) < _CACHE_TTL:
         return entry["data"]
     return None
 
 
-def _save_to_cache(key: str, data: dict):
-    # Mantieni max 200 entry
+def _save_to_memory_cache(key: str, data: dict):
+    # Mantieni max 200 entry (LRU eviction)
     if len(_suggestions_cache) >= 200:
         oldest = min(_suggestions_cache, key=lambda k: _suggestions_cache[k]["ts"])
         del _suggestions_cache[oldest]
@@ -103,12 +104,20 @@ async def get_meal_suggestions(
     context_hash = hashlib.md5(
         json.dumps(user_data, sort_keys=True, default=str).encode()
     ).hexdigest()[:8]
-    cache_key = f"{uid}:{meal_type or 'all'}:{count}:{context_hash}"
+    cache_key = f"suggestions:{uid}:{meal_type or 'all'}:{count}:{context_hash}"
 
-    cached = _get_from_cache(cache_key)
+    # ✅ CACHE L1: RAM locale (microsecondi)
+    cached = _get_from_memory_cache(cache_key)
     if cached:
-        logger.info(f"Suggestions cache hit for uid={uid}")
+        logger.info("suggestions_cache_hit", layer="L1_ram", uid=uid)
         return MealSuggestionsResponse(**cached)
+
+    # ✅ CACHE L1.5: Redis (millisecondi, condiviso tra istanze)
+    redis_cached = await redis_cache.get(cache_key)
+    if redis_cached:
+        logger.info("suggestions_cache_hit", layer="L1.5_redis", uid=uid)
+        _save_to_memory_cache(cache_key, redis_cached)
+        return MealSuggestionsResponse(**redis_cached)
 
     # Genera con Gemini
     try:
@@ -126,7 +135,10 @@ async def get_meal_suggestions(
         "context_used": _build_context_description(user_data, meal_type),
         "generated_at": int(time.time()),
     }
-    _save_to_cache(cache_key, response_data)
+
+    # Salva in L1 (RAM) e L1.5 (Redis)
+    _save_to_memory_cache(cache_key, response_data)
+    await redis_cache.set(cache_key, response_data, ttl=settings.REDIS_SUGGESTIONS_TTL)
 
     return MealSuggestionsResponse(**response_data)
 

@@ -38,6 +38,12 @@ class Settings(BaseSettings):
             # [FIX] DEV permette SOLO localhost per evitare confusione
             return self._dev_origins
 
+    # Redis Cache (opzionale — graceful fallback se non configurato)
+    REDIS_URL: str = os.getenv("REDIS_URL", "")  # es. redis://localhost:6379/0
+    REDIS_DIET_TTL: int = 3600        # 1h per parsing diete
+    REDIS_SUGGESTIONS_TTL: int = 1800  # 30min per suggerimenti pasti
+    REDIS_TOKEN_TTL: int = 1500        # 25min per token JWT
+
     # Limits
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     MAX_PDF_PAGES: int = 50
