@@ -381,25 +381,27 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   @override
   Widget build(BuildContext context) {
-    // [FIX 1] Rinominato da dietProvider a provider per coerenza con il resto del codice
     final provider = Provider.of<DietProvider>(context);
-
-    // [FIX 2] Definito user per passarlo al drawer
     final user = FirebaseAuth.instance.currentUser;
-
-    // [FIX TAB] Crea/aggiorna il TabController basandosi sui giorni reali
     final days = provider.getDays();
     _ensureTabController(days);
+    final isTablet = KyboBreakpoints.isTablet(context);
 
-    // 2. CONTROLLO REATTIVO: Se serve il permesso, mostra il dialog
     if (provider.needsNotificationPermissions) {
-      // Usiamo 'provider' qui
       WidgetsBinding.instance.addPostFrameCallback((_) {
         provider.resetPermissionFlag();
         _showForcePermissionDialog();
       });
     }
 
+    if (isTablet) {
+      return _buildTabletLayout(context, provider, user);
+    }
+    return _buildMobileLayout(context, provider, user);
+  }
+
+  // ─── LAYOUT MOBILE (invariato) ───────────────────────────────────────────
+  Widget _buildMobileLayout(BuildContext context, DietProvider provider, user) {
     return Scaffold(
       backgroundColor: KyboColors.background(context),
       appBar: _currentIndex == 1 && _tabController != null
@@ -436,21 +438,21 @@ class _MainScreenContentState extends State<MainScreenContent>
                   description:
                       'Tocca la foglia per nascondere le calorie\ne ridurre lo stress.',
                   targetShapeBorder: const CircleBorder(),
-                child: Semantics(
-                  label: "Modalità Relax",
-                  selected: provider.isTranquilMode,
-                  hint: "Nasconde le calorie per ridurre lo stress",
-                  button: true,
-                  child: IconButton(
-                    icon: Icon(
-                      provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
-                      color: provider.isTranquilMode
-                          ? KyboColors.primary
-                          : Colors.grey,
+                  child: Semantics(
+                    label: "Modalità Relax",
+                    selected: provider.isTranquilMode,
+                    hint: "Nasconde le calorie per ridurre lo stress",
+                    button: true,
+                    child: IconButton(
+                      icon: Icon(
+                        provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
+                        color: provider.isTranquilMode
+                            ? KyboColors.primary
+                            : Colors.grey,
+                      ),
+                      onPressed: provider.toggleTranquilMode,
                     ),
-                    onPressed: provider.toggleTranquilMode,
                   ),
-                ),
                 ),
               ],
               bottom: TabBar(
@@ -511,6 +513,436 @@ class _MainScreenContentState extends State<MainScreenContent>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ─── LAYOUT TABLET ───────────────────────────────────────────────────────
+  Widget _buildTabletLayout(BuildContext context, DietProvider provider, user) {
+    return Scaffold(
+      backgroundColor: KyboColors.background(context),
+      body: Row(
+        children: [
+          // ── Sidebar sinistra: NavigationRail + drawer content ────────────
+          _buildTabletSidebar(context, provider, user),
+          // Separatore verticale
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: KyboColors.border(context),
+          ),
+          // ── Area contenuto principale ────────────────────────────────────
+          Expanded(
+            child: Column(
+              children: [
+                // AppBar solo per la tab Piano (giorni della settimana)
+                if (_currentIndex == 1 && _tabController != null)
+                  _buildTabletAppBar(context, provider),
+                Expanded(child: _buildBody(provider)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sidebar tablet: logo + NavigationRail + menu items del drawer
+  Widget _buildTabletSidebar(BuildContext context, DietProvider provider, user) {
+    final String initial = (user?.email != null && user!.email!.isNotEmpty)
+        ? user.email![0].toUpperCase()
+        : "U";
+
+    return Container(
+      width: 220,
+      color: KyboColors.surface(context),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header profilo ──────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [KyboColors.primary, KyboColors.primaryDark],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        initial,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: KyboColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Kybo",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          user?.email ?? "Ospite",
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── NavigationRail items (Dispensa, Piano, Lista) ──────────
+            _buildSidebarNavItem(
+              context: context,
+              icon: Icons.kitchen,
+              label: 'Dispensa',
+              index: 0,
+            ),
+            _buildSidebarNavItem(
+              context: context,
+              icon: Icons.calendar_today,
+              label: 'Piano',
+              index: 1,
+            ),
+            _buildSidebarNavItem(
+              context: context,
+              icon: Icons.shopping_cart,
+              label: 'Lista Spesa',
+              index: 2,
+            ),
+
+            Divider(color: KyboColors.border(context), indent: 12, endIndent: 12),
+
+            // ── Menu items del drawer ──────────────────────────────────
+            Expanded(
+              child: _buildTabletDrawerItems(context, provider, user),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Singolo item di navigazione nella sidebar tablet
+  Widget _buildSidebarNavItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required int index,
+  }) {
+    final isSelected = _currentIndex == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: InkWell(
+        onTap: () => setState(() => _currentIndex = index),
+        borderRadius: KyboBorderRadius.large,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? KyboColors.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: KyboBorderRadius.large,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? KyboColors.primary : KyboColors.textMuted(context),
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? KyboColors.primary : KyboColors.textSecondary(context),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+              ),
+              if (isSelected) ...[
+                const Spacer(),
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: const BoxDecoration(
+                    color: KyboColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Menu items secondari nella sidebar tablet (stesso contenuto del drawer mobile)
+  Widget _buildTabletDrawerItems(BuildContext context, DietProvider provider, user) {
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        bool hasNutritionist = false;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          hasNutritionist = ((data?['parent_id'] != null &&
+                  (data?['parent_id'].toString().isNotEmpty ?? false)) ||
+              (data?['created_by'] != null &&
+                  (data?['created_by'].toString().isNotEmpty ?? false)));
+        }
+
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          children: [
+            // Chat o Upload
+            if (hasNutritionist)
+              Consumer<ChatProvider>(
+                builder: (context, chatProvider, _) {
+                  final unreadCount = chatProvider.unreadCount;
+                  return _buildSidebarMenuItem(
+                    context: context,
+                    icon: Icons.chat_bubble,
+                    label: 'Chat',
+                    subtitle: unreadCount > 0
+                        ? '$unreadCount non letti'
+                        : null,
+                    badge: unreadCount > 0 ? '$unreadCount' : null,
+                    iconColor: KyboColors.primary,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    ),
+                  );
+                },
+              )
+            else
+              _buildSidebarMenuItem(
+                context: context,
+                icon: Icons.upload_file,
+                label: 'Carica Dieta',
+                iconColor: KyboColors.warning,
+                onTap: () => _uploadDiet(context),
+              ),
+
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.history,
+              label: 'Cronologia',
+              iconColor: KyboColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HistoryScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.emoji_events_rounded,
+              label: 'Traguardi',
+              iconColor: KyboColors.warning,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BadgesScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.picture_as_pdf_rounded,
+              label: 'Esporta PDF',
+              iconColor: KyboColors.primary,
+              onTap: () => _exportDietPdf(context),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.bar_chart_rounded,
+              label: 'Statistiche',
+              iconColor: KyboColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.settings_rounded,
+              label: 'Impostazioni',
+              iconColor: KyboColors.textMuted(context),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Singolo item di menu nella sidebar tablet
+  Widget _buildSidebarMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    String? subtitle,
+    String? badge,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: KyboBorderRadius.medium,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: KyboColors.textPrimary(context),
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: KyboColors.textMuted(context),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: KyboColors.error,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badge,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// AppBar per tablet: senza hamburger menu, con TabBar giorni
+  PreferredSizeWidget _buildTabletAppBar(BuildContext context, DietProvider provider) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: KyboColors.surface(context),
+      elevation: 0,
+      title: Text(
+        "Piano Alimentare",
+        style: TextStyle(
+          color: KyboColors.textPrimary(context),
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+      actions: [
+        Showcase(
+          key: _tranquilKey,
+          title: 'Modalità Relax',
+          description: 'Tocca la foglia per nascondere le calorie\ne ridurre lo stress.',
+          targetShapeBorder: const CircleBorder(),
+          child: Semantics(
+            label: "Modalità Relax",
+            selected: provider.isTranquilMode,
+            button: true,
+            child: IconButton(
+              icon: Icon(
+                provider.isTranquilMode ? Icons.spa : Icons.spa_outlined,
+                color: provider.isTranquilMode ? KyboColors.primary : Colors.grey,
+              ),
+              onPressed: provider.toggleTranquilMode,
+            ),
+          ),
+        ),
+      ],
+      bottom: TabBar(
+        controller: _tabController,
+        isScrollable: true,
+        labelColor: KyboColors.primary,
+        unselectedLabelColor: KyboColors.textMuted(context),
+        indicatorColor: KyboColors.primary,
+        indicatorWeight: 3,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+        tabs: provider.getDays()
+            .map((d) => Tab(
+                text: d.length >= 3
+                    ? d.substring(0, 3).toUpperCase()
+                    : d.toUpperCase()))
+            .toList(),
       ),
     );
   }

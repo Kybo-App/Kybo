@@ -509,10 +509,51 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   }
 
   Widget _buildFlatList() {
+    // Su tablet: 2 colonne affiancate
+    if (KyboBreakpoints.isTablet(context)) {
+      return _buildTwoColumnList(widget.shoppingList.asMap().entries.toList());
+    }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: widget.shoppingList.length,
       itemBuilder: (context, index) => _buildListTile(widget.shoppingList[index], index),
+    );
+  }
+
+  /// Layout 2 colonne per tablet: divide gli item in colonna sinistra e destra
+  Widget _buildTwoColumnList(List<MapEntry<int, String>> entries) {
+    final leftItems = <MapEntry<int, String>>[];
+    final rightItems = <MapEntry<int, String>>[];
+    for (int i = 0; i < entries.length; i++) {
+      if (i.isEven) {
+        leftItems.add(entries[i]);
+      } else {
+        rightItems.add(entries[i]);
+      }
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              children: leftItems
+                  .map((e) => _buildListTile(e.value, e.key))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              children: rightItems
+                  .map((e) => _buildListTile(e.value, e.key))
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -522,7 +563,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     for (int i = 0; i < widget.shoppingList.length; i++) {
       final raw = widget.shoppingList[i];
       final display = raw.startsWith('OK_') ? raw.substring(3) : raw;
-      // Extract item name (before any parentheses)
       final name = display.split('(').first.trim();
       final category = _categorizeItem(name);
       groups.putIfAbsent(category, () => []).add(i);
@@ -535,6 +575,58 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         if (b == 'Altro') return -1;
         return a.compareTo(b);
       });
+
+    final isTablet = KyboBreakpoints.isTablet(context);
+
+    if (isTablet) {
+      // Su tablet: 2 colonne di categorie affiancate
+      final leftCats = <String>[];
+      final rightCats = <String>[];
+      for (int i = 0; i < sortedCategories.length; i++) {
+        if (i.isEven) {
+          leftCats.add(sortedCategories[i]);
+        } else {
+          rightCats.add(sortedCategories[i]);
+        }
+      }
+
+      Widget buildCategoryColumn(List<String> cats) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: cats.map((category) {
+          final indices = groups[category]!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 6),
+                child: Text(
+                  category,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: KyboColors.primary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              ...indices.map((i) => _buildListTile(widget.shoppingList[i], i)),
+            ],
+          );
+        }).toList(),
+      );
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: buildCategoryColumn(leftCats)),
+            const SizedBox(width: 12),
+            Expanded(child: buildCategoryColumn(rightCats)),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
