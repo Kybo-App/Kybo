@@ -8,6 +8,34 @@ import '../providers/theme_provider.dart';
 /// Colori IDENTICI alla webapp admin
 
 // =============================================================================
+// BREAKPOINTS RESPONSIVE
+// =============================================================================
+
+class KyboBreakpoints {
+  /// Larghezza minima per considerare il dispositivo un tablet
+  static const double tablet = 600.0;
+
+  /// Larghezza minima per layout desktop/large tablet
+  static const double desktop = 900.0;
+
+  /// True se lo schermo è largo almeno quanto un tablet
+  static bool isTablet(BuildContext context) =>
+      MediaQuery.of(context).size.width >= tablet;
+
+  /// True se lo schermo è largo almeno quanto un desktop
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.of(context).size.width >= desktop;
+
+  /// Colonne griglia per la dispensa: 2 su tablet, 1 su mobile
+  static int pantryColumns(BuildContext context) =>
+      isTablet(context) ? 2 : 1;
+
+  /// Colonne griglia per la lista spesa: 2 su tablet, 1 su mobile
+  static int shoppingColumns(BuildContext context) =>
+      isTablet(context) ? 2 : 1;
+}
+
+// =============================================================================
 // COSTANTI DI DESIGN - COLORI IDENTICI ALLA WEBAPP
 // =============================================================================
 

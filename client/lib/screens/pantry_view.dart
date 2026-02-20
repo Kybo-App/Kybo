@@ -217,95 +217,124 @@ class _PantryViewState extends State<PantryView> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      itemCount: widget.pantryItems.length,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                      itemBuilder: (context, index) {
-                        final item = widget.pantryItems[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: KyboColors.surface(context),
-                            borderRadius: KyboBorderRadius.medium,
-                            border: Border.all(
-                              color: KyboColors.border(context),
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Dismissible(
-                            key: Key("${item.name}_$index"),
-                            direction: DismissDirection.endToStart,
-                            onDismissed: (_) => widget.onRemove(index),
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
-                                ),
-                                borderRadius: KyboBorderRadius.medium,
-                              ),
-                              child: const Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                              ),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 4,
-                              ),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [KyboColors.primary, KyboColors.primaryDark],
-                                  ),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.inventory_2_outlined,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                item.name,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  color: KyboColors.textPrimary(context),
-                                ),
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: KyboColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: KyboBorderRadius.medium,
-                                ),
-                                child: Text(
-                                  "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: KyboColors.primary,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  : KyboBreakpoints.isTablet(context)
+                      ? _buildGridList(context)
+                      : _buildLinearList(context),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Lista lineare (mobile) ─────────────────────────────────────────────
+  Widget _buildLinearList(BuildContext context) {
+    return ListView.builder(
+      itemCount: widget.pantryItems.length,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      itemBuilder: (context, index) => _buildPantryTile(context, index),
+    );
+  }
+
+  // ─── Griglia 2 colonne (tablet) ─────────────────────────────────────────
+  Widget _buildGridList(BuildContext context) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 3.5,
+      ),
+      itemCount: widget.pantryItems.length,
+      itemBuilder: (context, index) => _buildPantryTile(context, index),
+    );
+  }
+
+  // ─── Tile singolo articolo dispensa ─────────────────────────────────────
+  Widget _buildPantryTile(BuildContext context, int index) {
+    final item = widget.pantryItems[index];
+    return Container(
+      margin: KyboBreakpoints.isTablet(context)
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KyboColors.surface(context),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(
+          color: KyboColors.border(context),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Dismissible(
+        key: Key("${item.name}_$index"),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) => widget.onRemove(index),
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [KyboColors.error, KyboColors.error.withValues(alpha: 0.8)],
+            ),
+            borderRadius: KyboBorderRadius.medium,
+          ),
+          child: const Icon(
+            Icons.delete,
+            color: Colors.white,
+          ),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 2,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [KyboColors.primary, KyboColors.primaryDark],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          title: Text(
+            item.name,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: KyboColors.textPrimary(context),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: KyboColors.primary.withValues(alpha: 0.1),
+              borderRadius: KyboBorderRadius.medium,
+            ),
+            child: Text(
+              "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: KyboColors.primary,
+                fontSize: 13,
+              ),
+            ),
+          ),
         ),
       ),
     );
