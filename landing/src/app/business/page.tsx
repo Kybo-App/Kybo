@@ -1,8 +1,6 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const BusinessPageContent = dynamic(() => import('@/components/BusinessPageContent'), { ssr: false });
+import BusinessPageContent from '@/components/BusinessPageContent';
 
 export default function BusinessPage() {
   return <BusinessPageContent />;
