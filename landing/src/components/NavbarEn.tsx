@@ -45,7 +45,6 @@ export default function NavbarEn() {
           <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Features</a></li>
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
           <li><a href="/en/business">For Nutritionists</a></li>
-          <li><a href="/business#prezzi">Pricing</a></li>
           {/* Language switcher */}
           <li><a href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</a></li>
         </ul>

@@ -114,6 +114,7 @@ class _ChatManagementContent extends StatelessWidget {
 
   void _showBroadcastDialog(BuildContext context) {
     final messageController = TextEditingController();
+    final isAdmin = context.read<AdminChatProvider>().userRole == 'admin';
 
     showDialog(
       context: context,
@@ -137,7 +138,9 @@ class _ChatManagementContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Invia un messaggio a tutti i tuoi clienti.',
+                isAdmin
+                    ? 'Invia un messaggio a tutti i nutrizionisti.'
+                    : 'Invia un messaggio a tutti i tuoi clienti.',
                 style: TextStyle(
                   color: KyboColors.textSecondary,
                   fontSize: 14,
@@ -169,7 +172,9 @@ class _ChatManagementContent extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Il messaggio apparira in tutte le chat attive.',
+                isAdmin
+                    ? 'Il messaggio apparirà nelle chat admin-nutrizionista.'
+                    : 'Il messaggio apparirà in tutte le chat attive.',
                 style: TextStyle(
                   color: KyboColors.textMuted,
                   fontSize: 12,
