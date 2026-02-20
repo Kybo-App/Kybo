@@ -139,7 +139,6 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 _instrumentator = Instrumentator(
     should_group_status_codes=True,        # raggruppa 2xx, 4xx, 5xx
-    should_ignore_untemplated_requests=True,
     should_respect_env_var=False,
     should_instrument_requests_inprogress=True,
     excluded_urls=["/metrics", "/ping", "/health"],  # escludi gli endpoint di infra
