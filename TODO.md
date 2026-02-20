@@ -118,10 +118,10 @@
 > Miglioramenti app mobile.
 
 - [x] Widget home screen (prossimo pasto, lista spesa)
-- [ ] Modalità tablet con layout ottimizzato
+- [x] Modalità tablet con layout ottimizzato
 - [x] Condivisione lista spesa via link/WhatsApp
 - [x] Raggruppamento lista spesa per corsia del supermercato
-- [ ] Prezzi stimati e budget tracking (forse)
+- [x] Prezzi stimati e budget tracking
 - [x] Sfide settimanali gamification ("prova 3 nuove ricette questa settimana")
 
 ---

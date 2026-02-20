@@ -8,6 +8,7 @@ import '../models/pantry_item.dart';
 import '../widgets/design_system.dart';
 import '../logic/diet_calculator.dart';
 import '../services/badge_service.dart';
+import '../services/pricing_service.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
@@ -56,6 +57,226 @@ String _categorizeItem(String itemName) {
 class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
   bool _groupByCategory = false;
+
+  // ─── Banner budget stimato ───────────────────────────────────────────────
+  Widget _buildBudgetBanner(BuildContext context) {
+    final provider = context.watch<DietProvider>();
+
+    // Nessun articolo → non mostrare
+    if (widget.shoppingList.isEmpty) return const SizedBox.shrink();
+
+    final activeItems = widget.shoppingList
+        .where((i) => !i.startsWith('OK_'))
+        .toList();
+    if (activeItems.isEmpty) return const SizedBox.shrink();
+
+    final estimatedCost = PricingService.estimateTotalCost(activeItems);
+    final budget = provider.weeklyBudget;
+    final ratio = budget != null && budget > 0
+        ? (estimatedCost / budget).clamp(0.0, 1.0)
+        : null;
+    final overBudget = budget != null && estimatedCost > budget;
+
+    final Color barColor = overBudget
+        ? KyboColors.error
+        : ratio != null && ratio > 0.8
+            ? KyboColors.warning
+            : KyboColors.primary;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: barColor.withValues(alpha: 0.08),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(color: barColor.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.euro_rounded, color: barColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Spesa stimata: €${estimatedCost.toStringAsFixed(2).replaceAll('.', ',')}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: barColor,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showBudgetDialog(context, provider),
+                child: Row(
+                  children: [
+                    Text(
+                      budget != null
+                          ? 'Budget: €${budget.toStringAsFixed(0)}'
+                          : 'Imposta budget',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: KyboColors.textMuted(context),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.edit_rounded,
+                      size: 13,
+                      color: KyboColors.textMuted(context),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (ratio != null) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: ratio,
+                backgroundColor: barColor.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                minHeight: 5,
+              ),
+            ),
+            if (overBudget)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Superi il budget di €${(estimatedCost - budget).toStringAsFixed(2).replaceAll('.', ',')}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: KyboColors.error,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Dialog impostazione budget ──────────────────────────────────────────
+  void _showBudgetDialog(BuildContext context, DietProvider provider) {
+    final controller = TextEditingController(
+      text: provider.weeklyBudget != null
+          ? provider.weeklyBudget!.toStringAsFixed(0)
+          : '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: KyboColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.euro_rounded,
+                  color: KyboColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Budget Spesa',
+              style: TextStyle(
+                color: KyboColors.textPrimary(context),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Imposta un budget settimanale per la spesa.\nKybo ti avviserà se la lista stimata lo supera.',
+              style: TextStyle(
+                color: KyboColors.textSecondary(context),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(
+                color: KyboColors.textPrimary(context),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(color: KyboColors.textMuted(context)),
+                prefixText: '€ ',
+                prefixStyle: TextStyle(
+                  color: KyboColors.primary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: KyboBorderRadius.medium,
+                  borderSide: BorderSide(color: KyboColors.border(context)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: KyboBorderRadius.medium,
+                  borderSide:
+                      const BorderSide(color: KyboColors.primary, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (provider.weeklyBudget != null)
+            TextButton(
+              onPressed: () {
+                provider.setWeeklyBudget(null);
+                Navigator.pop(ctx);
+              },
+              child: Text(
+                'Rimuovi',
+                style: TextStyle(color: KyboColors.error),
+              ),
+            ),
+          PillButton(
+            label: 'Annulla',
+            onPressed: () => Navigator.pop(ctx),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 40,
+          ),
+          PillButton(
+            label: 'Salva',
+            onPressed: () {
+              final val = double.tryParse(
+                  controller.text.replaceAll(',', '.'));
+              if (val != null && val > 0) {
+                provider.setWeeklyBudget(val);
+              }
+              Navigator.pop(ctx);
+            },
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            height: 40,
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _shareList() async {
     if (widget.shoppingList.isEmpty) return;
@@ -712,6 +933,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                 ],
               ),
             ),
+
+            // BANNER BUDGET
+            _buildBudgetBanner(context),
 
             // LISTA (Design Coerente con MealCard)
             Expanded(
