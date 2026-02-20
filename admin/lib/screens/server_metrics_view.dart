@@ -3,12 +3,7 @@ import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
 /// Dashboard metriche server — visibile solo agli admin.
-/// Legge /metrics/api e /health/detailed dal backend e mostra:
-///   - Stato servizi (health check)
-///   - Cache hit ratio per layer (L1 RAM, L1.5 Redis, L2 Firestore)
-///   - Gemini AI: chiamate, errori, durata media
-///   - OCR: scansioni, errori, durata media
-///   - HTTP: richieste totali, latenza
+/// Legge /metrics/api e /health/detailed dal backend.
 class ServerMetricsView extends StatefulWidget {
   const ServerMetricsView({super.key});
 
@@ -108,10 +103,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               if (_lastRefresh != null)
                 Text(
                   'Aggiornato alle ${_lastRefresh!.hour.toString().padLeft(2, '0')}:${_lastRefresh!.minute.toString().padLeft(2, '0')}:${_lastRefresh!.second.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    color: KyboColors.textMuted,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
             ],
           ),
@@ -132,8 +124,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded,
-                color: KyboColors.error, size: 48),
+            Icon(Icons.error_outline_rounded, color: KyboColors.error, size: 48),
             const SizedBox(height: 16),
             Text(
               'Errore nel caricamento metriche',
@@ -150,11 +141,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            PillButton(
-              label: 'Riprova',
-              icon: Icons.refresh_rounded,
-              onPressed: _load,
-            ),
+            PillButton(label: 'Riprova', icon: Icons.refresh_rounded, onPressed: _load),
           ],
         ),
       ),
@@ -162,38 +149,143 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
   }
 
   Widget _buildContent() {
+    final overallStatus = _health?['status'] as String? ?? 'unknown';
+    final warnings = (_health?['warnings'] as List<dynamic>?) ?? [];
+    final diet = (_metrics?['diet_parser'] as Map<String, dynamic>?) ?? {};
+    final sug = (_metrics?['meal_suggestions'] as Map<String, dynamic>?) ?? {};
+    final redis = (_metrics?['redis'] as Map<String, dynamic>?) ?? {};
+
+    final totalCalls = _toInt(diet['gemini_calls']) + _toInt(sug['gemini_calls']);
+    final totalErrors = _toInt(diet['gemini_errors']) + _toInt(sug['gemini_errors']);
+    final dietCache = (diet['cache'] as Map<String, dynamic>?) ?? {};
+    final l1 = (dietCache['L1_ram'] as Map<String, dynamic>?) ?? {};
+    final l1Ratio = l1['ratio'] as String? ?? 'N/A';
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── HEALTH CHECK ───────────────────────────────────────────────
+          // ═══════════════════════════════════════════════════════════════
+          // STAT CARD SUMMARY ROW
+          // ═══════════════════════════════════════════════════════════════
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.health_and_safety_rounded,
+                  label: 'Stato Server',
+                  value: overallStatus == 'healthy' ? 'Healthy' : 'Unhealthy',
+                  valueColor: overallStatus == 'healthy'
+                      ? KyboColors.success
+                      : KyboColors.error,
+                  sub: warnings.isNotEmpty
+                      ? '${warnings.length} warning'
+                      : 'Tutti i servizi ok',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Chiamate Gemini',
+                  value: totalCalls.toString(),
+                  valueColor: KyboColors.primary,
+                  sub: totalErrors > 0 ? '$totalErrors errori' : 'Nessun errore',
+                  subColor: totalErrors > 0 ? KyboColors.error : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.layers_rounded,
+                  label: 'Cache L1 Hit',
+                  value: l1Ratio,
+                  valueColor: _ratioColor(l1),
+                  sub: 'RAM in-process',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SummaryCard(
+                  icon: Icons.storage_rounded,
+                  label: 'Redis',
+                  value: redis['available'] == true ? 'Online' : 'Offline',
+                  valueColor: redis['available'] == true
+                      ? KyboColors.success
+                      : KyboColors.textMuted,
+                  sub: redis['available'] == true
+                      ? 'Cache L1.5 attiva'
+                      : 'Fallback a RAM+Firestore',
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 28),
+
+          // ═══════════════════════════════════════════════════════════════
+          // STATO SERVIZI
+          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Stato Servizi', Icons.health_and_safety_rounded),
           const SizedBox(height: 12),
           _buildHealthSection(),
+
           const SizedBox(height: 28),
 
-          // ─── GEMINI AI ──────────────────────────────────────────────────
+          // ═══════════════════════════════════════════════════════════════
+          // GEMINI AI
+          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Gemini AI', Icons.auto_awesome_rounded),
           const SizedBox(height: 12),
-          _buildGeminiSection(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _GeminiCard(
+                  title: 'Diet Parser',
+                  calls: _toInt(diet['gemini_calls']),
+                  errors: _toInt(diet['gemini_errors']),
+                  avgDuration: _toDouble(diet['avg_parse_duration_s']),
+                  durationLabel: 'durata media parsing',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _GeminiCard(
+                  title: 'Meal Suggestions',
+                  calls: _toInt(sug['gemini_calls']),
+                  errors: _toInt(sug['gemini_errors']),
+                  avgDuration: _toDouble(sug['avg_generation_duration_s']),
+                  durationLabel: 'durata media suggerimenti',
+                ),
+              ),
+            ],
+          ),
+
           const SizedBox(height: 28),
 
-          // ─── CACHE ──────────────────────────────────────────────────────
-          _buildSectionTitle('Cache', Icons.layers_rounded),
+          // ═══════════════════════════════════════════════════════════════
+          // CACHE
+          // ═══════════════════════════════════════════════════════════════
+          _buildSectionTitle('Cache Hit Ratio', Icons.layers_rounded),
           const SizedBox(height: 12),
-          _buildCacheSection(),
+          _buildCacheSection(diet, sug),
+
           const SizedBox(height: 28),
 
-          // ─── OCR ────────────────────────────────────────────────────────
-          _buildSectionTitle('OCR Scontrini', Icons.document_scanner_rounded),
+          // ═══════════════════════════════════════════════════════════════
+          // OCR + REDIS (riga finale)
+          // ═══════════════════════════════════════════════════════════════
+          _buildSectionTitle('Infrastruttura', Icons.dns_rounded),
           const SizedBox(height: 12),
-          _buildOcrSection(),
-          const SizedBox(height: 28),
+          Row(
+            children: [
+              Expanded(child: _buildOcrCard()),
+              const SizedBox(width: 12),
+              Expanded(child: _buildRedisCard(redis)),
+            ],
+          ),
 
-          // ─── REDIS ──────────────────────────────────────────────────────
-          _buildSectionTitle('Redis', Icons.storage_rounded),
-          const SizedBox(height: 12),
-          _buildRedisSection(),
           const SizedBox(height: 16),
         ],
       ),
@@ -205,170 +297,241 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildHealthSection() {
-    final checks =
-        (_health?['checks'] as Map<String, dynamic>?) ?? {};
+    final checks = (_health?['checks'] as Map<String, dynamic>?) ?? {};
     final overallStatus = _health?['status'] as String? ?? 'unknown';
     final warnings = (_health?['warnings'] as List<dynamic>?) ?? [];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Overall status badge
-        Row(
-          children: [
-            _StatusChip(
-              label: overallStatus == 'healthy' ? 'Healthy' : 'Unhealthy',
-              color: overallStatus == 'healthy'
-                  ? KyboColors.success
-                  : KyboColors.error,
-              icon: overallStatus == 'healthy'
-                  ? Icons.check_circle_rounded
-                  : Icons.cancel_rounded,
-            ),
-            if (warnings.isNotEmpty) ...[
-              const SizedBox(width: 8),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        borderRadius: KyboBorderRadius.large,
+        border: Border.all(color: KyboColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overall badge row
+          Row(
+            children: [
               _StatusChip(
-                label: '${warnings.length} warning',
-                color: KyboColors.warning,
-                icon: Icons.warning_amber_rounded,
+                label: overallStatus == 'healthy' ? 'Healthy' : 'Unhealthy',
+                color: overallStatus == 'healthy' ? KyboColors.success : KyboColors.error,
+                icon: overallStatus == 'healthy'
+                    ? Icons.check_circle_rounded
+                    : Icons.cancel_rounded,
+              ),
+              if (warnings.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                _StatusChip(
+                  label: '${warnings.length} warning',
+                  color: KyboColors.warning,
+                  icon: Icons.warning_amber_rounded,
+                ),
+              ],
+              const Spacer(),
+              Text(
+                '${_health?['environment'] ?? ''}  v${_health?['version'] ?? ''}',
+                style: TextStyle(
+                  color: KyboColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
-            const SizedBox(width: 12),
-            Text(
-              _health?['environment'] as String? ?? '',
-              style: TextStyle(
-                color: KyboColors.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              '  v${_health?['version'] ?? ''}',
-              style: TextStyle(
-                color: KyboColors.textMuted,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: checks.entries.map((e) {
-            final svc = e.value as Map<String, dynamic>;
-            final status = svc['status'] as String? ?? 'unknown';
-            final message = svc['message'] as String? ?? '';
-            return _ServiceCard(
-              name: e.key,
-              status: status,
-              message: message,
-              isWarning: warnings.contains(e.key),
-            );
-          }).toList(),
-        ),
-      ],
+          ),
+          const SizedBox(height: 16),
+          // Servizi in riga
+          Row(
+            children: checks.entries.map((e) {
+              final svc = e.value as Map<String, dynamic>;
+              final status = svc['status'] as String? ?? 'unknown';
+              final message = svc['message'] as String? ?? '';
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: e.key != checks.keys.last ? 10 : 0,
+                  ),
+                  child: _ServiceCard(
+                    name: e.key,
+                    status: status,
+                    message: message,
+                    isWarning: warnings.contains(e.key),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildGeminiSection() {
-    final diet = (_metrics?['diet_parser'] as Map<String, dynamic>?) ?? {};
-    final sug =
-        (_metrics?['meal_suggestions'] as Map<String, dynamic>?) ?? {};
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _GeminiCard(
-            title: 'Diet Parser',
-            calls: _toInt(diet['gemini_calls']),
-            errors: _toInt(diet['gemini_errors']),
-            avgDuration: _toDouble(diet['avg_parse_duration_s']),
-            durationLabel: 'durata media parsing',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _GeminiCard(
-            title: 'Meal Suggestions',
-            calls: _toInt(sug['gemini_calls']),
-            errors: _toInt(sug['gemini_errors']),
-            avgDuration: _toDouble(sug['avg_generation_duration_s']),
-            durationLabel: 'durata media suggerimenti',
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCacheSection() {
-    final diet = (_metrics?['diet_parser'] as Map<String, dynamic>?) ?? {};
-    final sug =
-        (_metrics?['meal_suggestions'] as Map<String, dynamic>?) ?? {};
+  Widget _buildCacheSection(
+      Map<String, dynamic> diet, Map<String, dynamic> sug) {
     final dietCache = (diet['cache'] as Map<String, dynamic>?) ?? {};
     final sugCache = (sug['cache'] as Map<String, dynamic>?) ?? {};
 
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        borderRadius: KyboBorderRadius.large,
+        border: Border.all(color: KyboColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCacheGroup('Diet Parser', dietCache),
+          const SizedBox(height: 20),
+          Divider(color: KyboColors.border, height: 1),
+          const SizedBox(height: 20),
+          _buildCacheGroup('Meal Suggestions', sugCache),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCacheGroup(String title, Map<String, dynamic> cache) {
+    final layers = [
+      ('L1 RAM', 'Velocissima — in-process', cache['L1_ram'] as Map<String, dynamic>?),
+      ('L1.5 Redis', 'Distribuita — shared tra istanze', cache['L1_5_redis'] as Map<String, dynamic>?),
+      ('L2 Firestore', 'Persistente — 30 giorni TTL', cache['L2_firestore'] as Map<String, dynamic>?),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Diet Parser',
+          title,
           style: TextStyle(
             color: KyboColors.textSecondary,
             fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 8),
-        _buildCacheLayerRow(dietCache),
-        const SizedBox(height: 16),
-        Text(
-          'Meal Suggestions',
-          style: TextStyle(
-            color: KyboColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildCacheLayerRow(sugCache),
+        const SizedBox(height: 12),
+        ...layers.map((layer) {
+          final name = layer.$1;
+          final desc = layer.$2;
+          final data = layer.$3;
+          final hits = _toInt(data?['hits']);
+          final misses = _toInt(data?['misses']);
+          final total = hits + misses;
+          final pct = total > 0 ? hits / total : 0.0;
+          final ratio = data?['ratio'] as String? ?? 'N/A';
+
+          Color barColor;
+          if (pct >= 0.8) barColor = KyboColors.success;
+          else if (pct >= 0.5) barColor = KyboColors.warning;
+          else barColor = total == 0 ? KyboColors.border : KyboColors.error;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: Row(
+              children: [
+                // Label
+                SizedBox(
+                  width: 110,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: KyboColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        desc,
+                        style: TextStyle(
+                          color: KyboColors.textMuted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Bar + ratio
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: KyboBorderRadius.pill,
+                              child: LinearProgressIndicator(
+                                value: pct.clamp(0.0, 1.0),
+                                minHeight: 10,
+                                backgroundColor: KyboColors.background,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(barColor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 52,
+                            child: Text(
+                              ratio,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: barColor == KyboColors.border
+                                    ? KyboColors.textMuted
+                                    : barColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            '✓ $hits hit',
+                            style: TextStyle(
+                              color: KyboColors.success,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '✗ $misses miss',
+                            style: TextStyle(
+                              color: KyboColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (total == 0)
+                            Text(
+                              '  Nessuna richiesta ancora',
+                              style: TextStyle(
+                                color: KyboColors.textMuted,
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
 
-  Widget _buildCacheLayerRow(Map<String, dynamic> cache) {
-    final layers = [
-      ('L1 RAM', cache['L1_ram'] as Map<String, dynamic>?),
-      ('L1.5 Redis', cache['L1_5_redis'] as Map<String, dynamic>?),
-      ('L2 Firestore', cache['L2_firestore'] as Map<String, dynamic>?),
-    ];
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: layers.map((layer) {
-        final name = layer.$1;
-        final data = layer.$2;
-        final ratio = data?['ratio'] as String? ?? 'N/A';
-        final hits = _toInt(data?['hits']);
-        final misses = _toInt(data?['misses']);
-        final total = hits + misses;
-        final pct = total > 0 ? hits / total : 0.0;
-
-        return _CacheLayerCard(
-          name: name,
-          ratio: ratio,
-          hits: hits,
-          misses: misses,
-          pct: pct,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildOcrSection() {
-    // OCR non è in /metrics/api, mostriamo solo info dal health
+  Widget _buildOcrCard() {
     final tesseract =
         ((_health?['checks'] as Map<String, dynamic>?)?['tesseract']
                 as Map<String, dynamic>?) ??
@@ -398,7 +561,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tesseract OCR',
+                  'OCR Tesseract',
                   style: TextStyle(
                     color: KyboColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -406,40 +569,18 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                   ),
                 ),
                 Text(
-                  message,
-                  style: TextStyle(
-                    color: KyboColors.textMuted,
-                    fontSize: 12,
-                  ),
+                  status == 'ok' ? message : 'Non disponibile su Render — funzione scontrini disabilitata',
+                  style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          if (status != 'ok')
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: KyboColors.warning.withValues(alpha: 0.1),
-                borderRadius: KyboBorderRadius.pill,
-              ),
-              child: Text(
-                'Non disponibile su Render',
-                style: TextStyle(
-                  color: KyboColors.warning,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildRedisSection() {
-    final redis =
-        (_metrics?['redis'] as Map<String, dynamic>?) ?? {};
+  Widget _buildRedisCard(Map<String, dynamic> redis) {
     final available = redis['available'] == true;
     final configured = redis['url_configured'] == true;
 
@@ -477,11 +618,8 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                       ? 'Connesso e operativo'
                       : configured
                           ? 'Configurato ma non raggiungibile'
-                          : 'Non configurato — in uso solo cache RAM + Firestore',
-                  style: TextStyle(
-                    color: KyboColors.textMuted,
-                    fontSize: 12,
-                  ),
+                          : 'Non configurato — fallback RAM + Firestore',
+                  style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -489,9 +627,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
           _StatusChip(
             label: available ? 'Online' : 'Offline',
             color: available ? KyboColors.success : KyboColors.textMuted,
-            icon: available
-                ? Icons.cloud_done_rounded
-                : Icons.cloud_off_rounded,
+            icon: available ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
           ),
         ],
       ),
@@ -519,6 +655,17 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
     );
   }
 
+  Color _ratioColor(Map<String, dynamic> layer) {
+    final hits = _toInt(layer['hits']);
+    final misses = _toInt(layer['misses']);
+    final total = hits + misses;
+    if (total == 0) return KyboColors.textMuted;
+    final pct = hits / total;
+    if (pct >= 0.8) return KyboColors.success;
+    if (pct >= 0.5) return KyboColors.warning;
+    return KyboColors.error;
+  }
+
   int _toInt(dynamic v) {
     if (v == null) return 0;
     if (v is int) return v;
@@ -537,7 +684,78 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
 }
 
 // =============================================================================
-// WIDGET HELPER: SERVICE CARD
+// WIDGET: SUMMARY CARD (riga in cima)
+// =============================================================================
+
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color valueColor;
+  final String sub;
+  final Color? subColor;
+
+  const _SummaryCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    required this.sub,
+    this.subColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        borderRadius: KyboBorderRadius.large,
+        border: Border.all(color: KyboColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: KyboColors.textMuted),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: KyboColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            sub,
+            style: TextStyle(
+              color: subColor ?? KyboColors.textMuted,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// WIDGET: SERVICE CARD
 // =============================================================================
 
 class _ServiceCard extends StatelessWidget {
@@ -569,19 +787,18 @@ class _ServiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: KyboColors.surface,
+        color: _color.withValues(alpha: 0.06),
         borderRadius: KyboBorderRadius.large,
-        border: Border.all(color: _color.withValues(alpha: 0.3)),
+        border: Border.all(color: _color.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(_icon, color: _color, size: 16),
+              Icon(_icon, color: _color, size: 15),
               const SizedBox(width: 6),
               Text(
                 name[0].toUpperCase() + name.substring(1),
@@ -593,13 +810,10 @@ class _ServiceCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             message,
-            style: TextStyle(
-              color: KyboColors.textMuted,
-              fontSize: 11,
-            ),
+            style: TextStyle(color: KyboColors.textMuted, fontSize: 11),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -610,7 +824,7 @@ class _ServiceCard extends StatelessWidget {
 }
 
 // =============================================================================
-// WIDGET HELPER: GEMINI CARD
+// WIDGET: GEMINI CARD
 // =============================================================================
 
 class _GeminiCard extends StatelessWidget {
@@ -642,32 +856,39 @@ class _GeminiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: KyboColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded,
+                  size: 15, color: KyboColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  color: KyboColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _MetricRow(
             label: 'Chiamate totali',
             value: calls.toString(),
             icon: Icons.call_made_rounded,
             color: KyboColors.primary,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _MetricRow(
             label: 'Errori',
-            value: '$errors (${errorRate.toStringAsFixed(1)}%)',
+            value: '$errors  (${errorRate.toStringAsFixed(1)}%)',
             icon: Icons.error_outline_rounded,
             color: errors > 0 ? KyboColors.error : KyboColors.textMuted,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           _MetricRow(
             label: durationLabel,
-            value: '${avgDuration.toStringAsFixed(1)}s',
+            value: '${avgDuration.toStringAsFixed(1)} s',
             icon: Icons.timer_rounded,
             color: KyboColors.textSecondary,
           ),
@@ -678,100 +899,7 @@ class _GeminiCard extends StatelessWidget {
 }
 
 // =============================================================================
-// WIDGET HELPER: CACHE LAYER CARD
-// =============================================================================
-
-class _CacheLayerCard extends StatelessWidget {
-  final String name;
-  final String ratio;
-  final int hits;
-  final int misses;
-  final double pct;
-
-  const _CacheLayerCard({
-    required this.name,
-    required this.ratio,
-    required this.hits,
-    required this.misses,
-    required this.pct,
-  });
-
-  Color get _barColor {
-    if (pct >= 0.8) return KyboColors.success;
-    if (pct >= 0.5) return KyboColors.warning;
-    return KyboColors.error;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        borderRadius: KyboBorderRadius.large,
-        border: Border.all(color: KyboColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            name,
-            style: TextStyle(
-              color: KyboColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            ratio,
-            style: TextStyle(
-              color: KyboColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Progress bar
-          ClipRRect(
-            borderRadius: KyboBorderRadius.pill,
-            child: LinearProgressIndicator(
-              value: pct.clamp(0.0, 1.0),
-              minHeight: 6,
-              backgroundColor: KyboColors.border,
-              valueColor: AlwaysStoppedAnimation<Color>(_barColor),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                '✓ $hits hit',
-                style: TextStyle(
-                  color: KyboColors.success,
-                  fontSize: 11,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '✗ $misses miss',
-                style: TextStyle(
-                  color: KyboColors.textMuted,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// WIDGET HELPER: STATUS CHIP
+// WIDGET: STATUS CHIP
 // =============================================================================
 
 class _StatusChip extends StatelessWidget {
@@ -813,7 +941,7 @@ class _StatusChip extends StatelessWidget {
 }
 
 // =============================================================================
-// WIDGET HELPER: METRIC ROW
+// WIDGET: METRIC ROW
 // =============================================================================
 
 class _MetricRow extends StatelessWidget {
@@ -838,10 +966,7 @@ class _MetricRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              color: KyboColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: KyboColors.textSecondary, fontSize: 12),
           ),
         ),
         Text(
