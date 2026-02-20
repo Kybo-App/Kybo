@@ -48,17 +48,20 @@ void main() {
         MultiProvider(
           providers: [
             Provider(create: (_) => DietRepository()),
+            ChangeNotifierProvider<BadgeService>(
+              create: (_) => BadgeService(),
+            ),
             ChangeNotifierProvider<DietProvider>(
-              create: (context) => DietProvider(context.read<DietRepository>()),
+              create: (context) => DietProvider(
+                context.read<DietRepository>(),
+                context.read<BadgeService>(),
+              ),
             ),
             ChangeNotifierProvider<ThemeProvider>(
               create: (_) => ThemeProvider(),
             ),
             ChangeNotifierProvider<ChatProvider>(
               create: (_) => ChatProvider()..initializeChat(),
-            ),
-            ChangeNotifierProvider<BadgeService>(
-              create: (_) => BadgeService(),
             ),
           ],
           child: const DietApp(),
