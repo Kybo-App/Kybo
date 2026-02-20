@@ -166,7 +166,7 @@
 > Miglioramenti tecnici backend.
 
 **Performance:**
-- [ ] Redis cache layer (sostituire o affiancare L1 in-memory)
+- [x] Redis cache layer (L1.5 distribuito tra RAM e Firestore, graceful fallback)
 - [ ] Queue system per parsing diete (Celery/RQ invece di semaphore)
 
 **Monitoring:**

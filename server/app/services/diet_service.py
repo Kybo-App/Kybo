@@ -63,6 +63,11 @@ class DietParser:
     _MEMORY_CACHE_MAX_SIZE = settings.MEMORY_CACHE_SIZE
     _MEMORY_CACHE_TTL_SECONDS = settings.MEMORY_CACHE_TTL
 
+    # [OPTIMIZATION] Cache L1.5 Redis sincrono (condiviso tra istanze)
+    # Creato lazy al primo utilizzo; None se Redis non configurato
+    _redis_sync = None
+    _redis_checked = False
+
     def __init__(self):
         api_key = settings.GOOGLE_API_KEY
         if not api_key:
@@ -236,6 +241,59 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 
         DietParser._memory_cache[content_hash] = (result, time.time())
 
+    # ── Cache L1.5 Redis (sincrono, per uso in threadpool) ───────────────────
+
+    def _get_redis_sync(self):
+        """Lazy init del client Redis sincrono. Ritorna None se non disponibile."""
+        if DietParser._redis_checked:
+            return DietParser._redis_sync
+        DietParser._redis_checked = True
+        if not settings.REDIS_URL:
+            return None
+        try:
+            import redis as redis_sync
+            DietParser._redis_sync = redis_sync.from_url(
+                settings.REDIS_URL,
+                decode_responses=True,
+                socket_connect_timeout=2,
+                socket_timeout=2,
+            )
+            DietParser._redis_sync.ping()
+            print("✅ Redis sincrono connesso per DietParser")
+        except Exception as e:
+            print(f"⚠️ Redis non disponibile per DietParser: {e}")
+            DietParser._redis_sync = None
+        return DietParser._redis_sync
+
+    def _get_from_redis_cache(self, content_hash: str):
+        """Cerca risultato in Redis (L1.5). Ritorna None se miss o Redis non disponibile."""
+        import json
+        r = self._get_redis_sync()
+        if r is None:
+            return None
+        try:
+            raw = r.get(f"kybo:diet:{content_hash}")
+            if raw:
+                return json.loads(raw)
+        except Exception as e:
+            print(f"⚠️ Redis GET error: {e}")
+        return None
+
+    def _save_to_redis_cache(self, content_hash: str, result):
+        """Salva risultato in Redis (L1.5) con TTL configurabile."""
+        import json
+        r = self._get_redis_sync()
+        if r is None:
+            return
+        try:
+            r.setex(
+                f"kybo:diet:{content_hash}",
+                settings.REDIS_DIET_TTL,
+                json.dumps(result, default=str),
+            )
+        except Exception as e:
+            print(f"⚠️ Redis SET error: {e}")
+
     # Ora accetta 'file_obj' come primo parametro
     def parse_complex_diet(self, file_obj, custom_instructions: str = None):
         if not self.client:
@@ -261,12 +319,20 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             print(f"✅ Cache L1 (RAM) HIT per hash {content_hash[:8]}...")
             return memory_result
 
-        # ✅ CACHE L2: Check Firestore (millisecondi)
+        # ✅ CACHE L1.5: Check Redis (millisecondi, condiviso tra istanze)
+        redis_result = self._get_from_redis_cache(content_hash)
+        if redis_result:
+            print(f"✅ Cache L1.5 (Redis) HIT per hash {content_hash[:8]}...")
+            self._save_to_memory_cache(content_hash, redis_result)
+            return redis_result
+
+        # ✅ CACHE L2: Check Firestore (decine ms, persistente 30gg)
         cached_result = self._get_cached_response(content_hash)
         if cached_result:
             print(f"✅ Cache L2 (Firestore) HIT per hash {content_hash[:8]}...")
-            # Popola anche L1 per future richieste
+            # Popola anche L1 e L1.5 per future richieste
             self._save_to_memory_cache(content_hash, cached_result)
+            self._save_to_redis_cache(content_hash, cached_result)
             return cached_result
 
         model_name = settings.GEMINI_MODEL
@@ -303,6 +369,9 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             
             # ✅ CACHE L1: Salva in RAM per accesso veloce
             self._save_to_memory_cache(content_hash, result)
+
+            # ✅ CACHE L1.5: Salva in Redis per condivisione tra istanze
+            self._save_to_redis_cache(content_hash, result)
 
             # ✅ CACHE L2: Salva in Firestore per persistenza
             self._save_cached_response(content_hash, result)
