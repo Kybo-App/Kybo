@@ -16,6 +16,7 @@ import 'chat_management_view.dart';
 import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
 import 'reports_view.dart';
+import 'server_metrics_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -301,6 +302,12 @@ class _DashboardContentState extends State<_DashboardContent> {
           icon: Icons.security_rounded,
           label: l10n.navAuditLog,
           view: AuditLogView(key: ValueKey('audit_$themeKey')),
+        ),
+      if (_isAdmin)
+        _NavItem(
+          icon: Icons.monitor_heart_rounded,
+          label: 'Server',
+          view: ServerMetricsView(key: ValueKey('server_$themeKey')),
         ),
     ];
 

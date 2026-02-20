@@ -572,6 +572,34 @@ class AdminRepository {
     }
   }
 
+  // --- SERVER METRICS & HEALTH ---
+
+  /// Fetches JSON metrics from /metrics/api (no auth required)
+  Future<Map<String, dynamic>> getServerMetrics() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/metrics/api'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Metriche Server (${response.statusCode})");
+    }
+  }
+
+  /// Fetches detailed health check from /health/detailed (no auth required)
+  Future<Map<String, dynamic>> getHealthDetailed() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/health/detailed'),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 503) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      throw Exception("Errore Health Check (${response.statusCode})");
+    }
+  }
+
   // --- GDPR RETENTION POLICY ---
 
   /// Fetches GDPR dashboard with retention statistics
