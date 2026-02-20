@@ -68,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen> {
             // [FIX] LOGO APP (Assicurati che il file esista in assets!)
             // Se il file si chiama diversamente (es. icon.png), cambia la stringa qui sotto.
             Image.asset(
-              'assets/icon/icon.png',
+              'assets/icon/icon_nobg.png',
               width: 120,
               height: 120,
               errorBuilder: (context, error, stackTrace) {
