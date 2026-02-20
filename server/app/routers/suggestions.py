@@ -308,9 +308,7 @@ Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
 
     # Parsing risposta — multi-tentativo robusto
     raw = response.text or "{}"
-    logger.info(f"[suggestions] Gemini raw response (primi 500 char): {raw[:500]!r}")
     suggestions_raw = _parse_gemini_response(raw)
-    logger.info(f"[suggestions] suggestions_raw count: {len(suggestions_raw)}, primo elemento: {suggestions_raw[0] if suggestions_raw else 'nessuno'}")
 
     # Normalizza in lista di dict
     result = []
