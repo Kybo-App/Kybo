@@ -278,7 +278,7 @@ ISTRUZIONI:
 - Genera esattamente {count} suggerimenti di piatti/pasti NUOVI e DIVERSI da quelli già presenti.
 - I piatti devono essere tipici della cucina italiana o mediterranea, sani e bilanciati.
 - NON suggerire piatti che contengono gli allergeni indicati.
-- Per ogni piatto indica: nome, quantità tipica (es. "80g" o "1 porzione"), tipo di pasto, breve descrizione motivazionale (max 15 parole), ingredienti principali (max 5), stima calorica approssimativa.
+- Per ogni piatto indica: nome, quantità tipica (es. "80g"), tipo di pasto, descrizione breve (max 10 parole), ingredienti principali (max 4), stima calorica (es. "300 kcal").
 - Varia tra: piatti proteici, carboidrati complessi, verdure, frutta, latticini.
 - Sii specifico con le quantità (grammi o unità).
 
@@ -294,7 +294,7 @@ Rispondi SOLO con il JSON strutturato richiesto."""
                 response_mime_type="application/json",
                 response_schema=SuggerimentiOutput,
                 temperature=0.8,   # Un po' di creatività
-                max_output_tokens=2048,
+                max_output_tokens=8192,
             ),
         )
 
@@ -334,10 +334,6 @@ def _parse_gemini_response(raw: str) -> list:
 
     # Normalizza: rimuovi BOM, whitespace iniziale/finale
     cleaned = raw.strip().lstrip('\ufeff')
-
-    # Gemini a volte escapa gli apostrofi con \' (non valido in JSON)
-    # Sostituisci \' con ' solo fuori dalle chiavi JSON (dentro i valori stringa)
-    cleaned = cleaned.replace("\\'", "'")
 
     # Tentativo 1: JSON diretto sul testo pulito
     try:
