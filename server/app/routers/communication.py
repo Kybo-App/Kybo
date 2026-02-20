@@ -122,11 +122,11 @@ async def broadcast_to_clients(
     requester: dict = Depends(verify_professional)
 ):
     """
-    Invia un messaggio broadcast a tutti i clienti del nutrizionista.
-    - Nutritionist: invia solo ai propri clienti (parent_id == uid)
-    - Admin: invia a tutti gli utenti con ruolo 'user'
+    Invia un messaggio broadcast:
+    - Nutritionist: invia ai propri clienti (chat nutritionist-client dove è lui il nutrizionista)
+    - Admin: invia a tutti i nutrizionisti (chat admin-nutritionist dove è lui l'admin)
 
-    Crea un messaggio in ogni chat nutritionist-client esistente.
+    Gli admin non comunicano mai direttamente con i clienti finali per rispettare la privacy.
     """
     requester_id = requester['uid']
     requester_role = requester['role']
@@ -137,20 +137,28 @@ async def broadcast_to_clients(
     try:
         db = firebase_admin.firestore.client()
 
-        # Find all chats for this professional
         if requester_role == 'nutritionist':
+            # Nutritionist broadcasts to their own clients
             chats_query = db.collection('chats') \
                 .where('chatType', '==', 'nutritionist-client') \
                 .where('participants.nutritionistId', '==', requester_id)
+            recipient_label = 'clienti'
+            unread_key = 'client'
+            sender_type = 'nutritionist'
         else:
-            # Admin broadcasts to all nutritionist-client chats
+            # Admin broadcasts ONLY to nutritionists via admin-nutritionist chats
+            # Admins never communicate directly with end clients (privacy)
             chats_query = db.collection('chats') \
-                .where('chatType', '==', 'nutritionist-client')
+                .where('chatType', '==', 'admin-nutritionist') \
+                .where('participants.adminId', '==', requester_id)
+            recipient_label = 'nutrizionisti'
+            unread_key = 'nutritionist'
+            sender_type = 'admin'
 
         chats = list(chats_query.stream())
 
         if not chats:
-            return {"message": "Nessun cliente trovato.", "sent_count": 0}
+            return {"message": f"Nessun {recipient_label} trovato.", "sent_count": 0}
 
         sent_count = 0
         batch = db.batch()
@@ -164,7 +172,7 @@ async def broadcast_to_clients(
             msg_ref = db.collection('chats').document(chat_id).collection('messages').document()
             batch.set(msg_ref, {
                 'senderId': requester_id,
-                'senderType': 'nutritionist' if requester_role == 'nutritionist' else 'admin',
+                'senderType': sender_type,
                 'message': body.message.strip(),
                 'timestamp': firestore.SERVER_TIMESTAMP,
                 'read': False,
@@ -176,10 +184,9 @@ async def broadcast_to_clients(
             batch.set(db.collection('chats').document(chat_id), {
                 'lastMessage': body.message.strip()[:100],
                 'lastMessageTime': firestore.SERVER_TIMESTAMP,
-                'lastMessageSender': 'nutritionist' if requester_role == 'nutritionist' else 'admin',
+                'lastMessageSender': sender_type,
                 'unreadCount': {
-                    'client': firestore.Increment(1),
-                    'nutritionist': 0,
+                    unread_key: firestore.Increment(1),
                 },
             }, merge=True)
             batch_ops += 1
@@ -198,12 +205,12 @@ async def broadcast_to_clients(
         db.collection('access_logs').add({
             'requester_id': requester_id,
             'action': 'BROADCAST_MESSAGE',
-            'reason': f"Broadcast to {sent_count} chats",
+            'reason': f"Broadcast to {sent_count} {recipient_label}",
             'timestamp': firestore.SERVER_TIMESTAMP,
         })
 
-        logger.info("broadcast_sent", sender=requester_id, count=sent_count)
-        return {"message": f"Messaggio inviato a {sent_count} clienti.", "sent_count": sent_count}
+        logger.info("broadcast_sent", sender=requester_id, role=requester_role, count=sent_count)
+        return {"message": f"Messaggio inviato a {sent_count} {recipient_label}.", "sent_count": sent_count}
 
     except HTTPException:
         raise
