@@ -1,0 +1,311 @@
+"""
+Router per suggerimenti pasti personalizzati con Gemini AI.
+Genera suggerimenti basati sulla dieta corrente, allergeni e preferenze storiche.
+"""
+from typing import Optional, List
+from fastapi import APIRouter, HTTPException, Depends, Query
+from pydantic import BaseModel
+from google import genai
+from google.genai import types
+import typing_extensions as typing
+import json
+import hashlib
+import time
+
+from app.core.dependencies import verify_token, get_current_uid
+from app.core.config import settings
+from app.core.logging import logger
+
+router = APIRouter(tags=["suggestions"])
+
+
+# ─── Pydantic schemas per la risposta ────────────────────────────────────────
+
+class SuggestedDish(BaseModel):
+    name: str
+    qty: str
+    meal_type: str          # "Colazione", "Pranzo", etc.
+    description: str        # Breve descrizione/perché è adatto
+    ingredients: List[str]  # Lista ingredienti principali
+    calories_estimate: Optional[str] = None  # "~350 kcal" approssimativo
+
+
+class MealSuggestionsResponse(BaseModel):
+    suggestions: List[SuggestedDish]
+    context_used: str       # Cosa ha usato Gemini per generare ("dieta attuale", "preferenze", ecc.)
+    generated_at: int       # Unix timestamp
+
+
+# ─── TypedDicts per Gemini structured output ─────────────────────────────────
+
+class SuggeritoDish(typing.TypedDict):
+    name: str
+    qty: str
+    meal_type: str
+    description: str
+    ingredients: list[str]
+    calories_estimate: str
+
+
+class SuggerimentiOutput(typing.TypedDict):
+    suggestions: list[SuggeritoDish]
+
+
+# ─── Cache in-memory (30 min TTL) ────────────────────────────────────────────
+
+_suggestions_cache: dict = {}
+_CACHE_TTL = 1800  # 30 minuti
+
+
+def _get_from_cache(key: str):
+    entry = _suggestions_cache.get(key)
+    if entry and (time.time() - entry["ts"]) < _CACHE_TTL:
+        return entry["data"]
+    return None
+
+
+def _save_to_cache(key: str, data: dict):
+    # Mantieni max 200 entry
+    if len(_suggestions_cache) >= 200:
+        oldest = min(_suggestions_cache, key=lambda k: _suggestions_cache[k]["ts"])
+        del _suggestions_cache[oldest]
+    _suggestions_cache[key] = {"data": data, "ts": time.time()}
+
+
+# ─── Endpoint principale ──────────────────────────────────────────────────────
+
+@router.get("/meal-suggestions", response_model=MealSuggestionsResponse)
+async def get_meal_suggestions(
+    meal_type: Optional[str] = Query(None, description="Filtra per tipo pasto: Colazione, Pranzo, Cena..."),
+    count: int = Query(6, ge=1, le=12, description="Numero di suggerimenti da generare"),
+    token: dict = Depends(verify_token),
+    uid: str = Depends(get_current_uid),
+):
+    """
+    Genera suggerimenti di pasti personalizzati basati su:
+    - Dieta corrente dell'utente (piatti già presenti, config, allergeni)
+    - Tipo pasto richiesto (opzionale)
+    - Varietà rispetto ai piatti già presenti
+
+    I suggerimenti sono cachati 30 minuti per evitare chiamate ridondanti a Gemini.
+    """
+    if not settings.GOOGLE_API_KEY:
+        raise HTTPException(503, "Servizio AI non disponibile")
+
+    # Carica dati utente da Firestore
+    import firebase_admin
+    from firebase_admin import firestore as fb_firestore
+    db = fb_firestore.client()
+
+    user_data = _load_user_context(db, uid)
+
+    # Chiave cache: uid + meal_type + count + hash contesto dieta
+    context_hash = hashlib.md5(
+        json.dumps(user_data, sort_keys=True, default=str).encode()
+    ).hexdigest()[:8]
+    cache_key = f"{uid}:{meal_type or 'all'}:{count}:{context_hash}"
+
+    cached = _get_from_cache(cache_key)
+    if cached:
+        logger.info(f"Suggestions cache hit for uid={uid}")
+        return MealSuggestionsResponse(**cached)
+
+    # Genera con Gemini
+    try:
+        result = await _generate_suggestions(
+            user_data=user_data,
+            meal_type=meal_type,
+            count=count,
+        )
+    except Exception as e:
+        logger.error(f"Errore generazione suggerimenti: {e}")
+        raise HTTPException(500, "Errore nella generazione dei suggerimenti")
+
+    response_data = {
+        "suggestions": result,
+        "context_used": _build_context_description(user_data, meal_type),
+        "generated_at": int(time.time()),
+    }
+    _save_to_cache(cache_key, response_data)
+
+    return MealSuggestionsResponse(**response_data)
+
+
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _load_user_context(db, uid: str) -> dict:
+    """
+    Carica dalla Firestore:
+    - Dieta corrente (piano, config, allergeni)
+    - Ultime note pasti (mood, preferenze)
+    """
+    context = {
+        "current_dishes": [],       # Piatti già presenti nella dieta
+        "meals_config": [],         # Tipi di pasto (Colazione, Pranzo...)
+        "allergens": [],            # Allergeni dell'utente
+        "relaxable_foods": [],      # Frutta/verdura rilassabili
+        "recent_moods": [],         # Mood dalle note pasti recenti
+    }
+
+    try:
+        # Dieta corrente
+        diet_doc = db.collection("users").document(uid).collection("diets").document("current").get()
+        if diet_doc.exists:
+            diet_data = diet_doc.to_dict() or {}
+            plan = diet_data.get("plan", {})
+
+            # Estrai tutti i nomi dei piatti (prime 30 per non sovraccaricare il prompt)
+            dishes = []
+            for day_meals in plan.values():
+                for meal_dishes in day_meals.values():
+                    if isinstance(meal_dishes, list):
+                        for dish in meal_dishes:
+                            if isinstance(dish, dict):
+                                name = dish.get("name", "")
+                                if name and name not in dishes:
+                                    dishes.append(name)
+            context["current_dishes"] = dishes[:30]
+
+            # Config dieta
+            cfg = diet_data.get("config", {})
+            if cfg:
+                context["meals_config"] = cfg.get("meals", [])
+                context["relaxable_foods"] = cfg.get("relaxable_foods", [])
+
+            # Allergeni
+            context["allergens"] = diet_data.get("allergens", [])
+
+        # Ultime note pasti (mood tracking)
+        notes_query = (
+            db.collection("users")
+            .document(uid)
+            .collection("meal_notes")
+            .order_by("date", direction=fb_firestore.Query.DESCENDING)
+            .limit(10)
+            .stream()
+        )
+        moods = []
+        for note_doc in notes_query:
+            note = note_doc.to_dict() or {}
+            mood = note.get("mood")
+            meal = note.get("meal_type")
+            if mood and meal:
+                moods.append(f"{meal}: {mood}")
+        context["recent_moods"] = moods
+
+    except Exception as e:
+        logger.warning(f"Errore caricamento contesto utente {uid}: {e}")
+
+    return context
+
+
+async def _generate_suggestions(
+    user_data: dict,
+    meal_type: Optional[str],
+    count: int,
+) -> List[dict]:
+    """Chiama Gemini per generare suggerimenti strutturati."""
+
+    client = genai.Client(api_key=settings.GOOGLE_API_KEY.strip())
+
+    # Costruisci il prompt con il contesto utente
+    current_dishes_str = (
+        ", ".join(user_data["current_dishes"])
+        if user_data["current_dishes"]
+        else "nessuna dieta caricata"
+    )
+    allergens_str = (
+        ", ".join(user_data["allergens"])
+        if user_data["allergens"]
+        else "nessun allergene noto"
+    )
+    meals_str = (
+        ", ".join(user_data["meals_config"])
+        if user_data["meals_config"]
+        else "Colazione, Pranzo, Merenda, Cena"
+    )
+    moods_str = (
+        "; ".join(user_data["recent_moods"])
+        if user_data["recent_moods"]
+        else "nessuna nota recente"
+    )
+
+    meal_filter = f"Genera SOLO suggerimenti per: {meal_type}." if meal_type else f"Distribuisci i suggerimenti tra i pasti: {meals_str}."
+
+    prompt = f"""Sei un nutrizionista AI che aiuta un utente italiano a variare la propria alimentazione.
+
+CONTESTO UTENTE:
+- Piatti già presenti nella dieta attuale: {current_dishes_str}
+- Allergeni/intolleranze: {allergens_str}
+- Tipi di pasto della dieta: {meals_str}
+- Umore recente dai pasti: {moods_str}
+
+ISTRUZIONI:
+{meal_filter}
+- Genera esattamente {count} suggerimenti di piatti/pasti NUOVI e DIVERSI da quelli già presenti.
+- I piatti devono essere tipici della cucina italiana o mediterranea, sani e bilanciati.
+- NON suggerire piatti che contengono gli allergeni indicati.
+- Per ogni piatto indica: nome, quantità tipica (es. "80g" o "1 porzione"), tipo di pasto, breve descrizione motivazionale (max 15 parole), ingredienti principali (max 5), stima calorica approssimativa.
+- Varia tra: piatti proteici, carboidrati complessi, verdure, frutta, latticini.
+- Sii specifico con le quantità (grammi o unità).
+
+Rispondi SOLO con il JSON strutturato richiesto."""
+
+    from fastapi.concurrency import run_in_threadpool
+
+    def _call_gemini():
+        return client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SuggerimentiOutput,
+                temperature=0.8,   # Un po' di creatività
+                max_output_tokens=2048,
+            ),
+        )
+
+    response = await run_in_threadpool(_call_gemini)
+
+    # Parsing risposta
+    raw = response.text or "{}"
+    try:
+        parsed = json.loads(raw)
+        suggestions_raw = parsed.get("suggestions", [])
+    except json.JSONDecodeError:
+        # Fallback: prova a estrarre JSON dal testo
+        import re
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            suggestions_raw = parsed.get("suggestions", [])
+        else:
+            suggestions_raw = []
+
+    # Normalizza in lista di dict
+    result = []
+    for s in suggestions_raw:
+        if isinstance(s, dict) and s.get("name"):
+            result.append({
+                "name": s.get("name", ""),
+                "qty": s.get("qty", ""),
+                "meal_type": s.get("meal_type", meal_type or ""),
+                "description": s.get("description", ""),
+                "ingredients": s.get("ingredients", []),
+                "calories_estimate": s.get("calories_estimate", None),
+            })
+
+    return result
+
+
+def _build_context_description(user_data: dict, meal_type: Optional[str]) -> str:
+    parts = []
+    if user_data["current_dishes"]:
+        parts.append("dieta corrente")
+    if user_data["allergens"]:
+        parts.append(f"allergeni ({', '.join(user_data['allergens'])})")
+    if user_data["recent_moods"]:
+        parts.append("preferenze recenti")
+    if meal_type:
+        parts.append(f"filtro: {meal_type}")
+    return ", ".join(parts) if parts else "dati generali"
