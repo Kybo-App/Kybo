@@ -42,8 +42,8 @@ export default function Navbar() {
           <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Funzionalità</a></li>
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Statistiche</a></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Galleria</a></li>
-          <li><Link href="/business">Per Nutrizionisti</Link></li>
-          <li><Link href="/en" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</Link></li>
+          <li><a href="/business">Per Nutrizionisti</a></li>
+          <li><a href="/en" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</a></li>
         </ul>
 
         <div className={styles.ctaGroup}>
