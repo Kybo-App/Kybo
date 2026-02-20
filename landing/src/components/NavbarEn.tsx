@@ -38,9 +38,9 @@ export default function NavbarEn() {
           <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Features</a></li>
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
           <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Gallery</a></li>
-          <li><Link href="/en/business">For Nutritionists</Link></li>
+          <li><a href="/en/business">For Nutritionists</a></li>
           {/* Language switcher */}
-          <li><Link href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</Link></li>
+          <li><a href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</a></li>
         </ul>
 
         <div className={styles.ctaGroup}>
