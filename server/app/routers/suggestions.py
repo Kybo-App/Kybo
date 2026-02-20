@@ -263,26 +263,33 @@ async def _generate_suggestions(
         else "nessuna nota recente"
     )
 
-    meal_filter = f"Genera SOLO suggerimenti per: {meal_type}." if meal_type else f"Distribuisci i suggerimenti tra i pasti: {meals_str}."
+    meal_filter = f"Genera SOLO suggerimenti per il pasto: {meal_type}." if meal_type else f"Distribuisci i suggerimenti tra i pasti: {meals_str}."
 
-    prompt = f"""Sei un nutrizionista AI che aiuta un utente italiano a variare la propria alimentazione.
+    prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
 
 CONTESTO UTENTE:
-- Piatti già presenti nella dieta attuale: {current_dishes_str}
-- Allergeni/intolleranze: {allergens_str}
-- Tipi di pasto della dieta: {meals_str}
-- Umore recente dai pasti: {moods_str}
+- Piatti già nella dieta: {current_dishes_str}
+- Allergeni: {allergens_str}
+- Pasti della dieta: {meals_str}
 
 ISTRUZIONI:
 {meal_filter}
-- Genera esattamente {count} suggerimenti di piatti/pasti NUOVI e DIVERSI da quelli già presenti.
-- I piatti devono essere tipici della cucina italiana o mediterranea, sani e bilanciati.
-- NON suggerire piatti che contengono gli allergeni indicati.
-- Per ogni piatto indica: nome, quantità tipica (es. "80g"), tipo di pasto, descrizione breve (max 10 parole), ingredienti principali (max 4), stima calorica (es. "300 kcal").
-- Varia tra: piatti proteici, carboidrati complessi, verdure, frutta, latticini.
-- Sii specifico con le quantità (grammi o unità).
+Genera esattamente {count} suggerimenti di piatti italiani/mediterranei NUOVI rispetto a quelli già presenti.
+NON usare ingredienti con allergeni indicati.
 
-Rispondi SOLO con il JSON strutturato richiesto."""
+Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
+{{
+  "suggestions": [
+    {{
+      "name": "Nome del piatto",
+      "qty": "80g",
+      "meal_type": "Colazione",
+      "description": "Breve descrizione max 10 parole",
+      "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"],
+      "calories_estimate": "300 kcal"
+    }}
+  ]
+}}"""
 
     from fastapi.concurrency import run_in_threadpool
 
@@ -291,9 +298,8 @@ Rispondi SOLO con il JSON strutturato richiesto."""
             model=settings.GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=SuggerimentiOutput,
-                temperature=0.8,   # Un po' di creatività
+                response_mime_type="application/json",  # forza JSON puro, niente markdown
+                temperature=0.8,
                 max_output_tokens=8192,
             ),
         )
