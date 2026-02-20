@@ -136,4 +136,16 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('shopping_list', list);
   }
+
+  // ─── Daily Consumed Reset ────────────────────────────────────────────────
+
+  Future<String?> loadLastConsumedResetDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('last_consumed_reset_date');
+  }
+
+  Future<void> saveLastConsumedResetDate(String date) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_consumed_reset_date', date);
+  }
 }

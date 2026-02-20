@@ -89,6 +89,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         _loading = false;
       });
     } on ApiException catch (e) {
+      debugPrint('⚠️ Errore API suggerimenti: ${e.statusCode} - ${e.message}');
       setState(() {
         _error = e.message;
         _loading = false;
@@ -99,8 +100,9 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         _loading = false;
       });
     } catch (e) {
+      debugPrint('⚠️ Errore imprevisto suggerimenti: $e');
       setState(() {
-        _error = 'Errore imprevisto.';
+        _error = 'Errore imprevisto: $e';
         _loading = false;
       });
     }
@@ -188,7 +190,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
                         colors: [KyboColors.primary, KyboColors.primaryDark])
                     : null,
                 color: selected ? null : KyboColors.surface(context),
-                borderRadius: KyboBorderRadius.full,
+                borderRadius: KyboBorderRadius.pill,
                 border: Border.all(
                   color: selected
                       ? KyboColors.primary
@@ -423,7 +425,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: mealColor.withValues(alpha: 0.12),
-                    borderRadius: KyboBorderRadius.full,
+                    borderRadius: KyboBorderRadius.pill,
                   ),
                   child: Text(
                     dish.mealType,
@@ -441,7 +443,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: KyboColors.success.withValues(alpha: 0.1),
-                      borderRadius: KyboBorderRadius.full,
+                      borderRadius: KyboBorderRadius.pill,
                     ),
                     child: Text(
                       dish.caloriesEstimate!,
