@@ -234,7 +234,7 @@ export default function AppMockup() {
   };
 
   return (
-    <section className={styles.section} ref={sectionRef}>
+    <section id="gallery" className={styles.section} ref={sectionRef}>
       <div className={styles.container}>
         <div className={styles.textSide}>
           <span className={styles.eyebrow}>App Mobile</span>
