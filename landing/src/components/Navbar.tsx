@@ -39,9 +39,9 @@ export default function Navbar() {
         </div>
 
         <ul className={styles.menu}>
-          <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Features</a></li>
-          <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
-          <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Gallery</a></li>
+          <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Funzionalità</a></li>
+          <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Statistiche</a></li>
+          <li><a href="#gallery" onClick={(e) => handleNavClick(e, '#gallery')}>Galleria</a></li>
           <li><Link href="/business">Per Nutrizionisti</Link></li>
           <li><Link href="/en" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</Link></li>
         </ul>

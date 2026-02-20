@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import styles from '../CTASection.module.css';
 
 export default function CTASectionEn() {
@@ -54,23 +55,23 @@ export default function CTASectionEn() {
 
               <div className={styles.footerColumn}>
                 <h4>Company</h4>
-                <a href="/about">About Us</a>
-                <a href="/blog">Blog</a>
-                <a href="/careers">Careers</a>
+                <Link href="/about">About Us</Link>
+                <Link href="/blog">Blog</Link>
+                <Link href="/careers">Careers</Link>
               </div>
 
               <div className={styles.footerColumn}>
                 <h4>Support</h4>
-                <a href="/help">Help Centre</a>
-                <a href="/contact">Contact</a>
-                <a href="/faq">FAQ</a>
+                <Link href="/help">Help Centre</Link>
+                <Link href="/contact">Contact</Link>
+                <Link href="/faq">FAQ</Link>
               </div>
 
               <div className={styles.footerColumn}>
                 <h4>Legal</h4>
-                <a href="/privacy">Privacy Policy</a>
-                <a href="/terms">Terms of Service</a>
-                <a href="/cookies">Cookie Policy</a>
+                <Link href="/privacy">Privacy Policy</Link>
+                <Link href="/terms">Terms of Service</Link>
+                <Link href="/cookies">Cookie Policy</Link>
               </div>
             </div>
           </div>
@@ -78,7 +79,7 @@ export default function CTASectionEn() {
           <div className={styles.footerBottom}>
             <p className={styles.copyright}>
               © 2025 Kybo. All rights reserved. ·{' '}
-              <a href="/" style={{ color: 'inherit', opacity: 0.6 }}>🇮🇹 Versione Italiana</a>
+              <Link href="/" style={{ color: 'inherit', opacity: 0.6 }}>🇮🇹 Versione Italiana</Link>
             </p>
             <div className={styles.socials}>
               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
