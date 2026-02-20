@@ -138,10 +138,9 @@ app.add_middleware(
 from prometheus_fastapi_instrumentator import Instrumentator
 
 _instrumentator = Instrumentator(
-    should_group_status_codes=True,        # raggruppa 2xx, 4xx, 5xx
-    should_respect_env_var=False,
+    should_group_status_codes=True,              # raggruppa 2xx, 4xx, 5xx
     should_instrument_requests_inprogress=True,
-    excluded_urls=["/metrics", "/ping", "/health"],  # escludi gli endpoint di infra
+    excluded_handlers=["/metrics", "/ping", "/health"],  # escludi gli endpoint di infra
     inprogress_name="kybo_http_requests_inprogress",
     inprogress_labels=True,
 )
