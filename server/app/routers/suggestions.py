@@ -127,8 +127,9 @@ async def get_meal_suggestions(
             count=count,
         )
     except Exception as e:
-        logger.error(f"Errore generazione suggerimenti: {e}")
-        raise HTTPException(500, "Errore nella generazione dei suggerimenti")
+        logger.error(f"Errore generazione suggerimenti: {e}", uid=uid, meal_type=meal_type, count=count)
+        error_detail = str(e)[:200] if str(e) else "Errore sconosciuto"
+        raise HTTPException(500, f"Errore nella generazione dei suggerimenti: {error_detail}")
 
     response_data = {
         "suggestions": result,
@@ -187,23 +188,28 @@ def _load_user_context(db, uid: str) -> dict:
             # Allergeni
             context["allergens"] = diet_data.get("allergens", [])
 
-        # Ultime note pasti (mood tracking)
-        notes_query = (
-            db.collection("users")
-            .document(uid)
-            .collection("meal_notes")
-            .order_by("date", direction=fb_firestore.Query.DESCENDING)
-            .limit(10)
-            .stream()
-        )
-        moods = []
-        for note_doc in notes_query:
-            note = note_doc.to_dict() or {}
-            mood = note.get("mood")
-            meal = note.get("meal_type")
-            if mood and meal:
-                moods.append(f"{meal}: {mood}")
-        context["recent_moods"] = moods
+        # Ultime note pasti (mood tracking) — query separata per non bloccare
+        # il resto del contesto se l'indice Firestore non esiste
+        try:
+            notes_query = (
+                db.collection("users")
+                .document(uid)
+                .collection("meal_notes")
+                .order_by("date", direction=fb_firestore.Query.DESCENDING)
+                .limit(10)
+                .stream()
+            )
+            moods = []
+            for note_doc in notes_query:
+                note = note_doc.to_dict() or {}
+                mood = note.get("mood")
+                meal = note.get("meal_type")
+                if mood and meal:
+                    moods.append(f"{meal}: {mood}")
+            context["recent_moods"] = moods
+        except Exception as notes_err:
+            logger.warning(f"meal_notes query fallita (indice mancante?): {notes_err}")
+            context["recent_moods"] = []
 
     except Exception as e:
         logger.warning(f"Errore caricamento contesto utente {uid}: {e}")

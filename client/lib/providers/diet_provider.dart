@@ -410,6 +410,9 @@ class DietProvider extends ChangeNotifier {
         _lastSyncedDiet = _deepCopy(savedDiet['plan']);
         _lastSyncedSubstitutions = _deepCopy(savedDiet['substitutions']);
 
+        // [NUOVO] Reset consumed a inizio giornata
+        await _checkDailyReset();
+
         _recalcAvailability();
         hasData = true;
       }
@@ -479,6 +482,9 @@ class DietProvider extends ChangeNotifier {
           _lastSyncedSubstitutions = _deepCopy(jsonMap['substitutions']);
           _lastCloudSave = DateTime.now();
 
+          // [NUOVO] Reset consumed a inizio giornata
+          await _checkDailyReset();
+
           _recalcAvailability();
           await scheduleMealNotifications();
           await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo sync
@@ -529,6 +535,41 @@ class DietProvider extends ChangeNotifier {
 
   Future<void> refreshAvailability() async {
     await _recalcAvailability();
+  }
+
+  // --- RESET GIORNALIERO CONSUMED ---
+
+  /// Controlla se il giorno è cambiato e resetta tutti i flag isConsumed.
+  /// Viene chiamato al caricamento dalla cache e dopo il sync da Firebase.
+  Future<void> _checkDailyReset() async {
+    if (_dietPlan == null) return;
+
+    final today = DateTime.now();
+    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+
+    final lastResetDate = await _storage.loadLastConsumedResetDate();
+
+    if (lastResetDate == todayStr) return; // Già resettato oggi
+
+    // Resetta tutti i flag consumed
+    bool anyReset = false;
+    _dietPlan!.plan.forEach((day, meals) {
+      meals.forEach((mealType, dishes) {
+        for (var dish in dishes) {
+          if (dish.isConsumed) {
+            dish.isConsumed = false;
+            anyReset = true;
+          }
+        }
+      });
+    });
+
+    // Salva la data di reset e la dieta aggiornata
+    await _storage.saveLastConsumedResetDate(todayStr);
+    if (anyReset) {
+      await _storage.saveDiet(_dietPlan!.toJson());
+      debugPrint('🔄 Reset giornaliero consumed completato ($todayStr)');
+    }
   }
 
   // --- LOGICA CONSUMO & AGGIORNAMENTO ---
