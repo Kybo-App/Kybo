@@ -9,11 +9,61 @@
   "hosting": {
     "target": "landing",
     "public": "landing/out",
+    "cleanUrls": true,
+    "trailingSlash": false,
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
-        "source": "**",
-        "destination": "/index.html"
+        "source": "/business",
+        "destination": "/business/index.html"
+      },
+      {
+        "source": "/en",
+        "destination": "/en/index.html"
+      },
+      {
+        "source": "/en/business",
+        "destination": "/en/business/index.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/about/index.html"
+      },
+      {
+        "source": "/blog",
+        "destination": "/blog/index.html"
+      },
+      {
+        "source": "/careers",
+        "destination": "/careers/index.html"
+      },
+      {
+        "source": "/contact",
+        "destination": "/contact/index.html"
+      },
+      {
+        "source": "/faq",
+        "destination": "/faq/index.html"
+      },
+      {
+        "source": "/help",
+        "destination": "/help/index.html"
+      },
+      {
+        "source": "/privacy",
+        "destination": "/privacy/index.html"
+      },
+      {
+        "source": "/terms",
+        "destination": "/terms/index.html"
+      },
+      {
+        "source": "/cookies",
+        "destination": "/cookies/index.html"
+      },
+      {
+        "source": "/pricing",
+        "destination": "/pricing/index.html"
       }
     ]
   }
