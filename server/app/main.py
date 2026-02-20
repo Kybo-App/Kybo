@@ -196,14 +196,12 @@ async def health_check():
     return {"status": "healthy", "version": "2.0.0"}
 
 
-@app.get("/ping")
+@app.api_route("/ping", methods=["GET", "HEAD"])
 async def ping():
     """
-    Endpoint ultra-leggero per keep-alive (UptimeRobot / cron job).
+    Endpoint ultra-leggero per keep-alive.
+    Supporta GET e HEAD (UptimeRobot usa HEAD di default).
     Non tocca Firebase né DB — risponde in <1ms.
-    Configura UptimeRobot per chiamare questo URL ogni 5 minuti:
-      https://kybo-test.onrender.com/ping  (dev)
-      https://kybo.onrender.com/ping       (prod)
     """
     return {"ok": True}
 
