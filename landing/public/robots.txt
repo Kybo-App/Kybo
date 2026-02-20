@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Pagine legali (bassa priorità SEO)
+Disallow: /privacy
+Disallow: /terms
+Disallow: /cookies
+
+Sitemap: https://kybo.it/sitemap.xml
