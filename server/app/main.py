@@ -314,8 +314,12 @@ async def health_check_detailed():
         "message": "Configured" if settings.SENTRY_DSN else "No DSN set"
     }
     
-    # Overall status
-    errors = [k for k, v in checks.items() if v["status"] == "error"]
+    # Servizi opzionali: la loro assenza non rende il server "unhealthy"
+    OPTIONAL_SERVICES = {"tesseract", "redis"}
+
+    # Overall status — solo i servizi critici determinano lo stato globale
+    errors = [k for k, v in checks.items() if v["status"] == "error" and k not in OPTIONAL_SERVICES]
+    warnings = [k for k, v in checks.items() if v["status"] == "error" and k in OPTIONAL_SERVICES]
     overall = "unhealthy" if errors else "healthy"
 
     return {
@@ -323,7 +327,8 @@ async def health_check_detailed():
         "version": "2.0.0",
         "environment": settings.ENV,
         "checks": checks,
-        "errors": errors if errors else None
+        "errors": errors if errors else None,
+        "warnings": warnings if warnings else None,
     }
 
 
