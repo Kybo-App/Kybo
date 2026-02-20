@@ -4,7 +4,6 @@ import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import styles from '../page.module.css';
 
-const SmoothScroll = dynamic(() => import('@/components/animations/SmoothScroll'), { ssr: false });
 const NavbarEn = dynamic(() => import('@/components/NavbarEn'), { ssr: false });
 const HeroSectionEn = dynamic(() => import('@/components/sections/en/HeroSectionEn'), { ssr: false });
 
@@ -15,6 +14,10 @@ const FeatureCardsEn = dynamic(
 const StatsSectionEn = dynamic(
   () => import('@/components/sections/en/StatsSectionEn'),
   { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
+);
+const AppMockup = dynamic(
+  () => import('@/components/sections/AppMockup'),
+  { ssr: false, loading: () => <div style={{ minHeight: '500px' }} /> }
 );
 const ComparisonTableEn = dynamic(
   () => import('@/components/sections/en/ComparisonTableEn'),
@@ -27,7 +30,7 @@ const CTASectionEn = dynamic(
 
 export default function EnPage() {
   return (
-    <SmoothScroll>
+    <>
       <NavbarEn />
       <main className={styles.main}>
         <HeroSectionEn />
@@ -37,6 +40,9 @@ export default function EnPage() {
         <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
           <StatsSectionEn />
         </Suspense>
+        <Suspense fallback={<div style={{ minHeight: '500px' }} />}>
+          <AppMockup />
+        </Suspense>
         <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
           <ComparisonTableEn />
         </Suspense>
@@ -44,6 +50,6 @@ export default function EnPage() {
           <CTASectionEn />
         </Suspense>
       </main>
-    </SmoothScroll>
+    </>
   );
 }
