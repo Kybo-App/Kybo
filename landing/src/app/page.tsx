@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import styles from './page.module.css';
 
 // Above the fold — caricato subito
-const SmoothScroll = dynamic(() => import('@/components/animations/SmoothScroll'), { ssr: false });
 const Navbar = dynamic(() => import('@/components/Navbar'), { ssr: false });
 const HeroSection = dynamic(() => import('@/components/sections/HeroSection'), { ssr: false });
 
@@ -33,7 +32,7 @@ const CTASection = dynamic(
 
 export default function HomePage() {
   return (
-    <SmoothScroll>
+    <>
       <Navbar />
       <main className={styles.main}>
         <HeroSection />
@@ -53,6 +52,6 @@ export default function HomePage() {
           <CTASection />
         </Suspense>
       </main>
-    </SmoothScroll>
+    </>
   );
 }

@@ -28,6 +28,18 @@ const features = [
     description: 'Visualizza i tuoi progressi con grafici interattivi e report personalizzati.',
     color: '#FFA726',
   },
+  {
+    icon: '💬',
+    title: 'Chat con Nutrizionista',
+    description: 'Rimani in contatto diretto con il tuo nutrizionista. Condividi allegati e ricevi consigli personalizzati.',
+    color: '#66BB6A',
+  },
+  {
+    icon: '🤖',
+    title: 'Gemini AI',
+    description: 'I piani alimentari in PDF vengono automaticamente analizzati e strutturati da Google Gemini AI.',
+    color: '#EC4899',
+  },
 ];
 
 export default function FeatureCards() {

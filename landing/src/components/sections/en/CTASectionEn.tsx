@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import styles from '../CTASection.module.css';
 
 export default function CTASectionEn() {
-  const sectionRef = useRef<HTMLElement>(null);
-
   return (
     <>
-      <section ref={sectionRef} className={styles.section}>
+      <section className={styles.section}>
         <div className={styles.content}>
           <h2 className={styles.title}>Ready to simplify your nutrition?</h2>
           <p className={styles.subtitle}>
@@ -50,6 +48,7 @@ export default function CTASectionEn() {
               <div className={styles.footerColumn}>
                 <h4>Product</h4>
                 <a href="#features">Features</a>
+                <a href="#gallery">Gallery</a>
                 <a href="#stats">Stats</a>
               </div>
 
@@ -84,6 +83,7 @@ export default function CTASectionEn() {
             <div className={styles.socials}>
               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">🐦</a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">📘</a>
               <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">💼</a>
             </div>
           </div>
