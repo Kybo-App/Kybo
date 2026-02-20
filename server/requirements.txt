@@ -22,3 +22,6 @@ sentry-sdk[fastapi]==1.40.0
 # Redis cache layer (opzionale - graceful fallback se non configurato)
 redis[asyncio]==5.0.1
 hiredis==2.3.2
+# APM - Prometheus metrics
+prometheus-fastapi-instrumentator==6.1.0
+prometheus-client==0.20.0

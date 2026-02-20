@@ -16,6 +16,13 @@ from app.core.dependencies import verify_token, get_current_uid
 from app.core.config import settings
 from app.core.logging import logger
 from app.core.cache import redis_cache
+from app.core.metrics import (
+    suggestions_gemini_calls_total,
+    suggestions_gemini_errors_total,
+    suggestions_cache_hits_total,
+    suggestions_cache_misses_total,
+    suggestions_duration_seconds,
+)
 
 router = APIRouter(tags=["suggestions"])
 
@@ -110,23 +117,30 @@ async def get_meal_suggestions(
     cached = _get_from_memory_cache(cache_key)
     if cached:
         logger.info("suggestions_cache_hit", layer="L1_ram", uid=uid)
+        suggestions_cache_hits_total.labels(layer="L1_ram").inc()
         return MealSuggestionsResponse(**cached)
+    suggestions_cache_misses_total.labels(layer="L1_ram").inc()
 
     # ✅ CACHE L1.5: Redis (millisecondi, condiviso tra istanze)
     redis_cached = await redis_cache.get(cache_key)
     if redis_cached:
         logger.info("suggestions_cache_hit", layer="L1.5_redis", uid=uid)
+        suggestions_cache_hits_total.labels(layer="L1.5_redis").inc()
         _save_to_memory_cache(cache_key, redis_cached)
         return MealSuggestionsResponse(**redis_cached)
+    suggestions_cache_misses_total.labels(layer="L1.5_redis").inc()
 
     # Genera con Gemini
+    suggestions_gemini_calls_total.inc()
     try:
-        result = await _generate_suggestions(
-            user_data=user_data,
-            meal_type=meal_type,
-            count=count,
-        )
+        with suggestions_duration_seconds.time():
+            result = await _generate_suggestions(
+                user_data=user_data,
+                meal_type=meal_type,
+                count=count,
+            )
     except Exception as e:
+        suggestions_gemini_errors_total.inc()
         logger.error(f"Errore generazione suggerimenti: {e}", uid=uid, meal_type=meal_type, count=count)
         error_detail = str(e)[:200] if str(e) else "Errore sconosciuto"
         raise HTTPException(500, f"Errore nella generazione dei suggerimenti: {error_detail}")
