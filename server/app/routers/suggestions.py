@@ -205,11 +205,12 @@ def _load_user_context(db, uid: str) -> dict:
         # Ultime note pasti (mood tracking) — query separata per non bloccare
         # il resto del contesto se l'indice Firestore non esiste
         try:
+            from firebase_admin import firestore as _fs
             notes_query = (
                 db.collection("users")
                 .document(uid)
                 .collection("meal_notes")
-                .order_by("date", direction=fb_firestore.Query.DESCENDING)
+                .order_by("date", direction=_fs.Query.DESCENDING)
                 .limit(10)
                 .stream()
             )
@@ -222,7 +223,7 @@ def _load_user_context(db, uid: str) -> dict:
                     moods.append(f"{meal}: {mood}")
             context["recent_moods"] = moods
         except Exception as notes_err:
-            logger.warning(f"meal_notes query fallita (indice mancante?): {notes_err}")
+            logger.warning(f"meal_notes query fallita: {notes_err}")
             context["recent_moods"] = []
 
     except Exception as e:
@@ -331,18 +332,21 @@ def _parse_gemini_response(raw: str) -> list:
     if not raw or not raw.strip():
         return []
 
-    # Tentativo 1: JSON diretto
+    # Normalizza: rimuovi BOM, whitespace iniziale/finale
+    cleaned = raw.strip().lstrip('\ufeff')
+
+    # Tentativo 1: JSON diretto sul testo pulito
     try:
-        parsed = json.loads(raw)
+        parsed = json.loads(cleaned)
         if isinstance(parsed, dict):
             return parsed.get("suggestions", [])
         if isinstance(parsed, list):
             return parsed
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        logger.debug(f"[parser T1] json.loads fallito: {e}")
 
     # Tentativo 2: estrai da blocco markdown ```json ... ```
-    md_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+    md_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', cleaned)
     if md_match:
         try:
             parsed = json.loads(md_match.group(1).strip())
@@ -350,30 +354,34 @@ def _parse_gemini_response(raw: str) -> list:
                 return parsed.get("suggestions", [])
             if isinstance(parsed, list):
                 return parsed
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug(f"[parser T2] markdown block fallito: {e}")
 
-    # Tentativo 3: trova il primo oggetto JSON {...} nel testo
-    obj_match = re.search(r'\{[\s\S]*\}', raw)
-    if obj_match:
+    # Tentativo 3: trova il PRIMO { e l'ULTIMO } per catturare tutto l'oggetto
+    first_brace = cleaned.find('{')
+    last_brace = cleaned.rfind('}')
+    if first_brace != -1 and last_brace > first_brace:
         try:
-            parsed = json.loads(obj_match.group())
+            candidate = cleaned[first_brace:last_brace + 1]
+            parsed = json.loads(candidate)
             if isinstance(parsed, dict):
                 return parsed.get("suggestions", [])
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug(f"[parser T3] brace extraction fallito: {e}")
 
-    # Tentativo 4: trova array JSON [...] nel testo
-    arr_match = re.search(r'\[[\s\S]*\]', raw)
-    if arr_match:
+    # Tentativo 4: trova il PRIMO [ e l'ULTIMO ] per catturare l'array
+    first_bracket = cleaned.find('[')
+    last_bracket = cleaned.rfind(']')
+    if first_bracket != -1 and last_bracket > first_bracket:
         try:
-            parsed = json.loads(arr_match.group())
+            candidate = cleaned[first_bracket:last_bracket + 1]
+            parsed = json.loads(candidate)
             if isinstance(parsed, list):
                 return parsed
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug(f"[parser T4] bracket extraction fallito: {e}")
 
-    logger.warning(f"_parse_gemini_response: impossibile parsare risposta. Raw (primi 300 char): {raw[:300]}")
+    logger.warning(f"_parse_gemini_response: tutti i tentativi falliti. Raw (primi 400 char): {raw[:400]!r}")
     return []
 
 
