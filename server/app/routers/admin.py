@@ -12,6 +12,7 @@ import firebase_admin
 from firebase_admin import auth, firestore
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
+
 from pydantic import BaseModel
 
 from app.core.dependencies import verify_admin, verify_professional
@@ -214,20 +215,39 @@ async def get_secure_user_history(target_uid: str, requester: dict = Depends(ver
         raise HTTPException(status_code=500, detail="Error fetching history")
 
 
+def _log_access_bg(requester_id: str, action: str, reason: str, target_uid: str | None = None) -> None:
+    """Scrive un access_log su Firestore in modo fire-and-forget (non blocca la risposta)."""
+    try:
+        db = firebase_admin.firestore.client()
+        entry: dict = {
+            'requester_id': requester_id,
+            'action': action,
+            'reason': reason,
+            'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP,
+        }
+        if target_uid:
+            entry['target_uid'] = target_uid
+        db.collection('access_logs').add(entry)
+    except Exception as e:
+        logger.error("access_log_bg_error", error=sanitize_error_message(e))
+
+
 @router.get("/users-secure")
 async def list_users_secure(requester: dict = Depends(verify_professional)):
-    """Lista utenti con log di accesso."""
+    """
+    Lista utenti con log di accesso.
+    Il log viene scritto in background (fire-and-forget) per non bloccare la risposta.
+    """
     requester_id = requester['uid']
     requester_role = requester['role']
 
     try:
         db = firebase_admin.firestore.client()
-        db.collection('access_logs').add({
-            'requester_id': requester_id,
-            'action': 'READ_USER_DIRECTORY',
-            'reason': 'User List View',
-            'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
-        })
+
+        # Log in background — non aspettiamo la write Firestore
+        asyncio.create_task(
+            run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_DIRECTORY', 'User List View')
+        )
 
         users_ref = db.collection('users')
         if requester_role == 'nutritionist':
@@ -235,14 +255,22 @@ async def list_users_secure(requester: dict = Depends(verify_professional)):
         else:
             docs = users_ref.stream()
 
-        return [d.to_dict() for d in docs]
+        # Includi sempre l'uid del documento nella risposta
+        result = []
+        for d in docs:
+            data = d.to_dict()
+            if 'uid' not in data:
+                data['uid'] = d.id
+            result.append(data)
+        return result
+
     except Exception:
         raise HTTPException(status_code=500, detail="Error fetching users")
 
 
 @router.get("/user-details-secure/{target_uid}")
 async def get_user_details_secure(target_uid: str, requester: dict = Depends(verify_professional)):
-    """Dettagli utente con log di accesso."""
+    """Dettagli utente con log di accesso in background."""
     requester_id = requester['uid']
     requester_role = requester['role']
 
@@ -256,19 +284,19 @@ async def get_user_details_secure(target_uid: str, requester: dict = Depends(ver
             if user_doc.to_dict().get('parent_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        db.collection('access_logs').add({
-            'requester_id': requester_id,
-            'target_uid': target_uid,
-            'action': 'READ_USER_PROFILE',
-            'reason': 'Detail View',
-            'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
-        })
+        # Log in background — non blocca la risposta
+        asyncio.create_task(
+            run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_PROFILE', 'Detail View', target_uid)
+        )
 
         doc = db.collection('users').document(target_uid).get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="User not found")
 
-        return doc.to_dict()
+        data = doc.to_dict()
+        if 'uid' not in data:
+            data['uid'] = doc.id
+        return data
 
     except HTTPException:
         raise
