@@ -1,7 +1,7 @@
 /* ===== SECTION ===== */
 .section {
   padding: 6rem 2rem;
-  background: var(--color-background);
+  background: #0a0a0a;
   overflow: hidden;
 }
 

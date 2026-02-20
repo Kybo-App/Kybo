@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
+import ClientLayout from '@/components/ClientLayout';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -112,7 +113,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it" className="lenis" suppressHydrationWarning>
+    <html lang="it" className="lenis" data-theme="dark" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -120,7 +121,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        {children}
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
