@@ -299,20 +299,9 @@ Rispondi SOLO con il JSON strutturato richiesto."""
 
     response = await run_in_threadpool(_call_gemini)
 
-    # Parsing risposta
+    # Parsing risposta — multi-tentativo robusto
     raw = response.text or "{}"
-    try:
-        parsed = json.loads(raw)
-        suggestions_raw = parsed.get("suggestions", [])
-    except json.JSONDecodeError:
-        # Fallback: prova a estrarre JSON dal testo
-        import re
-        match = re.search(r'\{.*\}', raw, re.DOTALL)
-        if match:
-            parsed = json.loads(match.group())
-            suggestions_raw = parsed.get("suggestions", [])
-        else:
-            suggestions_raw = []
+    suggestions_raw = _parse_gemini_response(raw)
 
     # Normalizza in lista di dict
     result = []
@@ -328,6 +317,62 @@ Rispondi SOLO con il JSON strutturato richiesto."""
             })
 
     return result
+
+
+def _parse_gemini_response(raw: str) -> list:
+    """
+    Parser robusto multi-tentativo per la risposta di Gemini.
+    Gestisce: JSON puro, markdown ```json...```, array nudo, testo misto.
+    """
+    import re
+
+    if not raw or not raw.strip():
+        return []
+
+    # Tentativo 1: JSON diretto
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed.get("suggestions", [])
+        if isinstance(parsed, list):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    # Tentativo 2: estrai da blocco markdown ```json ... ```
+    md_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw)
+    if md_match:
+        try:
+            parsed = json.loads(md_match.group(1).strip())
+            if isinstance(parsed, dict):
+                return parsed.get("suggestions", [])
+            if isinstance(parsed, list):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    # Tentativo 3: trova il primo oggetto JSON {...} nel testo
+    obj_match = re.search(r'\{[\s\S]*\}', raw)
+    if obj_match:
+        try:
+            parsed = json.loads(obj_match.group())
+            if isinstance(parsed, dict):
+                return parsed.get("suggestions", [])
+        except json.JSONDecodeError:
+            pass
+
+    # Tentativo 4: trova array JSON [...] nel testo
+    arr_match = re.search(r'\[[\s\S]*\]', raw)
+    if arr_match:
+        try:
+            parsed = json.loads(arr_match.group())
+            if isinstance(parsed, list):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    logger.warning(f"_parse_gemini_response: impossibile parsare risposta. Raw (primi 300 char): {raw[:300]}")
+    return []
 
 
 def _build_context_description(user_data: dict, meal_type: Optional[str]) -> str:
