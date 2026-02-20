@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import styles from './CTASection.module.css';
 
 export default function CTASection() {
@@ -62,23 +63,23 @@ export default function CTASection() {
 
               <div className={styles.footerColumn}>
                 <h4>Azienda</h4>
-                <a href="/about">Chi Siamo</a>
-                <a href="/blog">Blog</a>
-                <a href="/careers">Lavora con noi</a>
+                <Link href="/about">Chi Siamo</Link>
+                <Link href="/blog">Blog</Link>
+                <Link href="/careers">Lavora con noi</Link>
               </div>
 
               <div className={styles.footerColumn}>
                 <h4>Supporto</h4>
-                <a href="/help">Centro Assistenza</a>
-                <a href="/contact">Contatti</a>
-                <a href="/faq">FAQ</a>
+                <Link href="/help">Centro Assistenza</Link>
+                <Link href="/contact">Contatti</Link>
+                <Link href="/faq">FAQ</Link>
               </div>
 
               <div className={styles.footerColumn}>
                 <h4>Legale</h4>
-                <a href="/privacy">Privacy Policy</a>
-                <a href="/terms">Termini di Servizio</a>
-                <a href="/cookies">Cookie Policy</a>
+                <Link href="/privacy">Privacy Policy</Link>
+                <Link href="/terms">Termini di Servizio</Link>
+                <Link href="/cookies">Cookie Policy</Link>
               </div>
             </div>
           </div>
