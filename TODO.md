@@ -174,7 +174,7 @@
 - [ ] Dashboard metriche API (latenza, error rate, throughput)
 
 **AI / ML:**
-- [ ] Suggerimenti pasti basati su preferenze storiche dell'utente
+- [x] Suggerimenti pasti basati su preferenze storiche dell'utente
 - [x] OCR migliorato con pre-processing immagine (contrast, rotation, crop)
 
 **Sicurezza:**

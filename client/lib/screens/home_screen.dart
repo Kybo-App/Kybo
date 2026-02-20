@@ -27,6 +27,7 @@ import 'chat_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import 'badges_screen.dart';
+import 'meal_suggestions_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -807,6 +808,16 @@ class _MainScreenContentState extends State<MainScreenContent>
             ),
             _buildSidebarMenuItem(
               context: context,
+              icon: Icons.auto_awesome,
+              label: 'Suggerimenti AI',
+              iconColor: KyboColors.primary,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MealSuggestionsScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
               icon: Icons.settings_rounded,
               label: 'Impostazioni',
               iconColor: KyboColors.textMuted(context),
@@ -1469,6 +1480,27 @@ class _MainScreenContentState extends State<MainScreenContent>
                               Navigator.push(
                                 drawerCtx,
                                 MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                              );
+                            },
+                          ),
+
+                          // ✨ Suggerimenti AI
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.auto_awesome, color: KyboColors.primary, size: 20),
+                            ),
+                            title: "Suggerimenti AI",
+                            subtitle: "Idee pasti personalizzate",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const MealSuggestionsScreen()),
                               );
                             },
                           ),
