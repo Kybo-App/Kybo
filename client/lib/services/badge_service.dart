@@ -79,11 +79,64 @@ class BadgeService extends ChangeNotifier {
     }
   }
   
-  // Example triggers
+  /// Chiamato ad ogni accesso. Sblocca 'first_login' al primo accesso
+  /// e tiene traccia dello streak consecutivo per 'streak_3'.
   Future<void> checkLoginStreak() async {
-     // Logic to calculate streak would go here.
-     // For demo, let's just unlock 'first_login'
-     await unlockBadge('first_login');
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // Sblocca sempre first_login (se non già sbloccato)
+    await unlockBadge('first_login');
+
+    try {
+      final ref = _firestore.collection('users').doc(user.uid);
+      final doc = await ref.get();
+      final data = doc.data() ?? {};
+
+      final today = DateTime.now();
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2,'0')}-${today.day.toString().padLeft(2,'0')}';
+
+      final lastLoginStr = data['streak_last_login'] as String?;
+      final currentStreak = (data['streak_count'] as int?) ?? 0;
+
+      int newStreak;
+
+      if (lastLoginStr == null) {
+        // Prima volta in assoluto
+        newStreak = 1;
+      } else if (lastLoginStr == todayStr) {
+        // Già loggato oggi, non cambia nulla
+        return;
+      } else {
+        // Controlla se ieri
+        final lastLogin = DateTime.tryParse(lastLoginStr);
+        if (lastLogin != null) {
+          final diff = today.difference(lastLogin).inDays;
+          if (diff == 1) {
+            // Giorno consecutivo
+            newStreak = currentStreak + 1;
+          } else {
+            // Streak interrotto
+            newStreak = 1;
+          }
+        } else {
+          newStreak = 1;
+        }
+      }
+
+      // Salva in Firestore
+      await ref.update({
+        'streak_last_login': todayStr,
+        'streak_count': newStreak,
+      });
+
+      // Sblocca badge streak_3 se raggiunti 3 giorni consecutivi
+      if (newStreak >= 3) {
+        await unlockBadge('streak_3');
+      }
+    } catch (e) {
+      debugPrint('Errore checkLoginStreak: $e');
+    }
   }
 
   Future<void> onWeightLogged() async {
@@ -92,7 +145,7 @@ class BadgeService extends ChangeNotifier {
 
   Future<void> checkDailyGoals(int planned, int consumed) async {
     if (planned > 0 && consumed == planned) {
-       await unlockBadge('daily_perfection');
+      await unlockBadge('diet_complete');
     }
   }
 

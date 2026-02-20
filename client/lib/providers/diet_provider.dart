@@ -27,7 +27,7 @@ class DietProvider extends ChangeNotifier {
   final FirestoreService _firestore = FirestoreService();
   final AuthService _auth = AuthService();
   final TrackingService _trackingService = TrackingService();
-  final BadgeService _badgeService = BadgeService(); // [FIX] Instance for logic calls
+  final BadgeService _badgeService;
 
   DietPlan?
       _dietPlan; // Oggetto unico che contiene sia il piano che le sostituzioni
@@ -387,7 +387,7 @@ class DietProvider extends ChangeNotifier {
     return days.isNotEmpty ? days.first : '';
   }
 
-  DietProvider(this._repository);
+  DietProvider(this._repository, this._badgeService);
 
   // --- INIT & SYNC ---
 
