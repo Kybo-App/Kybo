@@ -305,7 +305,35 @@
   font-weight: 500;
 }
 
-/* Pricing Section */
+/* Pricing Section (nuovo - con toggle) */
+.pricingFull {
+  padding: 8rem 2rem;
+  background: #1a1a1a;
+}
+
+.pricingFullGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  max-width: 900px;
+  margin: 3rem auto 0;
+  align-items: start;
+}
+
+.pricingNote {
+  text-align: center;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2.5rem;
+  font-weight: 300;
+}
+
+.pricingNote strong {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+/* Vecchio pricing (non usato — mantenuto per compatibilità) */
 .pricing {
   padding: 8rem 2rem;
   background: #1a1a1a;
@@ -531,6 +559,107 @@
   transform: translateX(5px);
 }
 
+/* ===== ROI CALCULATOR ===== */
+.roiSection {
+  padding: 8rem 2rem;
+  background: #0f0f0f;
+}
+
+.roiGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.roiInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roiLabel {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.roiSliderWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.roiSlider {
+  width: 100%;
+  accent-color: #66BB6A;
+  height: 6px;
+  cursor: pointer;
+}
+
+.roiSliderValue {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #66BB6A;
+}
+
+.roiResults {
+  background: rgba(102, 187, 106, 0.05);
+  border: 1px solid rgba(102, 187, 106, 0.2);
+  border-radius: 24px;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roiResultItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.roiResultItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.roiResultLabel {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.roiResultValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #66BB6A;
+}
+
+.roiResultValueBig {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #66BB6A;
+}
+
+.roiDisclaimer {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .roiGrid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
 /* Footer */
 .footer {
   background: #0a0a0a;
@@ -547,6 +676,419 @@
 .footerContent p {
   color: rgba(255, 255, 255, 0.5);
   font-size: 0.9rem;
+}
+
+/* ===== DEMO FORM ===== */
+.demoSection {
+  padding: 8rem 2rem;
+  background: #1a1a1a;
+}
+
+.demoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.demoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.demoInfoTitle {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 800;
+  color: #fff;
+}
+
+.demoInfoText {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.7;
+}
+
+.demoPerks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.demoPerk {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.demoPerkIcon {
+  color: #66BB6A;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.demoFormCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.formInput,
+.formSelect {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  color: #fff;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  outline: none;
+  width: 100%;
+}
+
+.formInput:focus,
+.formSelect:focus {
+  border-color: #66BB6A;
+}
+
+.formInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.formSelect option {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.formSubmit {
+  width: 100%;
+  padding: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  color: #fff;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.formSubmit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(102, 187, 106, 0.35);
+}
+
+.formSuccess {
+  text-align: center;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.formSuccessIcon {
+  font-size: 3rem;
+}
+
+.formSuccessTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #66BB6A;
+}
+
+.formSuccessText {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+}
+
+.formPrivacy {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* ===== SECURITY SECTION ===== */
+.securitySection {
+  padding: 8rem 2rem;
+  background: #0f0f0f;
+}
+
+.securityGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 3rem auto 0;
+}
+
+.securityCard {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.securityCard:hover {
+  border-color: rgba(102, 187, 106, 0.3);
+  background: rgba(102, 187, 106, 0.03);
+  transform: translateY(-4px);
+}
+
+.securityIcon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.securityCard h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.75rem;
+}
+
+.securityCard p {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+}
+
+.securityBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: 1200px;
+  margin: 2.5rem auto 0;
+  justify-content: center;
+}
+
+.securityBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.securityBadge span:first-child {
+  font-size: 1rem;
+}
+
+/* ===== API DOCS SECTION ===== */
+.apiSection {
+  padding: 8rem 2rem;
+  background: #1a1a1a;
+}
+
+.apiGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 4rem;
+  align-items: start;
+  max-width: 1200px;
+  margin: 3rem auto 0;
+}
+
+.apiInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.apiInfoText {
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.7;
+}
+
+.apiEndpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.apiEndpoint {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.apiMethod {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  width: 46px;
+  text-align: center;
+}
+
+.get { background: rgba(59, 130, 246, 0.2); color: #60A5FA; }
+.post { background: rgba(102, 187, 106, 0.2); color: #66BB6A; }
+.delete { background: rgba(239, 68, 68, 0.2); color: #F87171; }
+
+.apiPath {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.apiPathDesc {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: auto;
+}
+
+.apiCode {
+  background: #0f0f0f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.apiCodeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.apiCodeLang {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: monospace;
+}
+
+.apiCodeDots {
+  display: flex;
+  gap: 5px;
+}
+
+.apiCodeDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.apiCodeDot:nth-child(1) { background: #FF5F57; }
+.apiCodeDot:nth-child(2) { background: #FFBD2E; }
+.apiCodeDot:nth-child(3) { background: #28CA41; }
+
+.apiCodeBody {
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.apiCodeBody pre {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Courier New', monospace;
+  white-space: pre;
+}
+
+.apiCodeBody .kw { color: #C792EA; }
+.apiCodeBody .str { color: #C3E88D; }
+.apiCodeBody .prop { color: #82AAFF; }
+.apiCodeBody .num { color: #F78C6C; }
+.apiCodeBody .comment { color: rgba(255, 255, 255, 0.25); }
+
+.apiCtaRow {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.apiCtaBtn {
+  padding: 0.75rem 1.75rem;
+  border-radius: 100px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.apiCtaPrimary {
+  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  border: none;
+  color: #fff;
+}
+
+.apiCtaPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 187, 106, 0.3);
+}
+
+.apiCtaSecondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.apiCtaSecondary:hover {
+  border-color: #66BB6A;
+  color: #66BB6A;
+}
+
+/* ===== RESPONSIVE EXTRA ===== */
+@media (max-width: 900px) {
+  .roiGrid,
+  .demoGrid,
+  .apiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Animations */

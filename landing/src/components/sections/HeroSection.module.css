@@ -80,10 +80,17 @@
   line-height: 1;
   margin-bottom: 2rem;
   color: #66BB6A;
-  filter: 
+  filter:
     drop-shadow(0 0 20px rgba(102, 187, 106, 0.8))
     drop-shadow(0 0 40px rgba(102, 187, 106, 0.6))
     drop-shadow(0 0 60px rgba(102, 187, 106, 0.4));
+}
+
+/* Le lettere vengono animate via GSAP fromTo — nessun opacity:0 nel CSS */
+.title span {
+  display: inline-block;
+  font-weight: 900;
+  will-change: transform, opacity;
 }
 
 .subtitle {

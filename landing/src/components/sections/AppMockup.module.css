@@ -1,0 +1,765 @@
+/* ===== SECTION ===== */
+.section {
+  padding: 6rem 2rem;
+  background: var(--color-background);
+  overflow: hidden;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+/* ===== TEXT SIDE ===== */
+.textSide {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #66BB6A;
+  background: rgba(102, 187, 106, 0.1);
+  padding: 0.4rem 1rem;
+  border-radius: 100px;
+  width: fit-content;
+}
+
+.heading {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.highlight {
+  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtext {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  max-width: 480px;
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.featureIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 187, 106, 0.1);
+  border-radius: 8px;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ===== PHONE SIDE ===== */
+.phoneSide {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.phone {
+  width: 280px;
+  height: 560px;
+  background: #1a1a1a;
+  border-radius: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.8),
+    0 30px 80px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.phoneSpeaker {
+  width: 60px;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.phoneScreen {
+  flex: 1;
+  width: 100%;
+  background: #0f0f0f;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.phoneHome {
+  width: 100%;
+  height: 28px;
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.phoneHome::after {
+  content: '';
+  width: 100px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* ===== STATUS BAR ===== */
+.statusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  background: #0f0f0f;
+  flex-shrink: 0;
+}
+
+.statusIcons {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 9px;
+}
+
+/* ===== SCREEN CONTENT ===== */
+.screenContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.screenContent::-webkit-scrollbar {
+  display: none;
+}
+
+.fadeIn {
+  animation: fadeIn 0.2s ease-in;
+}
+
+.fadeOut {
+  animation: fadeOut 0.2s ease-out;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ===== BOTTOM NAV ===== */
+.bottomNav {
+  display: flex;
+  background: #1a1a1a;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.navBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.navIcon {
+  font-size: 14px;
+}
+
+.navLabel {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.navBtnActive .navLabel {
+  color: #66BB6A;
+}
+
+.navBtnActive .navIcon {
+  filter: drop-shadow(0 0 4px #66BB6A);
+}
+
+/* ===== SCREEN: HOME ===== */
+.screenHome {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.homeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.homeGreeting {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.homeEmoji {
+  font-size: 20px;
+}
+
+.homeHello {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.homeDate {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.homeAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.nextMealBanner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(102, 187, 106, 0.1);
+  border: 1px solid rgba(102, 187, 106, 0.2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 10px;
+}
+
+.nextMealLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: #66BB6A;
+}
+
+.nextMealItems {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.statsRow {
+  display: flex;
+  gap: 6px;
+}
+
+.statChip {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.statNum {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.statLbl {
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.sectionLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.mealCard {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.mealDone {
+  opacity: 0.5;
+}
+
+.mealIcon {
+  font-size: 14px;
+}
+
+.mealName {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.mealItems {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== SCREEN: DIET ===== */
+.screenDiet {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.screenTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dayTabs {
+  display: flex;
+  gap: 4px;
+}
+
+.dayTab {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  padding: 4px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.dayActive {
+  background: #66BB6A;
+  color: #fff;
+  font-weight: 700;
+}
+
+.dietCard {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.dietCardHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.dietMealName {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dietKcal {
+  font-size: 9px;
+  color: #66BB6A;
+}
+
+.dietItem {
+  display: flex;
+  gap: 4px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dietDot {
+  color: #66BB6A;
+}
+
+/* ===== SCREEN: SHOPPING ===== */
+.screenShopping {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shopActions {
+  display: flex;
+  gap: 6px;
+}
+
+.shopBtn {
+  flex: 1;
+  font-size: 8px;
+  padding: 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.shopCat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shopCatLabel {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.shopItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+
+.shopCheck {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ===== SCREEN: CHAT ===== */
+.screenChat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chatHeader {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1a1a;
+}
+
+.chatAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.chatName {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.chatOnline {
+  font-size: 8px;
+  color: #66BB6A;
+}
+
+.chatMessages {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.chatMessages::-webkit-scrollbar {
+  display: none;
+}
+
+.chatMsg {
+  max-width: 80%;
+  padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 8px;
+  line-height: 1.4;
+  color: #fff;
+}
+
+.chatMsgIn {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+}
+
+.chatMsgOut {
+  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+.chatTime {
+  display: block;
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+  text-align: right;
+}
+
+.chatInput {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chatInputField {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  outline: none;
+}
+
+.chatSend {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #66BB6A;
+  border: none;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== SCREEN: STATS ===== */
+.screenStats {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weightCard {
+  background: linear-gradient(135deg, rgba(102, 187, 106, 0.15), rgba(46, 125, 50, 0.1));
+  border: 1px solid rgba(102, 187, 106, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.weightLabel {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+}
+
+.weightValue {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.weightValue span {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.weightDelta {
+  font-size: 9px;
+  color: #66BB6A;
+  margin-top: 2px;
+}
+
+.barsChart {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 60px;
+  padding: 0 4px;
+}
+
+.barWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.bar {
+  width: 100%;
+  background: linear-gradient(to top, #66BB6A, rgba(102, 187, 106, 0.3));
+  border-radius: 3px 3px 0 0;
+  min-height: 4px;
+  transition: height 0.5s ease;
+}
+
+.barLabel {
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.badgesRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* ===== FLOATING CHIPS ===== */
+.chip {
+  position: absolute;
+  background: #1E293B;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: float 4s ease-in-out infinite;
+}
+
+.chip1 {
+  top: 15%;
+  right: -20px;
+  animation-delay: 0s;
+}
+
+.chip2 {
+  top: 50%;
+  left: -30px;
+  animation-delay: 1.5s;
+}
+
+.chip3 {
+  bottom: 20%;
+  right: -20px;
+  animation-delay: 3s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .phoneSide {
+    order: -1;
+  }
+
+  .chip1, .chip2, .chip3 {
+    display: none;
+  }
+
+  .subtext {
+    max-width: 100%;
+  }
+}

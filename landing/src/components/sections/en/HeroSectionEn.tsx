@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import styles from './HeroSection.module.css';
+import styles from '../HeroSection.module.css';
 
 const titleText = 'Kybo';
 
-export default function HeroSection() {
+export default function HeroSectionEn() {
   const heroRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
@@ -27,14 +27,12 @@ export default function HeroSection() {
             { y: 0, opacity: 1, rotationX: 0, stagger: 0.03, duration: 1, ease: 'back.out(1.7)', delay: 0.3 }
           );
         }
-
         if (subtitleRef.current) {
           gsap.fromTo(subtitleRef.current,
             { y: 30, opacity: 0 },
             { y: 0, opacity: 1, duration: 1, delay: 1, ease: 'power2.out' }
           );
         }
-
         if (ctaRef.current) {
           const buttons = ctaRef.current.querySelectorAll('button, a');
           gsap.fromTo(buttons,
@@ -46,15 +44,11 @@ export default function HeroSection() {
     };
 
     initGsap();
-
-    return () => {
-      ctx?.revert();
-    };
+    return () => { ctx?.revert(); };
   }, []);
 
   return (
     <section ref={heroRef} className={styles.hero}>
-      {/* Content */}
       <div className={styles.content}>
         <h1 ref={titleRef} className={styles.title}>
           {titleText.split('').map((char, i) => (
@@ -63,17 +57,13 @@ export default function HeroSection() {
             </span>
           ))}
         </h1>
-        
+
         <p ref={subtitleRef} className={styles.subtitle}>
-          La tua nutrizione, finalmente semplificata
+          Your nutrition, finally simplified
         </p>
 
-
-
-
-        {/* Scroll indicator */}
         <div className={styles.scrollIndicator}>
-          <span>Scroll per esplorare</span>
+          <span>Scroll to explore</span>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 5v14m0 0l-7-7m7 7l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>

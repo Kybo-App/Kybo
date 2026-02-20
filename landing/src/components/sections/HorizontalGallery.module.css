@@ -1,14 +1,24 @@
-.section {
-  min-height: 100vh;
+/* Outer wrapper — height set dynamically via JS to reserve vertical scroll space */
+.outer {
   background: #1a1a1a;
   position: relative;
+}
+
+/* Sticky container that stays fixed while outer scrolls */
+.sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   overflow: hidden;
-  padding: 4rem 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .header {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 2rem 2rem 1rem;
+  flex-shrink: 0;
   position: relative;
   z-index: 2;
 }
@@ -16,7 +26,7 @@
 .title {
   font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 900;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -24,16 +34,18 @@
 }
 
 .subtitle {
-  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  font-size: clamp(1rem, 2vw, 1.4rem);
   color: rgba(255, 255, 255, 0.6);
   font-weight: 300;
 }
 
+/* Horizontal strip — translateX driven by JS */
 .scroller {
   display: flex;
   gap: 4rem;
-  padding: 4rem 10vw;
+  padding: 2rem 10vw;
   will-change: transform;
+  flex-shrink: 0;
 }
 
 .card {
@@ -42,7 +54,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.3s ease;
 }
 
 .mockup {
@@ -58,12 +69,12 @@
 }
 
 .phone {
-  width: 280px;
-  height: 580px;
+  width: 240px;
+  height: 500px;
   background: #000000;
   border-radius: 40px;
   padding: 12px;
-  box-shadow: 
+  box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.5),
     inset 0 0 0 2px rgba(255, 255, 255, 0.1);
   position: relative;
@@ -100,45 +111,40 @@
 }
 
 .cardTitle {
-  margin-top: 2rem;
-  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 600;
   color: #ffffff;
   text-align: center;
 }
 
 .scrollHint {
-  position: absolute;
-  bottom: 3rem;
-  left: 50%;
-  transform: translateX(-50%);
+  text-align: center;
+  padding: 1rem 0 1.5rem;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 500;
   animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 @keyframes pulse {
-  0%, 100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
 }
 
 @media (max-width: 768px) {
   .card {
-    width: 300px;
+    width: 280px;
   }
 
   .phone {
-    width: 220px;
-    height: 460px;
+    width: 200px;
+    height: 420px;
   }
 
   .scroller {
     gap: 2rem;
-    padding: 4rem 5vw;
+    padding: 2rem 5vw;
   }
 }
