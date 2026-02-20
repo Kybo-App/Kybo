@@ -25,6 +25,11 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.logging import logger, sanitize_error_message
+from app.core.metrics import (
+    diet_memory_cache_size,
+    suggestions_memory_cache_size,
+    update_cache_size_gauges,
+)
 
 # Import routers
 from app.routers.diet import router as diet_router
@@ -129,6 +134,20 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# --- PROMETHEUS APM ---
+from prometheus_fastapi_instrumentator import Instrumentator
+
+_instrumentator = Instrumentator(
+    should_group_status_codes=True,        # raggruppa 2xx, 4xx, 5xx
+    should_ignore_untemplated_requests=True,
+    should_respect_env_var=False,
+    should_instrument_requests_inprogress=True,
+    excluded_urls=["/metrics", "/ping", "/health"],  # escludi gli endpoint di infra
+    inprogress_name="kybo_http_requests_inprogress",
+    inprogress_labels=True,
+)
+_instrumentator.instrument(app)
+
 
 # --- INCLUDE ROUTERS ---
 app.include_router(diet_router)
@@ -192,6 +211,8 @@ async def start_background_tasks():
     asyncio.create_task(monthly_report_mailer_worker())
     # Inizializza connessione Redis (graceful: no-op se non configurato)
     await redis_cache._ensure_connected()
+    # Espone endpoint /metrics Prometheus (dopo startup per sicurezza)
+    _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.on_event("shutdown")
@@ -298,11 +319,121 @@ async def health_check_detailed():
     # Overall status
     errors = [k for k, v in checks.items() if v["status"] == "error"]
     overall = "unhealthy" if errors else "healthy"
-    
+
     return {
         "status": overall,
         "version": "2.0.0",
         "environment": settings.ENV,
         "checks": checks,
         "errors": errors if errors else None
+    }
+
+
+@app.get("/metrics/api", include_in_schema=False)
+async def metrics_api():
+    """
+    Dashboard metriche API in formato JSON — leggibile da admin panel o tools interni.
+    Espone un sottoinsieme human-friendly delle metriche Prometheus:
+    - Cache hit/miss ratio per layer (diet + suggestions)
+    - Dimensioni cache RAM correnti
+    - Contatori chiamate Gemini AI
+    - Stato Redis
+
+    Le metriche complete in formato Prometheus sono disponibili su GET /metrics.
+    """
+    from prometheus_client import REGISTRY
+    from app.services.diet_service import DietParser
+    from app.routers.suggestions import _suggestions_cache
+
+    def _get_counter(name: str, labels: dict = None) -> float:
+        """Legge il valore corrente di un counter Prometheus."""
+        try:
+            metric = REGISTRY._names_to_collectors.get(name)
+            if metric is None:
+                return 0.0
+            if labels:
+                return metric.labels(**labels)._value.get()
+            # Somma tutti i sample se non filtriamo per label
+            total = 0.0
+            for sample in metric.collect()[0].samples:
+                if sample.name.endswith("_total"):
+                    total += sample.value
+            return total
+        except Exception:
+            return 0.0
+
+    def _get_histogram_avg(name: str) -> float:
+        """Calcola la media di un histogram Prometheus (sum/count)."""
+        try:
+            metric = REGISTRY._names_to_collectors.get(name)
+            if metric is None:
+                return 0.0
+            samples = {s.name: s.value for s in metric.collect()[0].samples}
+            s = samples.get(f"{name}_sum", 0.0)
+            c = samples.get(f"{name}_count", 0.0)
+            return round(s / c, 3) if c > 0 else 0.0
+        except Exception:
+            return 0.0
+
+    # ── Cache metriche diet ──────────────────────────────────────────────────
+    diet_l1_hits   = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L1_ram"})
+    diet_l15_hits  = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L1.5_redis"})
+    diet_l2_hits   = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L2_firestore"})
+    diet_l1_miss   = _get_counter("kybo_diet_cache_misses_total", {"layer": "L1_ram"})
+    diet_l15_miss  = _get_counter("kybo_diet_cache_misses_total", {"layer": "L1.5_redis"})
+    diet_l2_miss   = _get_counter("kybo_diet_cache_misses_total", {"layer": "L2_firestore"})
+    diet_gemini    = _get_counter("kybo_diet_gemini_calls_total")
+    diet_errors    = _get_counter("kybo_diet_gemini_errors_total")
+    diet_avg_s     = _get_histogram_avg("kybo_diet_parse_duration_seconds")
+
+    # ── Cache metriche suggestions ───────────────────────────────────────────
+    sug_l1_hits    = _get_counter("kybo_suggestions_cache_hits_total",   {"layer": "L1_ram"})
+    sug_l15_hits   = _get_counter("kybo_suggestions_cache_hits_total",   {"layer": "L1.5_redis"})
+    sug_l1_miss    = _get_counter("kybo_suggestions_cache_misses_total", {"layer": "L1_ram"})
+    sug_l15_miss   = _get_counter("kybo_suggestions_cache_misses_total", {"layer": "L1.5_redis"})
+    sug_gemini     = _get_counter("kybo_suggestions_gemini_calls_total")
+    sug_errors     = _get_counter("kybo_suggestions_gemini_errors_total")
+    sug_avg_s      = _get_histogram_avg("kybo_suggestions_duration_seconds")
+
+    # ── Dimensioni cache RAM live ────────────────────────────────────────────
+    update_cache_size_gauges(len(DietParser._memory_cache), len(_suggestions_cache))
+    diet_ram_size  = len(DietParser._memory_cache)
+    sug_ram_size   = len(_suggestions_cache)
+
+    def _hit_ratio(hits: float, misses: float) -> str:
+        total = hits + misses
+        if total == 0:
+            return "n/a"
+        return f"{round(hits / total * 100, 1)}%"
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": settings.ENV,
+        "diet_parser": {
+            "gemini_calls": int(diet_gemini),
+            "gemini_errors": int(diet_errors),
+            "avg_parse_duration_s": diet_avg_s,
+            "cache": {
+                "ram_entries": diet_ram_size,
+                "ram_max": settings.MEMORY_CACHE_SIZE,
+                "L1_ram":       {"hits": int(diet_l1_hits),  "misses": int(diet_l1_miss),  "ratio": _hit_ratio(diet_l1_hits,  diet_l1_miss)},
+                "L1_5_redis":   {"hits": int(diet_l15_hits), "misses": int(diet_l15_miss), "ratio": _hit_ratio(diet_l15_hits, diet_l15_miss)},
+                "L2_firestore": {"hits": int(diet_l2_hits),  "misses": int(diet_l2_miss),  "ratio": _hit_ratio(diet_l2_hits,  diet_l2_miss)},
+            },
+        },
+        "meal_suggestions": {
+            "gemini_calls": int(sug_gemini),
+            "gemini_errors": int(sug_errors),
+            "avg_generation_duration_s": sug_avg_s,
+            "cache": {
+                "ram_entries": sug_ram_size,
+                "L1_ram":     {"hits": int(sug_l1_hits),  "misses": int(sug_l1_miss),  "ratio": _hit_ratio(sug_l1_hits,  sug_l1_miss)},
+                "L1_5_redis": {"hits": int(sug_l15_hits), "misses": int(sug_l15_miss), "ratio": _hit_ratio(sug_l15_hits, sug_l15_miss)},
+            },
+        },
+        "redis": {
+            "available": redis_cache.is_available,
+            "url_configured": bool(settings.REDIS_URL),
+        },
+        "prometheus_endpoint": "/metrics",
     }

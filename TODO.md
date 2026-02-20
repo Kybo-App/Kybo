@@ -170,8 +170,8 @@
 - [ ] Queue system per parsing diete (Celery/RQ invece di semaphore)
 
 **Monitoring:**
-- [ ] APM (Application Performance Monitoring)
-- [ ] Dashboard metriche API (latenza, error rate, throughput)
+- [x] APM (Application Performance Monitoring) — Prometheus + prometheus-fastapi-instrumentator
+- [x] Dashboard metriche API (latenza, error rate, throughput) — /metrics (Prometheus) + /metrics/api (JSON)
 
 **AI / ML:**
 - [x] Suggerimenti pasti basati su preferenze storiche dell'utente

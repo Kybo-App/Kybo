@@ -6,6 +6,14 @@ import hashlib
 from google import genai
 from google.genai import types
 from app.core.config import settings
+from app.core.metrics import (
+    diet_gemini_calls_total,
+    diet_gemini_errors_total,
+    diet_cache_hits_total,
+    diet_cache_misses_total,
+    diet_parse_duration_seconds,
+    diet_uploads_total,
+)
 from app.models.schemas import (
     DietResponse, 
     Dish, 
@@ -317,31 +325,38 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         memory_result = self._get_from_memory_cache(content_hash)
         if memory_result:
             print(f"✅ Cache L1 (RAM) HIT per hash {content_hash[:8]}...")
+            diet_cache_hits_total.labels(layer="L1_ram").inc()
             return memory_result
+        diet_cache_misses_total.labels(layer="L1_ram").inc()
 
         # ✅ CACHE L1.5: Check Redis (millisecondi, condiviso tra istanze)
         redis_result = self._get_from_redis_cache(content_hash)
         if redis_result:
             print(f"✅ Cache L1.5 (Redis) HIT per hash {content_hash[:8]}...")
+            diet_cache_hits_total.labels(layer="L1.5_redis").inc()
             self._save_to_memory_cache(content_hash, redis_result)
             return redis_result
+        diet_cache_misses_total.labels(layer="L1.5_redis").inc()
 
         # ✅ CACHE L2: Check Firestore (decine ms, persistente 30gg)
         cached_result = self._get_cached_response(content_hash)
         if cached_result:
             print(f"✅ Cache L2 (Firestore) HIT per hash {content_hash[:8]}...")
+            diet_cache_hits_total.labels(layer="L2_firestore").inc()
             # Popola anche L1 e L1.5 per future richieste
             self._save_to_memory_cache(content_hash, cached_result)
             self._save_to_redis_cache(content_hash, cached_result)
             return cached_result
+        diet_cache_misses_total.labels(layer="L2_firestore").inc()
 
         model_name = settings.GEMINI_MODEL
         final_instruction = custom_instructions if custom_instructions else self.system_instruction
-        
+
+        diet_gemini_calls_total.inc()
         try:
             print(f"🤖 Analisi Gemini ({model_name})... Custom Prompt: {bool(custom_instructions)}")
             print(f"🔑 Cache MISS per hash {content_hash[:8]}... (chiamata API)")
-            
+
             prompt = f"""
             Analizza il seguente testo ed estrai i dati della dieta e le sostituzioni CAD.
             <source_document>
@@ -349,16 +364,17 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             </source_document>
             """
 
-            response = self.client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=final_instruction,
-                    response_mime_type="application/json",
-                    response_schema=OutputDietaCompleto
+            with diet_parse_duration_seconds.time():
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=final_instruction,
+                        response_mime_type="application/json",
+                        response_schema=OutputDietaCompleto
+                    )
                 )
-            )
-            
+
             # Estrai risultato
             if hasattr(response, 'parsed') and response.parsed:
                 result = response.parsed
@@ -366,7 +382,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                 result = self._extract_json_from_text(response.text)
             else:
                 raise ValueError("Risposta vuota da Gemini")
-            
+
             # ✅ CACHE L1: Salva in RAM per accesso veloce
             self._save_to_memory_cache(content_hash, result)
 
@@ -379,6 +395,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return result
 
         except Exception as e:
+            diet_gemini_errors_total.inc()
             print(f"⚠️ Errore con Gemini: {e}")
             raise e
     
