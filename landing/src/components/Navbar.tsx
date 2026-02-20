@@ -9,7 +9,6 @@ import styles from './Navbar.module.css';
 export default function Navbar() {
   const navRef = useRef<HTMLElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isDark, setIsDark] = useState(true);
   const { lenis } = useLenis();
 
   useEffect(() => {
@@ -20,14 +19,6 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
-    // Also update body background so dark-mode sections look right
-    document.body.style.background = next ? '#1a1a1a' : '#f8fafc';
-  };
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
@@ -56,14 +47,6 @@ export default function Navbar() {
         </ul>
 
         <div className={styles.ctaGroup}>
-          <button
-            className={styles.themeToggle}
-            onClick={toggleTheme}
-            aria-label={isDark ? 'Passa alla modalità chiara' : 'Passa alla modalità scura'}
-            title={isDark ? 'Modalità Chiara' : 'Modalità Scura'}
-          >
-            {isDark ? '☀️' : '🌙'}
-          </button>
           <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.loginBtn}>
             Area Riservata
           </a>
