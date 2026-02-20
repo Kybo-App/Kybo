@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useLenis } from './animations/SmoothScroll';
 import styles from './Navbar.module.css';
 
@@ -44,9 +45,9 @@ export default function NavbarEn() {
         <ul className={styles.menu}>
           <li><a href="#features" onClick={(e) => handleNavClick(e, '#features')}>Features</a></li>
           <li><a href="#stats" onClick={(e) => handleNavClick(e, '#stats')}>Stats</a></li>
-          <li><a href="/en/business">For Nutritionists</a></li>
+          <li><Link href="/en/business">For Nutritionists</Link></li>
           {/* Language switcher */}
-          <li><a href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</a></li>
+          <li><Link href="/" style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇮🇹 IT</Link></li>
         </ul>
 
         <div className={styles.ctaGroup}>
