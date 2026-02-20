@@ -18,6 +18,7 @@ import '../models/diet_models.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
+import '../services/pricing_service.dart';
 // import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods; -> RIMOSSO
 
 class DietProvider extends ChangeNotifier {
@@ -33,6 +34,7 @@ class DietProvider extends ChangeNotifier {
   List<PantryItem> _pantryItems = [];
   Map<String, ActiveSwap> _activeSwaps = {};
   List<String> _shoppingList = [];
+  double? _weeklyBudget; // null = nessun budget impostato
   Map<String, bool> _availabilityMap = {};
   Map<String, double> _conversions = {};
   bool _isCalculating = false;
@@ -158,6 +160,22 @@ class DietProvider extends ChangeNotifier {
   List<PantryItem> get pantryItems => _pantryItems;
   Map<String, ActiveSwap> get activeSwaps => _activeSwaps;
   List<String> get shoppingList => _shoppingList;
+  double? get weeklyBudget => _weeklyBudget;
+
+  /// Costo stimato totale della lista spesa corrente (solo articoli non spuntati)
+  double get estimatedShoppingCost {
+    final activeItems = _shoppingList
+        .where((item) => !item.startsWith('OK_'))
+        .toList();
+    return PricingService.estimateTotalCost(activeItems);
+  }
+
+  /// Percentuale del budget usata (0.0–1.0+), null se nessun budget impostato
+  double? get budgetUsageRatio {
+    if (_weeklyBudget == null || _weeklyBudget! <= 0) return null;
+    return estimatedShoppingCost / _weeklyBudget!;
+  }
+
   Map<String, bool> get availabilityMap => _availabilityMap;
   bool get isLoading => _isLoading;
   bool get isTranquilMode => _isTranquilMode;
@@ -381,6 +399,8 @@ class DietProvider extends ChangeNotifier {
       _pantryItems = await _storage.loadPantry();
       _activeSwaps = await _storage.loadSwaps();
       _conversions = await _storage.loadConversions();
+      _shoppingList = await _storage.loadShoppingList();
+      await _loadBudget();
 
       if (savedDiet != null && savedDiet['plan'] != null) {
         // Conversione da JSON cache a Oggetto Dart
@@ -977,7 +997,20 @@ class DietProvider extends ChangeNotifier {
 
   void updateShoppingList(List<String> list) {
     _shoppingList = list;
+    _storage.saveShoppingList(list);
     notifyListeners();
+  }
+
+  // ─── Budget settimanale ──────────────────────────────────────────────────
+
+  Future<void> setWeeklyBudget(double? budget) async {
+    _weeklyBudget = budget;
+    await _storage.saveWeeklyBudget(budget);
+    notifyListeners();
+  }
+
+  Future<void> _loadBudget() async {
+    _weeklyBudget = await _storage.loadWeeklyBudget();
   }
 
   Future<void> swapMeal(String key, ActiveSwap swap) async {

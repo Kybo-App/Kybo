@@ -78,6 +78,35 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
+          // Budget Spesa Settimanale
+          Consumer<DietProvider>(
+            builder: (context, dietProvider, _) {
+              final budget = dietProvider.weeklyBudget;
+              final estimatedCost = dietProvider.estimatedShoppingCost;
+              return PillCard(
+                child: PillListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: KyboColors.accent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.euro_rounded,
+                        color: KyboColors.accent, size: 20),
+                  ),
+                  title: "Budget Spesa Settimanale",
+                  subtitle: budget != null
+                      ? "€${budget.toStringAsFixed(0)} · spesa stimata: €${estimatedCost.toStringAsFixed(2).replaceAll('.', ',')}"
+                      : "Nessun budget impostato",
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showBudgetDialog(context, dietProvider),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
           // Dark Mode Toggle
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, _) => PillCard(
@@ -169,6 +198,121 @@ class SettingsScreen extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBudgetDialog(BuildContext context, DietProvider provider) {
+    final controller = TextEditingController(
+      text: provider.weeklyBudget != null
+          ? provider.weeklyBudget!.toStringAsFixed(0)
+          : '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: KyboColors.accent.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.euro_rounded,
+                  color: KyboColors.accent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Budget Spesa',
+              style: TextStyle(
+                color: KyboColors.textPrimary(context),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Imposta un budget settimanale per la spesa.\n'
+              'Kybo ti avviserà quando la lista stimata si avvicina al limite.',
+              style: TextStyle(
+                color: KyboColors.textSecondary(context),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: false),
+              style: TextStyle(
+                color: KyboColors.textPrimary(context),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                hintText: '0',
+                hintStyle: TextStyle(color: KyboColors.textMuted(context)),
+                prefixText: '€ ',
+                prefixStyle: TextStyle(
+                  color: KyboColors.accent,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: KyboBorderRadius.medium,
+                  borderSide: BorderSide(color: KyboColors.border(context)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: KyboBorderRadius.medium,
+                  borderSide:
+                      const BorderSide(color: KyboColors.accent, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (provider.weeklyBudget != null)
+            TextButton(
+              onPressed: () {
+                provider.setWeeklyBudget(null);
+                Navigator.pop(ctx);
+              },
+              child:
+                  Text('Rimuovi', style: TextStyle(color: KyboColors.error)),
+            ),
+          PillButton(
+            label: 'Annulla',
+            onPressed: () => Navigator.pop(ctx),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 40,
+          ),
+          PillButton(
+            label: 'Salva',
+            onPressed: () {
+              final val = double.tryParse(
+                  controller.text.replaceAll(',', '.'));
+              if (val != null && val > 0) {
+                provider.setWeeklyBudget(val);
+              }
+              Navigator.pop(ctx);
+            },
+            backgroundColor: KyboColors.accent,
+            textColor: Colors.white,
+            height: 40,
           ),
         ],
       ),

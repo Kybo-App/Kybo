@@ -106,4 +106,34 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('custom_conversions', jsonEncode(conversions));
   }
+
+  // ─── Budget settimanale ──────────────────────────────────────────────────
+
+  Future<double?> loadWeeklyBudget() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey('weekly_budget')
+        ? prefs.getDouble('weekly_budget')
+        : null;
+  }
+
+  Future<void> saveWeeklyBudget(double? budget) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (budget == null) {
+      await prefs.remove('weekly_budget');
+    } else {
+      await prefs.setDouble('weekly_budget', budget);
+    }
+  }
+
+  // ─── Lista spesa persistente ─────────────────────────────────────────────
+
+  Future<List<String>> loadShoppingList() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList('shopping_list') ?? [];
+  }
+
+  Future<void> saveShoppingList(List<String> list) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('shopping_list', list);
+  }
 }
