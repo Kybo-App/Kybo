@@ -4,6 +4,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
+import '../services/scale_service.dart';
+import 'scale_connect_screen.dart';
 import 'package:provider/provider.dart';
 
 /// Screen per visualizzare statistiche e progressi
@@ -205,6 +207,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Widget _buildWeightSection() {
+    final scaleService = context.watch<ScaleService>();
+    final connectedName = scaleService.isConnected
+        ? (scaleService.connectedDevice?.platformName.isNotEmpty == true
+            ? scaleService.connectedDevice!.platformName
+            : 'Bilancia BLE')
+        : null;
+
     return Card(
       elevation: 2,
       child: Padding(
@@ -213,15 +222,52 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.monitor_weight, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                const Text(
-                  'Tracking Peso',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Icon(Icons.monitor_weight, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Tracking Peso',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  icon: Icon(
+                    scaleService.isConnected ? Icons.bluetooth_connected : Icons.bluetooth,
+                    size: 18,
+                    color: scaleService.isConnected ? Colors.green : null,
+                  ),
+                  label: Text(
+                    'Bilancia',
+                    style: TextStyle(
+                      color: scaleService.isConnected ? Colors.green : null,
+                    ),
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ScaleConnectScreen(),
+                    ),
+                  ),
                 ),
               ],
             ),
+            if (connectedName != null) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Connessa: $connectedName',
+                    style: const TextStyle(fontSize: 12, color: Colors.green),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [

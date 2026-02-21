@@ -6,6 +6,10 @@
     <string>We need access to photos to scan receipts and upload diets.</string>
     <key>NSCameraUsageDescription</key>
     <string>We need camera access to scan receipts.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Kybo usa il Bluetooth per connettersi alla tua bilancia smart e sincronizzare il peso automaticamente.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Kybo usa il Bluetooth per connettersi alla tua bilancia smart e sincronizzare il peso automaticamente.</string>
 
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
