@@ -332,7 +332,7 @@ class PricingService {
 
   /// Converte qualsiasi unità in kg (o litri, equivalenti per la stima)
   static double _toKg(double qty, String unit) {
-    switch (unit.toLowerCase()) {
+    switch (unit.toLowerCase().trim()) {
       case 'kg':
         return qty;
       case 'g':
@@ -345,8 +345,15 @@ class PricingService {
         return qty / 1000.0;
       case 'cl':
         return qty / 100.0;
+      // Cucchiaini e cucchiai: unità tipiche per olio/condimenti
+      case 'cucchiaino':
+      case 'cucchiaini':
+        return qty * 0.005; // 1 cucchiaino ≈ 5 ml
+      case 'cucchiaio':
+      case 'cucchiai':
+        return qty * 0.015; // 1 cucchiaio ≈ 15 ml
       default:
-        // Unità sconosciuta: assume grammi se numero grande, altrimenti kg
+        // Unità sconosciuta: assume grammi se numero grande (>10), altrimenti kg
         return qty > 10 ? qty / 1000.0 : qty;
     }
   }

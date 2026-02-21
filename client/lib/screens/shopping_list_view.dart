@@ -34,14 +34,66 @@ class ShoppingListView extends StatefulWidget {
 
 // Grocery category keywords for grouping
 const _categoryKeywords = {
-  'Frutta & Verdura': ['mela', 'pera', 'banana', 'arancia', 'limone', 'uva', 'fragola', 'pomodoro', 'insalata', 'lattuga', 'spinaci', 'broccoli', 'carota', 'zucchina', 'melanzana', 'peperone', 'cipolla', 'aglio', 'patata', 'verdura', 'frutta', 'kiwi', 'ananas', 'mango', 'avocado', 'cetriolo'],
-  'Carne & Pesce': ['pollo', 'manzo', 'maiale', 'tacchino', 'vitello', 'agnello', 'salmone', 'tonno', 'merluzzo', 'gambero', 'pesce', 'carne', 'bistecca', 'filetto', 'prosciutto', 'bresaola', 'mortadella', 'salame'],
-  'Latticini & Uova': ['latte', 'yogurt', 'formaggio', 'mozzarella', 'ricotta', 'parmigiano', 'grana', 'burro', 'uovo', 'panna', 'kefir'],
-  'Cereali & Pane': ['pane', 'pasta', 'riso', 'farro', 'quinoa', 'avena', 'orzo', 'fette biscottate', 'crackers', 'cereali', 'farina', 'piadina', 'tortilla'],
-  'Legumi': ['fagioli', 'ceci', 'lenticchie', 'piselli', 'soia', 'edamame', 'tofu'],
-  'Condimenti & Oli': ['olio', 'aceto', 'sale', 'pepe', 'spezie', 'erbe', 'salsa', 'maionese', 'senape', 'ketchup'],
-  'Frutta Secca & Semi': ['mandorle', 'noci', 'nocciole', 'anacardi', 'pistacchi', 'semi', 'tahini', 'burro di arachidi'],
-  'Bevande': ['acqua', 'succo', 'tè', 'caffè', 'latte vegetale'],
+  'Frutta & Verdura': [
+    // Frutta
+    'mela', 'mele', 'pera', 'pere', 'banana', 'banane', 'arancia', 'arance',
+    'limone', 'limoni', 'uva', 'fragola', 'fragole', 'kiwi', 'ananas',
+    'mango', 'avocado', 'pesca', 'pesche', 'albicocca', 'albicocche',
+    'ciliegia', 'ciliegie', 'cocomero', 'anguria', 'melone', 'lampone',
+    'lamponi', 'mirtillo', 'mirtilli', 'fico', 'fichi', 'prugna', 'prugne',
+    'susina', 'susine', 'melagrana', 'melograno', 'clementina', 'clementine',
+    'mandarino', 'mandarini', 'pompelmo', 'nettarina', 'papaya', 'maracuja',
+    'ribes', 'mora', 'more', 'castagna', 'castagne',
+    // Verdura
+    'pomodoro', 'pomodori', 'insalata', 'lattuga', 'spinaci', 'spinaco',
+    'broccoli', 'broccolo', 'carota', 'carote', 'zucchina', 'zucchine',
+    'melanzana', 'melanzane', 'peperone', 'peperoni', 'cipolla', 'cipolle',
+    'aglio', 'patata', 'patate', 'cetriolo', 'cetrioli', 'rucola',
+    'radicchio', 'zucca', 'bietola', 'bietole', 'porro', 'porri',
+    'finocchio', 'finocchi', 'sedano', 'cavolfiore', 'cavolfiori',
+    'cavolo', 'cavoli', 'carciofo', 'carciofi', 'fagiolino', 'fagiolini',
+    'asparago', 'asparagi', 'scarola', 'indivia', 'rapanello', 'rapanelli',
+    'barbabietola', 'mais', 'granoturco', 'crescione', 'catalogna',
+    'cicoria', 'verza', 'crauti', 'daikon', 'topinambur', 'rapa', 'rape',
+    'verdura', 'frutta',
+  ],
+  'Carne & Pesce': [
+    'pollo', 'manzo', 'maiale', 'tacchino', 'vitello', 'agnello', 'coniglio',
+    'salmone', 'tonno', 'merluzzo', 'branzino', 'orata', 'gambero', 'gamberi',
+    'calamaro', 'polpo', 'vongole', 'cozze', 'sgombro', 'alici', 'baccalà',
+    'pesce', 'carne', 'bistecca', 'filetto', 'prosciutto', 'bresaola',
+    'mortadella', 'salame', 'speck', 'pancetta', 'wurstel', 'cotechino',
+  ],
+  'Latticini & Uova': [
+    'latte', 'yogurt', 'formaggio', 'mozzarella', 'ricotta', 'parmigiano',
+    'grana', 'burro', 'uovo', 'uova', 'panna', 'kefir', 'gorgonzola',
+    'fontina', 'pecorino', 'feta', 'mascarpone', 'scamorza', 'provolone',
+    'crescenza', 'stracchino',
+  ],
+  'Cereali & Pane': [
+    'pane', 'pasta', 'riso', 'farro', 'quinoa', 'avena', 'orzo',
+    'fette biscottate', 'crackers', 'cereali', 'farina', 'piadina',
+    'tortilla', 'cous cous', 'polenta', 'miglio', 'gnocchi', 'grissini',
+    'gallette', 'pan carré', 'focaccia',
+  ],
+  'Legumi': [
+    'fagioli', 'ceci', 'lenticchie', 'piselli', 'soia', 'edamame', 'tofu',
+    'lupini', 'fave', 'azuki',
+  ],
+  'Condimenti & Oli': [
+    'olio', 'aceto', 'sale', 'pepe', 'spezie', 'erbe', 'salsa', 'maionese',
+    'senape', 'ketchup', 'curcuma', 'paprika', 'origano', 'basilico',
+    'rosmarino', 'timo', 'prezzemolo', 'menta', 'curry', 'zenzero',
+    'cannella', 'noce moscata', 'dado', 'brodo',
+  ],
+  'Frutta Secca & Semi': [
+    'mandorle', 'noci', 'nocciole', 'anacardi', 'pistacchi', 'semi',
+    'tahini', 'burro di arachidi', 'arachidi', 'pinoli', 'uvetta', 'datteri',
+  ],
+  'Bevande': [
+    'acqua', 'succo', 'tè', 'caffè', 'latte vegetale', 'tisana',
+    'bevanda', 'infuso',
+  ],
 };
 
 String _categorizeItem(String itemName) {
