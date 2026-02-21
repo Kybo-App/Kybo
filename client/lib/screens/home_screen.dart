@@ -41,12 +41,17 @@ import '../services/shortcuts_service.dart';
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
 
+  static final GlobalKey<_MainScreenContentState> _contentKey =
+      GlobalKey<_MainScreenContentState>();
+
   @override
   Widget build(BuildContext context) {
     return ShowCaseWidget(
       autoPlay: false,
       blurValue: 1,
-      builder: (context) => const MainScreenContent(),
+      onComplete: (index, key) =>
+          _contentKey.currentState?._onShowcaseComplete(key),
+      builder: (context) => MainScreenContent(key: _contentKey),
     );
   }
 }
@@ -67,13 +72,27 @@ class _MainScreenContentState extends State<MainScreenContent>
   final AuthService _auth = AuthService();
   StreamSubscription<String>? _deepLinkNavSubscription;
 
-  // CHIAVI TUTORIAL
+  // CHIAVI TUTORIAL — navbar
   final GlobalKey _menuKey = GlobalKey();
   final GlobalKey _tranquilKey = GlobalKey();
   final GlobalKey _pantryTabKey = GlobalKey();
   final GlobalKey _shoppingTabKey = GlobalKey();
 
-  String _menuTutorialDescription = 'Qui trovi le impostazioni e lo storico.';
+  // CHIAVI TUTORIAL — drawer
+  final GlobalKey _drawerChatKey = GlobalKey();
+  final GlobalKey _drawerUploadKey = GlobalKey();
+  final GlobalKey _drawerHistoryKey = GlobalKey();
+  final GlobalKey _drawerBadgesKey = GlobalKey();
+  final GlobalKey _drawerPdfKey = GlobalKey();
+  final GlobalKey _drawerSettingsKey = GlobalKey();
+  final GlobalKey _drawerStatsKey = GlobalKey();
+  final GlobalKey _drawerSuggestionsKey = GlobalKey();
+
+  // Chiave per aprire/chiudere il drawer in modo programmatico
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Flag per sapere se mostrare Chat o Carica Dieta nel tour
+  bool _hasNutritionistForTutorial = false;
 
   @override
   void initState() {
@@ -253,33 +272,105 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   Future<void> _startShowcase() async {
     final user = FirebaseAuth.instance.currentUser;
-    String role = 'client';
-
     if (user != null) {
       try {
         final doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .get();
-        if (doc.exists) role = doc.data()?['role'] ?? 'client';
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          _hasNutritionistForTutorial =
+              (data?['parent_id'] != null &&
+                  data!['parent_id'].toString().isNotEmpty) ||
+              (data?['created_by'] != null &&
+                  data!['created_by'].toString().isNotEmpty);
+        }
       } catch (_) {}
     }
 
-    if (role == 'independent' || role == 'admin') {
-      _menuTutorialDescription =
-          "Qui puoi:\n• Caricare la tua Dieta\n• Gestire Notifiche\n• Vedere lo Storico";
-    } else {
-      _menuTutorialDescription =
-          "Qui puoi:\n• Gestire le Notifiche\n• Vedere lo Storico delle diete passate";
+    // Aspetta che il TabController sia pronto (dieta caricata) — max 6 s
+    for (int i = 0; i < 10 && _tabController == null && mounted; i++) {
+      await Future.delayed(const Duration(milliseconds: 600));
     }
 
     if (mounted) {
-      ShowCaseWidget.of(
-        context,
-      ).startShowCase([_menuKey, _tranquilKey, _pantryTabKey, _shoppingTabKey]);
-
+      // Fase 1: solo il bottone menu
+      ShowCaseWidget.of(context).startShowCase([_menuKey]);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('seen_tutorial_v10', true);
+    }
+  }
+
+  /// Gestisce le transizioni tra le fasi del tutorial interattivo.
+  void _onShowcaseComplete(GlobalKey key) {
+    if (!mounted) return;
+
+    if (key == _menuKey) {
+      // Fase 1 completata → apri drawer e avvia il tour interno
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        _scaffoldKey.currentState?.openDrawer();
+        await Future.delayed(const Duration(milliseconds: 450));
+        if (!mounted) return;
+        final drawerKeys = _hasNutritionistForTutorial
+            ? [
+                _drawerChatKey,
+                _drawerHistoryKey,
+                _drawerBadgesKey,
+                _drawerPdfKey,
+                _drawerSettingsKey,
+                _drawerStatsKey,
+                _drawerSuggestionsKey,
+              ]
+            : [
+                _drawerUploadKey,
+                _drawerHistoryKey,
+                _drawerBadgesKey,
+                _drawerPdfKey,
+                _drawerSettingsKey,
+                _drawerStatsKey,
+                _drawerSuggestionsKey,
+              ];
+        ShowCaseWidget.of(context).startShowCase(drawerKeys);
+      });
+    } else if (key == _drawerSuggestionsKey) {
+      // Fase 2 completata → chiudi drawer, torna al Piano, mostra Relax
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+          _scaffoldKey.currentState?.closeDrawer();
+        }
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (!mounted) return;
+        setState(() => _currentIndex = 1);
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        ShowCaseWidget.of(context).startShowCase([_tranquilKey]);
+      });
+    } else if (key == _tranquilKey) {
+      // Fase 3 completata → naviga su Dispensa
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        setState(() => _currentIndex = 0);
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        ShowCaseWidget.of(context).startShowCase([_pantryTabKey]);
+      });
+    } else if (key == _pantryTabKey) {
+      // Fase 4 completata → naviga su Lista Spesa
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        setState(() => _currentIndex = 2);
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        ShowCaseWidget.of(context).startShowCase([_shoppingTabKey]);
+      });
+    } else if (key == _shoppingTabKey) {
+      // Fase 5 completata → tutorial finito, torna su Piano
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _currentIndex = 1);
+      });
     }
   }
 
@@ -437,6 +528,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   // ─── LAYOUT MOBILE (invariato) ───────────────────────────────────────────
   Widget _buildMobileLayout(BuildContext context, DietProvider provider, user) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: KyboColors.background(context),
       appBar: _currentIndex == 1 && _tabController != null
           ? AppBar(
@@ -455,8 +547,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                 builder: (context) {
                   return Showcase(
                     key: _menuKey,
-                    title: 'Menu Principale',
-                    description: _menuTutorialDescription,
+                    title: 'Menu Laterale',
+                    description:
+                        'Tocca per aprire il menu e scoprire\ntutte le funzioni dell\'app.',
                     targetShapeBorder: const CircleBorder(),
                     child: IconButton(
                       icon: const Icon(Icons.menu),
@@ -528,7 +621,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                   index: 0,
                   showcaseKey: _pantryTabKey,
                   showcaseTitle: 'Dispensa',
-                  showcaseDesc: 'Tieni traccia di ciò che hai in casa.\nScorri per eliminare, + per aggiungere.',
+                  showcaseDesc: 'Monitora ciò che hai in frigorifero e in cucina.\nScansiona lo scontrino o aggiungi manualmente.',
                 ),
                 _buildNavItem(
                   icon: Icons.calendar_today,
@@ -541,7 +634,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                   index: 2,
                   showcaseKey: _shoppingTabKey,
                   showcaseTitle: 'Lista della Spesa',
-                  showcaseDesc: 'Generata in automatico dalla tua dieta.',
+                  showcaseDesc: 'Generata automaticamente dalla tua dieta.\nSpunta gli acquisti già effettuati.',
                 ),
               ],
             ),
@@ -1343,7 +1436,11 @@ class _MainScreenContentState extends State<MainScreenContent>
                           // 💬 Chat OR 📤 Upload (mutually exclusive)
                           if (hasNutritionist) ...[
                             // User has nutritionist → Show Chat
-                            Consumer<ChatProvider>(
+                            Showcase(
+                              key: _drawerChatKey,
+                              title: 'Chat',
+                              description: 'Scrivi al tuo nutrizionista\ne ricevi risposte in tempo reale.',
+                              child: Consumer<ChatProvider>(
                               builder: (context, chatProvider, _) {
                                 final unreadCount = chatProvider.unreadCount;
                                 return PillListTile(
@@ -1398,9 +1495,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 );
                               },
                             ),
+                            ), // close Showcase(_drawerChatKey)
                           ] else ...[
                             // User is independent → Show Upload Diet
-                            PillListTile(
+                            Showcase(
+                              key: _drawerUploadKey,
+                              title: 'Carica Dieta',
+                              description: 'Importa la tua dieta in PDF.\nL\'AI la legge e la organizza per te.',
+                              child: PillListTile(
                               leading: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
@@ -1416,10 +1518,15 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 _uploadDiet(drawerCtx);
                               },
                             ),
+                            ), // close Showcase(_drawerUploadKey)
                           ],
 
                           // 📜 Cronologia
-                          PillListTile(
+                          Showcase(
+                            key: _drawerHistoryKey,
+                            title: 'Cronologia',
+                            description: 'Rivedi tutte le diete precedenti\ncaricate nel tempo.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1437,9 +1544,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                               );
                             },
                           ),
+                          ),
 
                           // 🏆 Traguardi / Badges
-                          PillListTile(
+                          Showcase(
+                            key: _drawerBadgesKey,
+                            title: 'Traguardi',
+                            description: 'Badge e obiettivi da sbloccare\nseguendo la tua dieta.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1457,9 +1569,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                               );
                             },
                           ),
+                          ),
 
                           // 📄 Esporta Dieta PDF
-                          PillListTile(
+                          Showcase(
+                            key: _drawerPdfKey,
+                            title: 'Esporta PDF',
+                            description: 'Scarica la dieta in PDF\nda condividere o stampare.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1475,9 +1592,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                               _exportDietPdf(drawerCtx);
                             },
                           ),
+                          ),
 
                           // ⚙️ Impostazioni
-                          PillListTile(
+                          Showcase(
+                            key: _drawerSettingsKey,
+                            title: 'Impostazioni',
+                            description: 'Notifiche, dark mode,\nbudget della spesa e altro.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1495,9 +1617,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                               ).then((_) => _checkTutorial());
                             },
                           ),
+                          ),
 
                           // 📊 Statistiche
-                          PillListTile(
+                          Showcase(
+                            key: _drawerStatsKey,
+                            title: 'Statistiche',
+                            description: 'Monitora il tuo peso\ne i progressi nel tempo.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1516,9 +1643,14 @@ class _MainScreenContentState extends State<MainScreenContent>
                               );
                             },
                           ),
+                          ),
 
                           // ✨ Suggerimenti AI
-                          PillListTile(
+                          Showcase(
+                            key: _drawerSuggestionsKey,
+                            title: 'Suggerimenti AI',
+                            description: 'Ricevi idee pasto personalizzate\nbasate sulla tua dieta.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1536,6 +1668,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 MaterialPageRoute(builder: (_) => const MealSuggestionsScreen()),
                               );
                             },
+                          ),
                           ),
 
                           // 🚪 Esci
