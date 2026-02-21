@@ -3,32 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './AppMockup.module.css';
 
-type Screen = 'diet' | 'pantry' | 'shopping' | 'chat' | 'ai';
-
-interface MockupScreen {
-  id: Screen;
-  label: string;
-  icon: string;
-}
-
-const screens: MockupScreen[] = [
-  { id: 'diet',     label: 'Piano',    icon: '📅' },
-  { id: 'pantry',   label: 'Dispensa', icon: '🥘' },
-  { id: 'shopping', label: 'Lista',    icon: '🛒' },
-  { id: 'chat',     label: 'Chat',     icon: '💬' },
-  { id: 'ai',       label: 'AI',       icon: '✨' },
-];
+type NavTab  = 'diet' | 'pantry' | 'shopping';
+type Screen  = NavTab | 'chat' | 'ai';
 
 /* ─── PIANO ALIMENTARE ─────────────────────────────────────────────────────── */
 const ScreenDiet = ({ s }: { s: typeof styles }) => (
   <div className={s.screenDiet}>
-    {/* AppBar */}
-    <div className={s.appBar}>
-      <span className={s.appBarMenu}>≡</span>
-      <span className={s.appBarTitle}>Kybo</span>
-      <span className={s.appBarLeaf}>🌿</span>
-    </div>
-
     {/* Day tabs */}
     <div className={s.dayTabs}>
       {['LUN','MAR','MER','GIO','VEN'].map((d, i) => (
@@ -79,11 +59,6 @@ const ScreenDiet = ({ s }: { s: typeof styles }) => (
 /* ─── DISPENSA ─────────────────────────────────────────────────────────────── */
 const ScreenPantry = ({ s }: { s: typeof styles }) => (
   <div className={s.screenPantry}>
-    <div className={s.pantryHeader}>
-      <div className={s.pantryTitle}><span>🥘</span><span>La tua Dispensa</span></div>
-      <div className={s.pantryAiBtn}>✨ Ricette</div>
-    </div>
-
     <div className={s.pantryAddRow}>
       <div className={s.pantryInput}>Aggiungi alimento...</div>
       <div className={s.pantryAddBtn}>+</div>
@@ -110,7 +85,6 @@ const ScreenPantry = ({ s }: { s: typeof styles }) => (
 /* ─── LISTA SPESA ──────────────────────────────────────────────────────────── */
 const ScreenShopping = ({ s }: { s: typeof styles }) => (
   <div className={s.screenShopping}>
-    {/* Budget banner */}
     <div className={s.budgetBanner}>
       <div className={s.budgetRow}>
         <span className={s.budgetLabel}>💰 Spesa stimata</span>
@@ -158,13 +132,6 @@ const ScreenShopping = ({ s }: { s: typeof styles }) => (
 /* ─── CHAT ─────────────────────────────────────────────────────────────────── */
 const ScreenChat = ({ s }: { s: typeof styles }) => (
   <div className={s.screenChat}>
-    <div className={s.chatHeader}>
-      <div className={s.chatAvatar}>R</div>
-      <div>
-        <p className={s.chatName}>Dott.ssa Rossi</p>
-        <p className={s.chatOnline}>● Online</p>
-      </div>
-    </div>
     <div className={s.chatMessages}>
       <div className={`${s.chatMsg} ${s.chatMsgIn}`}>
         <p>Ciao! Come stai andando con il piano questa settimana? 😊</p>
@@ -193,8 +160,6 @@ const ScreenChat = ({ s }: { s: typeof styles }) => (
 /* ─── SUGGERIMENTI AI ──────────────────────────────────────────────────────── */
 const ScreenAI = ({ s }: { s: typeof styles }) => (
   <div className={s.screenAI}>
-    <p className={s.screenTitle}>✨ Suggerimenti AI</p>
-
     <div className={s.aiFilters}>
       {['Tutti','Pranzo','Cena','Vegano'].map((f, i) => (
         <div key={f} className={`${s.aiFilter} ${i === 0 ? s.aiFilterActive : ''}`}>{f}</div>
@@ -228,9 +193,17 @@ const ScreenAI = ({ s }: { s: typeof styles }) => (
 );
 
 /* ─── MAIN COMPONENT ───────────────────────────────────────────────────────── */
+
+const navTabs = [
+  { id: 'pantry'   as NavTab, label: 'Dispensa', icon: '🥘' },
+  { id: 'diet'     as NavTab, label: 'Piano',    icon: '📅' },
+  { id: 'shopping' as NavTab, label: 'Lista',    icon: '🛒' },
+];
+
 export default function AppMockup() {
+  const [activeNav,    setActiveNav]    = useState<NavTab>('diet');
   const [activeScreen, setActiveScreen] = useState<Screen>('diet');
-  const [animating, setAnimating] = useState(false);
+  const [animating,    setAnimating]    = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -252,10 +225,63 @@ export default function AppMockup() {
     initGsap();
   }, []);
 
-  const handleScreenChange = (screen: Screen) => {
+  const go = (screen: Screen) => {
     if (screen === activeScreen || animating) return;
     setAnimating(true);
     setTimeout(() => { setActiveScreen(screen); setAnimating(false); }, 200);
+  };
+
+  const goNav = (tab: NavTab) => {
+    setActiveNav(tab);
+    go(tab);
+  };
+
+  const goBack = () => go(activeNav);
+
+  const isDetail = activeScreen === 'chat' || activeScreen === 'ai';
+
+  /* ── AppBar content ── */
+  const renderAppBar = () => {
+    if (activeScreen === 'chat') {
+      return (
+        <div className={styles.appBar}>
+          <button className={styles.appBarBack} onClick={goBack}>←</button>
+          <div className={styles.appBarChatInfo}>
+            <div className={styles.appBarChatAvatar}>R</div>
+            <div>
+              <p className={styles.appBarChatName}>Dott.ssa Rossi</p>
+              <p className={styles.appBarChatOnline}>● Online</p>
+            </div>
+          </div>
+          <div className={styles.appBarSpacer} />
+        </div>
+      );
+    }
+    if (activeScreen === 'ai') {
+      return (
+        <div className={styles.appBar}>
+          <button className={styles.appBarBack} onClick={goBack}>←</button>
+          <span className={styles.appBarTitle}>✨ Suggerimenti AI</span>
+          <div className={styles.appBarSpacer} />
+        </div>
+      );
+    }
+    /* Main screens */
+    return (
+      <div className={styles.appBar}>
+        <span className={styles.appBarMenu}>≡</span>
+        <span className={styles.appBarTitle}>Kybo</span>
+        <div className={styles.appBarActions}>
+          <button className={styles.appBarIconBtn} onClick={() => go('chat')} title="Chat">
+            💬
+          </button>
+          <button className={styles.appBarIconBtn} onClick={() => go('ai')} title="Suggerimenti AI">
+            ✨
+          </button>
+          <span className={styles.appBarLeaf}>🌿</span>
+        </div>
+      </div>
+    );
   };
 
   const renderScreen = () => {
@@ -301,6 +327,8 @@ export default function AppMockup() {
           <div className={styles.phone}>
             <div className={styles.phoneSpeaker} />
             <div className={styles.phoneScreen}>
+
+              {/* Status bar */}
               <div className={styles.statusBar}>
                 <span>9:41</span>
                 <div className={styles.statusIcons}>
@@ -310,19 +338,24 @@ export default function AppMockup() {
                 </div>
               </div>
 
+              {/* AppBar — always visible, content varies per screen */}
+              {renderAppBar()}
+
+              {/* Screen content */}
               <div className={`${styles.screenContent} ${animating ? styles.fadeOut : styles.fadeIn}`}>
                 {renderScreen()}
               </div>
 
-              <div className={styles.bottomNav}>
-                {screens.map((s) => (
+              {/* Bottom nav — 3 tabs matching real app, hidden on detail screens */}
+              <div className={`${styles.bottomNav} ${isDetail ? styles.bottomNavHidden : ''}`}>
+                {navTabs.map((t) => (
                   <button
-                    key={s.id}
-                    className={`${styles.navBtn} ${activeScreen === s.id ? styles.navBtnActive : ''}`}
-                    onClick={() => handleScreenChange(s.id)}
+                    key={t.id}
+                    className={`${styles.navBtn} ${activeNav === t.id && !isDetail ? styles.navBtnActive : ''}`}
+                    onClick={() => goNav(t.id)}
                   >
-                    <span className={styles.navIcon}>{s.icon}</span>
-                    <span className={styles.navLabel}>{s.label}</span>
+                    <span className={styles.navIcon}>{t.icon}</span>
+                    <span className={styles.navLabel}>{t.label}</span>
                   </button>
                 ))}
               </div>

@@ -236,14 +236,6 @@
   filter: drop-shadow(0 0 4px #66BB6A);
 }
 
-/* ===== SCREEN TITLE (shared) ===== */
-.screenTitle {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  padding: 10px 10px 4px;
-}
-
 /* ===== SCREEN: PIANO ALIMENTARE ===== */
 .screenDiet {
   display: flex;
@@ -283,6 +275,85 @@
 .appBarLeaf {
   font-size: 14px;
   cursor: pointer;
+}
+
+/* AppBar — back button (chat & AI screens) */
+.appBarBack {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* AppBar — chat info (avatar + name/online) */
+.appBarChatInfo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+}
+
+.appBarChatAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.appBarChatName {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.appBarChatOnline {
+  font-size: 7px;
+  color: #66BB6A;
+  margin: 0;
+}
+
+/* AppBar — spacer pushes content left/right */
+.appBarSpacer {
+  flex: 1;
+}
+
+/* AppBar — action icons (💬 ✨) on main screens */
+.appBarActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.appBarIconBtn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  line-height: 1;
+}
+
+.appBarIconBtnActive {
+  background: rgba(102, 187, 106, 0.15);
+}
+
+/* Bottom nav — hidden on detail screens (chat / AI) */
+.bottomNavHidden {
+  display: none;
 }
 
 /* Day tabs */
@@ -421,33 +492,6 @@
   flex-direction: column;
   gap: 0;
   padding-bottom: 8px;
-}
-
-.pantryHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 10px 6px;
-}
-
-.pantryTitle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.pantryAiBtn {
-  font-size: 8px;
-  font-weight: 600;
-  color: #66BB6A;
-  background: rgba(102, 187, 106, 0.12);
-  border: 1px solid rgba(102, 187, 106, 0.25);
-  border-radius: 100px;
-  padding: 3px 8px;
-  cursor: pointer;
 }
 
 .pantryAddRow {
@@ -655,41 +699,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.chatHeader {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: #161a16;
-  flex-shrink: 0;
-}
-
-.chatAvatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.chatName {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.chatOnline {
-  font-size: 8px;
-  color: #66BB6A;
 }
 
 .chatMessages {
