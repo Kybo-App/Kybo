@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_diet_short">Dieta</string>
+    <string name="shortcut_diet_long">Vedi la mia dieta</string>
+    <string name="shortcut_suggestions_short">Suggerimenti</string>
+    <string name="shortcut_suggestions_long">Suggerimenti pasti</string>
+</resources>

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +34,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/env.dart';
 import '../services/jailbreak_service.dart';
+import '../services/deep_link_service.dart';
+import '../services/shortcuts_service.dart';
 
 // --- 1. WRAPPER PRINCIPALE ---
 class MainScreen extends StatelessWidget {
@@ -62,6 +65,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   TabController? _tabController;
   int _lastDaysCount = 0;
   final AuthService _auth = AuthService();
+  StreamSubscription<String>? _deepLinkNavSubscription;
 
   // CHIAVI TUTORIAL
   final GlobalKey _menuKey = GlobalKey();
@@ -83,6 +87,32 @@ class _MainScreenContentState extends State<MainScreenContent>
       _initAppData();
       _checkTutorial();
     });
+
+    // Ascolta deep link da Siri shortcuts / Android App Actions
+    _deepLinkNavSubscription = DeepLinkService().navigationStream.listen(_handleNavTarget);
+  }
+
+  @override
+  void dispose() {
+    _deepLinkNavSubscription?.cancel();
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  /// Naviga alla schermata corretta quando arriva un deep link da Siri / Assistant
+  void _handleNavTarget(String target) {
+    if (!mounted) return;
+    switch (target) {
+      case NavTarget.diet:
+        setState(() => _currentIndex = 1);
+        break;
+      case NavTarget.suggestions:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const MealSuggestionsScreen()),
+        );
+        break;
+    }
   }
 
   /// Crea o ricrea il TabController quando il numero di giorni cambia.
@@ -192,6 +222,9 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (mounted) {
       context.read<BadgeService>().checkLoginStreak();
     }
+
+    // Dona shortcut dieta a Siri (iOS) dopo che l'utente ha usato l'app
+    ShortcutsService().donateShortcut(ShortcutsService.dietActivity);
   }
 
 // Fix #2: Usa direttamente JailbreakService invece di cercare Provider<bool>

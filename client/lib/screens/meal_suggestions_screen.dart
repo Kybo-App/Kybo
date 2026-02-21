@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
+import '../services/shortcuts_service.dart';
 import '../widgets/design_system.dart';
 
 /// Modello per un singolo suggerimento pasto da Gemini AI.
@@ -64,6 +65,8 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
   void initState() {
     super.initState();
     _fetchSuggestions();
+    // Dona shortcut a Siri ogni volta che l'utente apre questa schermata
+    ShortcutsService().donateShortcut(ShortcutsService.suggestionsActivity);
   }
 
   Future<void> _fetchSuggestions() async {

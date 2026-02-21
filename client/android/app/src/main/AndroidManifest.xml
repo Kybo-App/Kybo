@@ -33,18 +33,31 @@
             <meta-data
               android:name="io.flutter.embedding.android.EnableImpeller"
               android:value="false" />
-            
+
+            <!-- Siri/Assistant shortcuts -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Deep Links -->
+            <!-- Deep Links: invite -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kybo" android:host="invite" />
+            </intent-filter>
+
+            <!-- Deep Links: navigazione interna (dieta, suggerimenti) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="kybo" android:host="diet" />
+                <data android:scheme="kybo" android:host="suggestions" />
             </intent-filter>
         </activity>
 
