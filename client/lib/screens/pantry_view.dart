@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
+import '../screens/meal_suggestions_screen.dart';
 import '../widgets/design_system.dart';
 
 class PantryView extends StatefulWidget {
@@ -89,6 +90,32 @@ class _PantryViewState extends State<PantryView> {
                       color: KyboColors.textPrimary(context),
                     ),
                   ),
+                  const Spacer(),
+                  if (widget.pantryItems.isNotEmpty)
+                    FilledButton.icon(
+                      icon: const Icon(Icons.auto_awesome, size: 15),
+                      label: const Text('Ricette AI', style: TextStyle(fontSize: 13)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: KyboColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: KyboBorderRadius.pill,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MealSuggestionsScreen(
+                              pantryItems: widget.pantryItems,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

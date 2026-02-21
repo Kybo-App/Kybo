@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/pantry_item.dart';
 import '../services/api_client.dart';
 import '../services/shortcuts_service.dart';
 import '../widgets/design_system.dart';
@@ -35,8 +36,11 @@ class SuggestedDish {
 
 /// Schermata Suggerimenti Pasti AI — generati da Gemini in base alla
 /// dieta corrente, allergeni e mood recente dell'utente.
+/// Se [pantryItems] è fornito, genera ricette basate sugli ingredienti in dispensa.
 class MealSuggestionsScreen extends StatefulWidget {
-  const MealSuggestionsScreen({super.key});
+  final List<PantryItem>? pantryItems;
+
+  const MealSuggestionsScreen({super.key, this.pantryItems});
 
   @override
   State<MealSuggestionsScreen> createState() => _MealSuggestionsScreenState();
@@ -53,6 +57,8 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
   };
 
   final ApiClient _api = ApiClient();
+
+  bool get _isPantryMode => widget.pantryItems != null && widget.pantryItems!.isNotEmpty;
 
   String _selectedMealType = 'Tutti';
   int _count = 6;
@@ -79,6 +85,10 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
       final queryParams = StringBuffer('/meal-suggestions?count=$_count');
       if (_selectedMealType != 'Tutti') {
         queryParams.write('&meal_type=${Uri.encodeComponent(_selectedMealType)}');
+      }
+      if (_isPantryMode) {
+        final names = widget.pantryItems!.map((p) => Uri.encodeComponent(p.name)).join(',');
+        queryParams.write('&pantry_items=$names');
       }
 
       final data = await _api.get(queryParams.toString()) as Map<String, dynamic>;
@@ -137,7 +147,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              'Suggerimenti AI',
+              _isPantryMode ? 'Ricette dalla Dispensa' : 'Suggerimenti AI',
               style: TextStyle(
                 color: KyboColors.textPrimary(context),
                 fontWeight: FontWeight.bold,
@@ -156,7 +166,10 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
       ),
       body: Column(
         children: [
-          _buildFilters(context),
+          if (_isPantryMode)
+            _buildPantryBanner(context)
+          else
+            _buildFilters(context),
           if (_contextUsed.isNotEmpty && !_loading)
             _buildContextBadge(context),
           Expanded(child: _buildContent(context)),
@@ -215,6 +228,39 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // ─── Banner modalità dispensa ───────────────────────────────────────────────
+  Widget _buildPantryBanner(BuildContext context) {
+    final items = widget.pantryItems!;
+    final preview = items.take(3).map((p) => p.name).join(', ');
+    final more = items.length > 3 ? ' +${items.length - 3}' : '';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: KyboColors.primary.withValues(alpha: 0.08),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(color: KyboColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.kitchen_outlined, color: KyboColors.primary, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$preview$more',
+              style: TextStyle(
+                fontSize: 12,
+                color: KyboColors.textSecondary(context),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
