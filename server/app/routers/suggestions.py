@@ -271,30 +271,40 @@ async def _generate_suggestions(
     meal_filter = f"Genera SOLO suggerimenti per il pasto: {meal_type}." if meal_type else f"Distribuisci i suggerimenti tra i pasti: {meals_str}."
 
     if pantry_list:
-        pantry_str = ", ".join(pantry_list)
+        pantry_str = "\n".join(f"  - {item}" for item in pantry_list)
         prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
 
-CONTESTO UTENTE:
-- Ingredienti disponibili in dispensa: {pantry_str}
-- Allergeni: {allergens_str}
-- Pasti della dieta: {meals_str}
+INGREDIENTI DELLA DIETA (già pesati e prescritti dal nutrizionista):
+{pantry_str}
+
+ALLERGENI DA EVITARE: {allergens_str}
+
+REGOLE RIGIDE (non derogabili):
+1. Usa ESATTAMENTE e SOLO gli ingredienti elencati, nelle quantità già indicate.
+2. NON aggiungere ingredienti calorici extra (no pasta, riso, pane, formaggi, oli extra, ecc.).
+3. Le grammature nel campo "qty" devono rispecchiare la somma degli ingredienti prescritti.
+4. NON alterare le calorie totali del pasto prescritto.
+
+LIBERTÀ CONSENTITE:
+- Metodo di cottura (grill, vapore, forno, padella, crudo, ecc.)
+- Spezie, erbe aromatiche, aglio, cipolla, limone, aceto, senape, salsa di soia (ingredienti non calorici)
+- Ordine e presentazione degli ingredienti nel piatto
 
 ISTRUZIONI:
 {meal_filter}
-Genera esattamente {count} ricette italiane/mediterranee che usano PRINCIPALMENTE gli ingredienti in dispensa indicati.
-Puoi aggiungere ingredienti base comuni (olio, sale, pepe, acqua, spezie) ma dai priorità agli ingredienti disponibili.
-NON usare ingredienti con allergeni indicati.
+Genera esattamente {count} varianti di preparazione creative usando gli stessi ingredienti.
+Ogni variante deve avere un nome diverso che descriva il metodo o il condimento usato.
 
 Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
 {{
   "suggestions": [
     {{
       "name": "Nome del piatto",
-      "qty": "80g",
-      "meal_type": "Colazione",
-      "description": "Breve descrizione max 10 parole",
-      "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"],
-      "calories_estimate": "300 kcal"
+      "qty": "grammature totali del pasto",
+      "meal_type": "Cena",
+      "description": "Metodo di cottura e condimento in max 10 parole",
+      "ingredients": ["ingrediente1 Xg", "ingrediente2 Xg"],
+      "calories_estimate": "~XXX kcal"
     }}
   ]
 }}"""

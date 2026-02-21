@@ -87,8 +87,14 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         queryParams.write('&meal_type=${Uri.encodeComponent(_selectedMealType)}');
       }
       if (_isPantryMode) {
-        final names = widget.pantryItems!.map((p) => Uri.encodeComponent(p.name)).join(',');
-        queryParams.write('&pantry_items=$names');
+        // Passa nome + quantità + unità (es. "pollo 150g") per rispettare le grammature della dieta
+        final items = widget.pantryItems!.map((p) {
+          final qty = p.quantity == p.quantity.roundToDouble()
+              ? p.quantity.round().toString()
+              : p.quantity.toStringAsFixed(1);
+          return Uri.encodeComponent('${p.name} $qty${p.unit}');
+        }).join(',');
+        queryParams.write('&pantry_items=$items');
       }
 
       final data = await _api.get(queryParams.toString()) as Map<String, dynamic>;
