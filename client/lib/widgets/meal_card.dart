@@ -16,8 +16,9 @@ class MealCard extends StatelessWidget {
   final Function(int) onEat;
   final Function(String, int) onSwap;
   final Function(int, String, String) onEdit;
-  final VoidCallback? onNote; // Callback per diario alimentare
-  final String? currentNote; // Nota attuale per questo pasto
+  final VoidCallback? onNote;
+  final String? currentNote;
+  final int portionMultiplier;
 
   const MealCard({
     super.key,
@@ -35,7 +36,24 @@ class MealCard extends StatelessWidget {
     required this.onEdit,
     this.onNote,
     this.currentNote,
+    this.portionMultiplier = 1,
   });
+
+  /// Moltiplica la parte numerica iniziale di una stringa qty (es. "150 g" → "300 g").
+  /// Se non trova un numero iniziale o il moltiplicatore è 1, restituisce la stringa invariata.
+  static String _scaleQty(String qty, int multiplier) {
+    if (multiplier == 1 || qty.isEmpty || qty == 'A piacere') return qty;
+    final match = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(.*)$').firstMatch(qty.trim());
+    if (match == null) return qty;
+    final value = double.tryParse(match.group(1)!.replaceAll(',', '.'));
+    if (value == null) return qty;
+    final unit = match.group(2) ?? '';
+    final scaled = value * multiplier;
+    final formatted = scaled == scaled.roundToDouble()
+        ? scaled.round().toString()
+        : scaled.toStringAsFixed(1);
+    return unit.isEmpty ? formatted : '$formatted $unit'.trim();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +248,7 @@ class MealCard extends StatelessWidget {
                         if (isTranquilMode && isRelaxableItem) {
                           qtyDisplay = "A piacere";
                         } else {
-                          qtyDisplay = effectiveQty.trim();
+                          qtyDisplay = _scaleQty(effectiveQty.trim(), portionMultiplier);
                         }
 
                         return Container(
@@ -322,6 +340,8 @@ class MealCard extends StatelessWidget {
                                           bool iRelax = isRelaxable(iName);
                                           if (isTranquilMode && iRelax) {
                                             iQty = "";
+                                          } else {
+                                            iQty = _scaleQty(iQty, portionMultiplier);
                                           }
                                           return Padding(
                                             padding: const EdgeInsets.only(
