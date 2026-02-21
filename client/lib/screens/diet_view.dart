@@ -11,25 +11,30 @@ import '../widgets/design_system.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 
-class DietView extends StatelessWidget {
+class DietView extends StatefulWidget {
   final String day;
-  final DietPlan? dietPlan; // [FIX] Accetta l'oggetto DietPlan
+  final DietPlan? dietPlan;
   final bool isLoading;
   final Map<String, ActiveSwap> activeSwaps;
-  // substitutions rimosso perché incluso in dietPlan
   final List<PantryItem> pantryItems;
   final bool isTranquilMode;
 
   const DietView({
     super.key,
     required this.day,
-    required this.dietPlan, // [FIX] Aggiornato
+    required this.dietPlan,
     required this.isLoading,
     required this.activeSwaps,
-    // substitutions rimosso
     required this.pantryItems,
     required this.isTranquilMode,
   });
+
+  @override
+  State<DietView> createState() => _DietViewState();
+}
+
+class _DietViewState extends State<DietView> {
+  int _portionMultiplier = 1;
 
   bool _isToday(BuildContext context, String dayName) {
     final provider = context.read<DietProvider>();
@@ -44,12 +49,11 @@ class DietView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (widget.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // [FIX] Controllo sull'oggetto e sulla mappa interna
-    if (dietPlan == null || dietPlan!.plan.isEmpty) {
+    if (widget.dietPlan == null || widget.dietPlan!.plan.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -65,8 +69,7 @@ class DietView extends StatelessWidget {
       );
     }
 
-    // [FIX] Accesso tipizzato alla mappa plan
-    final mealsOfDay = dietPlan!.plan[day];
+    final mealsOfDay = widget.dietPlan!.plan[widget.day];
 
     if (mealsOfDay == null) {
       return Center(
@@ -76,7 +79,7 @@ class DietView extends StatelessWidget {
             Icon(Icons.bed_outlined, size: 60, color: KyboColors.textMuted(context)),
             const SizedBox(height: 10),
             Text(
-              "Riposo (nessun piano per $day)",
+              "Riposo (nessun piano per ${widget.day})",
               style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
           ],
@@ -84,17 +87,12 @@ class DietView extends StatelessWidget {
       );
     }
 
-    final bool isCurrentDay = _isToday(context, day);
+    final bool isCurrentDay = _isToday(context, widget.day);
     final provider = context.read<DietProvider>();
     final orderedMeals = provider.getMeals();
-    // relaxableFoods rimosso qui, usiamo provider.isRelaxable direttamente nel MealCard
 
-    // [FIX] Calcola la lista finale dei pasti da mostrare
-    // 1. Pasti conosciuti (nell'ordine corretto) che esistono nel piano di oggi
     final knownMeals = orderedMeals.where((m) => mealsOfDay.containsKey(m)).toList();
-    // 2. Pasti extra nel piano (non presenti in config)
     final extraMeals = mealsOfDay.keys.where((m) => !orderedMeals.contains(m)).toList();
-    // 3. Unione
     final displayMeals = [...knownMeals, ...extraMeals];
 
     return Container(
@@ -103,26 +101,73 @@ class DietView extends StatelessWidget {
         onRefresh: () async => provider.refreshAvailability(),
         child: ListView(
           padding: const EdgeInsets.only(top: 10, bottom: 80),
-          children: displayMeals.map((mealType) {
-
-            return MealCard(
-              day: day,
-              mealName: mealType,
-              foods: mealsOfDay[mealType]!,
-              activeSwaps: activeSwaps,
-              availabilityMap: context.watch<DietProvider>().availabilityMap,
-              isTranquilMode: isTranquilMode,
-              isToday: isCurrentDay,
-              isRelaxable: provider.isRelaxable, // [FIX] Callback intelligente
-              orderedMeals: orderedMeals,
-              onEat: (index) => _handleConsume(context, day, mealType, index),
-              onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
-              onEdit: (index, name, qty) => provider
-                  .updateDietMeal(day, mealType, index, name, qty),
-              onNote: () => _showNoteDialog(context, day, mealType),
-            );
-          }).toList(),
+          children: [
+            _buildPortionSelector(context),
+            ...displayMeals.map((mealType) {
+              return MealCard(
+                day: widget.day,
+                mealName: mealType,
+                foods: mealsOfDay[mealType]!,
+                activeSwaps: widget.activeSwaps,
+                availabilityMap: context.watch<DietProvider>().availabilityMap,
+                isTranquilMode: widget.isTranquilMode,
+                isToday: isCurrentDay,
+                isRelaxable: provider.isRelaxable,
+                orderedMeals: orderedMeals,
+                portionMultiplier: _portionMultiplier,
+                onEat: (index) => _handleConsume(context, widget.day, mealType, index),
+                onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
+                onEdit: (index, name, qty) => provider
+                    .updateDietMeal(widget.day, mealType, index, name, qty),
+                onNote: () => _showNoteDialog(context, widget.day, mealType),
+              );
+            }),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPortionSelector(BuildContext context) {
+    const multipliers = [1, 2, 4, 6];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Row(
+        children: [
+          Icon(Icons.people_outline, size: 16, color: KyboColors.textMuted(context)),
+          const SizedBox(width: 8),
+          Text(
+            'Porzioni:',
+            style: TextStyle(fontSize: 13, color: KyboColors.textMuted(context)),
+          ),
+          const SizedBox(width: 10),
+          ...multipliers.map((m) {
+            final selected = _portionMultiplier == m;
+            return GestureDetector(
+              onTap: () => setState(() => _portionMultiplier = m),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: selected ? KyboColors.primary : KyboColors.surface(context),
+                  borderRadius: KyboBorderRadius.pill,
+                  border: Border.all(
+                    color: selected ? KyboColors.primary : KyboColors.border(context),
+                  ),
+                ),
+                child: Text(
+                  '×$m',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: selected ? Colors.white : KyboColors.textSecondary(context),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -276,7 +321,7 @@ class DietView extends StatelessWidget {
   // [FIX] Logica Swap aggiornata per usare DietPlan (Oggetti) invece di Map
   void _showSwapDialog(BuildContext context, String swapKey, int cadCode) {
     // Accesso sicuro tramite dietPlan
-    final subs = dietPlan?.substitutions;
+    final subs = widget.dietPlan?.substitutions;
     final String lookupCode = cadCode.toString();
 
     // Controllo esistenza sostituzioni
