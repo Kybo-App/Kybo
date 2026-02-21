@@ -895,14 +895,14 @@
   justify-content: center;
   z-index: 20;
   border-radius: inherit;
-  animation: hintFade 3.5s ease forwards;
+  animation: hintFade 5s ease forwards;
   pointer-events: none;
 }
 
 @keyframes hintFade {
   0%   { opacity: 0; }
-  12%  { opacity: 1; }
-  72%  { opacity: 1; }
+  10%  { opacity: 1; }
+  80%  { opacity: 1; }
   100% { opacity: 0; }
 }
 
