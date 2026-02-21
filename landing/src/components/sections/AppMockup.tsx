@@ -204,6 +204,7 @@ export default function AppMockup() {
   const [activeNav,    setActiveNav]    = useState<NavTab>('diet');
   const [activeScreen, setActiveScreen] = useState<Screen>('diet');
   const [animating,    setAnimating]    = useState(false);
+  const [showHint,     setShowHint]     = useState(true);
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -226,6 +227,7 @@ export default function AppMockup() {
   }, []);
 
   const go = (screen: Screen) => {
+    setShowHint(false);
     if (screen === activeScreen || animating) return;
     setAnimating(true);
     setTimeout(() => { setActiveScreen(screen); setAnimating(false); }, 200);
@@ -324,43 +326,64 @@ export default function AppMockup() {
         </div>
 
         <div className={styles.phoneSide}>
-          <div className={styles.phone}>
-            <div className={styles.phoneSpeaker} />
-            <div className={styles.phoneScreen}>
+          <div className={styles.phoneWrapper}>
+            <div className={styles.phone}>
+              <div className={styles.phoneSpeaker} />
+              <div className={styles.phoneScreen}>
 
-              {/* Status bar */}
-              <div className={styles.statusBar}>
-                <span>9:41</span>
-                <div className={styles.statusIcons}>
-                  <span>●●●</span>
-                  <span>WiFi</span>
-                  <span>🔋</span>
+                {/* Interactive hint overlay — fades out after 3.5s or on first tap */}
+                {showHint && (
+                  <div
+                    className={styles.interactiveHint}
+                    onAnimationEnd={() => setShowHint(false)}
+                  >
+                    <div className={styles.hintInner}>
+                      <span className={styles.hintEmoji}>👆</span>
+                      <p className={styles.hintText}>Tocca per esplorare</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status bar */}
+                <div className={styles.statusBar}>
+                  <span>9:41</span>
+                  <div className={styles.statusIcons}>
+                    <span>●●●</span>
+                    <span>WiFi</span>
+                    <span>🔋</span>
+                  </div>
+                </div>
+
+                {/* AppBar — always visible, content varies per screen */}
+                {renderAppBar()}
+
+                {/* Screen content */}
+                <div className={`${styles.screenContent} ${animating ? styles.fadeOut : styles.fadeIn}`}>
+                  {renderScreen()}
+                </div>
+
+                {/* Bottom nav — 3 tabs matching real app, hidden on detail screens */}
+                <div className={`${styles.bottomNav} ${isDetail ? styles.bottomNavHidden : ''}`}>
+                  {navTabs.map((t) => (
+                    <button
+                      key={t.id}
+                      className={`${styles.navBtn} ${activeNav === t.id && !isDetail ? styles.navBtnActive : ''}`}
+                      onClick={() => goNav(t.id)}
+                    >
+                      <span className={styles.navIcon}>{t.icon}</span>
+                      <span className={styles.navLabel}>{t.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              {/* AppBar — always visible, content varies per screen */}
-              {renderAppBar()}
-
-              {/* Screen content */}
-              <div className={`${styles.screenContent} ${animating ? styles.fadeOut : styles.fadeIn}`}>
-                {renderScreen()}
-              </div>
-
-              {/* Bottom nav — 3 tabs matching real app, hidden on detail screens */}
-              <div className={`${styles.bottomNav} ${isDetail ? styles.bottomNavHidden : ''}`}>
-                {navTabs.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`${styles.navBtn} ${activeNav === t.id && !isDetail ? styles.navBtnActive : ''}`}
-                    onClick={() => goNav(t.id)}
-                  >
-                    <span className={styles.navIcon}>{t.icon}</span>
-                    <span className={styles.navLabel}>{t.label}</span>
-                  </button>
-                ))}
-              </div>
+              <div className={styles.phoneHome} />
             </div>
-            <div className={styles.phoneHome} />
+
+            {/* Persistent interactive badge below phone */}
+            <div className={styles.interactiveBadge}>
+              <span className={styles.interactiveDot} />
+              Interattivo — tocca per esplorare
+            </div>
           </div>
 
           <div className={`${styles.chip} ${styles.chip1}`}>
