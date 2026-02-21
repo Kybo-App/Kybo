@@ -123,7 +123,7 @@
 .phoneScreen {
   flex: 1;
   width: 100%;
-  background: #0f0f0f;
+  background: #0f1210;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -156,7 +156,7 @@
   padding: 6px 12px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
-  background: #0f0f0f;
+  background: #0f1210;
   flex-shrink: 0;
 }
 
@@ -190,18 +190,18 @@
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeOut {
   from { opacity: 1; }
-  to { opacity: 0; }
+  to   { opacity: 0; }
 }
 
 /* ===== BOTTOM NAV ===== */
 .bottomNav {
   display: flex;
-  background: #1a1a1a;
+  background: #161a16;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
 }
@@ -225,7 +225,7 @@
 
 .navLabel {
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .navBtnActive .navLabel {
@@ -236,266 +236,462 @@
   filter: drop-shadow(0 0 4px #66BB6A);
 }
 
-/* ===== SCREEN: HOME ===== */
-.screenHome {
-  padding: 10px;
+/* ===== SCREEN: PIANO ALIMENTARE ===== */
+.screenDiet {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
 }
 
-.homeHeader {
+/* AppBar */
+.appBar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  padding: 8px 12px;
+  background: #161a16;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
-.homeGreeting {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.appBarMenu {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1;
+  font-weight: 300;
+  cursor: pointer;
 }
 
-.homeEmoji {
-  font-size: 20px;
-}
-
-.homeHello {
-  font-size: 12px;
-  font-weight: 700;
+.appBarTitle {
+  font-size: 14px;
+  font-weight: 800;
   color: #fff;
+  letter-spacing: -0.02em;
 }
 
-.homeDate {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
+.appBarLeaf {
+  font-size: 14px;
+  cursor: pointer;
 }
 
-.homeAvatar {
-  width: 28px;
-  height: 28px;
+/* AppBar — back button (chat & AI screens) */
+.appBarBack {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* AppBar — chat info (avatar + name/online) */
+.appBarChatInfo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+}
+
+.appBarChatAvatar {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.appBarChatName {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.appBarChatOnline {
+  font-size: 7px;
+  color: #66BB6A;
+  margin: 0;
+}
+
+/* AppBar — spacer pushes content left/right */
+.appBarSpacer {
+  flex: 1;
+}
+
+/* AppBar — action icons (💬 ✨) on main screens */
+.appBarActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.appBarIconBtn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  line-height: 1;
+}
+
+.appBarIconBtnActive {
+  background: rgba(102, 187, 106, 0.15);
+}
+
+/* Bottom nav — hidden on detail screens (chat / AI) */
+.bottomNavHidden {
+  display: none;
+}
+
+/* Day tabs */
+.dayTabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px 4px;
+}
+
+.dayTab {
+  flex: 1;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 4px 2px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.dayActive {
+  background: #66BB6A;
   color: #fff;
 }
 
+/* Next meal banner */
 .nextMealBanner {
   display: flex;
   gap: 8px;
   align-items: center;
-  background: rgba(102, 187, 106, 0.1);
+  background: rgba(102, 187, 106, 0.09);
   border: 1px solid rgba(102, 187, 106, 0.2);
   border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 10px;
+  padding: 7px 10px;
+  margin: 6px 10px;
+}
+
+.nextMealIcon {
+  font-size: 14px;
 }
 
 .nextMealLabel {
   font-size: 9px;
   font-weight: 700;
   color: #66BB6A;
+  margin-bottom: 1px;
 }
 
 .nextMealItems {
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
 }
 
-.statsRow {
-  display: flex;
-  gap: 6px;
-}
-
-.statChip {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.statNum {
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.statLbl {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.4);
-  text-align: center;
-}
-
-.sectionLabel {
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 4px;
-}
-
+/* Meal cards */
 .mealCard {
-  display: flex;
-  gap: 8px;
-  align-items: center;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  margin: 4px 10px;
+  overflow: hidden;
 }
 
-.mealDone {
-  opacity: 0.5;
+.mealCardDone {
+  opacity: 0.6;
+}
+
+.mealCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 5px;
 }
 
 .mealIcon {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .mealName {
   font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.mealItems {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-/* ===== SCREEN: DIET ===== */
-.screenDiet {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.screenTitle {
-  font-size: 13px;
   font-weight: 700;
   color: #fff;
-}
-
-.dayTabs {
-  display: flex;
-  gap: 4px;
-}
-
-.dayTab {
   flex: 1;
-  text-align: center;
+}
+
+.mealKcal {
+  font-size: 8px;
+  font-weight: 600;
+  color: #66BB6A;
+  background: rgba(102, 187, 106, 0.12);
+  padding: 2px 6px;
+  border-radius: 100px;
+}
+
+.mealIngredients {
+  padding: 0 10px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mealIngRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mealIngName {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.mealIngQty {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.mealConsumedDone {
+  font-size: 8px;
+  color: #66BB6A;
+  padding: 5px 10px 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mealConsumedPending {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 5px 10px 7px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ===== SCREEN: DISPENSA ===== */
+.screenPantry {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 8px;
+}
+
+.pantryAddRow {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+
+.pantryInput {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pantryAddBtn {
+  width: 28px;
+  height: 28px;
+  background: #66BB6A;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #fff;
+  font-weight: 300;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pantryItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pantryItemDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #66BB6A;
+  flex-shrink: 0;
+}
+
+.pantryItemName {
+  flex: 1;
   font-size: 9px;
-  padding: 4px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pantryItemQty {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pantryFab {
+  margin: 12px 10px 6px;
+  background: rgba(102, 187, 106, 0.12);
+  border: 1px solid rgba(102, 187, 106, 0.25);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #66BB6A;
+  text-align: center;
   cursor: pointer;
 }
 
-.dayActive {
-  background: #66BB6A;
-  color: #fff;
-  font-weight: 700;
+/* ===== SCREEN: LISTA SPESA ===== */
+.screenShopping {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.dietCard {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+/* Budget banner */
+.budgetBanner {
+  background: rgba(102, 187, 106, 0.08);
+  border-bottom: 1px solid rgba(102, 187, 106, 0.15);
   padding: 8px 10px;
 }
 
-.dietCardHeader {
+.budgetRow {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: center;
+  margin-bottom: 5px;
 }
 
-.dietMealName {
+.budgetLabel {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.budgetValue {
   font-size: 10px;
   font-weight: 700;
   color: #fff;
 }
 
-.dietKcal {
-  font-size: 9px;
-  color: #66BB6A;
-}
-
-.dietItem {
-  display: flex;
-  gap: 4px;
+.budgetOf {
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.35);
 }
 
-.dietDot {
-  color: #66BB6A;
+.budgetBarTrack {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-/* ===== SCREEN: SHOPPING ===== */
-.screenShopping {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.budgetBarFill {
+  width: 53%;
+  height: 100%;
+  background: linear-gradient(90deg, #66BB6A, #4CAF50);
+  border-radius: 2px;
 }
 
+/* Actions */
 .shopActions {
   display: flex;
   gap: 6px;
+  padding: 8px 10px;
 }
 
 .shopBtn {
   flex: 1;
   font-size: 8px;
-  padding: 5px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
 }
 
+.shopBtnActive {
+  background: rgba(102, 187, 106, 0.12);
+  border-color: rgba(102, 187, 106, 0.25);
+  color: #66BB6A;
+}
+
 .shopCat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  padding: 4px 10px;
 }
 
 .shopCatLabel {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  padding-top: 4px;
 }
 
 .shopItem {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 9px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
   padding: 4px 6px;
   background: rgba(255, 255, 255, 0.04);
-  border-radius: 6px;
+  border-radius: 7px;
+  margin-bottom: 3px;
+}
+
+.shopItemDone {
+  color: rgba(255, 255, 255, 0.28);
+  text-decoration: line-through;
 }
 
 .shopCheck {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   border-radius: 3px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+}
+
+.shopCheckDone {
+  background: #66BB6A;
+  border-color: #66BB6A;
+  color: #fff;
 }
 
 /* ===== SCREEN: CHAT ===== */
@@ -503,39 +699,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.chatHeader {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: #1a1a1a;
-}
-
-.chatAvatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.chatName {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.chatOnline {
-  font-size: 8px;
-  color: #66BB6A;
 }
 
 .chatMessages {
@@ -553,31 +716,31 @@
 }
 
 .chatMsg {
-  max-width: 80%;
+  max-width: 82%;
   padding: 7px 10px;
   border-radius: 12px;
   font-size: 8px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: #fff;
 }
 
 .chatMsgIn {
   background: rgba(255, 255, 255, 0.08);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 3px;
   align-self: flex-start;
 }
 
 .chatMsgOut {
   background: linear-gradient(135deg, #66BB6A, #2E7D32);
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 3px;
   align-self: flex-end;
 }
 
 .chatTime {
   display: block;
   font-size: 7px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 3px;
   text-align: right;
 }
 
@@ -586,16 +749,17 @@
   gap: 6px;
   padding: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .chatInputField {
   flex: 1;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   padding: 5px 8px;
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.35);
   outline: none;
 }
 
@@ -610,98 +774,190 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-/* ===== SCREEN: STATS ===== */
-.screenStats {
-  padding: 10px;
+/* ===== SCREEN: AI SUGGERIMENTI ===== */
+.screenAI {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  padding-bottom: 8px;
 }
 
-.weightCard {
-  background: linear-gradient(135deg, rgba(102, 187, 106, 0.15), rgba(46, 125, 50, 0.1));
-  border: 1px solid rgba(102, 187, 106, 0.2);
-  border-radius: 12px;
-  padding: 12px;
-  text-align: center;
+.aiFilters {
+  display: flex;
+  gap: 5px;
+  padding: 4px 10px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.weightLabel {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 4px;
+.aiFilters::-webkit-scrollbar {
+  display: none;
 }
 
-.weightValue {
-  font-size: 28px;
-  font-weight: 800;
+.aiFilter {
+  font-size: 8px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.aiFilterActive {
+  background: #66BB6A;
+  border-color: #66BB6A;
   color: #fff;
 }
 
-.weightValue span {
-  font-size: 14px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.5);
+.aiCard {
+  margin: 0 10px 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.weightDelta {
-  font-size: 9px;
-  color: #66BB6A;
-  margin-top: 2px;
-}
-
-.barsChart {
+.aiCardImage {
+  height: 52px;
   display: flex;
-  gap: 4px;
   align-items: flex-end;
-  height: 60px;
-  padding: 0 4px;
+  justify-content: space-between;
+  padding: 6px 8px;
+  position: relative;
 }
 
-.barWrapper {
-  flex: 1;
+.aiCardMealBadge {
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 100px;
+  backdrop-filter: blur(4px);
+}
+
+.aiCardEmoji {
+  font-size: 20px;
+  opacity: 0.6;
+}
+
+.aiCardBody {
+  padding: 7px 9px 8px;
+}
+
+.aiCardName {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.aiCardMeta {
+  display: flex;
+  gap: 10px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 6px;
+}
+
+.aiCardBtn {
+  font-size: 8px;
+  font-weight: 600;
+  color: #66BB6A;
+  cursor: pointer;
+}
+
+/* ===== PHONE WRAPPER (phone + badge column) ===== */
+.phoneWrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  height: 100%;
+  gap: 0.9rem;
+  position: relative;
+  z-index: 1;
 }
 
-.bar {
-  width: 100%;
-  background: linear-gradient(to top, #66BB6A, rgba(102, 187, 106, 0.3));
-  border-radius: 3px 3px 0 0;
-  min-height: 4px;
-  transition: height 0.5s ease;
-}
-
-.barLabel {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.badgesRow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.badges {
-  display: flex;
-  gap: 6px;
-}
-
-.badge {
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+/* ===== INTERACTIVE HINT OVERLAY ===== */
+.interactiveHint {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 18, 10, 0.62);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  z-index: 20;
+  border-radius: inherit;
+  animation: hintFade 3.5s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes hintFade {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  72%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.hintInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.hintEmoji {
+  font-size: 30px;
+  animation: tapBounce 1.1s ease-in-out infinite;
+  display: block;
+  user-select: none;
+}
+
+@keyframes tapBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45%       { transform: translateY(-6px) scale(1.12); }
+}
+
+.hintText {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ===== INTERACTIVE BADGE (below phone) ===== */
+.interactiveBadge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.38);
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.interactiveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #66BB6A;
+  flex-shrink: 0;
+  animation: dotPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.7); }
 }
 
 /* ===== FLOATING CHIPS ===== */
@@ -741,7 +997,7 @@
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50%       { transform: translateY(-8px); }
 }
 
 /* ===== RESPONSIVE ===== */
