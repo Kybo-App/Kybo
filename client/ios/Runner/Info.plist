@@ -10,6 +10,11 @@
     <string>Kybo usa il Bluetooth per connettersi alla tua bilancia smart e sincronizzare il peso automaticamente.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>Kybo usa il Bluetooth per connettersi alla tua bilancia smart e sincronizzare il peso automaticamente.</string>
+    <key>NSUserActivityTypes</key>
+    <array>
+        <string>it.kybo.app.viewDiet</string>
+        <string>it.kybo.app.viewSuggestions</string>
+    </array>
 
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
