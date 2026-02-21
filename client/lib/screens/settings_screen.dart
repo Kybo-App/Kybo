@@ -399,31 +399,10 @@ class SettingsScreen extends StatelessWidget {
 
   void _resetTutorial(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('tutorial_completed', false);
+    await prefs.setBool('seen_tutorial_v10', false);
 
     if (context.mounted) {
-      // Navigate back to home and restart tutorial
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      
-      // Show confirmation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Tutorial riavviato! Riapri il drawer per iniziare.'),
-          backgroundColor: KyboColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      
-      // Trigger tutorial restart by refreshing the ShowCaseWidget
-      // This will re-check tutorial_completed and restart if false
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (context.mounted) {
-          // Find and restart ShowCaseWidget context
-          // The tutorial will automatically restart when the user interacts next
-        }
-      });
+      Navigator.of(context).pop();
     }
   }
 }

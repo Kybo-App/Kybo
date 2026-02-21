@@ -857,7 +857,7 @@ class _MainScreenContentState extends State<MainScreenContent>
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              ),
+              ).then((_) => _checkTutorial()),
             ),
           ],
         );
@@ -1490,9 +1490,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                             onTap: () {
                               Navigator.pop(drawerCtx);
                               Navigator.push(
-                                drawerCtx,
+                                context,
                                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                              );
+                              ).then((_) => _checkTutorial());
                             },
                           ),
 
