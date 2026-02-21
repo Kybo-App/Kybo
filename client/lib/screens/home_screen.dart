@@ -563,12 +563,12 @@ class _MainScreenContentState extends State<MainScreenContent>
                   key: _tranquilKey,
                   title: 'Modalità Relax',
                   description:
-                      'Tocca la foglia per nascondere le calorie\ne ridurre lo stress.',
+                      'Tocca la foglia per nascondere le grammature\ndi frutta e verdura. Meno stress, stessa dieta.',
                   targetShapeBorder: const CircleBorder(),
                   child: Semantics(
                     label: "Modalità Relax",
                     selected: provider.isTranquilMode,
-                    hint: "Nasconde le calorie per ridurre lo stress",
+                    hint: "Nasconde le grammature di frutta e verdura per ridurre lo stress",
                     button: true,
                     child: IconButton(
                       icon: Icon(
