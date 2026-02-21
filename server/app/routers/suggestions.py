@@ -86,6 +86,7 @@ def _save_to_memory_cache(key: str, data: dict):
 async def get_meal_suggestions(
     meal_type: Optional[str] = Query(None, description="Filtra per tipo pasto: Colazione, Pranzo, Cena..."),
     count: int = Query(6, ge=1, le=12, description="Numero di suggerimenti da generare"),
+    pantry_items: Optional[str] = Query(None, description="Ingredienti in dispensa (separati da virgola). Se presente, genera ricette basate su questi ingredienti."),
     token: dict = Depends(verify_token),
     uid: str = Depends(get_current_uid),
 ):
@@ -94,6 +95,7 @@ async def get_meal_suggestions(
     - Dieta corrente dell'utente (piatti già presenti, config, allergeni)
     - Tipo pasto richiesto (opzionale)
     - Varietà rispetto ai piatti già presenti
+    - Ingredienti in dispensa (opzionale) — modalità "ricette dalla dispensa"
 
     I suggerimenti sono cachati 30 minuti per evitare chiamate ridondanti a Gemini.
     """
@@ -107,11 +109,17 @@ async def get_meal_suggestions(
 
     user_data = _load_user_context(db, uid)
 
-    # Chiave cache: uid + meal_type + count + hash contesto dieta
+    # Normalizza pantry_items in lista
+    pantry_list: List[str] = []
+    if pantry_items:
+        pantry_list = [item.strip() for item in pantry_items.split(",") if item.strip()]
+
+    # Chiave cache: uid + meal_type + count + pantry + hash contesto dieta
     context_hash = hashlib.md5(
         json.dumps(user_data, sort_keys=True, default=str).encode()
     ).hexdigest()[:8]
-    cache_key = f"suggestions:{uid}:{meal_type or 'all'}:{count}:{context_hash}"
+    pantry_key = hashlib.md5(",".join(sorted(pantry_list)).encode()).hexdigest()[:6] if pantry_list else "nopantry"
+    cache_key = f"suggestions:{uid}:{meal_type or 'all'}:{count}:{pantry_key}:{context_hash}"
 
     # ✅ CACHE L1: RAM locale (microsecondi)
     cached = _get_from_memory_cache(cache_key)
@@ -138,6 +146,7 @@ async def get_meal_suggestions(
                 user_data=user_data,
                 meal_type=meal_type,
                 count=count,
+                pantry_list=pantry_list,
             )
     except Exception as e:
         suggestions_gemini_errors_total.inc()
@@ -147,7 +156,7 @@ async def get_meal_suggestions(
 
     response_data = {
         "suggestions": result,
-        "context_used": _build_context_description(user_data, meal_type),
+        "context_used": _build_context_description(user_data, meal_type, pantry_list),
         "generated_at": int(time.time()),
     }
 
@@ -236,6 +245,7 @@ async def _generate_suggestions(
     user_data: dict,
     meal_type: Optional[str],
     count: int,
+    pantry_list: Optional[List[str]] = None,
 ) -> List[dict]:
     """Chiama Gemini per generare suggerimenti strutturati."""
 
@@ -257,15 +267,44 @@ async def _generate_suggestions(
         if user_data["meals_config"]
         else "Colazione, Pranzo, Merenda, Cena"
     )
-    moods_str = (
-        "; ".join(user_data["recent_moods"])
-        if user_data["recent_moods"]
-        else "nessuna nota recente"
-    )
 
     meal_filter = f"Genera SOLO suggerimenti per il pasto: {meal_type}." if meal_type else f"Distribuisci i suggerimenti tra i pasti: {meals_str}."
 
-    prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
+    if pantry_list:
+        pantry_str = ", ".join(pantry_list)
+        prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
+
+CONTESTO UTENTE:
+- Ingredienti disponibili in dispensa: {pantry_str}
+- Allergeni: {allergens_str}
+- Pasti della dieta: {meals_str}
+
+ISTRUZIONI:
+{meal_filter}
+Genera esattamente {count} ricette italiane/mediterranee che usano PRINCIPALMENTE gli ingredienti in dispensa indicati.
+Puoi aggiungere ingredienti base comuni (olio, sale, pepe, acqua, spezie) ma dai priorità agli ingredienti disponibili.
+NON usare ingredienti con allergeni indicati.
+
+Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
+{{
+  "suggestions": [
+    {{
+      "name": "Nome del piatto",
+      "qty": "80g",
+      "meal_type": "Colazione",
+      "description": "Breve descrizione max 10 parole",
+      "ingredients": ["ingrediente1", "ingrediente2", "ingrediente3"],
+      "calories_estimate": "300 kcal"
+    }}
+  ]
+}}"""
+    else:
+        moods_str = (
+            "; ".join(user_data["recent_moods"])
+            if user_data["recent_moods"]
+            else "nessuna nota recente"
+        )
+        prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
 
 CONTESTO UTENTE:
 - Piatti già nella dieta: {current_dishes_str}
@@ -389,14 +428,17 @@ def _parse_gemini_response(raw: str) -> list:
     return []
 
 
-def _build_context_description(user_data: dict, meal_type: Optional[str]) -> str:
+def _build_context_description(user_data: dict, meal_type: Optional[str], pantry_list: Optional[List[str]] = None) -> str:
     parts = []
-    if user_data["current_dishes"]:
-        parts.append("dieta corrente")
+    if pantry_list:
+        parts.append(f"dispensa ({len(pantry_list)} ingredienti)")
+    else:
+        if user_data["current_dishes"]:
+            parts.append("dieta corrente")
+        if user_data["recent_moods"]:
+            parts.append("preferenze recenti")
     if user_data["allergens"]:
         parts.append(f"allergeni ({', '.join(user_data['allergens'])})")
-    if user_data["recent_moods"]:
-        parts.append("preferenze recenti")
     if meal_type:
         parts.append(f"filtro: {meal_type}")
     return ", ".join(parts) if parts else "dati generali"
