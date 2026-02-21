@@ -1176,43 +1176,48 @@ class _MainScreenContentState extends State<MainScreenContent>
     final preview = dishes.take(2).map((d) => d.name).join(', ');
     final more = dishes.length > 2 ? ' +${dishes.length - 2}' : '';
 
+    // Outer container a larghezza piena + background opaco: nasconde le
+    // meal card che scorrono dietro il banner evitando il taglio laterale.
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: KyboColors.primary.withValues(alpha: 0.08),
-        borderRadius: KyboBorderRadius.medium,
-        border: Border.all(color: KyboColors.primary.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.restaurant_rounded, color: KyboColors.primary, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Prossimo pasto: $mealName',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: KyboColors.primary,
-                    fontWeight: FontWeight.bold,
+      color: KyboColors.background(context),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: KyboColors.primary.withValues(alpha: 0.08),
+          borderRadius: KyboBorderRadius.medium,
+          border: Border.all(color: KyboColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.restaurant_rounded, color: KyboColors.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Prossimo pasto: $mealName',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: KyboColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  '$preview$more',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: KyboColors.textSecondary(context),
+                  Text(
+                    '$preview$more',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: KyboColors.textSecondary(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
