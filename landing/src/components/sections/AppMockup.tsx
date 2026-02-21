@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './AppMockup.module.css';
 
-type Screen = 'home' | 'diet' | 'shopping' | 'chat' | 'stats';
+type Screen = 'diet' | 'pantry' | 'shopping' | 'chat' | 'ai';
 
 interface MockupScreen {
   id: Screen;
@@ -12,188 +12,224 @@ interface MockupScreen {
 }
 
 const screens: MockupScreen[] = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'diet', label: 'Piano', icon: '🥗' },
-  { id: 'shopping', label: 'Lista', icon: '🛒' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'stats', label: 'Stats', icon: '📊' },
+  { id: 'diet',     label: 'Piano',    icon: '📅' },
+  { id: 'pantry',   label: 'Dispensa', icon: '🥘' },
+  { id: 'shopping', label: 'Lista',    icon: '🛒' },
+  { id: 'chat',     label: 'Chat',     icon: '💬' },
+  { id: 'ai',       label: 'AI',       icon: '✨' },
 ];
 
-const screenContent: Record<Screen, React.ReactNode> = {
-  home: (
-    <div className={styles.screenHome}>
-      <div className={styles.homeHeader}>
-        <div className={styles.homeGreeting}>
-          <span className={styles.homeEmoji}>👋</span>
-          <div>
-            <p className={styles.homeHello}>Ciao, Marco!</p>
-            <p className={styles.homeDate}>Lunedì, 17 Feb</p>
-          </div>
-        </div>
-        <div className={styles.homeAvatar}>M</div>
-      </div>
+/* ─── PIANO ALIMENTARE ─────────────────────────────────────────────────────── */
+const ScreenDiet = ({ s }: { s: typeof styles }) => (
+  <div className={s.screenDiet}>
+    {/* AppBar */}
+    <div className={s.appBar}>
+      <span className={s.appBarMenu}>≡</span>
+      <span className={s.appBarTitle}>Kybo</span>
+      <span className={s.appBarLeaf}>🌿</span>
+    </div>
 
-      <div className={styles.nextMealBanner}>
-        <span>🍽️</span>
-        <div>
-          <p className={styles.nextMealLabel}>Prossimo pasto: Pranzo</p>
-          <p className={styles.nextMealItems}>Riso integrale, Pollo, Verdure</p>
-        </div>
-      </div>
-
-      <div className={styles.statsRow}>
-        <div className={styles.statChip}>
-          <span className={styles.statNum}>1.840</span>
-          <span className={styles.statLbl}>kcal oggi</span>
-        </div>
-        <div className={styles.statChip}>
-          <span className={styles.statNum}>5/7</span>
-          <span className={styles.statLbl}>giorni streak</span>
-        </div>
-        <div className={styles.statChip}>
-          <span className={styles.statNum}>🏆</span>
-          <span className={styles.statLbl}>3 badge</span>
-        </div>
-      </div>
-
-      <p className={styles.sectionLabel}>Piano di oggi</p>
-      {[
-        { meal: 'Colazione', items: 'Yogurt greco, Frutta, Caffè', done: true },
-        { meal: 'Pranzo', items: 'Riso integrale, Pollo', done: false },
-        { meal: 'Cena', items: 'Salmone, Patate, Insalata', done: false },
-      ].map((m) => (
-        <div key={m.meal} className={`${styles.mealCard} ${m.done ? styles.mealDone : ''}`}>
-          <div className={styles.mealIcon}>{m.done ? '✅' : '⏳'}</div>
-          <div>
-            <p className={styles.mealName}>{m.meal}</p>
-            <p className={styles.mealItems}>{m.items}</p>
-          </div>
-        </div>
+    {/* Day tabs */}
+    <div className={s.dayTabs}>
+      {['LUN','MAR','MER','GIO','VEN'].map((d, i) => (
+        <div key={d} className={`${s.dayTab} ${i === 2 ? s.dayActive : ''}`}>{d}</div>
       ))}
     </div>
-  ),
 
-  diet: (
-    <div className={styles.screenDiet}>
-      <p className={styles.screenTitle}>Piano Alimentare</p>
-      <div className={styles.dayTabs}>
-        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven'].map((d, i) => (
-          <div key={d} className={`${styles.dayTab} ${i === 0 ? styles.dayActive : ''}`}>{d}</div>
-        ))}
+    {/* Next meal banner */}
+    <div className={s.nextMealBanner}>
+      <span className={s.nextMealIcon}>🍽️</span>
+      <div>
+        <p className={s.nextMealLabel}>Prossimo pasto: Cena</p>
+        <p className={s.nextMealItems}>Salmone · Patate · Insalata</p>
       </div>
-      {[
-        { meal: 'Colazione', kcal: 320, items: ['Yogurt greco 150g', 'Mela 1 pz', 'Caffè'] },
-        { meal: 'Pranzo', kcal: 580, items: ['Riso integrale 80g', 'Petto di pollo 150g', 'Verdure miste'] },
-        { meal: 'Merenda', kcal: 150, items: ['Mandorle 30g'] },
-        { meal: 'Cena', kcal: 510, items: ['Salmone 180g', 'Patate al forno 200g', 'Insalata'] },
-      ].map((m) => (
-        <div key={m.meal} className={styles.dietCard}>
-          <div className={styles.dietCardHeader}>
-            <span className={styles.dietMealName}>{m.meal}</span>
-            <span className={styles.dietKcal}>{m.kcal} kcal</span>
-          </div>
-          {m.items.map((item) => (
-            <div key={item} className={styles.dietItem}>
-              <span className={styles.dietDot}>•</span>
-              <span>{item}</span>
+    </div>
+
+    {/* Meal cards */}
+    {[
+      { icon: '☀️', name: 'Colazione', kcal: 350, done: true,
+        ingredients: [['Yogurt greco','150 g'],['Mela','1 pz'],['Caffè','—']] },
+      { icon: '🌞', name: 'Pranzo', kcal: 580, done: true,
+        ingredients: [['Petto di pollo','150 g'],['Riso integrale','80 g'],['Zucchine','200 g']] },
+      { icon: '🌙', name: 'Cena', kcal: 510, done: false,
+        ingredients: [['Salmone','180 g'],['Patate al forno','200 g'],['Insalata','q.b.']] },
+    ].map((m) => (
+      <div key={m.name} className={`${s.mealCard} ${m.done ? s.mealCardDone : ''}`}>
+        <div className={s.mealCardHeader}>
+          <span className={s.mealIcon}>{m.icon}</span>
+          <span className={s.mealName}>{m.name}</span>
+          <span className={s.mealKcal}>{m.kcal} kcal</span>
+        </div>
+        <div className={s.mealIngredients}>
+          {m.ingredients.map(([name, qty]) => (
+            <div key={name} className={s.mealIngRow}>
+              <span className={s.mealIngName}>{name}</span>
+              <span className={s.mealIngQty}>{qty}</span>
             </div>
           ))}
         </div>
-      ))}
-    </div>
-  ),
-
-  shopping: (
-    <div className={styles.screenShopping}>
-      <p className={styles.screenTitle}>Lista della Spesa</p>
-      <div className={styles.shopActions}>
-        <button className={styles.shopBtn}>📤 Condividi</button>
-        <button className={styles.shopBtn}>📁 Raggruppa</button>
+        <div className={m.done ? s.mealConsumedDone : s.mealConsumedPending}>
+          {m.done ? '✓ Consumato' : '○ Segna come consumato'}
+        </div>
       </div>
-      {[
-        { cat: '🥩 Carne & Pesce', items: ['Petto di pollo 500g', 'Salmone 360g'] },
-        { cat: '🥦 Frutta & Verdura', items: ['Mele 4 pz', 'Insalata mista', 'Patate 1kg', 'Verdure miste'] },
-        { cat: '🌾 Cereali', items: ['Riso integrale 500g'] },
-        { cat: '🥛 Latticini', items: ['Yogurt greco 6x150g', 'Mandorle 200g'] },
-      ].map((cat) => (
-        <div key={cat.cat} className={styles.shopCat}>
-          <p className={styles.shopCatLabel}>{cat.cat}</p>
-          {cat.items.map((item) => (
-            <div key={item} className={styles.shopItem}>
-              <div className={styles.shopCheck} />
-              <span>{item}</span>
+    ))}
+  </div>
+);
+
+/* ─── DISPENSA ─────────────────────────────────────────────────────────────── */
+const ScreenPantry = ({ s }: { s: typeof styles }) => (
+  <div className={s.screenPantry}>
+    <div className={s.pantryHeader}>
+      <div className={s.pantryTitle}><span>🥘</span><span>La tua Dispensa</span></div>
+      <div className={s.pantryAiBtn}>✨ Ricette</div>
+    </div>
+
+    <div className={s.pantryAddRow}>
+      <div className={s.pantryInput}>Aggiungi alimento...</div>
+      <div className={s.pantryAddBtn}>+</div>
+    </div>
+
+    {[
+      { name: 'Petto di pollo', qty: '300 g' },
+      { name: 'Zucchine',       qty: '200 g' },
+      { name: 'Pomodori',       qty: '150 g' },
+      { name: 'Olio evo',       qty: '5 cucch.' },
+      { name: 'Parmigiano',     qty: '30 g' },
+    ].map((item) => (
+      <div key={item.name} className={s.pantryItem}>
+        <div className={s.pantryItemDot} />
+        <span className={s.pantryItemName}>{item.name}</span>
+        <span className={s.pantryItemQty}>{item.qty}</span>
+      </div>
+    ))}
+
+    <div className={s.pantryFab}>📷 Scansiona scontrino</div>
+  </div>
+);
+
+/* ─── LISTA SPESA ──────────────────────────────────────────────────────────── */
+const ScreenShopping = ({ s }: { s: typeof styles }) => (
+  <div className={s.screenShopping}>
+    {/* Budget banner */}
+    <div className={s.budgetBanner}>
+      <div className={s.budgetRow}>
+        <span className={s.budgetLabel}>💰 Spesa stimata</span>
+        <span className={s.budgetValue}>€ 42,50 <span className={s.budgetOf}>/ €80</span></span>
+      </div>
+      <div className={s.budgetBarTrack}>
+        <div className={s.budgetBarFill} />
+      </div>
+    </div>
+
+    <div className={s.shopActions}>
+      <button className={s.shopBtn}>📤 Condividi</button>
+      <button className={`${s.shopBtn} ${s.shopBtnActive}`}>📁 Raggruppato</button>
+    </div>
+
+    {[
+      { cat: '🥩 Carne & Pesce', items: [
+        { name: 'Petto di pollo 450g', done: false },
+        { name: 'Salmone 360g',        done: true  },
+      ]},
+      { cat: '🥦 Frutta & Verdura', items: [
+        { name: 'Zucchine 400g',  done: false },
+        { name: 'Pomodori 300g',  done: false },
+        { name: 'Mele 4 pz',      done: true  },
+      ]},
+      { cat: '🌾 Cereali & Pane', items: [
+        { name: 'Riso integrale 400g', done: false },
+      ]},
+    ].map((cat) => (
+      <div key={cat.cat} className={s.shopCat}>
+        <p className={s.shopCatLabel}>{cat.cat}</p>
+        {cat.items.map((item) => (
+          <div key={item.name} className={`${s.shopItem} ${item.done ? s.shopItemDone : ''}`}>
+            <div className={`${s.shopCheck} ${item.done ? s.shopCheckDone : ''}`}>
+              {item.done && <span>✓</span>}
             </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  ),
-
-  chat: (
-    <div className={styles.screenChat}>
-      <div className={styles.chatHeader}>
-        <div className={styles.chatAvatar}>N</div>
-        <div>
-          <p className={styles.chatName}>Dott.ssa Rossi</p>
-          <p className={styles.chatOnline}>● Online</p>
-        </div>
-      </div>
-      <div className={styles.chatMessages}>
-        <div className={`${styles.chatMsg} ${styles.chatMsgIn}`}>
-          <p>Ciao Marco! Come stai andando con il piano questa settimana? 😊</p>
-          <span className={styles.chatTime}>10:30</span>
-        </div>
-        <div className={`${styles.chatMsg} ${styles.chatMsgOut}`}>
-          <p>Bene! Ho rispettato quasi tutti i pasti. La cena di mercoledì è stata difficile.</p>
-          <span className={styles.chatTime}>10:35</span>
-        </div>
-        <div className={`${styles.chatMsg} ${styles.chatMsgIn}`}>
-          <p>Ottimo progresso! Per la cena puoi sostituire il salmone con il merluzzo se preferisci 🐟</p>
-          <span className={styles.chatTime}>10:38</span>
-        </div>
-        <div className={`${styles.chatMsg} ${styles.chatMsgOut}`}>
-          <p>Perfetto, grazie! 🙏</p>
-          <span className={styles.chatTime}>10:40</span>
-        </div>
-      </div>
-      <div className={styles.chatInput}>
-        <input placeholder="Scrivi un messaggio..." readOnly className={styles.chatInputField} />
-        <button className={styles.chatSend}>➤</button>
-      </div>
-    </div>
-  ),
-
-  stats: (
-    <div className={styles.screenStats}>
-      <p className={styles.screenTitle}>Statistiche</p>
-      <div className={styles.weightCard}>
-        <p className={styles.weightLabel}>Peso attuale</p>
-        <p className={styles.weightValue}>78.4 <span>kg</span></p>
-        <p className={styles.weightDelta}>↓ 1.6 kg questo mese</p>
-      </div>
-      <p className={styles.sectionLabel}>Aderenza piano (ultimi 7 giorni)</p>
-      <div className={styles.barsChart}>
-        {[85, 100, 70, 90, 100, 60, 80].map((v, i) => (
-          <div key={i} className={styles.barWrapper}>
-            <div className={styles.bar} style={{ height: `${v}%` }} />
-            <span className={styles.barLabel}>{['L', 'M', 'M', 'G', 'V', 'S', 'D'][i]}</span>
+            <span>{item.name}</span>
           </div>
         ))}
       </div>
-      <div className={styles.badgesRow}>
-        <p className={styles.sectionLabel}>Badge sbloccati</p>
-        <div className={styles.badges}>
-          {['🏆', '🔥', '🥗', '⭐'].map((b, i) => (
-            <div key={i} className={styles.badge}>{b}</div>
-          ))}
-        </div>
+    ))}
+  </div>
+);
+
+/* ─── CHAT ─────────────────────────────────────────────────────────────────── */
+const ScreenChat = ({ s }: { s: typeof styles }) => (
+  <div className={s.screenChat}>
+    <div className={s.chatHeader}>
+      <div className={s.chatAvatar}>R</div>
+      <div>
+        <p className={s.chatName}>Dott.ssa Rossi</p>
+        <p className={s.chatOnline}>● Online</p>
       </div>
     </div>
-  ),
-};
+    <div className={s.chatMessages}>
+      <div className={`${s.chatMsg} ${s.chatMsgIn}`}>
+        <p>Ciao! Come stai andando con il piano questa settimana? 😊</p>
+        <span className={s.chatTime}>10:30</span>
+      </div>
+      <div className={`${s.chatMsg} ${s.chatMsgOut}`}>
+        <p>Bene! Ho rispettato quasi tutti i pasti. La cena di mercoledì è stata difficile.</p>
+        <span className={s.chatTime}>10:35</span>
+      </div>
+      <div className={`${s.chatMsg} ${s.chatMsgIn}`}>
+        <p>Ottimo! Puoi sostituire il salmone con il merluzzo se preferisci 🐟</p>
+        <span className={s.chatTime}>10:38</span>
+      </div>
+      <div className={`${s.chatMsg} ${s.chatMsgOut}`}>
+        <p>Perfetto, grazie! 🙏</p>
+        <span className={s.chatTime}>10:40</span>
+      </div>
+    </div>
+    <div className={s.chatInput}>
+      <input placeholder="Scrivi un messaggio..." readOnly className={s.chatInputField} />
+      <button className={s.chatSend}>➤</button>
+    </div>
+  </div>
+);
 
+/* ─── SUGGERIMENTI AI ──────────────────────────────────────────────────────── */
+const ScreenAI = ({ s }: { s: typeof styles }) => (
+  <div className={s.screenAI}>
+    <p className={s.screenTitle}>✨ Suggerimenti AI</p>
+
+    <div className={s.aiFilters}>
+      {['Tutti','Pranzo','Cena','Vegano'].map((f, i) => (
+        <div key={f} className={`${s.aiFilter} ${i === 0 ? s.aiFilterActive : ''}`}>{f}</div>
+      ))}
+    </div>
+
+    {[
+      { name: 'Salmone al Limone con Asparagi', time: '20 min', kcal: '480 kcal', meal: 'Cena',
+        grad: 'linear-gradient(135deg,#0d2b1a,#1a4a2a)' },
+      { name: 'Pollo Grigliato con Zucchine', time: '25 min', kcal: '520 kcal', meal: 'Pranzo',
+        grad: 'linear-gradient(135deg,#1a2b0d,#2a4a1a)' },
+      { name: 'Insalata di Ceci e Verdure', time: '10 min', kcal: '380 kcal', meal: 'Pranzo',
+        grad: 'linear-gradient(135deg,#1a1a0d,#3a3a1a)' },
+    ].map((r) => (
+      <div key={r.name} className={s.aiCard}>
+        <div className={s.aiCardImage} style={{ background: r.grad }}>
+          <span className={s.aiCardMealBadge}>{r.meal}</span>
+          <span className={s.aiCardEmoji}>🍽️</span>
+        </div>
+        <div className={s.aiCardBody}>
+          <p className={s.aiCardName}>{r.name}</p>
+          <div className={s.aiCardMeta}>
+            <span>⏱ {r.time}</span>
+            <span>🔥 {r.kcal}</span>
+          </div>
+          <div className={s.aiCardBtn}>Vedi ricetta →</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ─── MAIN COMPONENT ───────────────────────────────────────────────────────── */
 export default function AppMockup() {
-  const [activeScreen, setActiveScreen] = useState<Screen>('home');
+  const [activeScreen, setActiveScreen] = useState<Screen>('diet');
   const [animating, setAnimating] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -202,21 +238,13 @@ export default function AppMockup() {
       const { gsap } = await import('gsap');
       const { ScrollTrigger } = await import('gsap/ScrollTrigger');
       gsap.registerPlugin(ScrollTrigger);
-
       if (sectionRef.current) {
         gsap.fromTo(
           sectionRef.current,
           { opacity: 0, y: 60 },
           {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: 'top 80%',
-              once: true,
-            },
+            opacity: 1, y: 0, duration: 0.8, ease: 'power3.out',
+            scrollTrigger: { trigger: sectionRef.current, start: 'top 80%', once: true },
           }
         );
       }
@@ -227,10 +255,17 @@ export default function AppMockup() {
   const handleScreenChange = (screen: Screen) => {
     if (screen === activeScreen || animating) return;
     setAnimating(true);
-    setTimeout(() => {
-      setActiveScreen(screen);
-      setAnimating(false);
-    }, 200);
+    setTimeout(() => { setActiveScreen(screen); setAnimating(false); }, 200);
+  };
+
+  const renderScreen = () => {
+    switch (activeScreen) {
+      case 'diet':     return <ScreenDiet     s={styles} />;
+      case 'pantry':   return <ScreenPantry   s={styles} />;
+      case 'shopping': return <ScreenShopping s={styles} />;
+      case 'chat':     return <ScreenChat     s={styles} />;
+      case 'ai':       return <ScreenAI       s={styles} />;
+    }
   };
 
   return (
@@ -243,16 +278,16 @@ export default function AppMockup() {
             <span className={styles.highlight}>sempre con te</span>
           </h2>
           <p className={styles.subtext}>
-            L'app Kybo accompagna il paziente ogni giorno: piani alimentari interattivi,
-            lista della spesa automatica, chat diretta con il nutrizionista e statistiche in tempo reale.
+            L&apos;app Kybo accompagna il paziente ogni giorno: piani alimentari interattivi,
+            lista della spesa automatica, chat diretta con il nutrizionista e suggerimenti AI personalizzati.
           </p>
           <div className={styles.featureList}>
             {[
-              { icon: '🥗', text: 'Piano alimentare settimanale interattivo' },
-              { icon: '🛒', text: 'Lista spesa generata automaticamente' },
+              { icon: '📅', text: 'Piano alimentare settimanale interattivo' },
+              { icon: '🥘', text: 'Dispensa smart con scanner scontrino' },
+              { icon: '🛒', text: 'Lista spesa con budget e categorie' },
               { icon: '💬', text: 'Chat diretta con il nutrizionista' },
-              { icon: '📊', text: 'Statistiche e grafici progresso' },
-              { icon: '🏆', text: 'Badge e sfide gamification' },
+              { icon: '✨', text: 'Ricette AI dalla tua dispensa' },
             ].map((f) => (
               <div key={f.text} className={styles.featureItem}>
                 <span className={styles.featureIcon}>{f.icon}</span>
@@ -263,11 +298,9 @@ export default function AppMockup() {
         </div>
 
         <div className={styles.phoneSide}>
-          {/* Phone frame */}
           <div className={styles.phone}>
             <div className={styles.phoneSpeaker} />
             <div className={styles.phoneScreen}>
-              {/* Status bar */}
               <div className={styles.statusBar}>
                 <span>9:41</span>
                 <div className={styles.statusIcons}>
@@ -277,12 +310,10 @@ export default function AppMockup() {
                 </div>
               </div>
 
-              {/* Screen content */}
               <div className={`${styles.screenContent} ${animating ? styles.fadeOut : styles.fadeIn}`}>
-                {screenContent[activeScreen]}
+                {renderScreen()}
               </div>
 
-              {/* Bottom nav */}
               <div className={styles.bottomNav}>
                 {screens.map((s) => (
                   <button
@@ -299,7 +330,6 @@ export default function AppMockup() {
             <div className={styles.phoneHome} />
           </div>
 
-          {/* Floating chips */}
           <div className={`${styles.chip} ${styles.chip1}`}>
             <span>✅</span> Piano rispettato!
           </div>
