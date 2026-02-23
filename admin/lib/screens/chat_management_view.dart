@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat.dart';
 import '../providers/admin_chat_provider.dart';
 import '../admin_repository.dart';
@@ -428,6 +429,11 @@ class _ChatListState extends State<_ChatList> {
 
         final chats = snapshot.data ?? [];
 
+        // Pre-fetch nomi reali da Firestore (una sola volta per uid, cached)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<AdminChatProvider>().prefetchNamesForChats(chats);
+        });
+
         if (chats.isEmpty) {
           return Center(
             child: Column(
@@ -480,11 +486,17 @@ class _ChatListTile extends StatelessWidget {
       isSupportChat = true;
     }
 
-    // For nutritionist viewing a nutritionist-client chat, show client name
+    // Per il nutrizionista che vede chat nutritionist-client: mostra nome reale
+    // del paziente da Firestore (cached), con fallback sul campo clientName
     if (provider.userRole != 'admin' &&
         chat.chatType == 'nutritionist-client') {
-      displayName =
-          chat.clientName.isNotEmpty ? chat.clientName : chat.clientEmail;
+      final cachedName = provider.getCachedName(chat.clientId);
+      if (cachedName != null && cachedName.isNotEmpty) {
+        displayName = cachedName;
+      } else {
+        displayName =
+            chat.clientName.isNotEmpty ? chat.clientName : chat.clientEmail;
+      }
     }
 
     return Material(
@@ -720,8 +732,88 @@ class _ChatInterfaceState extends State<_ChatInterface> {
       );
     }
 
-    return Column(
-      children: [
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('chats')
+          .doc(selectedChatId)
+          .snapshots(),
+      builder: (context, chatSnap) {
+        String contactName = '';
+        String contactRole = '';
+        String contactInitial = '?';
+
+        if (chatSnap.hasData && chatSnap.data!.exists) {
+          final data = chatSnap.data!.data() as Map<String, dynamic>;
+          final chatType = data['chatType'] ?? 'nutritionist-client';
+          final participants = data['participants'] as Map<String, dynamic>? ?? {};
+
+          if (chatType == 'admin-nutritionist') {
+            // Admin vede la chat col nutrizionista
+            final nutriId = participants['nutritionistId'] as String? ?? '';
+            contactName = provider.getCachedName(nutriId) ?? (data['clientName'] ?? 'Nutrizionista');
+            contactRole = 'Nutrizionista';
+          } else {
+            // Nutrizionista vede la chat col paziente
+            final clientId = participants['clientId'] as String? ?? '';
+            contactName = provider.getCachedName(clientId) ??
+                (data['clientName'] as String? ?? '');
+            if (contactName.isEmpty) contactName = data['clientEmail'] ?? 'Paziente';
+            contactRole = 'Paziente';
+          }
+          contactInitial = contactName.isNotEmpty
+              ? contactName.substring(0, 1).toUpperCase()
+              : '?';
+        }
+
+        return Column(
+          children: [
+            // Header con nome contatto
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: KyboColors.surface,
+                border: Border(bottom: BorderSide(color: KyboColors.border)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: KyboColors.primary.withValues(alpha: 0.15),
+                    child: Text(
+                      contactInitial,
+                      style: TextStyle(
+                        color: KyboColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        contactName.isNotEmpty ? contactName : '...',
+                        style: TextStyle(
+                          color: KyboColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      if (contactRole.isNotEmpty)
+                        Text(
+                          contactRole,
+                          style: TextStyle(
+                            color: KyboColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
         // Messages list
         Expanded(
           child: StreamBuilder<List<ChatMessage>>(
@@ -864,8 +956,10 @@ class _ChatInterfaceState extends State<_ChatInterface> {
             ],
           ),
         ),
-      ],
-    );
+          ],
+        ); // Column
+      },
+    ); // StreamBuilder (chat doc)
   }
 }
 
