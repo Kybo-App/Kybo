@@ -1,9 +1,12 @@
 import json
 import re
 import io
+import logging
 import pdfplumber
 import hashlib
 from google import genai
+
+logger = logging.getLogger(__name__)
 from google.genai import types
 from app.core.config import settings
 from app.core.metrics import (
@@ -81,7 +84,7 @@ class DietParser:
     def __init__(self):
         api_key = settings.GOOGLE_API_KEY
         if not api_key:
-            print("❌ CRITICAL ERROR: GOOGLE_API_KEY not found in settings!")
+            logger.critical("GOOGLE_API_KEY not found in settings!")
             self.client = None
         else:
             clean_key = api_key.strip().replace('"', '').replace("'", "")
@@ -215,7 +218,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             
             return text_buffer.getvalue()
         except Exception as e:
-            print(f"❌ Errore lettura PDF: {e}")
+            logger.error("Errore lettura PDF: %s", e)
             raise e
         finally:
             text_buffer.close()
@@ -277,9 +280,9 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                 socket_timeout=2,
             )
             DietParser._redis_sync.ping()
-            print("✅ Redis sincrono connesso per DietParser")
+            logger.info("Redis sincrono connesso per DietParser")
         except Exception as e:
-            print(f"⚠️ Redis non disponibile per DietParser: {e}")
+            logger.warning("Redis non disponibile per DietParser: %s", e)
             DietParser._redis_sync = None
         return DietParser._redis_sync
 
@@ -294,7 +297,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             if raw:
                 return json.loads(raw)
         except Exception as e:
-            print(f"⚠️ Redis GET error: {e}")
+            logger.warning("Redis GET error: %s", e)
         return None
 
     def _save_to_redis_cache(self, content_hash: str, result):
@@ -310,7 +313,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                 json.dumps(result, default=str),
             )
         except Exception as e:
-            print(f"⚠️ Redis SET error: {e}")
+            logger.warning("Redis SET error: %s", e)
 
     # Ora accetta 'file_obj' come primo parametro
     def parse_complex_diet(self, file_obj, custom_instructions: str = None):
@@ -334,7 +337,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         # ✅ CACHE L1: Check memoria RAM (microsecondi)
         memory_result = self._get_from_memory_cache(content_hash)
         if memory_result:
-            print(f"✅ Cache L1 (RAM) HIT per hash {content_hash[:8]}...")
+            logger.debug("Cache L1 (RAM) HIT per hash %s...", content_hash[:8])
             diet_cache_hits_total.labels(layer="L1_ram").inc()
             return memory_result
         diet_cache_misses_total.labels(layer="L1_ram").inc()
@@ -342,7 +345,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         # ✅ CACHE L1.5: Check Redis (millisecondi, condiviso tra istanze)
         redis_result = self._get_from_redis_cache(content_hash)
         if redis_result:
-            print(f"✅ Cache L1.5 (Redis) HIT per hash {content_hash[:8]}...")
+            logger.debug("Cache L1.5 (Redis) HIT per hash %s...", content_hash[:8])
             diet_cache_hits_total.labels(layer="L1.5_redis").inc()
             self._save_to_memory_cache(content_hash, redis_result)
             return redis_result
@@ -351,7 +354,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         # ✅ CACHE L2: Check Firestore (decine ms, persistente 30gg)
         cached_result = self._get_cached_response(content_hash)
         if cached_result:
-            print(f"✅ Cache L2 (Firestore) HIT per hash {content_hash[:8]}...")
+            logger.debug("Cache L2 (Firestore) HIT per hash %s...", content_hash[:8])
             diet_cache_hits_total.labels(layer="L2_firestore").inc()
             # Popola anche L1 e L1.5 per future richieste
             self._save_to_memory_cache(content_hash, cached_result)
@@ -364,8 +367,8 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 
         diet_gemini_calls_total.inc()
         try:
-            print(f"🤖 Analisi Gemini ({model_name})... Custom Prompt: {bool(custom_instructions)}")
-            print(f"🔑 Cache MISS per hash {content_hash[:8]}... (chiamata API)")
+            logger.info("Analisi Gemini (%s)... Custom Prompt: %s", model_name, bool(custom_instructions))
+            logger.debug("Cache MISS per hash %s... (chiamata API)", content_hash[:8])
 
             prompt = f"""
             Analizza il seguente testo ed estrai i dati della dieta e le sostituzioni CAD.
@@ -406,7 +409,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 
         except Exception as e:
             diet_gemini_errors_total.inc()
-            print(f"⚠️ Errore con Gemini: {e}")
+            logger.error("Errore con Gemini: %s", e)
             raise e
     
     def _get_cached_response(self, content_hash: str):
@@ -447,7 +450,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return None
 
         except Exception as e:
-            print(f"⚠️ Errore lettura cache: {e}")
+            logger.warning("Errore lettura cache Firestore: %s", e)
             return None  # Se la cache non funziona, prosegui con Gemini
 
     def _save_cached_response(self, content_hash: str, result):
@@ -470,9 +473,9 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                 'hash': content_hash[:8]  # Solo per debug
             })
             
-            print(f"💾 Risultato salvato in cache (hash: {content_hash[:8]}...)")
+            logger.debug("Risultato salvato in cache (hash: %s...)", content_hash[:8])
             
         except Exception as e:
-            print(f"⚠️ Errore salvataggio cache: {e}")
+            logger.warning("Errore salvataggio cache Firestore: %s", e)
             # Non blocchiamo l'operazione se il salvataggio cache fallisce
             pass

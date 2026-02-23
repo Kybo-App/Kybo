@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
+﻿import 'dart:async';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,11 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import '../providers/diet_provider.dart';
-import '../providers/theme_provider.dart';
 import '../providers/chat_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
-import '../services/notification_service.dart';
 import '../services/badge_service.dart';
 import '../widgets/design_system.dart';
 import '../core/error_handler.dart';
@@ -23,7 +20,6 @@ import 'pantry_view.dart';
 import 'shopping_list_view.dart';
 import 'login_screen.dart';
 import 'history_screen.dart';
-import 'change_password_screen.dart';
 import 'chat_screen.dart';
 import 'settings_screen.dart';
 import 'statistics_screen.dart';
@@ -284,7 +280,7 @@ class _MainScreenContentState extends State<MainScreenContent>
             .doc(user.uid)
             .get();
         if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
+          final data = doc.data();
           _hasNutritionistForTutorial =
               (data?['parent_id'] != null &&
                   data!['parent_id'].toString().isNotEmpty) ||
@@ -377,48 +373,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         if (mounted) setState(() => _currentIndex = 1);
       });
     }
-  }
-
-  Future<void> _resetTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('seen_tutorial_v10', false);
-    _startShowcase();
-  }
-
-  // Helper per mostrare la Privacy Policy (Modale)
-  void _showPrivacyDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: KyboColors.surface(context),
-        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-        title: Text(
-          "Privacy Policy",
-          style: TextStyle(color: KyboColors.textPrimary(context)),
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            "Informativa sulla Privacy\n\n"
-            "I tuoi dati (email, nome, piano alimentare) sono utilizzati esclusivamente per fornirti il servizio Kybo.\n"
-            "I dati sensibili sono protetti e accessibili solo al personale autorizzato per scopi di assistenza tecnica o legale.\n\n"
-            "Per richiedere la cancellazione dei dati, contatta l'amministratore.",
-            style: TextStyle(
-              fontSize: 14,
-              color: KyboColors.textSecondary(context),
-            ),
-          ),
-        ),
-        actions: [
-          PillButton(
-            label: "Chiudi",
-            onPressed: () => Navigator.pop(ctx),
-            backgroundColor: KyboColors.primary,
-            textColor: Colors.white,
-            height: 44,
-          ),
-        ],
-      ),
-    );
   }
 
   void _showJailbreakWarning() {
@@ -1413,13 +1367,6 @@ class _MainScreenContentState extends State<MainScreenContent>
               .snapshots()
           : const Stream.empty(),
       builder: (streamCtx, snapshot) {
-        String role = 'user';
-        if (snapshot.hasData && snapshot.data!.exists) {
-          role =
-              (snapshot.data!.data() as Map<String, dynamic>)['role'] ?? 'user';
-        }
-        final bool canUpload = (role == 'independent' || role == 'admin');
-
         return Drawer(
           backgroundColor: KyboColors.background(drawerCtx),
           child: ListView(
@@ -1978,236 +1925,5 @@ class _MainScreenContentState extends State<MainScreenContent>
         );
       }
     }
-  }
-
-  Future<void> _openTimeSettings() async {
-    // Orari default per ogni tipo di pasto
-    final Map<String, String> defaultTimes = {
-      'Colazione': '08:00',
-      'Seconda Colazione': '10:30',
-      'Pranzo': '13:00',
-      'Merenda': '16:00',
-      'Cena': '20:00',
-      'Spuntino': '11:00',
-      'Spuntino Serale': '22:00',
-    };
-
-    // Carica impostazioni salvate
-    final prefs = await SharedPreferences.getInstance();
-    final String? savedJson = prefs.getString('meal_alarms');
-    Map<String, String> currentAlarms = {};
-
-    if (savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson) as Map<String, dynamic>;
-        decoded.forEach((k, v) => currentAlarms[k] = v.toString());
-      } catch (_) {}
-    }
-
-    // Stato per il dialog
-    Map<String, bool> enabled = {};
-    Map<String, TimeOfDay> times = {};
-
-    for (var mealType in defaultTimes.keys) {
-      enabled[mealType] = currentAlarms.containsKey(mealType);
-      if (currentAlarms.containsKey(mealType)) {
-        final parts = currentAlarms[mealType]!.split(':');
-        times[mealType] = TimeOfDay(
-          hour: int.parse(parts[0]),
-          minute: int.parse(parts[1]),
-        );
-      } else {
-        final parts = defaultTimes[mealType]!.split(':');
-        times[mealType] = TimeOfDay(
-          hour: int.parse(parts[0]),
-          minute: int.parse(parts[1]),
-        );
-      }
-    }
-
-    if (!mounted) return;
-
-    // Verifica permessi
-    final notificationService = NotificationService();
-    await notificationService.requestPermissions();
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (innerCtx, setDialogState) {
-            return AlertDialog(
-              backgroundColor: KyboColors.surface(context),
-              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-              title: Row(
-                children: [
-                  Icon(Icons.notifications_active, color: KyboColors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Promemoria Pasti",
-                    style: TextStyle(color: KyboColors.textPrimary(context)),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          "Attiva i promemoria per ricevere notifiche all'orario dei pasti.",
-                          style: TextStyle(
-                            color: KyboColors.textSecondary(innerCtx),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      ...defaultTimes.keys.map((mealType) {
-                        final time = times[mealType]!;
-                        final isEnabled = enabled[mealType] ?? false;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: isEnabled
-                                ? KyboColors.primary.withValues(alpha: 0.1)
-                                : KyboColors.surface(innerCtx),
-                            borderRadius: KyboBorderRadius.medium,
-                            border: Border.all(
-                              color: isEnabled
-                                  ? KyboColors.primary.withValues(alpha: 0.3)
-                                  : KyboColors.border(innerCtx),
-                            ),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            leading: Switch(
-                              value: isEnabled,
-                              activeTrackColor: KyboColors.primary.withValues(alpha: 0.5),
-                              thumbColor: WidgetStateProperty.resolveWith((states) {
-                                if (states.contains(WidgetState.selected)) return KyboColors.primary;
-                                return Colors.grey;
-                              }),
-                              onChanged: (val) {
-                                setDialogState(() => enabled[mealType] = val);
-                              },
-                            ),
-                            title: Text(
-                              mealType,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: isEnabled
-                                    ? KyboColors.primary
-                                    : KyboColors.textSecondary(innerCtx),
-                              ),
-                            ),
-                            trailing: isEnabled
-                                ? InkWell(
-                                    onTap: () async {
-                                      final p = await showTimePicker(
-                                        context: innerCtx,
-                                        initialTime: time,
-                                      );
-                                      if (p != null) {
-                                        setDialogState(() => times[mealType] = p);
-                                      }
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: KyboColors.primary,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                                    style: TextStyle(
-                                      color: Colors.grey[400],
-                                    ),
-                                  ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                PillButton(
-                  label: "Annulla",
-                  onPressed: () => Navigator.pop(ctx),
-                  backgroundColor: KyboColors.surface(context),
-                  textColor: KyboColors.textPrimary(context),
-                  height: 44,
-                ),
-                PillButton(
-                  icon: Icons.save,
-                  label: "Salva",
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-
-                    // Salva solo i pasti attivati
-                    Map<String, String> toSave = {};
-                    for (var mealType in defaultTimes.keys) {
-                      if (enabled[mealType] == true) {
-                        final t = times[mealType]!;
-                        toSave[mealType] =
-                            "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
-                      }
-                    }
-
-                    await prefs.setString('meal_alarms', jsonEncode(toSave));
-
-                    // Rischedula notifiche
-                    if (mounted) {
-                      await context
-                          .read<DietProvider>()
-                          .scheduleMealNotifications();
-
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              toSave.isEmpty
-                                  ? "Promemoria disattivati"
-                                  : "Attivati ${toSave.length} promemoria",
-                            ),
-                            backgroundColor: KyboColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  backgroundColor: KyboColors.primary,
-                  textColor: Colors.white,
-                  height: 44,
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
   }
 }

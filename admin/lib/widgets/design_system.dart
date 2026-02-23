@@ -190,6 +190,7 @@ class _PillButtonState extends State<PillButton>
         curve: Curves.easeOutCubic,
         height: widget.height,
         constraints: BoxConstraints(minWidth: widget.minWidth ?? 120),
+        // ignore: deprecated_member_use
         transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
         transformAlignment: Alignment.center,
         child: Material(
@@ -526,8 +527,10 @@ class _PillCardState extends State<PillCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         clipBehavior: widget.clipBehavior,
+        // ignore: deprecated_member_use
         transform: Matrix4.identity()
-          ..scale(_isHovered && widget.onTap != null ? 1.01 : 1.0),
+            // ignore: deprecated_member_use
+            ..scale(_isHovered && widget.onTap != null ? 1.01 : 1.0),
         transformAlignment: Alignment.center,
         decoration: BoxDecoration(
           color: widget.backgroundColor ?? KyboColors.surface,

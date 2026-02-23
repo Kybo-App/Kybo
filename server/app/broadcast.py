@@ -1,5 +1,8 @@
+import logging
 import firebase_admin
 from firebase_admin import messaging
+
+logger = logging.getLogger(__name__)
 
 def broadcast_message(title: str, body: str, data: dict = None):
     """
@@ -19,8 +22,8 @@ def broadcast_message(title: str, body: str, data: dict = None):
 
     try:
         response = messaging.send(message)
-        print('Successfully sent message:', response)
+        logger.info('Broadcast message sent: %s', response)
         return response
     except Exception as e:
-        print('Error sending message:', e)
+        logger.error('Error sending broadcast message: %s', e)
         raise e

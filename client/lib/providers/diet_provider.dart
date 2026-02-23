@@ -1013,7 +1013,6 @@ class DietProvider extends ChangeNotifier {
 
     final payload = {
       'dietData': planJson,
-      'dietData': planJson,
       'days': getDays(), // [FIX] Giorni dinamici per isolare
       'meals': getMeals(), // [FIX] Pasti dinamici per isolare
       'pantryItems': _pantryItems

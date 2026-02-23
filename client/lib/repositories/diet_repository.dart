@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:kybo/services/upload_client.dart';
 
 import '../services/api_client.dart';
-import '../models/diet_models.dart';
 
 class DietRepository {
   final ApiClient _client = ApiClient();

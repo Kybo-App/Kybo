@@ -267,7 +267,7 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),

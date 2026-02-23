@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
@@ -317,46 +316,6 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _uploadDiet(BuildContext context) async {
-    final provider = Provider.of<DietProvider>(context, listen: false);
-
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
-      );
-
-      if (result == null || result.files.single.path == null) {
-        return;
-      }
-
-      final filePath = result.files.single.path!;
-
-      if (context.mounted) {
-        await provider.uploadDiet(filePath);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Dieta caricata con successo!'),
-            backgroundColor: KyboColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore caricamento: $e'),
-            backgroundColor: KyboColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
-          ),
-        );
-      }
-    }
   }
 
   void _openTimeSettings(BuildContext context) {

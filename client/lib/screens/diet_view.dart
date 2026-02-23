@@ -470,7 +470,7 @@ class _DietViewState extends State<DietView> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.purple.withOpacity(0.2)
+                            ? Colors.purple.withValues(alpha: 0.2)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(

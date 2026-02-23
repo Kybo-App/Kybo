@@ -21,8 +21,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _confirmCtrl.dispose();
     super.dispose();
   }
-  bool _obscurePassword = true;    // [NEW] Toggle visibilità password
-  bool _obscureConfirm = true;     // [NEW] Toggle visibilità conferma
 
   Future<void> _changePassword() async {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;

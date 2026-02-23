@@ -21,7 +21,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   // Setup state
   bool _isSettingUp = false;
   String? _secret;
-  String? _qrUri;
 
   // Verification
   final _codeController = TextEditingController();
@@ -74,7 +73,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
       if (mounted) {
         setState(() {
           _secret = data['secret'] as String?;
-          _qrUri = data['qr_uri'] as String?;
         });
       }
     } catch (e) {
@@ -478,7 +476,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                         setState(() {
                           _isSettingUp = false;
                           _secret = null;
-                          _qrUri = null;
                           _codeController.clear();
                         });
                       },
