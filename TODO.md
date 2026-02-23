@@ -132,7 +132,7 @@
 - [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate)
 - [x] Export dieta in formato PDF
 - [x] Import dieta da altre app (MyFitnessPal, Yazio CSV)
-- [ ] Integrazione con bilancia smart (peso automatico)
+- [x] Integrazione con bilancia smart (peso automatico)
 
 ---
 
@@ -191,26 +191,23 @@
 ## FUTURO (bassa priorità)
 
 ### Client - Wearables & Voice
-- [ ] Apple Watch / Wear OS companion (prossimo pasto, reminder)
-- [ ] Siri/Google Assistant integration ("cosa mangio a pranzo?")
+- [x] Siri/Google Assistant integration ("cosa mangio a pranzo?")
 
 ### Client - Shopping List (extra)
 - [ ] Preferenze supermercato (salva il tuo negozio preferito)
 - [ ] Lista spesa collaborativa (famiglia/coinquilini)
 
 ### Client - Ricette & Meal Prep
-- [ ] Suggerimenti ricette basate sugli ingredienti in dispensa
+- [x] Suggerimenti ricette basate sugli ingredienti in dispensa
 - [ ] Timer cottura integrato
-- [ ] Porzioni scalabili (cucino per 2, 4, 6 persone)
-- [ ] Meal prep planner (prepara domenica per tutta la settimana)
-- [ ] Salva piatti preferiti per richiederli al nutrizionista
+- [x] Porzioni scalabili (cucino per 2, 4, 6 persone)
 
 ### Landing - Contenuti
 - [ ] Sezione testimonianze / recensioni utenti
 - [ ] Video demo dell'app (embedded YouTube/Vimeo)
 - [ ] Blog / articoli su nutrizione (SEO content marketing)
 - [ ] Sezione FAQ espandibile
-- [ ] Pagina "Chi Siamo" con storia e mission
+- [x] Pagina "Chi Siamo" con storia e mission
 - [ ] Case study nutrizionisti
 
 ### Landing - Conversione

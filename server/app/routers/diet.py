@@ -2,6 +2,7 @@
 Router per gli endpoint di gestione diete.
 - Upload dieta (utente e admin)
 - Scansione scontrino
+- Job status per upload asincrono (RQ queue)
 """
 import uuid
 from typing import Optional, List
@@ -23,6 +24,7 @@ from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name, normalize_quantity
+from app.services.queue_service import get_diet_queue, get_job_status
 from app.models.schemas import DietResponse, DietConfig, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
 
 router = APIRouter(tags=["diet"])
@@ -138,13 +140,17 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
     return DietResponse(plan=app_plan, substitutions=app_substitutions, config=app_config, allergens=allergens)
 
 
-@router.post("/upload-diet", response_model=DietResponse)
+@router.post("/upload-diet")
 async def upload_diet(
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
     token: dict = Depends(verify_token)
 ):
-    """Upload dieta PDF per utente self-service."""
+    """
+    Upload dieta PDF per utente self-service.
+    - Se RQ/Redis è disponibile → 202 + job_id (asincrono, usa GET /diet/job/{job_id})
+    - Altrimenti → 200 + DietResponse (fallback sincrono con semaphore)
+    """
     user_id = token['uid']
     user_role = token.get('role', 'user')
 
@@ -164,8 +170,37 @@ async def upload_diet(
     if not validate_file_content(file_content, '.pdf'):
         raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
 
-    await file.seek(0)
+    # --- Path 1: RQ async queue ---
+    queue = get_diet_queue()
+    if queue is not None:
+        try:
+            from app.tasks.diet_tasks import process_diet_upload
+            from app.core.config import settings
 
+            job = queue.enqueue(
+                process_diet_upload,
+                file_content,
+                file.filename,
+                user_id,        # target_uid
+                user_id,        # requester_id
+                user_role,
+                None,           # custom_prompt (user self-service)
+                fcm_token,
+                True,           # set_as_current
+                result_ttl=settings.RQ_RESULT_TTL,
+                failure_ttl=settings.RQ_FAILURE_TTL,
+            )
+            logger.info("upload_diet_queued", uid=user_id, job_id=job.id)
+            return JSONResponse(
+                status_code=202,
+                content={"job_id": job.id, "status": "queued"},
+            )
+        except Exception as e:
+            logger.warning("rq_enqueue_failed_fallback", error=str(e))
+            # cade nel fallback sincrono sotto
+
+    # --- Path 2: fallback sincrono con semaphore ---
+    await file.seek(0)
     async with heavy_tasks_semaphore:
         try:
             raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, file.file)
@@ -180,7 +215,7 @@ async def upload_diet(
                 'lastUpdated': firebase_admin.firestore.SERVER_TIMESTAMP,
                 'plan': dict_data.get('plan'),
                 'substitutions': dict_data.get('substitutions'),
-                'config': dict_data.get('config'),  # Config dinamica
+                'config': dict_data.get('config'),
                 'activeSwaps': {},
                 'uploadedBy': 'user_upload',
                 'fileName': file.filename
@@ -189,7 +224,6 @@ async def upload_diet(
             user_diets_ref.document('current').set(diet_payload)
             user_diets_ref.add(diet_payload)
 
-            # Update user's main doc
             db.collection('users').document(user_id).set({
                 'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
                 'allergies': dict_data.get('allergens', [])
@@ -213,6 +247,34 @@ async def upload_diet(
             raise HTTPException(status_code=500, detail="Errore durante l'elaborazione della dieta.")
         finally:
             await file.close()
+
+
+@router.get("/diet/job/{job_id}")
+async def get_diet_job(job_id: str, token: dict = Depends(verify_token)):
+    """
+    Controlla lo stato di un job di parsing dieta asincrono.
+
+    Response:
+        202  status=queued|started  → elaborazione in corso, riprova tra qualche secondo
+        200  status=done            → completato; il risultato è già su Firestore
+        200  status=failed          → errore durante il parsing
+        404                        → job non trovato (scaduto o ID errato)
+        503                        → coda RQ non disponibile
+    """
+    queue = get_diet_queue()
+    if queue is None:
+        raise HTTPException(status_code=503, detail="Coda asincrona non disponibile.")
+
+    job_info = get_job_status(job_id)
+    if job_info is None:
+        raise HTTPException(status_code=404, detail="Job non trovato o scaduto.")
+
+    status = job_info["status"]
+
+    if status in ("queued", "started"):
+        return JSONResponse(status_code=202, content=job_info)
+
+    return JSONResponse(status_code=200, content=job_info)
 
 
 @router.post("/upload-diet/{target_uid}", response_model=DietResponse)
@@ -249,28 +311,59 @@ async def upload_diet_admin(
         if data.get('parent_id') != requester_id and data.get('created_by') != requester_id:
             raise HTTPException(status_code=403, detail="Non puoi caricare diete per questo utente")
 
+    # Recupera custom_prompt (richiede Firestore, lo facciamo qui prima di accodare)
+    custom_prompt = None
     try:
-        custom_prompt = None
         target_doc = db.collection('users').document(target_uid).get()
         target_data = target_doc.to_dict() if target_doc.exists else {}
 
         if requester_role == 'nutritionist':
-            # Nutrizionista: usa il proprio parser
             requester_doc = db.collection('users').document(requester_id).get()
             if requester_doc.exists:
                 custom_prompt = requester_doc.to_dict().get('custom_parser_prompt')
         else:
-            # Admin: cerca il parser appropriato in base al target
             parent_id = target_data.get('parent_id')
             if parent_id:
-                # Target ha un parent (nutrizionista) -> usa parser del parent
                 parent_doc = db.collection('users').document(parent_id).get()
                 if parent_doc.exists:
                     custom_prompt = parent_doc.to_dict().get('custom_parser_prompt')
             else:
-                # Target è indipendente/nutrizionista/admin -> usa il suo parser
                 custom_prompt = target_data.get('custom_parser_prompt')
+    except Exception as e:
+        logger.warning("admin_upload_prompt_fetch_error", error=sanitize_error_message(e))
 
+    # --- Path 1: RQ async queue ---
+    queue = get_diet_queue()
+    if queue is not None:
+        try:
+            from app.tasks.diet_tasks import process_diet_upload
+            from app.core.config import settings
+
+            job = queue.enqueue(
+                process_diet_upload,
+                file_content,
+                file.filename,
+                target_uid,
+                requester_id,
+                requester_role,
+                custom_prompt,
+                fcm_token,
+                False,          # set_as_current=False per upload admin (aggiunge solo allo storico)
+                result_ttl=settings.RQ_RESULT_TTL,
+                failure_ttl=settings.RQ_FAILURE_TTL,
+            )
+            logger.info("admin_upload_diet_queued", target_uid=target_uid, job_id=job.id)
+            await file.close()
+            return JSONResponse(
+                status_code=202,
+                content={"job_id": job.id, "status": "queued"},
+            )
+        except Exception as e:
+            logger.warning("rq_admin_enqueue_failed_fallback", error=str(e))
+
+    # --- Path 2: fallback sincrono ---
+    await file.seek(0)
+    try:
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, file.file, custom_prompt)
         formatted_data = _convert_to_app_format(raw_data)
         dict_data = formatted_data.dict()
@@ -287,11 +380,10 @@ async def upload_diet_admin(
             'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
             'plan': dict_data.get('plan'),
             'substitutions': dict_data.get('substitutions'),
-            'config': dict_data.get('config'),  # Config dinamica
+            'config': dict_data.get('config'),
             'uploadedBy': 'nutritionist'
         })
 
-        # Update user's main doc for "expiring diet" alerts AND allergens
         db.collection('users').document(target_uid).set({
             'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
             'allergies': dict_data.get('allergens', [])

@@ -219,6 +219,7 @@ class AdminRepository {
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
     final token = await _getToken();
     if (file.bytes == null) throw Exception("File corrotto");
+
     var request = http.MultipartRequest(
       'POST',
       Uri.parse('$_baseUrl/upload-diet/$targetUid'),
@@ -232,10 +233,55 @@ class AdminRepository {
         contentType: MediaType('application', 'pdf'),
       ),
     );
-    final response = await request.send();
-    if (response.statusCode != 200) {
-      throw Exception(await response.stream.bytesToString());
+
+    final streamResponse = await request.send();
+    final body = await streamResponse.stream.bytesToString();
+
+    if (streamResponse.statusCode == 200) {
+      // Fallback sincrono — done.
+      return;
+    } else if (streamResponse.statusCode == 202) {
+      // Risposta asincrona: il server ha accodato il job, dobbiamo fare polling.
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final jobId = data['job_id'] as String;
+      await _pollDietJob(jobId, token!);
+    } else {
+      throw Exception(body);
     }
+  }
+
+  /// Polling sul job RQ fino a completamento o timeout.
+  Future<void> _pollDietJob(String jobId, String token) async {
+    const pollInterval = Duration(seconds: 3);
+    const maxAttempts = 100; // ~5 minuti totali
+
+    for (int i = 0; i < maxAttempts; i++) {
+      await Future.delayed(pollInterval);
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/diet/job/$jobId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 404) {
+        throw Exception('Job scaduto o non trovato.');
+      }
+      if (response.statusCode == 503) {
+        throw Exception('Servizio di coda non disponibile.');
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final status = data['status'] as String;
+
+      if (status == 'done') return;
+      if (status == 'failed') {
+        final error = data['error'] as String? ?? 'Errore durante il parsing.';
+        throw Exception(error);
+      }
+      // status == 'queued' | 'started' → continua a fare polling
+    }
+
+    throw Exception('Timeout: elaborazione dieta troppo lunga.');
   }
 
   Future<void> uploadParserConfig(String targetUid, PlatformFile file) async {

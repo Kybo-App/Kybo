@@ -201,6 +201,38 @@ async def maintenance_worker():
         await asyncio.sleep(settings.MAINTENANCE_POLL_INTERVAL)
 
 
+def _start_inline_rq_worker():
+    """
+    Avvia il worker RQ in un thread daemon all'interno del processo FastAPI.
+    Usa SimpleWorker (no-fork) per compatibilità con i thread.
+    Attivo quando RQ_INLINE_WORKER=true (default) — ideale per free tier / dev.
+    Per produzione con carichi elevati, usa invece un Background Worker separato
+    su Render (RQ_INLINE_WORKER=false + python worker.py).
+    """
+    if not settings.REDIS_URL or not settings.RQ_INLINE_WORKER:
+        return
+    try:
+        import threading
+        from redis import Redis
+        from rq import SimpleWorker, Queue
+
+        redis_conn = Redis.from_url(settings.REDIS_URL, socket_connect_timeout=3)
+        redis_conn.ping()
+        queue = Queue(settings.RQ_QUEUE_NAME, connection=redis_conn)
+        worker = SimpleWorker([queue], connection=redis_conn)
+
+        t = threading.Thread(
+            target=worker.work,
+            kwargs={"with_scheduler": False},
+            daemon=True,
+            name="rq-inline-worker",
+        )
+        t.start()
+        logger.info("rq_inline_worker_started", queue=settings.RQ_QUEUE_NAME)
+    except Exception as e:
+        logger.warning("rq_inline_worker_failed", error=str(e))
+
+
 @app.on_event("startup")
 async def start_background_tasks():
     """Avvia task in background all'avvio del server."""
@@ -209,6 +241,8 @@ async def start_background_tasks():
     asyncio.create_task(monthly_report_mailer_worker())
     # Inizializza connessione Redis (graceful: no-op se non configurato)
     await redis_cache._ensure_connected()
+    # Avvia worker RQ inline se abilitato (free tier / dev — nessun servizio extra)
+    _start_inline_rq_worker()
     # Espone endpoint /metrics Prometheus (dopo startup per sicurezza)
     _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
 

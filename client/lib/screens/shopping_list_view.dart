@@ -58,11 +58,29 @@ const _categoryKeywords = {
     'verdura', 'frutta',
   ],
   'Carne & Pesce': [
+    // Carne
     'pollo', 'manzo', 'maiale', 'tacchino', 'vitello', 'agnello', 'coniglio',
-    'salmone', 'tonno', 'merluzzo', 'branzino', 'orata', 'gambero', 'gamberi',
-    'calamaro', 'polpo', 'vongole', 'cozze', 'sgombro', 'alici', 'baccalà',
-    'pesce', 'carne', 'bistecca', 'filetto', 'prosciutto', 'bresaola',
-    'mortadella', 'salame', 'speck', 'pancetta', 'wurstel', 'cotechino',
+    'cinghiale', 'anatra', 'faraona', 'piccione', 'struzzo',
+    'carne', 'bistecca', 'filetto', 'arrosto', 'costine', 'braciola',
+    'prosciutto', 'bresaola', 'mortadella', 'salame', 'speck', 'pancetta',
+    'wurstel', 'cotechino', 'zampone', 'lardo', 'coppa', 'guanciale',
+    'carpaccio', 'hamburger', 'polpette', 'salsiccia', 'salsicce',
+    // Pesce
+    'pesce', 'salmone', 'tonno', 'merluzzo', 'branzino', 'orata', 'baccalà',
+    'sgombro', 'alici', 'acciughe', 'sardina', 'sardine', 'aringa',
+    'pesce spada', 'rombo', 'sogliola', 'dentice', 'cernia', 'triglia',
+    'trota', 'spigola', 'anguilla', 'halibut', 'palombo', 'mormora',
+    'sarago', 'leccia', 'palamita', 'rana pescatrice',
+    // Frutti di mare & molluschi
+    'frutti di mare', 'molluschi', 'crostacei',
+    'gambero', 'gamberi', 'gamberetto', 'gamberetti', 'mazzancolla', 'mazzancolle',
+    'scampi', 'scampo', 'aragosta', 'astice', 'granchio', 'granciporro',
+    'canocchia', 'canocchie', 'cicala', 'cicale',
+    'calamaro', 'calamari', 'totano', 'totani', 'seppia', 'seppie',
+    'polpo', 'polpi', 'moscardino', 'moscardini',
+    'vongole', 'cozze', 'ostrica', 'ostriche', 'capesante', 'capasanta',
+    'fasolari', 'telline', 'arselle', 'tartufo di mare', 'cannolicchi',
+    'ricci di mare',
   ],
   'Latticini & Uova': [
     'latte', 'yogurt', 'formaggio', 'mozzarella', 'ricotta', 'parmigiano',

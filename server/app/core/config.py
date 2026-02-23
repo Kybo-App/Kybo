@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_HEAVY_TASKS: int = 2
     MAINTENANCE_POLL_INTERVAL: int = 60  # seconds
 
+    # RQ Queue (opzionale - graceful fallback a semaphore se Redis non disponibile)
+    RQ_QUEUE_NAME: str = os.getenv("RQ_QUEUE_NAME", "diet_parsing")
+    RQ_JOB_TIMEOUT: int = 300      # 5 minuti per job di parsing
+    RQ_RESULT_TTL: int = 3600      # 1h: quanto restano i risultati in Redis dopo il completamento
+    RQ_FAILURE_TTL: int = 86400    # 24h: quanto restano i job falliti per debug
+    # true  → worker gira in un thread interno al processo FastAPI (free tier, dev/test)
+    # false → worker gira come servizio Background Worker separato su Render (prod)
+    RQ_INLINE_WORKER: bool = os.getenv("RQ_INLINE_WORKER", "true").lower() == "true"
+
     # GDPR Retention Policy
     GDPR_RETENTION_MONTHS: int = 24  # Default: 2 years
     GDPR_RETENTION_WARNING_DAYS: int = 30  # Days before deadline to warn
