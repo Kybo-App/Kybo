@@ -385,6 +385,20 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     ];
   }
 
+  /// Restituisce i giorni ordinati per una settimana specifica.
+  /// Per la settimana 0 mantiene il comportamento esistente (parte da oggi).
+  /// Per le settimane successive mostra i giorni in ordine naturale config.
+  List<String> _getOrderedDaysForWeek(int weekIdx) {
+    if (weekIdx == 0) return _getOrderedDays();
+    if (widget.dietPlan == null || weekIdx >= widget.dietPlan!.weeks.length) {
+      return _getDays();
+    }
+    final weekPlan = widget.dietPlan!.weeks[weekIdx];
+    final configDays = _getDays();
+    final availableDays = weekPlan.keys.toSet();
+    return configDays.where((d) => availableDays.contains(d)).toList();
+  }
+
   void _showImportDialog() {
     if (widget.dietPlan == null) {
       ScaffoldMessenger.of(
@@ -393,107 +407,241 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       return;
     }
 
-    final orderedDays = _getOrderedDays();
+    final weekCount = widget.dietPlan!.weekCount;
+    int selectedDialogWeek = 0;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            final orderedDays = _getOrderedDaysForWeek(selectedDialogWeek);
+
+            // Totale pasti selezionati (across all weeks)
+            final totalSelected = _selectedMealKeys.length;
+
             return AlertDialog(
               backgroundColor: KyboColors.surface(context),
               shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-              title: Text(
-                "Genera Lista Spesa",
-                style: TextStyle(color: KyboColors.textPrimary(context)),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Genera Lista Spesa",
+                      style: TextStyle(color: KyboColors.textPrimary(context)),
+                    ),
+                  ),
+                  if (totalSelected > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: KyboColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$totalSelected',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: orderedDays.length,
-                  itemBuilder: (context, i) {
-                    final day = orderedDays[i];
-                    final dayPlan = widget.dietPlan!.plan[day];
-                    if (dayPlan == null) return const SizedBox.shrink();
-
-                    List<String> mealNames = dayPlan.keys.where((k) {
-                      var foods = dayPlan[k];
-                      return foods != null && foods.isNotEmpty;
-                    }).toList();
-
-                    // Ordina secondo i pasti dalla config dieta
-                    final meals = _getMeals();
-                    mealNames.sort((a, b) {
-                      int idxA = meals.indexOf(a);
-                      int idxB = meals.indexOf(b);
-                      if (idxA == -1) idxA = 999;
-                      if (idxB == -1) idxB = 999;
-                      return idxA.compareTo(idxB);
-                    });
-
-                    if (mealNames.isEmpty) return const SizedBox.shrink();
-
-                    final allDayKeys =
-                        mealNames.map((m) => "$day::$m").toList();
-                    bool areAllSelected = allDayKeys.every(
-                      (k) => _selectedMealKeys.contains(k),
-                    );
-
-                    return ExpansionTile(
-                      collapsedIconColor: KyboColors.textMuted(context),
-                      iconColor: KyboColors.primary,
-                      leading: Checkbox(
-                        value: areAllSelected,
-                        activeColor: KyboColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                        onChanged: (bool? value) {
-                          setStateDialog(() {
-                            if (value == true) {
-                              _selectedMealKeys.addAll(allDayKeys);
-                            } else {
-                              _selectedMealKeys.removeAll(allDayKeys);
-                            }
-                          });
-                        },
-                      ),
-                      title: Text(
-                        i == 0 ? "$day (Oggi)" : day,
-                        style: TextStyle(
-                          fontWeight:
-                              i == 0 ? FontWeight.bold : FontWeight.normal,
-                          color: i == 0 ? KyboColors.primary : KyboColors.textPrimary(context),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Settimana tabs (solo per diete multi-settimana) ──────
+                    if (weekCount > 1) ...[
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: List.generate(weekCount, (i) {
+                            final isSelected = selectedDialogWeek == i;
+                            // Quanti pasti selezionati per questa settimana?
+                            final countInWeek = _selectedMealKeys
+                                .where((k) => k.startsWith('$i::'))
+                                .length;
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                  right: i < weekCount - 1 ? 8 : 0),
+                              child: GestureDetector(
+                                onTap: () =>
+                                    setStateDialog(() => selectedDialogWeek = i),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? KyboColors.primary
+                                        : KyboColors.primary
+                                            .withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: KyboColors.primary,
+                                      width: isSelected ? 0 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Sett. ${i + 1}',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : KyboColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      if (countInWeek > 0) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? Colors.white
+                                                    .withValues(alpha: 0.3)
+                                                : KyboColors.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            '$countInWeek',
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
                         ),
                       ),
-                      children: mealNames.map((meal) {
-                        final key = "$day::$meal";
-                        final isSelected = _selectedMealKeys.contains(key);
-                        return CheckboxListTile(
-                          title: Text(
-                            meal,
-                            style: TextStyle(color: KyboColors.textSecondary(context)),
-                          ),
-                          value: isSelected,
-                          dense: true,
-                          activeColor: KyboColors.primary,
-                           checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          contentPadding: const EdgeInsets.only(
-                            left: 60,
-                            right: 20,
-                          ),
-                          onChanged: (val) {
-                            setStateDialog(() {
-                              if (val == true) {
-                                _selectedMealKeys.add(key);
-                              } else {
-                                _selectedMealKeys.remove(key);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    );
-                  },
+                      const SizedBox(height: 10),
+                    ],
+
+                    // ── Lista giorni della settimana selezionata ─────────────
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: orderedDays.length,
+                        itemBuilder: (context, i) {
+                          final day = orderedDays[i];
+                          final weekPlan =
+                              selectedDialogWeek < widget.dietPlan!.weeks.length
+                                  ? widget.dietPlan!.weeks[selectedDialogWeek]
+                                  : <String, Map<String, List<Dish>>>{};
+                          final dayPlan = weekPlan[day];
+                          if (dayPlan == null) return const SizedBox.shrink();
+
+                          List<String> mealNames = dayPlan.keys.where((k) {
+                            var foods = dayPlan[k];
+                            return foods != null && foods.isNotEmpty;
+                          }).toList();
+
+                          // Ordina secondo i pasti dalla config dieta
+                          final meals = _getMeals();
+                          mealNames.sort((a, b) {
+                            int idxA = meals.indexOf(a);
+                            int idxB = meals.indexOf(b);
+                            if (idxA == -1) idxA = 999;
+                            if (idxB == -1) idxB = 999;
+                            return idxA.compareTo(idxB);
+                          });
+
+                          if (mealNames.isEmpty) return const SizedBox.shrink();
+
+                          // Key formato: "$weekIdx::$day::$meal"
+                          final allDayKeys = mealNames
+                              .map((m) => '$selectedDialogWeek::$day::$m')
+                              .toList();
+                          bool areAllSelected = allDayKeys.every(
+                            (k) => _selectedMealKeys.contains(k),
+                          );
+
+                          // "Oggi" solo per sett. 0, primo giorno
+                          final isToday = selectedDialogWeek == 0 && i == 0;
+
+                          return ExpansionTile(
+                            collapsedIconColor: KyboColors.textMuted(context),
+                            iconColor: KyboColors.primary,
+                            leading: Checkbox(
+                              value: areAllSelected,
+                              activeColor: KyboColors.primary,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4)),
+                              onChanged: (bool? value) {
+                                setStateDialog(() {
+                                  if (value == true) {
+                                    _selectedMealKeys.addAll(allDayKeys);
+                                  } else {
+                                    _selectedMealKeys.removeAll(allDayKeys);
+                                  }
+                                });
+                              },
+                            ),
+                            title: Text(
+                              isToday ? '$day (Oggi)' : day,
+                              style: TextStyle(
+                                fontWeight: isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                color: isToday
+                                    ? KyboColors.primary
+                                    : KyboColors.textPrimary(context),
+                              ),
+                            ),
+                            children: mealNames.map((meal) {
+                              final key = '$selectedDialogWeek::$day::$meal';
+                              final isSelected =
+                                  _selectedMealKeys.contains(key);
+                              return CheckboxListTile(
+                                title: Text(
+                                  meal,
+                                  style: TextStyle(
+                                      color: KyboColors.textSecondary(context)),
+                                ),
+                                value: isSelected,
+                                dense: true,
+                                activeColor: KyboColors.primary,
+                                checkboxShape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4)),
+                                contentPadding: const EdgeInsets.only(
+                                  left: 60,
+                                  right: 20,
+                                ),
+                                onChanged: (val) {
+                                  setStateDialog(() {
+                                    if (val == true) {
+                                      _selectedMealKeys.add(key);
+                                    } else {
+                                      _selectedMealKeys.remove(key);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
               actions: [
@@ -522,8 +670,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     );
   }
 
-  // Inserisci questo dentro _ShoppingListViewState
-
   void _generateListFromSelection() {
     if (widget.dietPlan == null) return;
 
@@ -535,11 +681,25 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         var parts = key.split('::');
         if (parts.length < 2) continue;
 
-        var day = parts[0];
-        var meal = parts[1];
-        final mealKey = "$day::$meal"; // Chiave unica per il pasto
+        // Supporta sia il vecchio formato "day::meal"
+        // sia il nuovo formato multi-settimana "weekIdx::day::meal"
+        int weekIdx;
+        String day, meal;
+        if (parts.length >= 3) {
+          weekIdx = int.tryParse(parts[0]) ?? 0;
+          day = parts[1];
+          meal = parts[2];
+        } else {
+          weekIdx = 0;
+          day = parts[0];
+          meal = parts[1];
+        }
 
-        List<Dish>? foods = widget.dietPlan!.plan[day]?[meal];
+        if (weekIdx >= widget.dietPlan!.weeks.length) continue;
+
+        final mealKey = "$day::$meal"; // Chiave unica per il pasto (week-agnostic per il conteggio)
+
+        List<Dish>? foods = widget.dietPlan!.weeks[weekIdx][day]?[meal];
         if (foods == null) continue;
 
         for (var dish in foods) {
