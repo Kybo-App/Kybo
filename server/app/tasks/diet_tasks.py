@@ -102,8 +102,8 @@ def process_diet_upload(
     if fcm_token:
         try:
             notification_service.send_diet_ready(fcm_token)
-        except Exception:
-            pass  # Non-critical: non blocca il job
+        except Exception as notify_err:
+            logger.warning("rq_diet_notify_failed uid=%s error=%s", target_uid, notify_err)
 
     logger.info("rq_diet_job_done", uid=target_uid, uploaded_by=requester_id)
     return dict_data
