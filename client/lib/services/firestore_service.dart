@@ -10,8 +10,9 @@ class FirestoreService {
   Future<void> saveCurrentDiet(
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
-    Map<String, dynamic> swaps,
-  ) async {
+    Map<String, dynamic> swaps, {
+    List<dynamic>? weeks, // Tutte le settimane per piani multi-settimana
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
@@ -23,21 +24,29 @@ class FirestoreService {
       final encryptedSubs = encryptionService.encryptData(subs, user.uid);
       final encryptedSwaps = encryptionService.encryptData(swaps, user.uid);
 
+      final Map<String, dynamic> docData = {
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'plan_encrypted': encryptedPlan,
+        'substitutions_encrypted': encryptedSubs,
+        'activeSwaps_encrypted': encryptedSwaps,
+        'encrypted': true,
+      };
+
+      // Salva le settimane extra se presenti (piani multi-settimana)
+      if (weeks != null && weeks.length > 1) {
+        docData['weeks_encrypted'] =
+            encryptionService.encryptData({'weeks': weeks}, user.uid);
+      }
+
       // Sovrascriviamo SEMPRE 'current' con versione criptata
       await _db
           .collection('users')
           .doc(user.uid)
           .collection('diets')
           .doc('current')
-          .set({
-        'lastUpdated': FieldValue.serverTimestamp(),
-        'plan_encrypted': encryptedPlan, // ✅ Criptato
-        'substitutions_encrypted': encryptedSubs, // ✅ Criptato
-        'activeSwaps_encrypted': encryptedSwaps, // ✅ Criptato
-        'encrypted': true, // ✅ Flag
-      }, SetOptions(merge: true));
+          .set(docData, SetOptions(merge: true));
 
-      debugPrint("✅ Dieta 'current' aggiornata (encrypted).");
+      debugPrint("✅ Dieta 'current' aggiornata (encrypted, ${weeks?.length ?? 1} settimane).");
     } catch (e) {
       debugPrint("⚠️ Errore salvataggio current: $e");
     }
@@ -46,8 +55,9 @@ class FirestoreService {
   Future<String> saveDietToHistory(
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
-    Map<String, dynamic> swaps,
-  ) async {
+    Map<String, dynamic> swaps, {
+    List<dynamic>? weeks, // Tutte le settimane per piani multi-settimana
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception("User null");
@@ -59,18 +69,25 @@ class FirestoreService {
       final encryptedSubs = encryptionService.encryptData(subs, user.uid);
       final encryptedSwaps = encryptionService.encryptData(swaps, user.uid);
 
-      // Salva nello storico (criptato)
-      final docRef =
-          await _db.collection('users').doc(user.uid).collection('diets').add({
+      final Map<String, dynamic> docData = {
         'uploadedAt': FieldValue.serverTimestamp(),
         'lastUpdated': FieldValue.serverTimestamp(),
-        'plan_encrypted': encryptedPlan, // ✅ Criptato
-        'substitutions_encrypted': encryptedSubs, // ✅ Criptato
-        'activeSwaps_encrypted': encryptedSwaps, // ✅ Criptato
-        'encrypted': true, // ✅ Flag
-      });
+        'plan_encrypted': encryptedPlan,
+        'substitutions_encrypted': encryptedSubs,
+        'activeSwaps_encrypted': encryptedSwaps,
+        'encrypted': true,
+      };
 
-      debugPrint("✅ Dieta salvata nello storico (encrypted).");
+      if (weeks != null && weeks.length > 1) {
+        docData['weeks_encrypted'] =
+            encryptionService.encryptData({'weeks': weeks}, user.uid);
+      }
+
+      // Salva nello storico (criptato)
+      final docRef =
+          await _db.collection('users').doc(user.uid).collection('diets').add(docData);
+
+      debugPrint("✅ Dieta salvata nello storico (encrypted, ${weeks?.length ?? 1} settimane).");
       return docRef.id;
     } catch (e) {
       debugPrint("⚠️ Errore storico: $e");
@@ -82,8 +99,9 @@ class FirestoreService {
     String docId,
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
-    Map<String, dynamic> swaps,
-  ) async {
+    Map<String, dynamic> swaps, {
+    List<dynamic>? weeks,
+  }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
@@ -95,20 +113,27 @@ class FirestoreService {
       final encryptedSubs = encryptionService.encryptData(subs, user.uid);
       final encryptedSwaps = encryptionService.encryptData(swaps, user.uid);
 
+      final Map<String, dynamic> updateData = {
+        'lastUpdated': FieldValue.serverTimestamp(),
+        'plan_encrypted': encryptedPlan,
+        'substitutions_encrypted': encryptedSubs,
+        'activeSwaps_encrypted': encryptedSwaps,
+        'encrypted': true,
+      };
+
+      if (weeks != null && weeks.length > 1) {
+        updateData['weeks_encrypted'] =
+            encryptionService.encryptData({'weeks': weeks}, user.uid);
+      }
+
       await _db
           .collection('users')
           .doc(user.uid)
           .collection('diets')
           .doc(docId)
-          .update({
-        'lastUpdated': FieldValue.serverTimestamp(),
-        'plan_encrypted': encryptedPlan, // ✅ Criptato
-        'substitutions_encrypted': encryptedSubs, // ✅ Criptato
-        'activeSwaps_encrypted': encryptedSwaps, // ✅ Criptato
-        'encrypted': true, // ✅ Flag
-      });
+          .update(updateData);
 
-      debugPrint("🔄 Dieta $docId aggiornata su Cloud (encrypted).");
+      debugPrint("🔄 Dieta $docId aggiornata su Cloud (encrypted, ${weeks?.length ?? 1} settimane).");
     } catch (e) {
       debugPrint("⚠️ Errore aggiornamento storico: $e");
       rethrow;

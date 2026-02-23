@@ -142,8 +142,9 @@ class SubstitutionGroup {
 }
 
 class DietPlan {
-  // Struttura rigida: Giorno -> Pasto -> Lista di Piatti
-  final Map<String, Map<String, List<Dish>>> plan;
+  /// Lista di tutte le settimane: weeks[0] = settimana 1, weeks[1] = settimana 2, ...
+  /// Struttura per settimana: Giorno -> Pasto -> Lista di Piatti
+  final List<Map<String, Map<String, List<Dish>>>> weeks;
   final Map<String, SubstitutionGroup> substitutions;
 
   /// Configurazione dinamica (giorni, pasti, relaxable foods)
@@ -151,23 +152,34 @@ class DietPlan {
   final DietConfig? config;
 
   DietPlan({
-    required this.plan,
+    required this.weeks,
     required this.substitutions,
     this.config,
   });
 
+  // ─── Backward compatibility ────────────────────────────────────────────────
+
+  /// Restituisce il piano della prima settimana (backward compat)
+  Map<String, Map<String, List<Dish>>> get plan =>
+      weeks.isNotEmpty ? weeks[0] : {};
+
+  /// Numero totale di settimane nel piano
+  int get weekCount => weeks.length;
+
+  // ─── Parsing ───────────────────────────────────────────────────────────────
+
   factory DietPlan.fromJson(Map<String, dynamic> json) {
-    // Parsing Piano
-    Map<String, Map<String, List<Dish>>> parsedPlan = {};
-    if (json['plan'] != null) {
-      (json['plan'] as Map<String, dynamic>).forEach((day, meals) {
-        Map<String, List<Dish>> dayMeals = {};
-        (meals as Map<String, dynamic>).forEach((mealType, dishes) {
-          dayMeals[mealType] =
-              (dishes as List<dynamic>).map((d) => Dish.fromJson(d)).toList();
-        });
-        parsedPlan[day] = dayMeals;
-      });
+    List<Map<String, Map<String, List<Dish>>>> parsedWeeks = [];
+
+    // Formato nuovo: 'weeks' è una lista di piani settimanali
+    if (json['weeks'] != null && (json['weeks'] as List).isNotEmpty) {
+      for (final weekJson in (json['weeks'] as List)) {
+        parsedWeeks.add(_parseWeekPlan(weekJson as Map<String, dynamic>));
+      }
+    }
+    // Formato vecchio o server senza 'weeks': solo 'plan' (singola settimana)
+    else if (json['plan'] != null) {
+      parsedWeeks = [_parseWeekPlan(json['plan'] as Map<String, dynamic>)];
     }
 
     // Parsing Sostituzioni
@@ -178,45 +190,61 @@ class DietPlan {
       });
     }
 
-    // Parsing Config (nuova v2)
+    // Parsing Config
     DietConfig? parsedConfig;
     if (json['config'] != null) {
       parsedConfig = DietConfig.fromJson(json['config']);
     }
 
     return DietPlan(
-      plan: parsedPlan,
+      weeks: parsedWeeks,
       substitutions: parsedSubs,
       config: parsedConfig,
     );
   }
 
-  // Fondamentale per il salvataggio su Firestore/Locale
-  Map<String, dynamic> toJson() {
-    Map<String, dynamic> jsonPlan = {};
-    plan.forEach((day, meals) {
-      Map<String, dynamic> jsonMeals = {};
-      meals.forEach((type, dishes) {
-        jsonMeals[type] = dishes.map((d) => d.toJson()).toList();
+  /// Parsa un singolo piano settimanale: {giorno: {pasto: [piatti]}}
+  static Map<String, Map<String, List<Dish>>> _parseWeekPlan(
+      Map<String, dynamic> weekJson) {
+    final Map<String, Map<String, List<Dish>>> weekPlan = {};
+    weekJson.forEach((day, meals) {
+      final Map<String, List<Dish>> dayMeals = {};
+      (meals as Map<String, dynamic>).forEach((mealType, dishes) {
+        dayMeals[mealType] =
+            (dishes as List<dynamic>).map((d) => Dish.fromJson(d)).toList();
       });
-      jsonPlan[day] = jsonMeals;
+      weekPlan[day] = dayMeals;
     });
+    return weekPlan;
+  }
 
-    Map<String, dynamic> jsonSubs = {};
+  // ─── Serializzazione ───────────────────────────────────────────────────────
+
+  /// Fondamentale per il salvataggio su Firestore/Locale
+  Map<String, dynamic> toJson() {
+    // Serializza ogni settimana
+    final List<dynamic> jsonWeeks = weeks.map((weekPlan) {
+      final Map<String, dynamic> jsonWeek = {};
+      weekPlan.forEach((day, meals) {
+        final Map<String, dynamic> jsonMeals = {};
+        meals.forEach((type, dishes) {
+          jsonMeals[type] = dishes.map((d) => d.toJson()).toList();
+        });
+        jsonWeek[day] = jsonMeals;
+      });
+      return jsonWeek;
+    }).toList();
+
+    final Map<String, dynamic> jsonSubs = {};
     substitutions.forEach((k, v) {
       jsonSubs[k] = v.toJson();
     });
 
-    final result = <String, dynamic>{
-      'plan': jsonPlan,
+    return {
+      'plan': jsonWeeks.isNotEmpty ? jsonWeeks[0] : {},  // backward compat (settimana 1)
+      'weeks': jsonWeeks,                                 // tutte le settimane (nuovo)
       'substitutions': jsonSubs,
+      if (config != null) 'config': config!.toJson(),
     };
-
-    // Salva config solo se presente
-    if (config != null) {
-      result['config'] = config!.toJson();
-    }
-
-    return result;
   }
 }

@@ -40,7 +40,8 @@ class Pasto(typing.TypedDict):
     elenco_piatti: list[Piatto]
 
 class GiornoDieta(typing.TypedDict):
-    giorno: str 
+    giorno: str
+    settimana: int  # Numero settimana: 1 per prima settimana, 2 per seconda, ecc.
     pasti: list[Pasto]
 
 class OpzioneSostituzione(typing.TypedDict):
@@ -57,6 +58,7 @@ class ConfigDieta(typing.TypedDict):
     giorni: list[str]  # Giorni della settimana nell'ordine del PDF
     pasti: list[str]   # Tipi di pasto nell'ordine del PDF
     alimenti_rilassabili: list[str]  # Frutta/verdura identificati nel piano
+    num_settimane: int  # Numero totale di settimane nel piano (1 = singola settimana)
 
 class OutputDietaCompleto(typing.TypedDict):
     piano_settimanale: list[GiornoDieta]
@@ -98,17 +100,25 @@ CRITICAL RULES FOR MULTI-LANGUAGE SUPPORT:
 3. Preserve Content: Keep Dish Names, Ingredients, and Quantities in ORIGINAL LANGUAGE.
 
 SIMPLIFIED SCHEMA RULES:
-1. Weekly Plan Only: Extract every meal.
+1. Extract every meal from the entire document.
 2. No Substitutions: Return empty list [].
 3. No CAD Codes: Set to 0.
 
+MULTI-WEEK DETECTION (CRITICAL):
+- Inspect the document for multiple weeks. Signs include: "Settimana 1"/"Settimana 2", "Week 1"/"Week 2", "Lunedì 1"/"Lunedì 2", repeated day blocks, or explicit week headers.
+- For each day entry, set the "settimana" field to the correct week number (1 for the first week, 2 for the second, etc.).
+- If the document contains only one week, set "settimana": 1 for all days.
+- Days from different weeks MUST be separate entries in "piano_settimanale" even if they have the same day name (e.g., two "Lunedì" entries, one with settimana:1 and one with settimana:2).
+- NEVER merge or overwrite days from different weeks.
+
 CONFIG EXTRACTION (REQUIRED):
 Extract the following metadata and include in "config" field:
-1. "giorni": List of days of the week AS THEY APPEAR in the document (translated to Italian).
+1. "giorni": List of UNIQUE days of the week AS THEY APPEAR in the document (translated to Italian). Do NOT repeat the same day for multiple weeks.
    Example: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
 2. "pasti": List of meal types IN THE ORDER they appear in the document (translated to Italian).
    Example: ["Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"]
 3. "alimenti_rilassabili": List of SIMPLE fruits and vegetables found in the diet plan.
+4. "num_settimane": Total number of weeks in the document. Set to 1 if single week, 2 if two weeks, etc.
    - STRICTLY ONLY fresh, whole fruits and vegetables.
    - DO NOT INCLUDE: Oils (olio di oliva), fats, jams (marmellata), honey, bread, pasta, meat, fish, dairy, eggs.
    - DO NOT extract fruits/vegetables that appear ONLY in processed forms (e.g., do NOT add "mela" if it only appears in "marmellata di mele").

@@ -53,7 +53,10 @@ class _DietViewState extends State<DietView> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (widget.dietPlan == null || widget.dietPlan!.plan.isEmpty) {
+    // Usa il piano della settimana correntemente selezionata dal provider
+    final currentWeekPlan = context.read<DietProvider>().currentWeekPlan;
+
+    if (widget.dietPlan == null || currentWeekPlan.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -69,7 +72,7 @@ class _DietViewState extends State<DietView> {
       );
     }
 
-    final mealsOfDay = widget.dietPlan!.plan[widget.day];
+    final mealsOfDay = currentWeekPlan[widget.day];
 
     if (mealsOfDay == null) {
       return Center(

@@ -65,11 +65,20 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         "gio": "Giovedì", "ven": "Venerdì", "sab": "Sabato", "dom": "Domenica"
     }
 
-    # 2. Costruzione Piano
+    # 2. Costruzione Piano — raggruppato per settimana
+    # weeks_data: {week_num (int): {day_name: {meal_name: [Dish]}}}
+    weeks_data: dict = {}
+
     for day in gemini_output.get('piano_settimanale', []):
         raw_name = day.get('giorno', '').lower().strip()
         day_name = day_map.get(raw_name[:3], raw_name.capitalize())
-        app_plan[day_name] = {}
+        week_num = int(day.get('settimana', 1) or 1)  # default settimana 1 se assente/null
+
+        if week_num not in weeks_data:
+            weeks_data[week_num] = {}
+
+        if day_name not in weeks_data[week_num]:
+            weeks_data[week_num][day_name] = {}
 
         for meal in day.get('pasti', []):
             m_name = normalize_meal_name(meal.get('tipo_pasto', ''))
@@ -96,10 +105,17 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
                 )
                 dishes.append(new_dish)
 
-            if m_name in app_plan[day_name]:
-                app_plan[day_name][m_name].extend(dishes)
+            week_day = weeks_data[week_num][day_name]
+            if m_name in week_day:
+                week_day[m_name].extend(dishes)
             else:
-                app_plan[day_name][m_name] = dishes
+                week_day[m_name] = dishes
+
+    # Costruisce lista settimane ordinata per numero (1, 2, ...)
+    sorted_week_nums = sorted(weeks_data.keys()) if weeks_data else [1]
+    weeks_list = [weeks_data[k] for k in sorted_week_nums if k in weeks_data]
+    app_plan = weeks_list[0] if weeks_list else {}
+    week_count = len(weeks_list)
 
     # Ordina pasti: Rimosso forzatura MEAL_ORDER. Ci fidiamo dell'ordine del parser (cioè del PDF)
     # se l'IA rispetta l'ordine di apparizione, il dizionario lo mantiene (Python 3.7+)
@@ -108,11 +124,15 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
     app_config = None
     raw_config = gemini_output.get('config')
     if raw_config:
-        # Traduci giorni se necessario
+        # Traduci giorni se necessario (giorni unici, senza duplicati per settimana)
         config_days = []
+        seen_days = set()
         for g in raw_config.get('giorni', []):
             g_lower = g.lower().strip()
-            config_days.append(day_map.get(g_lower[:3], g.capitalize()))
+            normalized = day_map.get(g_lower[:3], g.capitalize())
+            if normalized not in seen_days:
+                config_days.append(normalized)
+                seen_days.add(normalized)
 
         # Normalizza pasti
         config_meals = []
@@ -128,16 +148,28 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             if item and item.strip()
         ))
 
+        # num_settimane: usa valore da Gemini o fallback al conteggio reale
+        raw_num_settimane = raw_config.get('num_settimane', week_count)
+        config_week_count = int(raw_num_settimane) if raw_num_settimane else week_count
+
         app_config = DietConfig(
             days=config_days if config_days else list(app_plan.keys()),
-            meals=config_meals, # Rimosso fallback a MEAL_ORDER
-            relaxable_foods=config_relaxable
+            meals=config_meals,
+            relaxable_foods=config_relaxable,
+            week_count=max(config_week_count, week_count),  # prende il valore più grande
         )
 
     # 4. Allergeni
     allergens = gemini_output.get('allergeni', [])
 
-    return DietResponse(plan=app_plan, substitutions=app_substitutions, config=app_config, allergens=allergens)
+    return DietResponse(
+        plan=app_plan,
+        weeks=weeks_list,
+        week_count=week_count,
+        substitutions=app_substitutions,
+        config=app_config,
+        allergens=allergens,
+    )
 
 
 @router.post("/upload-diet")
