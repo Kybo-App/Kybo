@@ -23,6 +23,50 @@ class AdminChatProvider with ChangeNotifier {
   String? get userRole => _userRole;
   String? get currentUserId => _auth.currentUser?.uid;
 
+  // Cache UID → "Nome Cognome" per evitare letture Firestore ripetute
+  final Map<String, String> _userNameCache = {};
+
+  /// Restituisce il nome cached per un uid (null se non ancora caricato).
+  String? getCachedName(String uid) => _userNameCache[uid];
+
+  /// Recupera first_name + last_name da Firestore, caching per sessione.
+  /// Non lancia mai eccezioni — usa [fallback] in caso di errore.
+  Future<String> resolveUserName(String uid, {String fallback = ''}) async {
+    if (_userNameCache.containsKey(uid)) return _userNameCache[uid]!;
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        final first = (data['first_name'] as String? ?? '').trim();
+        final last  = (data['last_name']  as String? ?? '').trim();
+        final full  = [first, last].where((s) => s.isNotEmpty).join(' ');
+        _userNameCache[uid] = full.isNotEmpty
+            ? full
+            : (data['email'] as String? ?? fallback);
+      } else {
+        _userNameCache[uid] = fallback;
+      }
+    } catch (_) {
+      _userNameCache[uid] = fallback;
+    }
+    if (!_isDisposed) notifyListeners();
+    return _userNameCache[uid]!;
+  }
+
+  /// Pre-fetch dei nomi per tutte le chat nutritionist-client non ancora in cache.
+  Future<void> prefetchNamesForChats(List<Chat> chats) async {
+    final uids = chats
+        .where((c) =>
+            c.chatType == 'nutritionist-client' &&
+            !_userNameCache.containsKey(c.clientId) &&
+            c.clientId.isNotEmpty)
+        .map((c) => c.clientId)
+        .toSet();
+    for (final uid in uids) {
+      await resolveUserName(uid);
+    }
+  }
+
   bool _isDisposed = false;
 
   @override
