@@ -192,7 +192,6 @@ class AdminRepository {
     }
   }
 
-  // NUOVO: Cancella Dieta tramite API (Secure Logged)
   Future<void> deleteDiet(String dietId) async {
     final token = await _getToken();
     final response = await http.delete(
