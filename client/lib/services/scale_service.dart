@@ -15,7 +15,6 @@ const String _kBodyCompositionServiceUuid = '0000181b-0000-1000-8000-00805f9b34f
 /// Supporta:
 /// - Standard Bluetooth SIG Weight Scale (molte bilance commerciali)
 /// - Xiaomi Mi Scale (Body Composition service)
-/// - Withings (stub — da configurare con credenziali OAuth)
 class ScaleService extends ChangeNotifier {
   final TrackingService _trackingService = TrackingService();
 
@@ -36,9 +35,6 @@ class ScaleService extends ChangeNotifier {
   double? get lastWeight => _lastWeight;
   String? get bleError => _bleError;
   bool get isConnected => _connectedDevice != null;
-
-  // --- Withings State (stub) ---
-  final bool isWithingsConfigured = false;
 
   // -------------------------------------------------------------------------
   // BLE — SCAN
@@ -212,30 +208,6 @@ class ScaleService extends ChangeNotifier {
     return statuses.values.every(
       (s) => s == PermissionStatus.granted || s == PermissionStatus.limited,
     );
-  }
-
-  // -------------------------------------------------------------------------
-  // WITHINGS (stub — da configurare con credenziali)
-  // -------------------------------------------------------------------------
-
-  /// Avvia il flusso OAuth Withings.
-  /// Attualmente non configurato: richiede WITHINGS_CLIENT_ID e WITHINGS_CLIENT_SECRET.
-  Future<void> connectWithings() async {
-    if (!isWithingsConfigured) {
-      throw UnsupportedError(
-        'Integrazione Withings non ancora configurata. '
-        'Aggiungi WITHINGS_CLIENT_ID e WITHINGS_CLIENT_SECRET.',
-      );
-    }
-    // TODO: implementare OAuth2 Withings quando le credenziali sono disponibili
-  }
-
-  /// Sincronizza il peso da Withings.
-  Future<void> syncWithingsWeight() async {
-    if (!isWithingsConfigured) {
-      throw UnsupportedError('Withings non configurato.');
-    }
-    // TODO: GET /measure?action=getmeas dal backend
   }
 
   // -------------------------------------------------------------------------
