@@ -117,40 +117,47 @@ class _ChatScreenState extends State<ChatScreen> {
           icon: Icon(Icons.arrow_back, color: KyboColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: KyboColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.person, color: KyboColors.primary, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        title: Consumer<ChatProvider>(
+          builder: (context, chatProvider, _) {
+            return Row(
               children: [
-                Text(
-                  'Nutrizionista',
-                  style: TextStyle(
-                    color: KyboColors.textPrimary(context),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: KyboColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
+                  child: Icon(Icons.person, color: KyboColors.primary, size: 24),
                 ),
-                Text(
-                  'Online',
-                  style: TextStyle(
-                    color: KyboColors.success,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        chatProvider.nutritionistName,
+                        style: TextStyle(
+                          color: KyboColors.textPrimary(context),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Nutrizionista',
+                        style: TextStyle(
+                          color: KyboColors.textSecondary(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
       body: Column(

@@ -31,9 +31,14 @@ class ChatProvider extends ChangeNotifier {
   String? get chatId => _currentChatId;
 
   String? _nutritionistId;
+  String? _nutritionistName;
   String? _clientName;
   String? _clientEmail;
   bool _initialized = false;
+
+  /// Nome visualizzabile del contatto chat:
+  /// - per il cliente: nome del nutrizionista (o "Nutrizionista" come fallback)
+  String get nutritionistName => _nutritionistName ?? 'Nutrizionista';
 
   StreamSubscription? _unreadSubscription;
 
@@ -67,6 +72,23 @@ class ChatProvider extends ChangeNotifier {
         debugPrint('Chat: No nutritionist assigned (parent_id is null)');
         // User is independent or not yet assigned - no chat available
         return;
+      }
+
+      // Fetch nutritionist name to display in chat header
+      try {
+        final nutriDoc = await _firestore
+            .collection('users')
+            .doc(_nutritionistId)
+            .get();
+        if (nutriDoc.exists) {
+          final nd = nutriDoc.data()!;
+          final firstName = nd['first_name'] as String? ?? '';
+          final lastName  = nd['last_name']  as String? ?? '';
+          final fullName  = '$firstName $lastName'.trim();
+          _nutritionistName = fullName.isNotEmpty ? fullName : nd['email'] as String?;
+        }
+      } catch (e) {
+        debugPrint('Chat: Could not fetch nutritionist name: $e');
       }
 
       // Chat ID: deterministic format based on client UID
