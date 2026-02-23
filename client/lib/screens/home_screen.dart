@@ -873,7 +873,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                   return _buildSidebarMenuItem(
                     context: context,
                     icon: Icons.chat_bubble,
-                    label: 'Chat',
+                    label: chatProvider.nutritionistName,
                     subtitle: unreadCount > 0
                         ? '$unreadCount non letti'
                         : null,
@@ -1486,10 +1486,10 @@ class _MainScreenContentState extends State<MainScreenContent>
                                       ],
                                     ),
                                   ),
-                                  title: "Chat",
-                                  subtitle: unreadCount > 0 
-                                      ? "$unreadCount ${unreadCount == 1 ? 'messaggio' : 'messaggi'} non letto" 
-                                      : "Parla con il tuo nutrizionista",
+                                  title: chatProvider.nutritionistName,
+                                  subtitle: unreadCount > 0
+                                      ? "$unreadCount ${unreadCount == 1 ? 'messaggio' : 'messaggi'} non letto"
+                                      : "Scrivi al tuo nutrizionista",
                                   onTap: () {
                                     Navigator.pop(drawerCtx);
                                     Navigator.push(
