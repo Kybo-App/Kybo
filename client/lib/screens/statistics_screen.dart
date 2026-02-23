@@ -368,7 +368,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       dotData: const FlDotData(show: true),
                       belowBarData: BarAreaData(
                         show: true,
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       ),
                     ),
                   ],
@@ -521,7 +521,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.add, size: 18, color: color),

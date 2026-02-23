@@ -233,7 +233,6 @@ class MealCard extends StatelessWidget {
                                     .contains(displayName.toLowerCase()));
 
                         // Logica Relax
-                        final String nameLower = displayName.toLowerCase();
                         bool isRelaxableItem = isRelaxable(displayName);
 
                         // Se abbiamo 1 ingrediente uguale al piatto, usa la sua qty
