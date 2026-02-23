@@ -15,18 +15,21 @@ il sistema funziona normalmente usando solo RAM + Firestore (graceful fallback).
 
 ### Setup su Render (produzione)
 
-1. **Crea un Redis su Render**
-   - Vai su [render.com](https://render.com) → **New** → **Redis**
+> ℹ️ **Nota**: Render ha rinominato il servizio Redis in **"Key Value"** —
+> è identico a Redis, cambia solo il nome nel pannello. Usa quello.
+
+1. **Crea un Key Value store su Render**
+   - Vai su [render.com](https://render.com) → **New** → **Key Value**
    - Nome: `kybo-redis`
-   - Piano: **Free** (25 MB) per iniziare; **Starter** ($10/mese) per produzione
-   - Copia l'**Internal Redis URL** (formato: `redis://red-xxx:6379`)
+   - Piano: **Free** (25 MB) per iniziare; **Starter** per produzione
+   - Una volta creato, vai sulla pagina del servizio → copia l'**Internal Redis URL**
+     (formato: `redis://red-xxxxxxxxxxxxxxxx:6379`)
 
 2. **Aggiungi la variabile d'ambiente al servizio backend**
-   - Vai sul tuo servizio Render (`kybo` o `kybo-test`)
-   - **Environment** → **Add Environment Variable**
-   - Key: `REDIS_URL`
-   - Value: l'URL copiato sopra (es. `redis://red-xxx:6379`)
-   - Salva e rideploya
+   - Vai sul tuo servizio Web (`kybo` o `kybo-test`) → **Environment**
+   - **Add Environment Variable**
+   - Key: `REDIS_URL` — Value: l'Internal URL copiato sopra
+   - Salva → il servizio si rideploya automaticamente
 
 3. **Verifica che funzioni**
    ```bash
@@ -37,7 +40,7 @@ il sistema funziona normalmente usando solo RAM + Firestore (graceful fallback).
 ### Alternativa gratuita: Upstash Redis
 
 1. Vai su [upstash.com](https://upstash.com) → crea un database Redis (piano free)
-2. Copia la **Redis URL** (formato: `redis://default:xxx@xxx.upstash.io:6379`)
+2. Copia la **Redis URL** (formato: `rediss://default:xxx@xxx.upstash.io:6379`)
 3. Aggiungila come `REDIS_URL` su Render
 
 ### TTL configurabili (variabili d'ambiente opzionali)
@@ -47,6 +50,8 @@ il sistema funziona normalmente usando solo RAM + Firestore (graceful fallback).
 | `REDIS_DIET_TTL`        | `3600`  | Secondi cache parsing diete (1h)   |
 | `REDIS_SUGGESTIONS_TTL` | `1800`  | Secondi cache suggerimenti (30min) |
 | `REDIS_TOKEN_TTL`       | `1500`  | Secondi cache token JWT (25min)    |
+
+> ⚠️ **Stesso Redis per cache E queue RQ**: usa lo stesso `REDIS_URL` per entrambi i servizi (FastAPI + Background Worker). Internamente RQ usa un database separato rispetto alla cache.
 
 ### Sviluppo locale con Docker
 
@@ -83,7 +88,102 @@ I log del server mostrano il layer colpito:
 
 ---
 
-## 2. APM — Prometheus + Dashboard Metriche API
+## 2. RQ Worker — Parsing Diete Asincrono
+
+### Cosa fa
+Il worker RQ è un processo separato che consuma i job dalla coda Redis e processa
+i PDF delle diete in background. Il server FastAPI accoda il job e risponde subito
+con un `job_id`; l'admin panel fa polling ogni 3s finché il job non è completato.
+
+Se Redis non è configurato o il worker non è attivo, il sistema torna
+automaticamente al comportamento sincrono con semaphore (graceful fallback).
+
+### Modalità A — Inline (dev/test, free tier) ✅ CONSIGLIATA PER INIZIARE
+
+Il worker gira **dentro il processo FastAPI** in un thread separato.
+Non serve nessun servizio extra su Render — tutto nel Web Service gratuito.
+
+1. **Crea solo il Key Value (Redis)** — vedi sezione 1
+2. **Aggiungi a `kybo-test`** (Web Service) → Environment:
+   ```
+   REDIS_URL=redis://red-xxxxxxxxxxxxxxxx:6379
+   RQ_INLINE_WORKER=true    ← abilita il worker inline (è il default, puoi anche ometterla)
+   ```
+3. Rideploya → nei log di `kybo-test` dovresti vedere:
+   ```
+   rq_inline_worker_started queue=diet_parsing
+   ```
+4. Fai un upload di prova → nei log appare:
+   ```
+   rq_diet_job_done uid=xxx uploaded_by=xxx
+   ```
+
+> ⚠️ Il worker inline condivide CPU e RAM con il server FastAPI. Va benissimo
+> per dev/test. Per produzione con carichi elevati, usa la Modalità B.
+
+---
+
+### Modalità B — Background Worker separato (prod, piano a pagamento)
+
+Il worker gira come **servizio Render separato** — isolato, scalabile, riavviabile
+indipendentemente dal server API.
+
+1. **Crea il Key Value** — vedi sezione 1
+2. **Crea un nuovo servizio Background Worker su Render**
+   - **New** → **Background Worker**
+   - **Name**: `kybo-worker`
+   - **Root Directory**: `server`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python worker.py`
+3. **Env vars del worker** (stesse del backend):
+   ```
+   REDIS_URL, FIREBASE_CREDENTIALS, STORAGE_BUCKET, GOOGLE_API_KEY, ENV
+   ```
+   > Usa un **Environment Group** condiviso su Render per non duplicarle.
+4. **Sul Web Service** (`kybo`) imposta:
+   ```
+   RQ_INLINE_WORKER=false   ← disabilita il worker inline, usa il servizio separato
+   ```
+
+5. Verifica nei log del worker:
+   ```
+   Worker in ascolto su: diet_parsing  |  Redis: redis://red-xxx:6379
+   ```
+
+### Sviluppo locale
+
+```bash
+# Terminale 1 — FastAPI server
+cd server
+uvicorn app.main:app --reload
+
+# Terminale 2 — RQ worker (stesso repo)
+cd server
+REDIS_URL=redis://localhost:6379/0 python worker.py
+```
+
+### Monitoraggio coda (opzionale — RQ Dashboard)
+
+```bash
+pip install rq-dashboard
+rq-dashboard --redis-url redis://localhost:6379/0
+# Apri: http://localhost:9181
+```
+
+Mostra: job in coda, in esecuzione, falliti, throughput.
+
+### Variabili d'ambiente RQ (opzionali, hanno default)
+
+| Variabile        | Default        | Descrizione                              |
+|------------------|----------------|------------------------------------------|
+| `RQ_QUEUE_NAME`  | `diet_parsing` | Nome della coda Redis                    |
+| `RQ_JOB_TIMEOUT` | `300`          | Secondi massimi per job (5 minuti)       |
+| `RQ_RESULT_TTL`  | `3600`         | Secondi in cui il risultato resta in Redis |
+| `RQ_FAILURE_TTL` | `86400`        | Secondi in cui i job falliti restano per debug |
+
+---
+
+## 4. APM — Prometheus + Dashboard Metriche API
 
 ### Cosa fa
 Il backend espone due endpoint di monitoring:
@@ -257,7 +357,7 @@ curl -H "X-Metrics-Token: un-token-segreto-lungo" \
 
 ---
 
-## 3. Health Check Endpoints — Riferimento
+## 5. Health Check Endpoints — Riferimento
 
 | Endpoint | Auth | Descrizione |
 |----------|------|-------------|
@@ -269,7 +369,7 @@ curl -H "X-Metrics-Token: un-token-segreto-lungo" \
 
 ---
 
-## 4. Variabili d'Ambiente — Riferimento Completo
+## 6. Variabili d'Ambiente — Riferimento Completo
 
 ### Backend (`server/.env` o Render → Environment)
 
@@ -281,7 +381,7 @@ STORAGE_BUCKET=kybo-xxx.appspot.com     # Firebase Storage bucket
 
 # ── CONSIGLIATE ───────────────────────────────────────────────────────────────
 SENTRY_DSN=https://xxx@sentry.io/xxx    # Error tracking (Sentry)
-REDIS_URL=redis://red-xxx:6379           # Cache distribuita (Render Redis / Upstash)
+REDIS_URL=redis://red-xxx:6379           # Cache distribuita + coda RQ (Render Redis / Upstash)
 
 # ── SMTP EMAIL ────────────────────────────────────────────────────────────────
 SMTP_HOST=smtp.gmail.com
@@ -299,6 +399,11 @@ GEMINI_MODEL=gemini-2.5-flash           # Modello Gemini da usare
 REDIS_DIET_TTL=3600                     # 1h
 REDIS_SUGGESTIONS_TTL=1800              # 30min
 REDIS_TOKEN_TTL=1500                    # 25min
+
+# ── RQ WORKER (opzionali, hanno default) ──────────────────────────────────────
+RQ_INLINE_WORKER=true                   # true=worker nel processo FastAPI (free tier), false=Background Worker separato
+RQ_QUEUE_NAME=diet_parsing              # nome coda
+RQ_JOB_TIMEOUT=300                      # 5 min per job
 ```
 
 ### Flutter Client / Admin (`.env` nella root di `client/` o `admin/`)
@@ -311,7 +416,7 @@ API_URL=https://kybo-test.onrender.com  # test/dev
 
 ---
 
-## 5. Deploy Checklist
+## 7. Deploy Checklist
 
 ### Nuovo deploy backend (Render)
 
@@ -320,10 +425,13 @@ API_URL=https://kybo-test.onrender.com  # test/dev
 - [ ] `FIREBASE_CREDENTIALS` JSON correttamente escaped (tutto su una riga)
 - [ ] `STORAGE_BUCKET` corretto
 - [ ] `SENTRY_DSN` impostato (per error tracking)
-- [ ] `REDIS_URL` impostato (per cache distribuita)
+- [ ] `REDIS_URL` impostato (Key Value su Render)
+- [ ] `RQ_INLINE_WORKER=true` per dev/test (free) oppure `false` per prod (Background Worker separato)
 - [ ] SMTP configurato (per email notifiche e report mensili)
+- [ ] **Solo prod**: Servizio Background Worker (`kybo-worker`) con `python worker.py` + `RQ_INLINE_WORKER=false`
 - [ ] Verifica `GET /health/detailed` → tutti i check `"ok"`
 - [ ] Verifica `GET /metrics/api` → risponde correttamente
+- [ ] Fai un upload di prova → nei log appare `rq_diet_job_done` oppure `rq_inline_worker_started`
 
 ### Nuovo deploy client Flutter
 
