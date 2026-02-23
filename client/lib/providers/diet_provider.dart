@@ -31,6 +31,7 @@ class DietProvider extends ChangeNotifier {
 
   DietPlan?
       _dietPlan; // Oggetto unico che contiene sia il piano che le sostituzioni
+  int _selectedWeek = 0; // Settimana selezionata (0-indexed)
   List<PantryItem> _pantryItems = [];
   Map<String, ActiveSwap> _activeSwaps = {};
   List<String> _shoppingList = [];
@@ -78,8 +79,10 @@ class DietProvider extends ChangeNotifier {
     if (user == null || _dietPlan == null) return "Errore: Dati mancanti.";
 
     // Serializziamo per il confronto
-    final currentPlanJson = _dietPlan!.toJson()['plan'];
-    final currentSubsJson = _dietPlan!.toJson()['substitutions'];
+    final currentDietJson = _dietPlan!.toJson();
+    final currentPlanJson = currentDietJson['plan'] as Map<String, dynamic>;
+    final currentSubsJson = currentDietJson['substitutions'] as Map<String, dynamic>;
+    final currentWeeksJson = currentDietJson['weeks'] as List<dynamic>?;
 
     bool hasSwapsChanged = _activeSwaps.isNotEmpty;
     // Confrontiamo il JSON corrente con l'ultimo syncato
@@ -98,7 +101,11 @@ class DietProvider extends ChangeNotifier {
     // Sync Veloce (se < 3 ore)
     if (!forceSync && now.difference(_lastCloudSave).inHours < 3) {
       await _firestore.saveCurrentDiet(
-          _sanitize(currentPlanJson), _sanitize(currentSubsJson), swapsToSave);
+        _sanitize(currentPlanJson),
+        _sanitize(currentSubsJson),
+        swapsToSave,
+        weeks: currentWeeksJson,
+      );
       return "☁️ Modifiche sincronizzate.";
     }
 
@@ -106,7 +113,11 @@ class DietProvider extends ChangeNotifier {
     try {
       // 1. Aggiorna Current
       await _firestore.saveCurrentDiet(
-          _sanitize(currentPlanJson), _sanitize(currentSubsJson), swapsToSave);
+        _sanitize(currentPlanJson),
+        _sanitize(currentSubsJson),
+        swapsToSave,
+        weeks: currentWeeksJson,
+      );
 
       // 2. Crea voce Storico
       if (_currentFirestoreId == null) {
@@ -114,6 +125,7 @@ class DietProvider extends ChangeNotifier {
           _sanitize(currentPlanJson),
           _sanitize(currentSubsJson),
           swapsToSave,
+          weeks: currentWeeksJson,
         );
         _currentFirestoreId = newId;
       } else {
@@ -122,6 +134,7 @@ class DietProvider extends ChangeNotifier {
           _sanitize(currentPlanJson),
           _sanitize(currentSubsJson),
           swapsToSave,
+          weeks: currentWeeksJson,
         );
       }
 
@@ -139,8 +152,9 @@ class DietProvider extends ChangeNotifier {
       bool timePassed =
           DateTime.now().difference(_lastCloudSave) > _cloudSaveInterval;
 
-      final currentPlanJson = _dietPlan!.toJson()['plan'];
-      final currentSubsJson = _dietPlan!.toJson()['substitutions'];
+      final currentDietJson = _dietPlan!.toJson();
+      final currentPlanJson = currentDietJson['plan'] as Map<String, dynamic>;
+      final currentSubsJson = currentDietJson['substitutions'] as Map<String, dynamic>;
 
       bool isStructurallyDifferent = _hasStructuralChanges(
               currentPlanJson, _lastSyncedDiet) ||
@@ -183,6 +197,30 @@ class DietProvider extends ChangeNotifier {
   double get uploadProgress => _uploadProgress;
   bool get hasError => _error != null;
 
+  // ─── WEEK SELECTION ────────────────────────────────────────────────────────
+
+  /// Settimana attualmente visualizzata (0-indexed)
+  int get selectedWeek => _selectedWeek;
+
+  /// Numero totale di settimane nel piano corrente
+  int get weekCount => _dietPlan?.weekCount ?? 1;
+
+  /// Piano della settimana attualmente selezionata
+  Map<String, Map<String, List<Dish>>> get currentWeekPlan {
+    if (_dietPlan == null || _dietPlan!.weeks.isEmpty) return {};
+    final idx = _selectedWeek.clamp(0, _dietPlan!.weeks.length - 1);
+    return _dietPlan!.weeks[idx];
+  }
+
+  /// Cambia la settimana visualizzata e notifica i listener
+  void setWeek(int week) {
+    if (_dietPlan == null) return;
+    final clamped = week.clamp(0, _dietPlan!.weekCount - 1);
+    if (clamped == _selectedWeek) return;
+    _selectedWeek = clamped;
+    notifyListeners();
+  }
+
   // ========== GETTER DINAMICI (da config JSON o fallback hardcoded) ==========
 
   /// Restituisce i giorni della settimana dalla config della dieta,
@@ -196,9 +234,9 @@ class DietProvider extends ChangeNotifier {
       return config.days;
     }
 
-    // 2. Inferiti dal Piano (Se presenti)
-    if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
-      final daysFromPlan = _dietPlan!.plan.keys.toList();
+    // 2. Inferiti dal Piano (dalla settimana corrente)
+    if (_dietPlan != null && currentWeekPlan.isNotEmpty) {
+      final daysFromPlan = currentWeekPlan.keys.toList();
       
       // Ordinamento: Usa Global come riferimento
       final referenceOrder = (_globalDays != null && _globalDays!.isNotEmpty)
@@ -235,15 +273,15 @@ class DietProvider extends ChangeNotifier {
       return config.meals;
     }
 
-    // 2. Inferiti dal Piano (Smart Merge)
-    if (_dietPlan != null && _dietPlan!.plan.isNotEmpty) {
+    // 2. Inferiti dal Piano (Smart Merge — dalla settimana corrente)
+    if (_dietPlan != null && currentWeekPlan.isNotEmpty) {
       List<String> masterList = [];
-      
+
       // Itera sui giorni nell'ordine corretto (se possibile)
       final days = getDays();
-      
+
       for (var day in days) {
-        final dayMealsMap = _dietPlan!.plan[day];
+        final dayMealsMap = currentWeekPlan[day];
         if (dayMealsMap == null) continue;
         
         final dayMeals = dayMealsMap.keys.toList();
@@ -442,35 +480,39 @@ class DietProvider extends ChangeNotifier {
         final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
           // [FIX] Salva lo stato consumed locale prima di sovrascrivere
+          // Itera su TUTTE le settimane per preservare tutti gli stati
           final Map<String, bool> localConsumedStates = {};
           if (_dietPlan != null) {
-            _dietPlan!.plan.forEach((day, meals) {
-              meals.forEach((mealType, dishes) {
-                for (var dish in dishes) {
-                  if (dish.isConsumed) {
-                    // Usa instanceId come chiave
-                    localConsumedStates[dish.instanceId] = true;
+            for (final weekPlan in _dietPlan!.weeks) {
+              weekPlan.forEach((day, meals) {
+                meals.forEach((mealType, dishes) {
+                  for (var dish in dishes) {
+                    if (dish.isConsumed) {
+                      localConsumedStates[dish.instanceId] = true;
+                    }
                   }
-                }
+                });
               });
-            });
+            }
           }
 
           // Conversione da Mappa Firestore a Oggetto DietPlan
           _dietPlan = DietPlan.fromJson(data);
 
-          // [FIX] Ripristina lo stato consumed dai dati locali
+          // [FIX] Ripristina lo stato consumed su tutte le settimane
           if (localConsumedStates.isNotEmpty) {
-            _dietPlan!.plan.forEach((day, meals) {
-              meals.forEach((mealType, dishes) {
-                for (var dish in dishes) {
-                  if (localConsumedStates[dish.instanceId] == true) {
-                    dish.isConsumed = true;
+            for (final weekPlan in _dietPlan!.weeks) {
+              weekPlan.forEach((day, meals) {
+                meals.forEach((mealType, dishes) {
+                  for (var dish in dishes) {
+                    if (localConsumedStates[dish.instanceId] == true) {
+                      dish.isConsumed = true;
+                    }
                   }
-                }
+                });
               });
-            });
-            debugPrint("🔄 Ripristinati ${localConsumedStates.length} stati consumo");
+            }
+            debugPrint("🔄 Ripristinati ${localConsumedStates.length} stati consumo (multi-week)");
           }
 
           // Salvataggio cache locale (con stati consumed preservati)
@@ -503,6 +545,7 @@ class DietProvider extends ChangeNotifier {
     // [FIX] Ricostruiamo l'oggetto dai dati passati
     _dietPlan = DietPlan.fromJson(dietData);
     _currentFirestoreId = docId;
+    _selectedWeek = 0; // Reset alla prima settimana su caricamento storico
 
     _activeSwaps = {};
 
@@ -551,18 +594,20 @@ class DietProvider extends ChangeNotifier {
 
     if (lastResetDate == todayStr) return; // Già resettato oggi
 
-    // Resetta tutti i flag consumed
+    // Resetta tutti i flag consumed su TUTTE le settimane
     bool anyReset = false;
-    _dietPlan!.plan.forEach((day, meals) {
-      meals.forEach((mealType, dishes) {
-        for (var dish in dishes) {
-          if (dish.isConsumed) {
-            dish.isConsumed = false;
-            anyReset = true;
+    for (final weekPlan in _dietPlan!.weeks) {
+      weekPlan.forEach((day, meals) {
+        meals.forEach((mealType, dishes) {
+          for (var dish in dishes) {
+            if (dish.isConsumed) {
+              dish.isConsumed = false;
+              anyReset = true;
+            }
           }
-        }
+        });
       });
-    });
+    }
 
     // Salva la data di reset e la dieta aggiornata
     await _storage.saveLastConsumedResetDate(todayStr);
@@ -584,14 +629,14 @@ class DietProvider extends ChangeNotifier {
     String? instanceId,
     int? cadCode,
   }) async {
-    // Check di sicurezza sui dati
+    // Check di sicurezza sui dati (usa la settimana corrente)
     if (_dietPlan == null ||
-        !_dietPlan!.plan.containsKey(day) ||
-        !_dietPlan!.plan[day]!.containsKey(meal)) {
+        !currentWeekPlan.containsKey(day) ||
+        !currentWeekPlan[day]!.containsKey(meal)) {
       return;
     }
 
-    final List<Dish> currentMeals = _dietPlan!.plan[day]![meal]!;
+    final List<Dish> currentMeals = currentWeekPlan[day]![meal]!;
 
     // 1. Trova l'indice reale (usando instanceId per precisione)
     int realIndex = unsafeIndex;
@@ -650,7 +695,8 @@ class DietProvider extends ChangeNotifier {
   }) async {
     if (_dietPlan == null) return;
 
-    final mealsMap = _dietPlan!.plan[day];
+    // Usa la settimana corrente per consumo pasto
+    final mealsMap = currentWeekPlan[day];
     if (mealsMap == null || !mealsMap.containsKey(mealType)) return;
 
     final List<Dish> meals = mealsMap[mealType]!;
@@ -777,11 +823,11 @@ class DietProvider extends ChangeNotifier {
   Future<void> _updateDailyStats() async {
     if (_dietPlan == null) return;
     
-    // 1. Identifica giorno corrente nel piano
+    // 1. Identifica giorno corrente nel piano (settimana corrente)
     final todayName = getTodayName();
-    if (todayName.isEmpty || !_dietPlan!.plan.containsKey(todayName)) return;
+    if (todayName.isEmpty || !currentWeekPlan.containsKey(todayName)) return;
 
-    final dayMeals = _dietPlan!.plan[todayName]!;
+    final dayMeals = currentWeekPlan[todayName]!;
     
     int planned = 0;
     int consumed = 0;
@@ -855,6 +901,7 @@ class DietProvider extends ChangeNotifier {
       _lastRawParsedData = result;
 
       _dietPlan = DietPlan.fromJson(result);
+      _selectedWeek = 0; // Reset alla prima settimana su nuova dieta
 
       // Salvataggio Locale (Serializziamo l'oggetto in JSON)
       await _storage.saveDiet(_dietPlan!.toJson());
@@ -865,10 +912,9 @@ class DietProvider extends ChangeNotifier {
 
       if (_auth.currentUser != null) {
         _lastCloudSave = DateTime.now();
-        // Usiamo il toJson() per creare le copie di backup
         final jsonPlan = _dietPlan!.toJson();
-        _lastSyncedDiet = _deepCopy(jsonPlan['plan']);
-        _lastSyncedSubstitutions = _deepCopy(jsonPlan['substitutions']);
+        _lastSyncedDiet = _deepCopy(jsonPlan['plan'] as Map<String, dynamic>);
+        _lastSyncedSubstitutions = _deepCopy(jsonPlan['substitutions'] as Map<String, dynamic>);
       }
 
       _recalcAvailability();
@@ -962,8 +1008,8 @@ class DietProvider extends ChangeNotifier {
     _isCalculating = true; // ✅ LOCK attivato
     _calculationStartTime = DateTime.now(); // [FIX] Timestamp per timeout
 
-    // Serializziamo il piano perchè l'Isolate lavora con dati puri
-    final planJson = _dietPlan!.toJson()['plan'];
+    // Serializziamo la settimana corrente perchè l'Isolate lavora con dati puri
+    final planJson = _serializeWeekPlan(currentWeekPlan);
 
     final payload = {
       'dietData': planJson,
@@ -1002,14 +1048,16 @@ class DietProvider extends ChangeNotifier {
   List<String> _extractAllowedFoods() {
     final Set<String> foods = {};
     if (_dietPlan != null) {
-      // Iterazione Piano
-      _dietPlan!.plan.forEach((day, meals) {
-        meals.forEach((mealType, dishes) {
-          for (var d in dishes) {
-            foods.add(d.name);
-          }
+      // Iterazione su TUTTE le settimane per il riconoscimento scontrini
+      for (final weekPlan in _dietPlan!.weeks) {
+        weekPlan.forEach((day, meals) {
+          meals.forEach((mealType, dishes) {
+            for (var d in dishes) {
+              foods.add(d.name);
+            }
+          });
         });
-      });
+      }
 
       // Iterazione Sostituzioni
       _dietPlan!.substitutions.forEach((key, group) {
@@ -1132,7 +1180,7 @@ class DietProvider extends ChangeNotifier {
     if (status.isGranted) {
       // Passiamo piano e giorni dalla config dieta
       await _notificationService.scheduleDietNotifications(
-        _dietPlan!.plan,
+        currentWeekPlan,
         days: getDays(),
       );
       debugPrint("🔔 Notifiche pianificate con successo");
@@ -1140,6 +1188,20 @@ class DietProvider extends ChangeNotifier {
       _needsNotificationPermissions = true;
       notifyListeners();
     }
+  }
+
+  /// Serializza un piano settimanale in JSON puro (per Isolate e altri usi)
+  Map<String, dynamic> _serializeWeekPlan(
+      Map<String, Map<String, List<Dish>>> weekPlan) {
+    final Map<String, dynamic> jsonPlan = {};
+    weekPlan.forEach((day, meals) {
+      final Map<String, dynamic> jsonMeals = {};
+      meals.forEach((type, dishes) {
+        jsonMeals[type] = dishes.map((d) => d.toJson()).toList();
+      });
+      jsonPlan[day] = jsonMeals;
+    });
+    return jsonPlan;
   }
 
   // Fix #8-9: Dispose di risorse per evitare memory leak

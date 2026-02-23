@@ -69,6 +69,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   int _currentIndex = 1;
   TabController? _tabController;
   int _lastDaysCount = 0;
+  int _lastSelectedWeek = 0; // Traccia cambio settimana per ricreare TabController
   final AuthService _auth = AuthService();
   StreamSubscription<String>? _deepLinkNavSubscription;
 
@@ -136,9 +137,12 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   /// Crea o ricrea il TabController quando il numero di giorni cambia.
   /// Calcola l'initialIndex trovando il nome del giorno corrente nella lista.
-  void _ensureTabController(List<String> days) {
+  void _ensureTabController(List<String> days, int selectedWeek) {
     if (days.isEmpty) return;
-    if (_tabController != null && days.length == _lastDaysCount) return;
+    // Ricrea il TabController se cambiano i giorni OPPURE la settimana selezionata
+    if (_tabController != null &&
+        days.length == _lastDaysCount &&
+        selectedWeek == _lastSelectedWeek) return;
 
     // Mappa weekday di Dart (1=Mon..7=Sun) ai nomi italiani standard
     const italianWeekdays = [
@@ -165,6 +169,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       vsync: this,
     );
     _lastDaysCount = days.length;
+    _lastSelectedWeek = selectedWeek;
   }
 
   Future<void> _initialPermissionCheck() async {
@@ -509,7 +514,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     final provider = Provider.of<DietProvider>(context);
     final user = FirebaseAuth.instance.currentUser;
     final days = provider.getDays();
-    _ensureTabController(days);
+    _ensureTabController(days, provider.selectedWeek);
     final isTablet = KyboBreakpoints.isTablet(context);
 
     if (provider.needsNotificationPermissions) {
@@ -1086,8 +1091,9 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   /// Returns (mealName, dayName) of the next upcoming meal, or null if none found.
   (String, String)? _findNextMeal(DietProvider provider) {
-    final plan = provider.dietPlan;
-    if (plan == null) return null;
+    if (provider.dietPlan == null) return null;
+    final weekPlan = provider.currentWeekPlan;
+    if (weekPlan.isEmpty) return null;
 
     final days = provider.getDays();
     if (days.isEmpty) return null;
@@ -1117,7 +1123,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
     if (todayKey == null) return null;
 
-    final dayPlan = plan.plan[todayKey];
+    final dayPlan = weekPlan[todayKey];
     if (dayPlan == null || dayPlan.isEmpty) return null;
 
     // Hour-based: estimate next meal based on current hour
@@ -1168,8 +1174,8 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (next == null) return const SizedBox.shrink();
 
     final (mealName, _) = next;
-    final plan = provider.dietPlan?.plan;
-    final dishes = plan?[_findNextMeal(provider)!.$2]?[mealName] ?? [];
+    final weekPlan = provider.currentWeekPlan;
+    final dishes = weekPlan[_findNextMeal(provider)!.$2]?[mealName] ?? [];
     if (dishes.isEmpty) return const SizedBox.shrink();
 
     // Show first 2 dishes as preview
@@ -1222,6 +1228,64 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
+  /// Row di pill-chip "Sett. 1 / Sett. 2 / ..." visibile solo per diete multi-settimana
+  Widget _buildWeekSelector(BuildContext context, DietProvider provider) {
+    if (provider.weekCount <= 1) return const SizedBox.shrink();
+
+    return Container(
+      color: KyboColors.background(context),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_view_week_rounded,
+              size: 16, color: KyboColors.textMuted(context)),
+          const SizedBox(width: 8),
+          ...List.generate(provider.weekCount, (i) {
+            final isSelected = provider.selectedWeek == i;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () {
+                  provider.setWeek(i);
+                  // Forza ricreazione TabController per la nuova settimana
+                  setState(() => _lastDaysCount = 0);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? KyboColors.primary
+                        : KyboColors.surface(context),
+                    borderRadius: KyboBorderRadius.large,
+                    border: Border.all(
+                      color: isSelected
+                          ? KyboColors.primary
+                          : KyboColors.border(context),
+                    ),
+                  ),
+                  child: Text(
+                    'Sett. ${i + 1}',
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : KyboColors.textSecondary(context),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody(DietProvider provider) {
     switch (_currentIndex) {
       case 0:
@@ -1240,6 +1304,8 @@ class _MainScreenContentState extends State<MainScreenContent>
         }
         return Column(
           children: [
+            // Selettore settimane — visibile solo per diete multi-settimana
+            _buildWeekSelector(context, provider),
             _buildNextMealBanner(provider),
             Expanded(
               child: TabBarView(
