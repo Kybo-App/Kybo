@@ -5,13 +5,14 @@ Endpoint per setup, verifica e gestione 2FA.
 """
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from firebase_admin import firestore
 
 from app.core.dependencies import verify_token, verify_professional
 from app.core.logging import logger, sanitize_error_message
+from app.core.limiter import limiter
 from app.services.totp_service import TOTPService
 
 router = APIRouter(prefix="/admin/2fa", tags=["2fa"])
@@ -47,7 +48,9 @@ class StatusResponse(BaseModel):
 # --- ENDPOINTS ---
 
 @router.post("/setup", response_model=SetupResponse)
+@limiter.limit("10/hour")
 async def setup_2fa(
+    request: Request,
     user_data: dict = Depends(verify_professional)
 ):
     """
@@ -97,7 +100,9 @@ async def setup_2fa(
 
 
 @router.post("/verify", response_model=VerifyResponse)
+@limiter.limit("10/hour")
 async def verify_and_enable_2fa(
+    request: Request,
     body: VerifyRequest,
     user_data: dict = Depends(verify_professional)
 ):
@@ -142,7 +147,9 @@ async def verify_and_enable_2fa(
 
 
 @router.post("/validate")
+@limiter.limit("30/minute")
 async def validate_2fa_code(
+    request: Request,
     body: CodeRequest,
     user_data: dict = Depends(verify_token)
 ):
@@ -177,7 +184,9 @@ async def validate_2fa_code(
 
 
 @router.post("/disable")
+@limiter.limit("10/hour")
 async def disable_2fa(
+    request: Request,
     body: CodeRequest,
     user_data: dict = Depends(verify_professional)
 ):
@@ -214,7 +223,9 @@ async def disable_2fa(
 
 
 @router.get("/status", response_model=StatusResponse)
+@limiter.limit("120/minute")
 async def get_2fa_status(
+    request: Request,
     user_data: dict = Depends(verify_token)
 ):
     """
@@ -239,7 +250,9 @@ async def get_2fa_status(
 
 
 @router.post("/backup-codes/regenerate")
+@limiter.limit("10/hour")
 async def regenerate_backup_codes(
+    request: Request,
     body: CodeRequest,
     user_data: dict = Depends(verify_professional)
 ):

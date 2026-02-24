@@ -10,7 +10,7 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import auth, firestore
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 
 from pydantic import BaseModel
@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from app.core.dependencies import verify_admin, verify_professional
 from app.core.logging import logger, sanitize_error_message
 from app.broadcast import broadcast_message
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -41,7 +42,8 @@ class LogAccessRequest(BaseModel):
 
 # --- SYNC USERS ---
 @router.post("/sync-users")
-async def admin_sync_users(requester: dict = Depends(verify_admin)):
+@limiter.limit("10/hour")
+async def admin_sync_users(request: Request, requester: dict = Depends(verify_admin)):
     """Sincronizza utenti Firebase Auth con Firestore."""
     try:
         db = firebase_admin.firestore.client()
@@ -122,7 +124,9 @@ async def admin_sync_users(requester: dict = Depends(verify_admin)):
 
 
 @router.post("/upload-parser/{target_uid}")
+@limiter.limit("20/hour")
 async def upload_parser_config(
+    request: Request,
     target_uid: str,
     file: UploadFile = File(...),
     requester: dict = Depends(verify_admin)
@@ -152,7 +156,8 @@ async def upload_parser_config(
 
 # --- SECURE GATEWAY ---
 @router.post("/log-access")
-async def log_access(body: LogAccessRequest, requester: dict = Depends(verify_professional)):
+@limiter.limit("60/minute")
+async def log_access(request: Request, body: LogAccessRequest, requester: dict = Depends(verify_professional)):
     """Logga un accesso ai dati sensibili."""
     try:
         firebase_admin.firestore.client().collection('access_logs').add({
@@ -169,7 +174,8 @@ async def log_access(body: LogAccessRequest, requester: dict = Depends(verify_pr
 
 
 @router.get("/user-history/{target_uid}")
-async def get_secure_user_history(target_uid: str, requester: dict = Depends(verify_professional)):
+@limiter.limit("120/minute")
+async def get_secure_user_history(request: Request, target_uid: str, requester: dict = Depends(verify_professional)):
     """Ottiene lo storico diete di un utente."""
     requester_id = requester['uid']
     requester_role = requester['role']
@@ -233,7 +239,8 @@ def _log_access_bg(requester_id: str, action: str, reason: str, target_uid: str 
 
 
 @router.get("/users-secure")
-async def list_users_secure(requester: dict = Depends(verify_professional)):
+@limiter.limit("60/minute")
+async def list_users_secure(request: Request, requester: dict = Depends(verify_professional)):
     """
     Lista utenti con log di accesso.
     Il log viene scritto in background (fire-and-forget) per non bloccare la risposta.
@@ -269,7 +276,8 @@ async def list_users_secure(requester: dict = Depends(verify_professional)):
 
 
 @router.get("/user-details-secure/{target_uid}")
-async def get_user_details_secure(target_uid: str, requester: dict = Depends(verify_professional)):
+@limiter.limit("120/minute")
+async def get_user_details_secure(request: Request, target_uid: str, requester: dict = Depends(verify_professional)):
     """Dettagli utente con log di accesso in background."""
     requester_id = requester['uid']
     requester_role = requester['role']
@@ -306,7 +314,8 @@ async def get_user_details_secure(target_uid: str, requester: dict = Depends(ver
 
 # --- MAINTENANCE ---
 @router.get("/config/maintenance")
-async def get_maintenance_status(requester: dict = Depends(verify_admin)):
+@limiter.limit("120/minute")
+async def get_maintenance_status(request: Request, requester: dict = Depends(verify_admin)):
     """Stato modalità manutenzione."""
     doc = firebase_admin.firestore.client().collection('config').document('global').get()
     if doc.exists:
@@ -315,7 +324,8 @@ async def get_maintenance_status(requester: dict = Depends(verify_admin)):
 
 
 @router.post("/config/maintenance")
-async def set_maintenance_status(body: MaintenanceRequest, requester: dict = Depends(verify_admin)):
+@limiter.limit("30/minute")
+async def set_maintenance_status(request: Request, body: MaintenanceRequest, requester: dict = Depends(verify_admin)):
     """Attiva/disattiva modalità manutenzione."""
     data = {'maintenance_mode': body.enabled, 'updated_by': requester['uid']}
     if body.message:
@@ -325,7 +335,8 @@ async def set_maintenance_status(body: MaintenanceRequest, requester: dict = Dep
 
 
 @router.post("/schedule-maintenance")
-async def schedule_maintenance(req: ScheduleMaintenanceRequest, requester: dict = Depends(verify_admin)):
+@limiter.limit("30/minute")
+async def schedule_maintenance(request: Request, req: ScheduleMaintenanceRequest, requester: dict = Depends(verify_admin)):
     """Programma una manutenzione futura."""
     firebase_admin.firestore.client().collection('config').document('global').set({
         "scheduled_maintenance_start": req.scheduled_time,
@@ -347,7 +358,8 @@ async def schedule_maintenance(req: ScheduleMaintenanceRequest, requester: dict 
 
 
 @router.post("/cancel-maintenance")
-async def cancel_maintenance_schedule(requester: dict = Depends(verify_admin)):
+@limiter.limit("30/minute")
+async def cancel_maintenance_schedule(request: Request, requester: dict = Depends(verify_admin)):
     """Annulla una manutenzione programmata."""
     firebase_admin.firestore.client().collection('config').document('global').update({
         "is_scheduled": False,

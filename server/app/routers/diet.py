@@ -8,12 +8,12 @@ import uuid
 from typing import Optional, List
 
 import firebase_admin
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import Json
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+
+from app.core.limiter import limiter
 
 from app.core.dependencies import (
     verify_token, verify_professional, get_current_uid,
@@ -173,7 +173,9 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
 
 
 @router.post("/upload-diet")
+@limiter.limit("5/hour")
 async def upload_diet(
+    request: Request,
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
     token: dict = Depends(verify_token)
@@ -282,7 +284,8 @@ async def upload_diet(
 
 
 @router.get("/diet/job/{job_id}")
-async def get_diet_job(job_id: str, token: dict = Depends(verify_token)):
+@limiter.limit("120/minute")
+async def get_diet_job(request: Request, job_id: str, token: dict = Depends(verify_token)):
     """
     Controlla lo stato di un job di parsing dieta asincrono.
 
@@ -310,7 +313,9 @@ async def get_diet_job(job_id: str, token: dict = Depends(verify_token)):
 
 
 @router.post("/upload-diet/{target_uid}", response_model=DietResponse)
+@limiter.limit("20/hour")
 async def upload_diet_admin(
+    request: Request,
     target_uid: str,
     file: UploadFile = File(...),
     fcm_token: Optional[str] = Form(None),
@@ -434,7 +439,9 @@ async def upload_diet_admin(
 
 
 @router.post("/scan-receipt")
+@limiter.limit("10/hour")
 async def scan_receipt(
+    request: Request,
     file: UploadFile = File(...),
     allowed_foods: Json[List[str]] = Form(...),
     user_id: str = Depends(get_current_uid)
@@ -469,7 +476,8 @@ async def scan_receipt(
 
 
 @router.get("/export-diet-pdf")
-async def export_diet_pdf(uid: str = Depends(get_current_uid)):
+@limiter.limit("30/hour")
+async def export_diet_pdf(request: Request, uid: str = Depends(get_current_uid)):
     """
     Genera e scarica un PDF della dieta corrente dell'utente.
     Richiede autenticazione. Il PDF include il piano settimanale completo.
@@ -564,7 +572,9 @@ def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
 
 
 @router.post("/import-diet")
+@limiter.limit("10/hour")
 async def import_diet_from_file(
+    request: Request,
     file: UploadFile = File(...),
     uid: str = Depends(get_current_uid)
 ):

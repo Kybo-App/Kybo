@@ -11,19 +11,17 @@ Struttura modulare:
 import os
 import re
 import asyncio
-import base64
-import json
 from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.logging import logger, sanitize_error_message
 from app.core.metrics import (
     diet_memory_cache_size,
@@ -88,32 +86,6 @@ if not firebase_admin._apps:
         error_msg = re.sub(r'Bearer\s+[A-Za-z0-9\-_\.]+', 'Bearer ***', error_msg)
         error_msg = re.sub(r'token["\']?\s*:\s*["\']?[A-Za-z0-9\-_\.]+', 'token: ***', error_msg, flags=re.IGNORECASE)
         logger.error("firebase_init_error", error=error_msg)
-
-
-# --- RATE LIMITING ---
-def get_rate_limit_key(request: Request) -> str:
-    """
-    Genera chiave per rate limiting combinando IP e User ID.
-    Se l'utente è autenticato, usa IP:UID per rate limit più preciso.
-    """
-    ip = get_remote_address(request)
-    auth_header = request.headers.get("Authorization", "")
-
-    if auth_header.startswith("Bearer "):
-        try:
-            token_parts = auth_header.split(" ")[1].split(".")
-            if len(token_parts) >= 2:
-                payload = base64.urlsafe_b64decode(token_parts[1] + "==")
-                data = json.loads(payload)
-                user_id = data.get("user_id") or data.get("sub") or data.get("uid")
-                if user_id:
-                    return f"{ip}:{user_id}"
-        except Exception:
-            pass
-    return ip
-
-
-limiter = Limiter(key_func=get_rate_limit_key)
 
 
 # --- APP SETUP ---

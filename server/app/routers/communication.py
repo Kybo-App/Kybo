@@ -8,11 +8,12 @@ from typing import Optional, List
 
 import firebase_admin
 from firebase_admin import firestore
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.dependencies import verify_professional
+from app.core.limiter import limiter
 from app.core.logging import logger, sanitize_error_message
 
 router = APIRouter(prefix="/admin/communication", tags=["communication"])
@@ -46,7 +47,9 @@ class EmailAlertConfigRequest(BaseModel):
 # ══════════════════════════════════════════════════════════════════════
 
 @router.get("/email-alert-config")
+@limiter.limit("60/minute")
 async def get_email_alert_config(
+    request: Request,
     requester: dict = Depends(verify_professional)
 ):
     """
@@ -78,7 +81,9 @@ async def get_email_alert_config(
 
 
 @router.post("/email-alert-config")
+@limiter.limit("30/minute")
 async def set_email_alert_config(
+    request: Request,
     body: EmailAlertConfigRequest,
     requester: dict = Depends(verify_professional)
 ):
@@ -117,7 +122,9 @@ async def set_email_alert_config(
 # ══════════════════════════════════════════════════════════════════════
 
 @router.post("/broadcast")
+@limiter.limit("10/hour")
 async def broadcast_to_clients(
+    request: Request,
     body: BroadcastRequest,
     requester: dict = Depends(verify_professional)
 ):
@@ -224,7 +231,9 @@ async def broadcast_to_clients(
 # ══════════════════════════════════════════════════════════════════════
 
 @router.get("/notes/{client_uid}")
+@limiter.limit("120/minute")
 async def get_client_notes(
+    request: Request,
     client_uid: str,
     requester: dict = Depends(verify_professional)
 ):
@@ -272,7 +281,9 @@ async def get_client_notes(
 
 
 @router.post("/notes/{client_uid}")
+@limiter.limit("60/minute")
 async def create_client_note(
+    request: Request,
     client_uid: str,
     body: NoteCreateRequest,
     requester: dict = Depends(verify_professional)
@@ -320,7 +331,9 @@ async def create_client_note(
 
 
 @router.put("/notes/{client_uid}/{note_id}")
+@limiter.limit("60/minute")
 async def update_client_note(
+    request: Request,
     client_uid: str,
     note_id: str,
     body: NoteUpdateRequest,
@@ -362,7 +375,9 @@ async def update_client_note(
 
 
 @router.delete("/notes/{client_uid}/{note_id}")
+@limiter.limit("60/minute")
 async def delete_client_note(
+    request: Request,
     client_uid: str,
     note_id: str,
     requester: dict = Depends(verify_professional)

@@ -11,10 +11,11 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import firestore
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 
 from app.core.dependencies import verify_professional
 from app.core.logging import logger, sanitize_error_message
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
 
@@ -30,7 +31,8 @@ def _serialize_timestamp(ts) -> Optional[str]:
 
 # --- OVERVIEW ---
 @router.get("/overview")
-async def get_overview(requester: dict = Depends(verify_professional)):
+@limiter.limit("60/minute")
+async def get_overview(request: Request, requester: dict = Depends(verify_professional)):
     """
     Metriche generali: utenti attivi, diete caricate, messaggi.
     Admin vede tutto, nutritionist vede solo i propri clienti.
@@ -124,7 +126,9 @@ async def get_overview(requester: dict = Depends(verify_professional)):
 
 # --- DIET TREND ---
 @router.get("/diet-trend")
+@limiter.limit("60/minute")
 async def get_diet_trend(
+    request: Request,
     period: str = Query("weekly", regex="^(daily|weekly|monthly)$"),
     months: int = Query(3, ge=1, le=12),
     requester: dict = Depends(verify_professional),
@@ -188,7 +192,8 @@ async def get_diet_trend(
 
 # --- NUTRITIONIST ACTIVITY ---
 @router.get("/nutritionist-activity")
-async def get_nutritionist_activity(requester: dict = Depends(verify_professional)):
+@limiter.limit("60/minute")
+async def get_nutritionist_activity(request: Request, requester: dict = Depends(verify_professional)):
     """
     Mappa attivita per nutrizionista: clienti, diete, messaggi.
     Admin vede tutti i nutrizionisti, nutritionist vede solo se stesso.
@@ -256,7 +261,9 @@ async def get_nutritionist_activity(requester: dict = Depends(verify_professiona
 
 # --- INACTIVE USERS ---
 @router.get("/inactive-users")
+@limiter.limit("60/minute")
 async def get_inactive_users(
+    request: Request,
     days: int = Query(30, ge=7, le=365),
     requester: dict = Depends(verify_professional),
 ):
@@ -338,7 +345,9 @@ async def get_inactive_users(
 
 # --- MEAL COMPLETION ---
 @router.get("/meal-completion/{target_uid}")
+@limiter.limit("60/minute")
 async def get_meal_completion(
+    request: Request,
     target_uid: str,
     requester: dict = Depends(verify_professional),
 ):
