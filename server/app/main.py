@@ -7,6 +7,10 @@ Struttura modulare:
 - routers/admin.py    - Funzioni admin (sync, manutenzione, gateway sicuro)
 - core/dependencies.py - Autenticazione e dipendenze condivise
 - core/logging.py     - Logging con sanitizzazione dati sensibili
+
+Il server usa Sentry per error tracking, Firebase per auth/DB/storage,
+Prometheus per metriche APM, Redis per cache distribuita e RQ per job asincroni.
+Il worker inline RQ (RQ_INLINE_WORKER=true) gira in thread daemon nel processo FastAPI.
 """
 import os
 import re
@@ -29,7 +33,6 @@ from app.core.metrics import (
     update_cache_size_gauges,
 )
 
-# Import routers
 from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
 from app.routers.admin import router as admin_router
@@ -44,7 +47,6 @@ from app.core.cache import redis_cache
 from app.workers.unread_notifier import unread_notification_worker
 from app.workers.monthly_report_mailer import monthly_report_mailer_worker
 
-# --- SENTRY ERROR TRACKING ---
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -52,18 +54,17 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 if settings.SENTRY_DSN:
     sentry_sdk.init(
         dsn=settings.SENTRY_DSN,
-        environment=settings.ENV,  # DEV, STAGING, PROD
+        environment=settings.ENV,
         integrations=[
             FastApiIntegration(),
             StarletteIntegration(),
         ],
-        traces_sample_rate=0.1,  # 10% delle richieste per performance monitoring
-        send_default_pii=False,  # Non inviare dati personali
+        traces_sample_rate=0.1,
+        send_default_pii=False,
     )
     logger.info("sentry_init_success", environment=settings.ENV)
 
 
-# --- FIREBASE INIT ---
 if not firebase_admin._apps:
     try:
         key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -88,7 +89,6 @@ if not firebase_admin._apps:
         logger.error("firebase_init_error", error=error_msg)
 
 
-# --- APP SETUP ---
 app = FastAPI(
     title="Kybo API",
     description="Backend per l'applicazione Kybo - Gestione diete",
@@ -106,20 +106,18 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-# --- PROMETHEUS APM ---
 from prometheus_fastapi_instrumentator import Instrumentator
 
 _instrumentator = Instrumentator(
-    should_group_status_codes=True,              # raggruppa 2xx, 4xx, 5xx
+    should_group_status_codes=True,
     should_instrument_requests_inprogress=True,
-    excluded_handlers=["/metrics", "/ping", "/health"],  # escludi gli endpoint di infra
+    excluded_handlers=["/metrics", "/ping", "/health"],
     inprogress_name="kybo_http_requests_inprogress",
     inprogress_labels=True,
 )
 _instrumentator.instrument(app)
 
 
-# --- INCLUDE ROUTERS ---
 app.include_router(diet_router)
 app.include_router(users_router)
 app.include_router(admin_router)
@@ -132,7 +130,6 @@ app.include_router(communication_router)
 app.include_router(suggestions_router)
 
 
-# --- BACKGROUND WORKER ---
 async def maintenance_worker():
     """Worker che controlla e attiva manutenzioni programmate."""
     logger.info("maintenance_worker_started")
@@ -211,11 +208,8 @@ async def start_background_tasks():
     asyncio.create_task(maintenance_worker())
     asyncio.create_task(unread_notification_worker())
     asyncio.create_task(monthly_report_mailer_worker())
-    # Inizializza connessione Redis (graceful: no-op se non configurato)
     await redis_cache._ensure_connected()
-    # Avvia worker RQ inline se abilitato (free tier / dev — nessun servizio extra)
     _start_inline_rq_worker()
-    # Espone endpoint /metrics Prometheus (dopo startup per sicurezza)
     _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
 
 
@@ -225,7 +219,6 @@ async def shutdown_event():
     await redis_cache.close()
 
 
-# --- HEALTH CHECK ---
 @app.get("/health")
 async def health_check():
     """Endpoint di health check base per load balancer."""
@@ -251,7 +244,7 @@ async def health_check_detailed():
     import subprocess
     import shutil
     from google import genai
-    
+
     checks = {
         "firebase": {"status": "unknown", "message": ""},
         "gemini": {"status": "unknown", "message": ""},
@@ -259,11 +252,9 @@ async def health_check_detailed():
         "tesseract": {"status": "unknown", "message": ""},
         "sentry": {"status": "unknown", "message": ""},
     }
-    
-    # Check Firebase
+
     try:
         db = firestore.client()
-        # Prova a leggere il documento config
         doc = db.collection("config").document("global").get()
         if doc.exists:
             checks["firebase"] = {"status": "ok", "message": "Connected"}
@@ -271,11 +262,9 @@ async def health_check_detailed():
             checks["firebase"] = {"status": "ok", "message": "Connected (no config doc)"}
     except Exception as e:
         checks["firebase"] = {"status": "error", "message": str(e)[:100]}
-    
-    # Check Gemini API
+
     try:
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
-        # Prova a listare i modelli (operazione leggera)
         models = list(client.models.list())
         if models:
             checks["gemini"] = {"status": "ok", "message": f"{len(models)} models available"}
@@ -283,8 +272,7 @@ async def health_check_detailed():
             checks["gemini"] = {"status": "warning", "message": "No models found"}
     except Exception as e:
         checks["gemini"] = {"status": "error", "message": str(e)[:100]}
-    
-    # Check Redis
+
     if settings.REDIS_URL:
         try:
             redis_ok = await redis_cache.ping()
@@ -297,7 +285,6 @@ async def health_check_detailed():
     else:
         checks["redis"] = {"status": "disabled", "message": "REDIS_URL not configured"}
 
-    # Check Tesseract
     try:
         tesseract_path = shutil.which("tesseract")
         if tesseract_path:
@@ -313,17 +300,14 @@ async def health_check_detailed():
             checks["tesseract"] = {"status": "error", "message": "Not found in PATH"}
     except Exception as e:
         checks["tesseract"] = {"status": "error", "message": str(e)[:100]}
-    
-    # Check Sentry
+
     checks["sentry"] = {
         "status": "ok" if settings.SENTRY_DSN else "disabled",
         "message": "Configured" if settings.SENTRY_DSN else "No DSN set"
     }
-    
-    # Servizi opzionali: la loro assenza non rende il server "unhealthy"
+
     OPTIONAL_SERVICES = {"tesseract", "redis"}
 
-    # Overall status — solo i servizi critici determinano lo stato globale
     errors = [k for k, v in checks.items() if v["status"] == "error" and k not in OPTIONAL_SERVICES]
     warnings = [k for k, v in checks.items() if v["status"] == "error" and k in OPTIONAL_SERVICES]
     overall = "unhealthy" if errors else "healthy"
@@ -362,7 +346,6 @@ async def metrics_api():
                 return 0.0
             if labels:
                 return metric.labels(**labels)._value.get()
-            # Somma tutti i sample se non filtriamo per label
             total = 0.0
             for sample in metric.collect()[0].samples:
                 if sample.name.endswith("_total"):
@@ -384,7 +367,6 @@ async def metrics_api():
         except Exception:
             return 0.0
 
-    # ── Cache metriche diet ──────────────────────────────────────────────────
     diet_l1_hits   = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L1_ram"})
     diet_l15_hits  = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L1.5_redis"})
     diet_l2_hits   = _get_counter("kybo_diet_cache_hits_total",   {"layer": "L2_firestore"})
@@ -395,7 +377,6 @@ async def metrics_api():
     diet_errors    = _get_counter("kybo_diet_gemini_errors_total")
     diet_avg_s     = _get_histogram_avg("kybo_diet_parse_duration_seconds")
 
-    # ── Cache metriche suggestions ───────────────────────────────────────────
     sug_l1_hits    = _get_counter("kybo_suggestions_cache_hits_total",   {"layer": "L1_ram"})
     sug_l15_hits   = _get_counter("kybo_suggestions_cache_hits_total",   {"layer": "L1.5_redis"})
     sug_l1_miss    = _get_counter("kybo_suggestions_cache_misses_total", {"layer": "L1_ram"})
@@ -404,7 +385,6 @@ async def metrics_api():
     sug_errors     = _get_counter("kybo_suggestions_gemini_errors_total")
     sug_avg_s      = _get_histogram_avg("kybo_suggestions_duration_seconds")
 
-    # ── Dimensioni cache RAM live ────────────────────────────────────────────
     update_cache_size_gauges(len(DietParser._memory_cache), len(_suggestions_cache))
     diet_ram_size  = len(DietParser._memory_cache)
     sug_ram_size   = len(_suggestions_cache)

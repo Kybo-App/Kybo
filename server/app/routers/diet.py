@@ -3,6 +3,9 @@ Router per gli endpoint di gestione diete.
 - Upload dieta (utente e admin)
 - Scansione scontrino
 - Job status per upload asincrono (RQ queue)
+
+Upload dieta supporta due path: RQ asincrono (202 + job_id) se Redis disponibile,
+altrimenti fallback sincrono con semaphore (200 + DietResponse).
 """
 import uuid
 from typing import Optional, List
@@ -31,11 +34,8 @@ from app.models.schemas import DietResponse, DietConfig, Dish, Ingredient, Subst
 
 router = APIRouter(tags=["diet"])
 
-# Services
 diet_parser = DietParser()
 notification_service = NotificationService()
-
-# MEAL_ORDER rimosso per supportare config dinamica completamente
 
 
 def _convert_to_app_format(gemini_output) -> DietResponse:
@@ -46,7 +46,6 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
     app_plan, app_substitutions = {}, {}
     cad_map = {}
 
-    # 1. Mappatura Sostituzioni
     for g in gemini_output.get('tabella_sostituzioni', []):
         if g.get('cad_code', 0) > 0:
             cad_map[g.get('titolo', '').strip().lower()] = g['cad_code']
@@ -67,14 +66,12 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
         "gio": "Giovedì", "ven": "Venerdì", "sab": "Sabato", "dom": "Domenica"
     }
 
-    # 2. Costruzione Piano — raggruppato per settimana
-    # weeks_data: {week_num (int): {day_name: {meal_name: [Dish]}}}
     weeks_data: dict = {}
 
     for day in gemini_output.get('piano_settimanale', []):
         raw_name = day.get('giorno', '').lower().strip()
         day_name = day_map.get(raw_name[:3], raw_name.capitalize())
-        week_num = int(day.get('settimana', 1) or 1)  # default settimana 1 se assente/null
+        week_num = int(day.get('settimana', 1) or 1)
 
         if week_num not in weeks_data:
             weeks_data[week_num] = {}
@@ -113,20 +110,14 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             else:
                 week_day[m_name] = dishes
 
-    # Costruisce lista settimane ordinata per numero (1, 2, ...)
     sorted_week_nums = sorted(weeks_data.keys()) if weeks_data else [1]
     weeks_list = [weeks_data[k] for k in sorted_week_nums if k in weeks_data]
     app_plan = weeks_list[0] if weeks_list else {}
     week_count = len(weeks_list)
 
-    # Ordina pasti: Rimosso forzatura MEAL_ORDER. Ci fidiamo dell'ordine del parser (cioè del PDF)
-    # se l'IA rispetta l'ordine di apparizione, il dizionario lo mantiene (Python 3.7+)
-
-    # 3. Estrazione Config dinamica
     app_config = None
     raw_config = gemini_output.get('config')
     if raw_config:
-        # Traduci giorni se necessario (giorni unici, senza duplicati per settimana)
         config_days = []
         seen_days = set()
         for g in raw_config.get('giorni', []):
@@ -136,21 +127,18 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
                 config_days.append(normalized)
                 seen_days.add(normalized)
 
-        # Normalizza pasti
         config_meals = []
         for p in raw_config.get('pasti', []):
             normalized = normalize_meal_name(p)
             if normalized and normalized not in config_meals:
                 config_meals.append(normalized)
 
-        # Alimenti rilassabili (lowercase, deduplicated)
         config_relaxable = list(set(
             item.lower().strip()
             for item in raw_config.get('alimenti_rilassabili', [])
             if item and item.strip()
         ))
 
-        # num_settimane: usa valore da Gemini o fallback al conteggio reale
         raw_num_settimane = raw_config.get('num_settimane', week_count)
         config_week_count = int(raw_num_settimane) if raw_num_settimane else week_count
 
@@ -158,10 +146,9 @@ def _convert_to_app_format(gemini_output) -> DietResponse:
             days=config_days if config_days else list(app_plan.keys()),
             meals=config_meals,
             relaxable_foods=config_relaxable,
-            week_count=max(config_week_count, week_count),  # prende il valore più grande
+            week_count=max(config_week_count, week_count),
         )
 
-    # 4. Allergeni
     allergens = gemini_output.get('allergeni', [])
 
     return DietResponse(
@@ -206,7 +193,6 @@ async def upload_diet(
     if not validate_file_content(file_content, '.pdf'):
         raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
 
-    # --- Path 1: RQ async queue ---
     queue = get_diet_queue()
     if queue is not None:
         try:
@@ -217,12 +203,12 @@ async def upload_diet(
                 process_diet_upload,
                 file_content,
                 file.filename,
-                user_id,        # target_uid
-                user_id,        # requester_id
+                user_id,
+                user_id,
                 user_role,
-                None,           # custom_prompt (user self-service)
+                None,
                 fcm_token,
-                True,           # set_as_current
+                True,
                 result_ttl=settings.RQ_RESULT_TTL,
                 failure_ttl=settings.RQ_FAILURE_TTL,
             )
@@ -233,9 +219,7 @@ async def upload_diet(
             )
         except Exception as e:
             logger.warning("rq_enqueue_failed_fallback", error=str(e))
-            # cade nel fallback sincrono sotto
 
-    # --- Path 2: fallback sincrono con semaphore ---
     await file.seek(0)
     async with heavy_tasks_semaphore:
         try:
@@ -314,7 +298,6 @@ async def upload_diet_admin(
 
     db = firebase_admin.firestore.client()
 
-    # Verifica permessi nutrizionista
     if requester_role == 'nutritionist':
         target_doc = db.collection('users').document(target_uid).get()
         if not target_doc.exists:
@@ -323,7 +306,6 @@ async def upload_diet_admin(
         if data.get('parent_id') != requester_id and data.get('created_by') != requester_id:
             raise HTTPException(status_code=403, detail="Non puoi caricare diete per questo utente")
 
-    # Recupera custom_prompt (richiede Firestore, lo facciamo qui prima di accodare)
     custom_prompt = None
     try:
         target_doc = db.collection('users').document(target_uid).get()
@@ -344,7 +326,6 @@ async def upload_diet_admin(
     except Exception as e:
         logger.warning("admin_upload_prompt_fetch_error", error=sanitize_error_message(e))
 
-    # --- Path 1: RQ async queue ---
     queue = get_diet_queue()
     if queue is not None:
         try:
@@ -360,7 +341,7 @@ async def upload_diet_admin(
                 requester_role,
                 custom_prompt,
                 fcm_token,
-                False,          # set_as_current=False per upload admin (aggiunge solo allo storico)
+                False,
                 result_ttl=settings.RQ_RESULT_TTL,
                 failure_ttl=settings.RQ_FAILURE_TTL,
             )
@@ -373,7 +354,6 @@ async def upload_diet_admin(
         except Exception as e:
             logger.warning("rq_admin_enqueue_failed_fallback", error=str(e))
 
-    # --- Path 2: fallback sincrono ---
     await file.seek(0)
     try:
         raw_data = await run_in_threadpool(diet_parser.parse_complex_diet, file.file, custom_prompt)
@@ -471,9 +451,8 @@ def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    # Header
     pdf.set_font("Helvetica", "B", size=20)
-    pdf.set_text_color(46, 125, 50)  # Kybo green
+    pdf.set_text_color(46, 125, 50)
     pdf.cell(0, 12, "Piano Alimentare - Kybo", ln=True, align="C")
     pdf.set_font("Helvetica", size=10)
     pdf.set_text_color(100, 100, 100)
@@ -491,7 +470,6 @@ def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
         if not isinstance(meals, dict):
             continue
 
-        # Day header
         pdf.set_font("Helvetica", "B", size=14)
         pdf.set_text_color(46, 125, 50)
         pdf.cell(0, 8, day.upper(), ln=True)
@@ -503,7 +481,6 @@ def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
             if not isinstance(dishes, list) or not dishes:
                 continue
 
-            # Meal name
             pdf.set_font("Helvetica", "B", size=11)
             pdf.set_text_color(50, 50, 50)
             pdf.cell(0, 7, f"  {meal_name}", ln=True)
@@ -517,7 +494,7 @@ def _generate_diet_pdf(plan: dict, uid: str) -> bytes:
                     pdf.set_font("Helvetica", size=10)
                     pdf.set_text_color(80, 80, 80)
                     qty_str = f" ({qty})" if qty and qty != 'N/A' else ""
-                    pdf.cell(10)  # indent
+                    pdf.cell(10)
                     pdf.cell(0, 6, f"- {name}{qty_str}", ln=True)
 
             pdf.ln(3)
@@ -552,7 +529,7 @@ async def import_diet_from_file(
         raise HTTPException(status_code=400, detail="Formato non supportato. Usa CSV, TXT o JSON.")
 
     content = await file.read()
-    if len(content) > 5 * 1024 * 1024:  # 5MB max
+    if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File troppo grande. Massimo 5MB.")
 
     try:
@@ -596,21 +573,17 @@ def _parse_import_file(text: str, ext: str) -> dict:
     if ext == 'json':
         try:
             data = json_mod.loads(text)
-            # Se è già in formato Kybo (dict di giorni)
             if isinstance(data, dict) and all(isinstance(v, dict) for v in data.values()):
                 return data
         except Exception:
             return {}
 
-    # CSV parsing
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames is None:
         return {}
 
-    # Detect format
     fieldnames_lower = [f.lower().strip() for f in reader.fieldnames]
 
-    # MyFitnessPal format: Date, Meal, Food Name, Quantity, Unit
     is_mfp = 'date' in fieldnames_lower and 'meal' in fieldnames_lower and 'food name' in fieldnames_lower
 
     italian_days = {
@@ -622,7 +595,6 @@ def _parse_import_file(text: str, ext: str) -> dict:
 
     for row in reader:
         if is_mfp:
-            # Try to get weekday from date
             raw_date = row.get('Date', '') or row.get('date', '')
             meal = row.get('Meal', '') or row.get('meal', '')
             food = row.get('Food Name', '') or row.get('food name', '')
@@ -632,7 +604,6 @@ def _parse_import_file(text: str, ext: str) -> dict:
             if not food or not meal:
                 continue
 
-            # Derive day name from date
             day = 'Lunedì'
             try:
                 for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y'):
@@ -646,7 +617,6 @@ def _parse_import_file(text: str, ext: str) -> dict:
             except Exception:
                 pass
         else:
-            # Generic Italian format: Giorno, Pasto, Alimento, Quantità, Unità
             day = row.get('Giorno', '') or row.get('giorno', '') or row.get('Day', 'Lunedì')
             meal = row.get('Pasto', '') or row.get('pasto', '') or row.get('Meal', '')
             food = row.get('Alimento', '') or row.get('alimento', '') or row.get('Food', '')

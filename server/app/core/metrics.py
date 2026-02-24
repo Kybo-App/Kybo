@@ -29,8 +29,6 @@ Utilizzo:
 """
 from prometheus_client import Counter, Histogram, Gauge, Info
 
-# ─── Info applicazione ────────────────────────────────────────────────────────
-
 app_info = Info(
     "kybo_app",
     "Informazioni sull'applicazione Kybo API",
@@ -39,8 +37,6 @@ app_info.info({
     "version": "2.0.0",
     "service": "kybo-api",
 })
-
-# ─── Parsing diete (Gemini AI) ────────────────────────────────────────────────
 
 diet_gemini_calls_total = Counter(
     "kybo_diet_gemini_calls_total",
@@ -55,7 +51,7 @@ diet_gemini_errors_total = Counter(
 diet_cache_hits_total = Counter(
     "kybo_diet_cache_hits_total",
     "Cache hit nel parsing diete, per layer",
-    ["layer"],  # L1_ram, L1.5_redis, L2_firestore
+    ["layer"],
 )
 
 diet_cache_misses_total = Counter(
@@ -81,8 +77,6 @@ diet_upload_size_bytes = Histogram(
     buckets=[50_000, 100_000, 250_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
 )
 
-# ─── Suggerimenti pasti ───────────────────────────────────────────────────────
-
 suggestions_gemini_calls_total = Counter(
     "kybo_suggestions_gemini_calls_total",
     "Numero totale di chiamate a Gemini AI per i suggerimenti pasti",
@@ -96,7 +90,7 @@ suggestions_gemini_errors_total = Counter(
 suggestions_cache_hits_total = Counter(
     "kybo_suggestions_cache_hits_total",
     "Cache hit nei suggerimenti pasti, per layer",
-    ["layer"],  # L1_ram, L1.5_redis
+    ["layer"],
 )
 
 suggestions_cache_misses_total = Counter(
@@ -111,8 +105,6 @@ suggestions_duration_seconds = Histogram(
     buckets=[2, 5, 10, 15, 20, 30],
 )
 
-# ─── Token / Autenticazione ───────────────────────────────────────────────────
-
 auth_token_cache_hits_total = Counter(
     "kybo_auth_token_cache_hits_total",
     "Token JWT trovati in cache RAM",
@@ -126,18 +118,14 @@ auth_token_cache_misses_total = Counter(
 auth_errors_total = Counter(
     "kybo_auth_errors_total",
     "Errori di autenticazione",
-    ["reason"],  # invalid_token, expired, missing
+    ["reason"],
 )
-
-# ─── Redis ───────────────────────────────────────────────────────────────────
 
 redis_operations_total = Counter(
     "kybo_redis_operations_total",
     "Operazioni Redis totali",
-    ["operation", "result"],  # operation: get/set/delete; result: ok/error
+    ["operation", "result"],
 )
-
-# ─── OCR / Scontrino ─────────────────────────────────────────────────────────
 
 ocr_scans_total = Counter(
     "kybo_ocr_scans_total",
@@ -155,8 +143,6 @@ ocr_duration_seconds = Histogram(
     buckets=[0.5, 1, 2, 5, 10, 20],
 )
 
-# ─── Gauge in tempo reale ────────────────────────────────────────────────────
-
 diet_memory_cache_size = Gauge(
     "kybo_diet_memory_cache_size",
     "Numero di entry nella cache RAM del parser diete",
@@ -166,8 +152,6 @@ suggestions_memory_cache_size = Gauge(
     "kybo_suggestions_memory_cache_size",
     "Numero di entry nella cache RAM dei suggerimenti pasti",
 )
-
-# ─── Helper functions ─────────────────────────────────────────────────────────
 
 
 def record_cache_hit(service: str, layer: str) -> None:

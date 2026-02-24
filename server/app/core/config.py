@@ -1,21 +1,26 @@
+"""
+Configurazione centralizzata dell'applicazione tramite pydantic-settings.
+Legge variabili d'ambiente e .env automaticamente.
+ALLOWED_ORIGINS varia per ambiente: PROD usa solo domini di produzione,
+STAGING aggiunge localhost, DEV usa solo localhost.
+"""
 import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Loads from .env automatically
     GOOGLE_API_KEY: str = ""
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-    ENV: str = os.getenv("ENV", "DEV") # [NUOVO] Legge l'ambiente (DEV o PROD)
-    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")  # Error tracking
-    STORAGE_BUCKET: str = os.getenv("STORAGE_BUCKET", "mydiet-6d55b.appspot.com")  # Firebase Storage Bucket
-    
+    ENV: str = os.getenv("ENV", "DEV")
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
+    STORAGE_BUCKET: str = os.getenv("STORAGE_BUCKET", "mydiet-6d55b.appspot.com")
+
     _dev_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
         "http://localhost:4000",
         "http://localhost:5000",
     ]
-    
+
     _prod_origins: list[str] = [
         "https://app.kybo.it",
         "https://kybo.it"
@@ -24,7 +29,7 @@ class Settings(BaseSettings):
     @property
     def ALLOWED_ORIGINS(self) -> list[str]:
         """
-        [SECURITY] CORS più restrittivo per ambiente:
+        CORS più restrittivo per ambiente:
         - PROD: Solo domini di produzione
         - STAGING: Localhost + produzione (per test pre-deploy)
         - DEV: Solo localhost (evita test accidentali con dati prod)
@@ -32,42 +37,33 @@ class Settings(BaseSettings):
         if self.ENV == "PROD":
             return self._prod_origins
         elif self.ENV == "STAGING":
-            # Staging permette entrambi per test pre-deploy
             return self._dev_origins + self._prod_origins
-        else:  # DEV
-            # [FIX] DEV permette SOLO localhost per evitare confusione
+        else:
             return self._dev_origins
 
-    # Redis Cache (opzionale — graceful fallback se non configurato)
-    REDIS_URL: str = os.getenv("REDIS_URL", "")  # es. redis://localhost:6379/0
-    REDIS_DIET_TTL: int = 3600        # 1h per parsing diete
-    REDIS_SUGGESTIONS_TTL: int = 1800  # 30min per suggerimenti pasti
-    REDIS_TOKEN_TTL: int = 1500        # 25min per token JWT
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
+    REDIS_DIET_TTL: int = 3600
+    REDIS_SUGGESTIONS_TTL: int = 1800
+    REDIS_TOKEN_TTL: int = 1500
 
-    # Limits
-    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024
     MAX_PDF_PAGES: int = 50
     MEMORY_CACHE_SIZE: int = 100
-    MEMORY_CACHE_TTL: int = 3600  # seconds
+    MEMORY_CACHE_TTL: int = 3600
     FIRESTORE_CACHE_DAYS: int = 30
     DEFAULT_MAX_CLIENTS: int = 50
     MAX_CONCURRENT_HEAVY_TASKS: int = 2
-    MAINTENANCE_POLL_INTERVAL: int = 60  # seconds
+    MAINTENANCE_POLL_INTERVAL: int = 60
 
-    # RQ Queue (opzionale - graceful fallback a semaphore se Redis non disponibile)
     RQ_QUEUE_NAME: str = os.getenv("RQ_QUEUE_NAME", "diet_parsing")
-    RQ_JOB_TIMEOUT: int = 300      # 5 minuti per job di parsing
-    RQ_RESULT_TTL: int = 3600      # 1h: quanto restano i risultati in Redis dopo il completamento
-    RQ_FAILURE_TTL: int = 86400    # 24h: quanto restano i job falliti per debug
-    # true  → worker gira in un thread interno al processo FastAPI (free tier, dev/test)
-    # false → worker gira come servizio Background Worker separato su Render (prod)
+    RQ_JOB_TIMEOUT: int = 300
+    RQ_RESULT_TTL: int = 3600
+    RQ_FAILURE_TTL: int = 86400
     RQ_INLINE_WORKER: bool = os.getenv("RQ_INLINE_WORKER", "true").lower() == "true"
 
-    # GDPR Retention Policy
-    GDPR_RETENTION_MONTHS: int = 24  # Default: 2 years
-    GDPR_RETENTION_WARNING_DAYS: int = 30  # Days before deadline to warn
+    GDPR_RETENTION_MONTHS: int = 24
+    GDPR_RETENTION_WARNING_DAYS: int = 30
 
-    # Email (SMTP) - opzionale, le notifiche email sono disabilitate se non configurato
     SMTP_HOST: str = os.getenv("SMTP_HOST", "")
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
@@ -75,16 +71,13 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "noreply@kybo.it")
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Kybo")
 
-    # Unread message notification defaults
-    UNREAD_NOTIFY_INTERVAL: int = 3600  # Check ogni ora (secondi)
-    UNREAD_NOTIFY_DEFAULT_DAYS: int = 3  # Giorni default prima di notificare
+    UNREAD_NOTIFY_INTERVAL: int = 3600
+    UNREAD_NOTIFY_DEFAULT_DAYS: int = 3
 
-    # Paths
     DIET_PDF_PATH: str = "temp_dieta.pdf"
     RECEIPT_PATH_PREFIX: str = "temp_scontrino"
     DIET_JSON_PATH: str = "dieta.json"
 
-    # Keywords
     MEAL_MAPPING: dict = {
         "prima colazione": "Colazione",
         "seconda colazione": "Seconda Colazione",
