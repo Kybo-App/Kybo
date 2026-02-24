@@ -6,10 +6,11 @@ Endpoint per generare e visualizzare report mensili.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 
 from app.core.dependencies import verify_professional, verify_admin
+from app.core.limiter import limiter
 from app.core.logging import logger, sanitize_error_message
 from app.services.report_service import ReportService
 
@@ -27,7 +28,9 @@ class GenerateReportRequest(BaseModel):
 # --- ENDPOINTS ---
 
 @router.get("/monthly")
+@limiter.limit("60/minute")
 async def get_monthly_report(
+    request: Request,
     nutritionist_id: str = Query(..., description="UID del nutrizionista"),
     month: str = Query(..., description="Mese nel formato YYYY-MM"),
     requester: dict = Depends(verify_professional)
@@ -87,7 +90,9 @@ async def get_monthly_report(
 
 
 @router.post("/generate")
+@limiter.limit("10/hour")
 async def generate_report(
+    request: Request,
     body: GenerateReportRequest,
     requester: dict = Depends(verify_professional)
 ):
@@ -147,7 +152,9 @@ async def generate_report(
 
 
 @router.get("/list")
+@limiter.limit("120/minute")
 async def list_reports(
+    request: Request,
     nutritionist_id: Optional[str] = Query(None, description="Filtra per nutrizionista"),
     limit: int = Query(12, ge=1, le=50, description="Numero massimo di report"),
     requester: dict = Depends(verify_professional)
@@ -183,7 +190,9 @@ async def list_reports(
 
 
 @router.get("/{report_id}")
+@limiter.limit("120/minute")
 async def get_report_by_id(
+    request: Request,
     report_id: str,
     requester: dict = Depends(verify_professional)
 ):
@@ -229,7 +238,9 @@ async def get_report_by_id(
 
 
 @router.delete("/{report_id}")
+@limiter.limit("30/minute")
 async def delete_report(
+    request: Request,
     report_id: str,
     admin: dict = Depends(verify_admin)
 ):

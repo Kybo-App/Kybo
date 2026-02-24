@@ -7,13 +7,14 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import auth, firestore
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr, field_validator
 
 from app.core.config import settings
 from app.core.dependencies import verify_admin, verify_professional, verify_token
 from app.core.logging import logger, sanitize_error_message
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/admin", tags=["users"])
 
@@ -92,7 +93,9 @@ def _delete_collection_documents(coll_ref, batch_size=500):
 
 
 @router.post("/create-user")
+@limiter.limit("20/hour")
 async def admin_create_user(
+    request: Request,
     body: CreateUserRequest,
     requester: dict = Depends(verify_professional)
 ):
@@ -135,7 +138,9 @@ async def admin_create_user(
 
 
 @router.put("/update-user/{target_uid}")
+@limiter.limit("60/minute")
 async def admin_update_user(
+    request: Request,
     target_uid: str,
     body: UpdateUserRequest,
     requester: dict = Depends(verify_admin)
@@ -194,7 +199,9 @@ async def admin_update_user(
 
 
 @router.post("/assign-user")
+@limiter.limit("60/minute")
 async def admin_assign_user(
+    request: Request,
     body: AssignUserRequest,
     requester: dict = Depends(verify_admin)
 ):
@@ -231,7 +238,9 @@ async def admin_assign_user(
 
 
 @router.post("/unassign-user")
+@limiter.limit("60/minute")
 async def admin_unassign_user(
+    request: Request,
     body: UnassignUserRequest,
     requester: dict = Depends(verify_admin)
 ):
@@ -258,7 +267,9 @@ async def admin_unassign_user(
 
 
 @router.delete("/delete-user/{target_uid}")
+@limiter.limit("20/hour")
 async def admin_delete_user(
+    request: Request,
     target_uid: str,
     requester: dict = Depends(verify_professional)
 ):
@@ -312,7 +323,9 @@ async def admin_delete_user(
 
 
 @router.delete("/delete-diet/{diet_id}")
+@limiter.limit("20/hour")
 async def admin_delete_diet(
+    request: Request,
     diet_id: str,
     requester: dict = Depends(verify_professional)
 ):
@@ -358,7 +371,9 @@ async def admin_delete_diet(
 # --- SESSION MANAGEMENT ---
 
 @router.post("/session/revoke/{target_uid}")
+@limiter.limit("30/minute")
 async def revoke_user_sessions(
+    request: Request,
     target_uid: str,
     requester: dict = Depends(verify_admin)
 ):
@@ -385,7 +400,8 @@ async def revoke_user_sessions(
 
 
 @router.post("/session/revoke-self")
-async def revoke_own_sessions(token: dict = Depends(verify_token)):
+@limiter.limit("30/minute")
+async def revoke_own_sessions(request: Request, token: dict = Depends(verify_token)):
     """
     Permette all'utente autenticato di revocare le proprie sessioni
     (forza logout da tutti gli altri dispositivi).

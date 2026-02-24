@@ -3,7 +3,7 @@ Router per suggerimenti pasti personalizzati con Gemini AI.
 Genera suggerimenti basati sulla dieta corrente, allergeni e preferenze storiche.
 """
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
@@ -13,6 +13,7 @@ import hashlib
 import time
 
 from app.core.dependencies import verify_token, get_current_uid
+from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.logging import logger
 from app.core.cache import redis_cache
@@ -83,7 +84,9 @@ def _save_to_memory_cache(key: str, data: dict):
 # ─── Endpoint principale ──────────────────────────────────────────────────────
 
 @router.get("/meal-suggestions", response_model=MealSuggestionsResponse)
+@limiter.limit("60/minute")
 async def get_meal_suggestions(
+    request: Request,
     meal_type: Optional[str] = Query(None, description="Filtra per tipo pasto: Colazione, Pranzo, Cena..."),
     count: int = Query(6, ge=1, le=12, description="Numero di suggerimenti da generare"),
     pantry_items: Optional[str] = Query(None, description="Ingredienti in dispensa (separati da virgola). Se presente, genera ricette basate su questi ingredienti."),

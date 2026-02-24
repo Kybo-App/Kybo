@@ -3,15 +3,18 @@ Router per funzionalità chat (es. upload allegati).
 """
 import uuid
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from firebase_admin import storage
 from app.core.dependencies import verify_professional, MAX_FILE_SIZE
 from app.core.logging import logger, sanitize_error_message
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 @router.post("/upload-attachment")
+@limiter.limit("60/minute")
 async def upload_attachment(
+    request: Request,
     file: UploadFile = File(...),
     requester: dict = Depends(verify_professional)
 ):

@@ -9,11 +9,12 @@ from typing import Optional
 
 import firebase_admin
 from firebase_admin import firestore
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from app.core.dependencies import verify_token, verify_professional, verify_admin
 from app.core.logging import logger, sanitize_error_message
+from app.core.limiter import limiter
 from app.services.gdpr_retention_service import GDPRRetentionService
 
 router = APIRouter(prefix="/gdpr", tags=["gdpr"])
@@ -36,7 +37,9 @@ class ConsentResponse(BaseModel):
 
 # --- CONSENT ENDPOINTS ---
 @router.post("/consent")
+@limiter.limit("60/minute")
 async def record_consent(
+    request: Request,
     body: ConsentRequest,
     user_data: dict = Depends(verify_token)
 ):
@@ -81,7 +84,8 @@ async def record_consent(
 
 
 @router.get("/consent")
-async def get_consents(user_data: dict = Depends(verify_token)):
+@limiter.limit("120/minute")
+async def get_consents(request: Request, user_data: dict = Depends(verify_token)):
     """
     Restituisce lo stato dei consensi dell'utente.
     """
@@ -112,7 +116,8 @@ async def get_consents(user_data: dict = Depends(verify_token)):
 
 # --- DATA EXPORT (GDPR Art. 20 - Portabilità) ---
 @router.get("/export")
-async def export_user_data(user_data: dict = Depends(verify_token)):
+@limiter.limit("10/hour")
+async def export_user_data(request: Request, user_data: dict = Depends(verify_token)):
     """
     Esporta tutti i dati dell'utente in formato JSON (GDPR Art. 20).
     Include: profilo, diete, storico, log.
@@ -175,7 +180,9 @@ async def export_user_data(user_data: dict = Depends(verify_token)):
 
 # --- ADMIN: EXPORT DATI CLIENTE ---
 @router.get("/export/{target_uid}")
+@limiter.limit("30/minute")
 async def admin_export_user_data(
+    request: Request,
     target_uid: str,
     requester: dict = Depends(verify_professional)
 ):
@@ -235,7 +242,9 @@ class PurgeRequest(BaseModel):
 
 # --- RETENTION DASHBOARD ---
 @router.get("/admin/dashboard")
+@limiter.limit("60/minute")
 async def get_retention_dashboard(
+    request: Request,
     admin: dict = Depends(verify_admin)
 ):
     """
@@ -266,7 +275,9 @@ async def get_retention_dashboard(
 
 # --- RETENTION CONFIG ---
 @router.get("/admin/retention-config")
+@limiter.limit("120/minute")
 async def get_retention_config(
+    request: Request,
     admin: dict = Depends(verify_admin)
 ):
     """
@@ -294,7 +305,9 @@ async def get_retention_config(
 
 
 @router.post("/admin/retention-config")
+@limiter.limit("30/minute")
 async def set_retention_config(
+    request: Request,
     body: RetentionConfigRequest,
     admin: dict = Depends(verify_admin)
 ):
@@ -366,7 +379,9 @@ async def set_retention_config(
 
 # --- PURGE INACTIVE USERS ---
 @router.post("/admin/purge-inactive")
+@limiter.limit("5/hour")
 async def purge_inactive_users(
+    request: Request,
     body: PurgeRequest,
     admin: dict = Depends(verify_admin)
 ):
