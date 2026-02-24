@@ -1,3 +1,9 @@
+"""
+Servizio di parsing diete da PDF con Gemini AI.
+Estrae piano settimanale, sostituzioni CAD, config e allergeni.
+Implementa cache a tre livelli: RAM (L1), Redis (L1.5), Firestore (L2).
+Prima di inviare il testo a Gemini, applica sanitizzazione GDPR per rimuovere PII.
+"""
 import json
 import re
 import io
@@ -27,7 +33,6 @@ from app.models.schemas import (
 )
 import typing_extensions as typing
 
-# --- DATA SCHEMAS (Your Original TypedDicts) ---
 class Ingrediente(typing.TypedDict):
     nome: str
     quantita: str
@@ -45,7 +50,7 @@ class Pasto(typing.TypedDict):
 
 class GiornoDieta(typing.TypedDict):
     giorno: str
-    settimana: int  # Numero settimana: 1 per prima settimana, 2 per seconda, ecc.
+    settimana: int
     pasti: list[Pasto]
 
 class OpzioneSostituzione(typing.TypedDict):
@@ -59,26 +64,22 @@ class GruppoSostituzione(typing.TypedDict):
 
 class ConfigDieta(typing.TypedDict):
     """Configurazione dinamica estratta dalla dieta."""
-    giorni: list[str]  # Giorni della settimana nell'ordine del PDF
-    pasti: list[str]   # Tipi di pasto nell'ordine del PDF
-    alimenti_rilassabili: list[str]  # Frutta/verdura identificati nel piano
-    num_settimane: int  # Numero totale di settimane nel piano (1 = singola settimana)
+    giorni: list[str]
+    pasti: list[str]
+    alimenti_rilassabili: list[str]
+    num_settimane: int
 
 class OutputDietaCompleto(typing.TypedDict):
     piano_settimanale: list[GiornoDieta]
     tabella_sostituzioni: list[GruppoSostituzione]
-    config: ConfigDieta  # Configurazione dinamica
-    allergeni: list[str] # Lista allergeni rilevati
+    config: ConfigDieta
+    allergeni: list[str]
 
 class DietParser:
-    # [OPTIMIZATION] Cache L1 in RAM (condivisa tra richieste)
-    # Chiave: content_hash, Valore: (result, timestamp)
     _memory_cache: dict = {}
     _MEMORY_CACHE_MAX_SIZE = settings.MEMORY_CACHE_SIZE
     _MEMORY_CACHE_TTL_SECONDS = settings.MEMORY_CACHE_TTL
 
-    # [OPTIMIZATION] Cache L1.5 Redis sincrono (condiviso tra istanze)
-    # Creato lazy al primo utilizzo; None se Redis non configurato
     _redis_sync = None
     _redis_checked = False
 
@@ -91,7 +92,6 @@ class DietParser:
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             self.client = genai.Client(api_key=clean_key)
 
-        # [System instruction con supporto config dinamica]
         self.system_instruction = """
 You are an expert AI Nutritionist and Data Analyst capable of understanding any language.
 YOUR TASK: Extract the weekly diet plan from the provided document.
@@ -140,7 +140,6 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 - If none found, return empty list [].
 """
 
-    # --- 1.4 SANITIZZAZIONE GDPR (Migliorata) ---
     def _sanitize_text(self, text: str) -> str:
         """
         Rimuove PII sensibile dal testo del PDF prima dell'elaborazione AI.
@@ -148,14 +147,12 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         """
         if not text: return ""
 
-        # Rimuove Email (anche parziali)
         text = re.sub(
             r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
             '[EMAIL]',
             text
         )
 
-        # Rimuove Codici Fiscali italiani (16 caratteri alfanumerici)
         text = re.sub(
             r'\b[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]\b',
             '[CF]',
@@ -163,36 +160,30 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             flags=re.IGNORECASE
         )
 
-        # Rimuove Telefoni italiani (fissi e mobili, vari formati)
         text = re.sub(
             r'\b(?:\+39|0039)?\s*[0-9]{2,4}[\s\-\.]?[0-9]{6,7}\b',
             '[TEL]',
             text
         )
 
-        # Rimuove numeri di telefono cellulare (3xx xxx xxxx)
         text = re.sub(
             r'\b3[0-9]{2}[\s\-\.]?[0-9]{3}[\s\-\.]?[0-9]{4}\b',
             '[TEL]',
             text
         )
 
-        # Rimuove Intestazioni con nomi (Paziente, Sig., Dott., etc.)
-        # Gestisce anche nomi composti e con apostrofo (D'Angelo, Maria Grazia)
         text = re.sub(
             r'(?i)(Paziente|Sig\.?|Sig\.?ra|Dott\.?|Dr\.?|Nome|Cognome|Spett\.le|Cliente|Assistito)\s*[:\.]?\s*[A-Za-zÀ-ÿ\'\s]+(?=\n|$|[,;])',
             '[ANAGRAFICA]',
             text
         )
 
-        # Rimuove potenziali indirizzi (Via/Piazza + nome + numero)
         text = re.sub(
             r'(?i)(Via|Viale|Piazza|P\.za|Corso|C\.so|Largo)\s+[A-Za-zÀ-ÿ\'\s]+,?\s*\d*',
             '[INDIRIZZO]',
             text
         )
 
-        # Rimuove date di nascita in formato comune (gg/mm/aaaa o gg-mm-aaaa)
         text = re.sub(
             r'\b\d{1,2}[/\-\.]\d{1,2}[/\-\.](19|20)\d{2}\b',
             '[DATA]',
@@ -201,12 +192,9 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 
         return text
 
-    # --- 3.1 STREAMING I/O FIX ---
-    # Ora accetta 'file_obj' (stream) invece di 'pdf_path' (stringa)
     def _extract_text_from_pdf(self, file_obj) -> str:
         text_buffer = io.StringIO()
         try:
-            # Apriamo direttamente l'oggetto in memoria senza toccare il disco
             with pdfplumber.open(file_obj) as pdf:
                 max_pages = get_app_config().get("max_pdf_pages", settings.MAX_PDF_PAGES)
                 if len(pdf.pages) > max_pages:
@@ -239,32 +227,26 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                 pass
         raise ValueError("Impossibile estrarre JSON valido.")
 
-    # [OPTIMIZATION] Metodi per cache L1 in RAM
     def _get_from_memory_cache(self, content_hash: str):
         """Cerca risultato in cache RAM (L1). Ritorna None se non trovato o scaduto."""
         import time
         if content_hash in DietParser._memory_cache:
             result, timestamp = DietParser._memory_cache[content_hash]
-            # Verifica TTL
             if time.time() - timestamp < DietParser._MEMORY_CACHE_TTL_SECONDS:
                 return result
             else:
-                # Cache scaduta, rimuovi
                 del DietParser._memory_cache[content_hash]
         return None
 
     def _save_to_memory_cache(self, content_hash: str, result):
         """Salva risultato in cache RAM (L1) con LRU eviction."""
         import time
-        # Eviction se cache piena (rimuovi entry più vecchia)
         if len(DietParser._memory_cache) >= DietParser._MEMORY_CACHE_MAX_SIZE:
             oldest_key = min(DietParser._memory_cache.keys(),
                            key=lambda k: DietParser._memory_cache[k][1])
             del DietParser._memory_cache[oldest_key]
 
         DietParser._memory_cache[content_hash] = (result, time.time())
-
-    # ── Cache L1.5 Redis (sincrono, per uso in threadpool) ───────────────────
 
     def _get_redis_sync(self):
         """Lazy init del client Redis sincrono. Ritorna None se non disponibile."""
@@ -317,26 +299,20 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         except Exception as e:
             logger.warning("Redis SET error: %s", e)
 
-    # Ora accetta 'file_obj' come primo parametro
     def parse_complex_diet(self, file_obj, custom_instructions: str = None):
         if not self.client:
             raise ValueError("Client Gemini non inizializzato.")
 
-        # Estrai testo dallo stream (RAM)
         raw_text = self._extract_text_from_pdf(file_obj)
         if not raw_text:
             raise ValueError("PDF vuoto o illeggibile.")
 
-        # Applica sanitizzazione GDPR
         diet_text = self._sanitize_text(raw_text)
 
-        # Calcola hash del contenuto (include custom instructions O system instruction default)
-        # [FIX] Include system_instruction nel hash per invalidare cache se aggiorniamo il prompt!
         instruction_part = custom_instructions if custom_instructions else self.system_instruction
         cache_content = f"{diet_text}||{instruction_part}"
         content_hash = hashlib.sha256(cache_content.encode('utf-8')).hexdigest()
 
-        # ✅ CACHE L1: Check memoria RAM (microsecondi)
         memory_result = self._get_from_memory_cache(content_hash)
         if memory_result:
             logger.debug("Cache L1 (RAM) HIT per hash %s...", content_hash[:8])
@@ -344,7 +320,6 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return memory_result
         diet_cache_misses_total.labels(layer="L1_ram").inc()
 
-        # ✅ CACHE L1.5: Check Redis (millisecondi, condiviso tra istanze)
         redis_result = self._get_from_redis_cache(content_hash)
         if redis_result:
             logger.debug("Cache L1.5 (Redis) HIT per hash %s...", content_hash[:8])
@@ -353,12 +328,10 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return redis_result
         diet_cache_misses_total.labels(layer="L1.5_redis").inc()
 
-        # ✅ CACHE L2: Check Firestore (decine ms, persistente 30gg)
         cached_result = self._get_cached_response(content_hash)
         if cached_result:
             logger.debug("Cache L2 (Firestore) HIT per hash %s...", content_hash[:8])
             diet_cache_hits_total.labels(layer="L2_firestore").inc()
-            # Popola anche L1 e L1.5 per future richieste
             self._save_to_memory_cache(content_hash, cached_result)
             self._save_to_redis_cache(content_hash, cached_result)
             return cached_result
@@ -390,7 +363,6 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
                     )
                 )
 
-            # Estrai risultato
             if hasattr(response, 'parsed') and response.parsed:
                 result = response.parsed
             elif hasattr(response, 'text') and response.text:
@@ -398,13 +370,8 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             else:
                 raise ValueError("Risposta vuota da Gemini")
 
-            # ✅ CACHE L1: Salva in RAM per accesso veloce
             self._save_to_memory_cache(content_hash, result)
-
-            # ✅ CACHE L1.5: Salva in Redis per condivisione tra istanze
             self._save_to_redis_cache(content_hash, result)
-
-            # ✅ CACHE L2: Salva in Firestore per persistenza
             self._save_cached_response(content_hash, result)
 
             return result
@@ -431,19 +398,15 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             if cache_doc.exists:
                 data = cache_doc.to_dict()
 
-                # Verifica che la cache non sia troppo vecchia (es. 30 giorni)
                 cached_at = data.get('cached_at')
                 if cached_at:
                     cache_time = cached_at
                     if isinstance(cache_time, datetime):
-                        # Fix #13: Usa datetime timezone-aware per confronto corretto
                         now = datetime.now(timezone.utc)
-                        # Se cache_time è naive, rendilo UTC
                         if cache_time.tzinfo is None:
                             cache_time = cache_time.replace(tzinfo=timezone.utc)
                         age = now - cache_time
                         if age > timedelta(days=settings.FIRESTORE_CACHE_DAYS):
-                            # Cache scaduta, eliminala
                             cache_ref.delete()
                             return None
 
@@ -453,7 +416,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
 
         except Exception as e:
             logger.warning("Errore lettura cache Firestore: %s", e)
-            return None  # Se la cache non funziona, prosegui con Gemini
+            return None
 
     def _save_cached_response(self, content_hash: str, result):
         """
@@ -467,17 +430,12 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             
             db = firestore.client()
             cache_ref = db.collection('gemini_cache').document(content_hash)
-            
-            # Salva con timestamp UTC per tracking età cache
             cache_ref.set({
                 'result': result,
                 'cached_at': datetime.now(timezone.utc),
-                'hash': content_hash[:8]  # Solo per debug
+                'hash': content_hash[:8]
             })
-            
             logger.debug("Risultato salvato in cache (hash: %s...)", content_hash[:8])
-            
         except Exception as e:
             logger.warning("Errore salvataggio cache Firestore: %s", e)
-            # Non blocchiamo l'operazione se il salvataggio cache fallisce
             pass

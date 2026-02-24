@@ -34,19 +34,16 @@ async def monthly_report_mailer_worker():
     while True:
         try:
             now = datetime.now(timezone.utc)
-            # Invia solo il giorno 1 del mese, tra le 07:00 e le 09:00 UTC
             if now.day == 1 and 7 <= now.hour < 9:
                 await _send_monthly_reports(now)
         except Exception as e:
             logger.error("monthly_report_mailer_error", error=str(e)[:300])
 
-        # Controlla ogni ora
         await asyncio.sleep(3600)
 
 
 async def _send_monthly_reports(now: datetime):
     """Genera e invia i report del mese precedente a tutti i nutrizionisti."""
-    # Mese precedente
     first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_month = first_of_this_month - timedelta(days=1)
     year = last_month.year
@@ -55,7 +52,6 @@ async def _send_monthly_reports(now: datetime):
 
     db = firebase_admin.firestore.client()
 
-    # Recupera tutti i nutrizionisti
     nutritionists = db.collection("users") \
         .where("role", "in", ["nutritionist", "admin"]) \
         .stream()
@@ -69,22 +65,18 @@ async def _send_monthly_reports(now: datetime):
         if not email:
             continue
 
-        # Controlla se già inviato
         if _already_sent(db, uid, month_str):
             continue
 
         try:
-            # Genera report
             report = await service.generate_monthly_report(
                 nutritionist_id=uid,
                 year=year,
                 month=month,
             )
 
-            # Crea PDF in memoria
             pdf_bytes = _generate_pdf(report.to_dict(), month_str)
 
-            # Invia email con PDF allegato
             sent = await _send_report_email(
                 to_email=email,
                 nutritionist_name=report.nutritionist_name or email,
@@ -108,8 +100,7 @@ def _generate_pdf(report: dict, month_str: str) -> bytes:
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
-    # ── Header ──────────────────────────────────────────────────────────────
-    pdf.set_fill_color(46, 125, 50)  # Kybo green
+    pdf.set_fill_color(46, 125, 50)
     pdf.rect(0, 0, 210, 30, 'F')
     pdf.set_font("Helvetica", "B", 20)
     pdf.set_text_color(255, 255, 255)
@@ -137,19 +128,16 @@ def _generate_pdf(report: dict, month_str: str) -> bytes:
         pdf.set_font("Helvetica", "B", 11)
         pdf.cell(0, 7, value, ln=True)
 
-    # ── Clienti ─────────────────────────────────────────────────────────────
     section_title("  Clienti")
     row("Clienti totali:", str(report.get("total_clients", 0)))
     row("Nuovi clienti nel mese:", str(report.get("new_clients", 0)))
     row("Clienti attivi nel mese:", str(report.get("active_clients", 0)))
     pdf.ln(4)
 
-    # ── Diete ───────────────────────────────────────────────────────────────
     section_title("  Diete")
     row("Diete caricate:", str(report.get("diets_uploaded", 0)))
     pdf.ln(4)
 
-    # ── Chat & Messaggi ──────────────────────────────────────────────────────
     section_title("  Messaggi")
     row("Messaggi inviati:", str(report.get("total_messages_sent", 0)))
     row("Messaggi ricevuti:", str(report.get("total_messages_received", 0)))
@@ -158,7 +146,6 @@ def _generate_pdf(report: dict, month_str: str) -> bytes:
     row("Tempo risposta medio:", avg_str)
     pdf.ln(4)
 
-    # ── Footer ───────────────────────────────────────────────────────────────
     pdf.set_font("Helvetica", "I", 9)
     pdf.set_text_color(120, 120, 120)
     generated = report.get("generated_at", "")

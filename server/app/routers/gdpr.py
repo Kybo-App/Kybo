@@ -20,11 +20,10 @@ from app.services.gdpr_retention_service import GDPRRetentionService
 router = APIRouter(prefix="/gdpr", tags=["gdpr"])
 
 
-# --- SCHEMAS ---
 class ConsentRequest(BaseModel):
-    consent_type: str  # "privacy_policy", "marketing", "analytics"
+    consent_type: str
     granted: bool
-    version: str  # Versione del documento accettato (es. "1.0")
+    version: str
 
 
 class ConsentResponse(BaseModel):
@@ -35,7 +34,6 @@ class ConsentResponse(BaseModel):
     ip_address: Optional[str] = None
 
 
-# --- CONSENT ENDPOINTS ---
 @router.post("/consent")
 @limiter.limit("60/minute")
 async def record_consent(
@@ -60,12 +58,10 @@ async def record_consent(
             "recorded_at": firebase_admin.firestore.SERVER_TIMESTAMP,
         }
         
-        # Salva nel documento utente
         db.collection('users').document(user_id).set({
             f"consent_{body.consent_type}": consent_record
         }, merge=True)
         
-        # Log immutabile per audit trail
         db.collection('consent_logs').add({
             "user_id": user_id,
             **consent_record
@@ -135,33 +131,27 @@ async def export_user_data(request: Request, user_data: dict = Depends(verify_to
             "consent_logs": []
         }
         
-        # 1. Profilo utente
         user_doc = db.collection('users').document(user_id).get()
         if user_doc.exists:
             profile = user_doc.to_dict()
-            # Rimuovi campi interni/sensibili
             for key in ['requires_password_change', 'created_by']:
                 profile.pop(key, None)
             export_data["profile"] = profile
         
-        # 2. Dieta corrente (subcollection)
         current_diet = db.collection('users').document(user_id).collection('diets').get()
         for doc in current_diet:
             data = doc.to_dict()
             data['_doc_id'] = doc.id
             export_data["diets"].append(data)
         
-        # 3. Storico diete
         diet_history = db.collection('diet_history').where('userId', '==', user_id).stream()
         for doc in diet_history:
             data = doc.to_dict()
             data['_doc_id'] = doc.id
-            # Converti timestamp in stringa
             if 'uploadedAt' in data and hasattr(data['uploadedAt'], 'isoformat'):
                 data['uploadedAt'] = data['uploadedAt'].isoformat()
             export_data["diet_history"].append(data)
         
-        # 4. Log consensi
         consent_logs = db.collection('consent_logs').where('user_id', '==', user_id).stream()
         for doc in consent_logs:
             data = doc.to_dict()
@@ -178,7 +168,6 @@ async def export_user_data(request: Request, user_data: dict = Depends(verify_to
         raise HTTPException(status_code=500, detail="Errore durante l'export dei dati")
 
 
-# --- ADMIN: EXPORT DATI CLIENTE ---
 @router.get("/export/{target_uid}")
 @limiter.limit("30/minute")
 async def admin_export_user_data(
@@ -194,7 +183,6 @@ async def admin_export_user_data(
         requester_role = requester['role']
         requester_id = requester['uid']
         
-        # Verifica permessi
         if requester_role == 'nutritionist':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
@@ -203,7 +191,6 @@ async def admin_export_user_data(
             if user_data.get('parent_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Not authorized to export this user's data")
         
-        # Log accesso dati (audit trail)
         db.collection('access_logs').add({
             'requester_id': requester_id,
             'target_uid': target_uid,
@@ -212,7 +199,6 @@ async def admin_export_user_data(
             'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
         })
         
-        # Riusa la logica di export
         fake_user_data = {'uid': target_uid}
         return await export_user_data(fake_user_data)
         
@@ -223,24 +209,18 @@ async def admin_export_user_data(
         raise HTTPException(status_code=500, detail="Errore durante l'export dei dati")
 
 
-# =============================================================================
-# GDPR RETENTION POLICY ENDPOINTS (Admin Only)
-# =============================================================================
-
-# --- SCHEMAS RETENTION ---
 class RetentionConfigRequest(BaseModel):
-    retention_months: int  # Mesi di inattività prima della purge
-    is_enabled: bool  # Se la retention automatica è attiva
-    dry_run: bool = True  # Se True, simula senza eliminare
-    exclude_roles: list[str] = ["admin", "nutritionist"]  # Ruoli esclusi
+    retention_months: int
+    is_enabled: bool
+    dry_run: bool = True
+    exclude_roles: list[str] = ["admin", "nutritionist"]
 
 
 class PurgeRequest(BaseModel):
-    dry_run: bool = True  # Se True, simula senza eliminare
-    target_uid: Optional[str] = None  # Se specificato, elimina solo questo utente
+    dry_run: bool = True
+    target_uid: Optional[str] = None
 
 
-# --- RETENTION DASHBOARD ---
 @router.get("/admin/dashboard")
 @limiter.limit("60/minute")
 async def get_retention_dashboard(
@@ -273,7 +253,6 @@ async def get_retention_dashboard(
         )
 
 
-# --- RETENTION CONFIG ---
 @router.get("/admin/retention-config")
 @limiter.limit("120/minute")
 async def get_retention_config(
@@ -323,7 +302,6 @@ async def set_retention_config(
     Solo Admin.
     """
     try:
-        # Validazione
         if body.retention_months < 6:
             raise HTTPException(
                 status_code=400,
@@ -377,7 +355,6 @@ async def set_retention_config(
         )
 
 
-# --- PURGE INACTIVE USERS ---
 @router.post("/admin/purge-inactive")
 @limiter.limit("5/hour")
 async def purge_inactive_users(
@@ -399,7 +376,6 @@ async def purge_inactive_users(
         service = GDPRRetentionService()
         admin_id = admin['uid']
 
-        # Purge singolo utente
         if body.target_uid:
             result = await service.purge_user(
                 uid=body.target_uid,
@@ -427,7 +403,6 @@ async def purge_inactive_users(
                 }
             }
 
-        # Purge batch di tutti gli utenti inattivi
         results = await service.purge_inactive_users(
             dry_run=body.dry_run,
             requester_id=admin_id

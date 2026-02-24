@@ -72,10 +72,6 @@ class ReportService:
     def __init__(self):
         self.db = firestore.client()
 
-    # =========================================================================
-    # REPORT GENERATION
-    # =========================================================================
-
     async def generate_monthly_report(
         self,
         nutritionist_id: str,
@@ -98,27 +94,23 @@ class ReportService:
         month_str = f"{year}-{month:02d}"
         report_id = f"{nutritionist_id}_{month_str}"
 
-        # Check if report already exists
         if not force_regenerate:
             existing = await self._get_cached_report(report_id)
             if existing:
                 logger.info("report_cache_hit", report_id=report_id)
                 return existing
 
-        # Calculate period
         _, last_day = calendar.monthrange(year, month)
         period_start = datetime(year, month, 1, tzinfo=timezone.utc)
         period_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
 
         try:
-            # Get nutritionist info
             nutritionist_doc = self.db.collection('users').document(nutritionist_id).get()
             if not nutritionist_doc.exists:
                 raise ValueError(f"Nutritionist {nutritionist_id} not found")
 
             nutr_data = nutritionist_doc.to_dict()
 
-            # Gather metrics
             client_metrics = await self._get_client_metrics(
                 nutritionist_id, period_start, period_end
             )
@@ -129,7 +121,6 @@ class ReportService:
                 nutritionist_id, period_start, period_end
             )
 
-            # Build report
             report = NutritionistReport(
                 nutritionist_id=nutritionist_id,
                 nutritionist_name=f"{nutr_data.get('first_name', '')} {nutr_data.get('last_name', '')}".strip(),
@@ -148,7 +139,6 @@ class ReportService:
                 generated_at=datetime.now(timezone.utc).isoformat()
             )
 
-            # Cache report
             await self._cache_report(report_id, report)
 
             logger.info(
@@ -181,7 +171,6 @@ class ReportService:
         new = 0
         active = 0
 
-        # Get all clients of this nutritionist
         clients = self.db.collection('users').where(
             'parent_id', '==', nutritionist_id
         ).stream()
@@ -190,7 +179,6 @@ class ReportService:
             total += 1
             client_data = client.to_dict()
 
-            # Check if new (created in this period)
             created_at = client_data.get('createdAt')
             if created_at:
                 if isinstance(created_at, datetime):
@@ -203,8 +191,6 @@ class ReportService:
                 if created_dt and period_start <= created_dt <= period_end:
                     new += 1
 
-            # Check if active (has diet history or messages in period)
-            # For simplicity, check diet_history
             history = self.db.collection('diet_history').where(
                 filter=firestore.FieldFilter('userId', '==', client.id)
             ).where(
@@ -228,7 +214,6 @@ class ReportService:
         total = 0
         by_client = {}
 
-        # Get diet_history uploaded by this nutritionist in the period
         diets = self.db.collection('diet_history').where(
             filter=firestore.FieldFilter('uploadedBy', '==', nutritionist_id)
         ).where(
@@ -256,7 +241,6 @@ class ReportService:
         received = 0
         response_times = []
 
-        # Get all chats where nutritionist is participant
         chats = self.db.collection('chats').where(
             'participants.nutritionistId', '==', nutritionist_id
         ).stream()

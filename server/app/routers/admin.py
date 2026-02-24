@@ -24,7 +24,6 @@ from app.services.app_config_service import get_app_config, invalidate_app_confi
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-# --- SCHEMAS ---
 class MaintenanceRequest(BaseModel):
     enabled: bool
     message: Optional[str] = None
@@ -41,7 +40,6 @@ class LogAccessRequest(BaseModel):
     reason: str
 
 
-# --- SYNC USERS ---
 @router.post("/sync-users")
 @limiter.limit("10/hour")
 async def admin_sync_users(request: Request, requester: dict = Depends(verify_admin)):
@@ -106,7 +104,6 @@ async def admin_sync_users(request: Request, requester: dict = Depends(verify_ad
         if batch_operations > 0:
             batch.commit()
 
-        # Parallelizza aggiornamento claims
         CLAIMS_CHUNK_SIZE = 10
 
         async def update_claim(uid: str, role: str):
@@ -138,7 +135,6 @@ async def upload_parser_config(
     try:
         content = (await file.read()).decode("utf-8")
         db = firebase_admin.firestore.client()
-        # Usa set con merge per evitare errori se i campi non esistono
         db.collection('users').document(target_uid).set({
             'custom_parser_prompt': content,
             'has_custom_parser': True,
@@ -155,7 +151,6 @@ async def upload_parser_config(
         raise HTTPException(status_code=500, detail="Errore durante l'aggiornamento del parser.")
 
 
-# --- SECURE GATEWAY ---
 @router.post("/log-access")
 @limiter.limit("60/minute")
 async def log_access(request: Request, body: LogAccessRequest, requester: dict = Depends(verify_professional)):
@@ -252,7 +247,6 @@ async def list_users_secure(request: Request, requester: dict = Depends(verify_p
     try:
         db = firebase_admin.firestore.client()
 
-        # Log in background — non aspettiamo la write Firestore
         asyncio.create_task(
             run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_DIRECTORY', 'User List View')
         )
@@ -263,7 +257,6 @@ async def list_users_secure(request: Request, requester: dict = Depends(verify_p
         else:
             docs = users_ref.stream()
 
-        # Includi sempre l'uid del documento nella risposta
         result = []
         for d in docs:
             data = d.to_dict()
@@ -293,7 +286,6 @@ async def get_user_details_secure(request: Request, target_uid: str, requester: 
             if user_doc.to_dict().get('parent_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        # Log in background — non blocca la risposta
         asyncio.create_task(
             run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_PROFILE', 'Detail View', target_uid)
         )
@@ -313,7 +305,6 @@ async def get_user_details_secure(request: Request, target_uid: str, requester: 
         raise HTTPException(status_code=500, detail="Error fetching profile")
 
 
-# --- MAINTENANCE ---
 @router.get("/config/maintenance")
 @limiter.limit("120/minute")
 async def get_maintenance_status(request: Request, requester: dict = Depends(verify_admin)):

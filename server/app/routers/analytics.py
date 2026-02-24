@@ -29,7 +29,6 @@ def _serialize_timestamp(ts) -> Optional[str]:
     return str(ts)
 
 
-# --- OVERVIEW ---
 @router.get("/overview")
 @limiter.limit("60/minute")
 async def get_overview(request: Request, requester: dict = Depends(verify_professional)):
@@ -42,7 +41,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         role = requester['role']
         uid = requester['uid']
 
-        # --- Conteggio utenti ---
         if role == 'admin':
             users_query = db.collection('users')
         else:
@@ -51,7 +49,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         users_docs = list(users_query.stream())
         total_users = len(users_docs)
 
-        # Conta per ruolo
         role_counts = {}
         active_last_30 = 0
         now = datetime.now(timezone.utc)
@@ -74,7 +71,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
                 except (ValueError, TypeError):
                     pass
 
-        # --- Conteggio diete ---
         if role == 'admin':
             diet_history_query = db.collection('diet_history')
         else:
@@ -83,7 +79,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         diet_docs = list(diet_history_query.stream())
         total_diets = len(diet_docs)
 
-        # Diete ultimo mese
         diets_last_30 = 0
         for doc in diet_docs:
             data = doc.to_dict()
@@ -92,7 +87,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
                 if uploaded_at.replace(tzinfo=timezone.utc) > cutoff_30d:
                     diets_last_30 += 1
 
-        # --- Conteggio messaggi chat ---
         if role == 'admin':
             chats_query = db.collection('chats')
         else:
@@ -103,7 +97,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         chats_docs = list(chats_query.stream())
         total_chats = len(chats_docs)
 
-        # Conta messaggi totali (ultimo mese) dalle subcollection
         total_messages = 0
         for chat_doc in chats_docs:
             data = chat_doc.to_dict()
@@ -124,7 +117,6 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         raise HTTPException(status_code=500, detail="Errore durante il recupero delle metriche")
 
 
-# --- DIET TREND ---
 @router.get("/diet-trend")
 @limiter.limit("60/minute")
 async def get_diet_trend(
@@ -155,7 +147,6 @@ async def get_diet_trend(
 
         docs = list(query.stream())
 
-        # Raggruppa per periodo
         buckets = {}
         for doc in docs:
             data = doc.to_dict()
@@ -167,7 +158,6 @@ async def get_diet_trend(
             if period == 'daily':
                 key = dt.strftime('%Y-%m-%d')
             elif period == 'weekly':
-                # Lunedi della settimana
                 monday = dt - timedelta(days=dt.weekday())
                 key = monday.strftime('%Y-%m-%d')
             else:  # monthly
@@ -175,7 +165,6 @@ async def get_diet_trend(
 
             buckets[key] = buckets.get(key, 0) + 1
 
-        # Ordina per data
         sorted_trend = sorted(buckets.items(), key=lambda x: x[0])
 
         return {
@@ -190,7 +179,6 @@ async def get_diet_trend(
         raise HTTPException(status_code=500, detail="Errore durante il recupero del trend diete")
 
 
-# --- NUTRITIONIST ACTIVITY ---
 @router.get("/nutritionist-activity")
 @limiter.limit("60/minute")
 async def get_nutritionist_activity(request: Request, requester: dict = Depends(verify_professional)):
@@ -203,12 +191,10 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
         role = requester['role']
         uid = requester['uid']
 
-        # Prendi i nutrizionisti
         if role == 'admin':
             nuts_query = db.collection('users').where('role', '==', 'nutritionist')
             nuts_docs = list(nuts_query.stream())
         else:
-            # Nutritionist vede solo se stesso
             nut_doc = db.collection('users').document(uid).get()
             nuts_docs = [nut_doc] if nut_doc.exists else []
 
@@ -217,24 +203,20 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
             nut_data = nut.to_dict()
             nut_id = nut.id
 
-            # Conta clienti
             clients_query = db.collection('users').where('parent_id', '==', nut_id)
             clients = list(clients_query.stream())
             client_count = len(clients)
 
-            # Conta diete caricate
             diets_query = db.collection('diet_history').where('uploadedBy', '==', nut_id)
             diets = list(diets_query.stream())
             diet_count = len(diets)
 
-            # Conta chat attive
             chats_query = db.collection('chats').where(
                 'participants.nutritionistId', '==', nut_id
             )
             chats = list(chats_query.stream())
             chat_count = len(chats)
 
-            # Messaggi totali
             message_count = 0
             for chat_doc in chats:
                 chat_data = chat_doc.to_dict()
@@ -259,7 +241,6 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
         raise HTTPException(status_code=500, detail="Errore durante il recupero attivita nutrizionisti")
 
 
-# --- INACTIVE USERS ---
 @router.get("/inactive-users")
 @limiter.limit("60/minute")
 async def get_inactive_users(
@@ -290,7 +271,6 @@ async def get_inactive_users(
             data = doc.to_dict()
             user_role = data.get('role', '')
 
-            # Salta admin e nutritionist - interessano solo i clienti
             if user_role in ('admin', 'nutritionist'):
                 continue
 
@@ -299,7 +279,6 @@ async def get_inactive_users(
             last_login_str = None
 
             if last_login is None:
-                # Mai fatto login
                 is_inactive = True
                 last_login_str = "Mai"
             elif hasattr(last_login, 'isoformat'):
@@ -329,7 +308,6 @@ async def get_inactive_users(
                     "parent_id": data.get('parent_id'),
                 })
 
-        # Ordina: chi non ha mai fatto login prima, poi per data
         inactive.sort(key=lambda x: x['last_login'] or '')
 
         return {
@@ -343,7 +321,6 @@ async def get_inactive_users(
         raise HTTPException(status_code=500, detail="Errore durante il recupero utenti inattivi")
 
 
-# --- MEAL COMPLETION ---
 @router.get("/meal-completion/{target_uid}")
 @limiter.limit("60/minute")
 async def get_meal_completion(
@@ -360,7 +337,6 @@ async def get_meal_completion(
         role = requester['role']
         uid = requester['uid']
 
-        # Verifica permessi
         if role == 'nutritionist':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
@@ -368,7 +344,6 @@ async def get_meal_completion(
             if user_doc.to_dict().get('parent_id') != uid:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
-        # Pasti pianificati dalla dieta attiva
         diet_docs = list(
             db.collection('users').document(target_uid)
             .collection('diets').limit_to_last(1)
@@ -380,10 +355,8 @@ async def get_meal_completion(
         if diet_docs:
             diet_data = diet_docs[0].to_dict()
             plan = diet_data.get('plan', {})
-            # Conta i pasti giornalieri dal piano
             planned_meals_per_day = len(plan) if isinstance(plan, dict) else 0
 
-        # Tracking pasti ultimi 30 giorni
         now = datetime.now(timezone.utc)
         start_date = now - timedelta(days=30)
 
@@ -393,7 +366,6 @@ async def get_meal_completion(
 
         tracking_docs = list(tracking_query.stream())
 
-        # Conta pasti registrati
         days_tracked = set()
         total_meals_logged = 0
         for doc in tracking_docs:

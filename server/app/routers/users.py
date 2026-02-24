@@ -19,7 +19,6 @@ from app.core.limiter import limiter
 router = APIRouter(prefix="/admin", tags=["users"])
 
 
-# --- SCHEMAS ---
 class CreateUserRequest(BaseModel):
     email: EmailStr
     password: str
@@ -180,7 +179,6 @@ async def admin_update_user(
             fs_update['max_clients'] = body.max_clients
 
         if fs_update:
-            # Audit Log per modifiche sensibili
             if 'max_clients' in fs_update:
                 db.collection('access_logs').add({
                     'requester_id': requester['uid'],
@@ -209,13 +207,11 @@ async def admin_assign_user(
     try:
         db = firebase_admin.firestore.client()
 
-        # --- CHECK CLIENT LIMIT ---
         nut_doc = db.collection('users').document(body.nutritionist_id).get()
         if nut_doc.exists:
             nut_data = nut_doc.to_dict()
             max_clients = nut_data.get('max_clients', settings.DEFAULT_MAX_CLIENTS)
             
-            # Count current clients
             clients_query = db.collection('users').where('parent_id', '==', body.nutritionist_id).count()
             current_clients = clients_query.get()[0][0].value
             
@@ -367,8 +363,6 @@ async def admin_delete_diet(
         logger.error("delete_diet_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'eliminazione della dieta.")
 
-
-# --- SESSION MANAGEMENT ---
 
 @router.post("/session/revoke/{target_uid}")
 @limiter.limit("30/minute")
