@@ -1,3 +1,5 @@
+// Repository centralizzato per tutte le chiamate HTTP al backend Kybo.
+// _pollDietJob: polling asincrono sul job RQ fino a completamento o timeout (~5 min).
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -14,8 +16,6 @@ class AdminRepository {
   Future<String?> _getToken() async {
     return await FirebaseAuth.instance.currentUser?.getIdToken();
   }
-
-  // --- MAINTENANCE & CONFIGURATION ---
 
   Future<bool> getMaintenanceStatus() async {
     final token = await _getToken();
@@ -108,8 +108,6 @@ class AdminRepository {
       throw Exception('Failed to update app config: ${response.body}');
     }
   }
-
-  // --- USER MANAGEMENT ---
 
   Future<void> createUser({
     required String email,
@@ -264,10 +262,8 @@ class AdminRepository {
     final body = await streamResponse.stream.bytesToString();
 
     if (streamResponse.statusCode == 200) {
-      // Fallback sincrono — done.
       return;
     } else if (streamResponse.statusCode == 202) {
-      // Risposta asincrona: il server ha accodato il job, dobbiamo fare polling.
       final data = jsonDecode(body) as Map<String, dynamic>;
       final jobId = data['job_id'] as String;
       await _pollDietJob(jobId, token!);
@@ -276,10 +272,9 @@ class AdminRepository {
     }
   }
 
-  /// Polling sul job RQ fino a completamento o timeout.
   Future<void> _pollDietJob(String jobId, String token) async {
     const pollInterval = Duration(seconds: 3);
-    const maxAttempts = 100; // ~5 minuti totali
+    const maxAttempts = 100;
 
     for (int i = 0; i < maxAttempts; i++) {
       await Future.delayed(pollInterval);
@@ -304,7 +299,6 @@ class AdminRepository {
         final error = data['error'] as String? ?? 'Errore durante il parsing.';
         throw Exception(error);
       }
-      // status == 'queued' | 'started' → continua a fare polling
     }
 
     throw Exception('Timeout: elaborazione dieta troppo lunga.');
@@ -331,8 +325,6 @@ class AdminRepository {
       throw Exception(await response.stream.bytesToString());
     }
   }
-
-  // --- AUDIT & SECURITY ---
 
   Future<void> logDataAccess(String targetUid) async {
     final token = await _getToken();
@@ -373,8 +365,6 @@ class AdminRepository {
     }
   }
 
-  // --- USER MANAGEMENT SECURE ---
-
   Future<List<dynamic>> getSecureUsersList() async {
     final token = await _getToken();
     final response = await http.get(
@@ -404,8 +394,6 @@ class AdminRepository {
     }
   }
 
-  // --- CHAT ATTACHMENTS ---
-  
   Future<Map<String, dynamic>> uploadChatAttachment(PlatformFile file) async {
     final token = await _getToken();
     var uri = Uri.parse('$_baseUrl/chat/upload-attachment');
@@ -414,7 +402,6 @@ class AdminRepository {
     request.headers['Authorization'] = 'Bearer $token';
 
     if (file.bytes != null) {
-      // Web or bytes available
       request.files.add(http.MultipartFile.fromBytes(
         'file',
         file.bytes!,
@@ -422,7 +409,6 @@ class AdminRepository {
         contentType: _getMediaType(file.extension),
       ));
     } else if (file.path != null) {
-      // Mobile/Desktop with path
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         file.path!,
@@ -458,9 +444,6 @@ class AdminRepository {
     }
   }
 
-  // --- TWO-FACTOR AUTHENTICATION ---
-
-  /// Initiates 2FA setup
   Future<Map<String, dynamic>> setup2FA() async {
     final token = await _getToken();
     final response = await http.post(
@@ -475,7 +458,6 @@ class AdminRepository {
     }
   }
 
-  /// Verifies code and enables 2FA
   Future<Map<String, dynamic>> verify2FA({
     required String code,
     required String secret,
@@ -500,7 +482,6 @@ class AdminRepository {
     }
   }
 
-  /// Validates 2FA code for login
   Future<bool> validate2FA(String code) async {
     final token = await _getToken();
     final response = await http.post(
@@ -519,7 +500,6 @@ class AdminRepository {
     return false;
   }
 
-  /// Disables 2FA
   Future<void> disable2FA(String code) async {
     final token = await _getToken();
     final response = await http.post(
@@ -536,7 +516,6 @@ class AdminRepository {
     }
   }
 
-  /// Gets 2FA status
   Future<bool> get2FAStatus() async {
     final token = await _getToken();
     final response = await http.get(
@@ -551,7 +530,6 @@ class AdminRepository {
     return false;
   }
 
-  /// Regenerates backup codes
   Future<List<String>> regenerateBackupCodes(String code) async {
     final token = await _getToken();
     final response = await http.post(
@@ -571,12 +549,9 @@ class AdminRepository {
     }
   }
 
-  // --- NUTRITIONIST REPORTS ---
-
-  /// Fetches monthly report for a nutritionist
   Future<Map<String, dynamic>> getMonthlyReport({
     required String nutritionistId,
-    required String month, // YYYY-MM format
+    required String month,
   }) async {
     final token = await _getToken();
     final response = await http.get(
@@ -591,7 +566,6 @@ class AdminRepository {
     }
   }
 
-  /// Lists available reports
   Future<List<dynamic>> listReports({
     String? nutritionistId,
     int limit = 12,
@@ -615,7 +589,6 @@ class AdminRepository {
     }
   }
 
-  /// Generates (or regenerates) a report
   Future<Map<String, dynamic>> generateReport({
     required String nutritionistId,
     required int year,
@@ -644,9 +617,6 @@ class AdminRepository {
     }
   }
 
-  // --- SERVER METRICS & HEALTH ---
-
-  /// Fetches JSON metrics from /metrics/api (no auth required)
   Future<Map<String, dynamic>> getServerMetrics() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/metrics/api'),
@@ -659,7 +629,6 @@ class AdminRepository {
     }
   }
 
-  /// Fetches detailed health check from /health/detailed (no auth required)
   Future<Map<String, dynamic>> getHealthDetailed() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/health/detailed'),
@@ -672,9 +641,6 @@ class AdminRepository {
     }
   }
 
-  // --- GDPR RETENTION POLICY ---
-
-  /// Fetches GDPR dashboard with retention statistics
   Future<Map<String, dynamic>> getGDPRDashboard() async {
     final token = await _getToken();
     final response = await http.get(

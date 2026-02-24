@@ -10,11 +10,8 @@ def sanitize_error_message(error) -> str:
     Rimuove dati sensibili (token, email) dai messaggi di errore prima di loggarli.
     """
     sanitized = str(error)
-    # Rimuovi token Bearer
     sanitized = re.sub(r'Bearer\s+[A-Za-z0-9\-_\.]+', 'Bearer ***', sanitized)
-    # Rimuovi token generici
     sanitized = re.sub(r'token["\']?\s*:\s*["\']?[A-Za-z0-9\-_\.]+', 'token: ***', sanitized, flags=re.IGNORECASE)
-    # Rimuovi email
     sanitized = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '***@***.***', sanitized)
     return sanitized
 
@@ -30,7 +27,7 @@ def sensitive_data_filter(logger, method_name, event_dict):
         if isinstance(value, str):
             if key.lower() in sensitive_keys or 'token' in key.lower() or 'auth' in key.lower():
                 event_dict[key] = sanitize_error_message(value)
-            elif 'eyJ' in value:  # JWT tokens start with eyJ
+            elif 'eyJ' in value:
                 event_dict[key] = re.sub(
                     r'eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+',
                     '[JWT_REDACTED]',
@@ -43,7 +40,6 @@ def sensitive_data_filter(logger, method_name, event_dict):
     return event_dict
 
 
-# Configura structlog
 structlog.configure(
     processors=[
         structlog.processors.TimeStamper(fmt="iso"),

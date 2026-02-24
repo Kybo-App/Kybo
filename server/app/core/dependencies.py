@@ -1,5 +1,9 @@
 """
 Dipendenze di autenticazione e sicurezza condivise tra i routers.
+
+Token cache in-memory: evita di chiamare Firebase Auth per ogni richiesta.
+TTL di 25 minuti (i token Firebase scadono dopo 60 min).
+Struttura cache: { token_hash -> (decoded_token, expire_at) }
 """
 import os
 import re
@@ -13,25 +17,16 @@ from firebase_admin import auth
 
 from app.core.config import settings
 
-# Semaforo per limitare operazioni pesanti
 heavy_tasks_semaphore = asyncio.Semaphore(settings.MAX_CONCURRENT_HEAVY_TASKS)
 
-# Costanti di sicurezza
 MAX_FILE_SIZE = settings.MAX_FILE_SIZE
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp"}
 
-# Magic bytes per validazione file
 PDF_MAGIC_BYTES = b'%PDF'
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TOKEN CACHE in-memory
-# Evita di chiamare Firebase Auth per ogni richiesta.
-# TTL: 25 minuti (i token Firebase scadono dopo 60 min, usiamo 25 per sicurezza).
-# Struttura: { token_hash → (decoded_token, expire_at) }
-# ─────────────────────────────────────────────────────────────────────────────
 _TOKEN_CACHE: Dict[str, Tuple[dict, float]] = {}
-_TOKEN_CACHE_TTL = 25 * 60  # 25 minuti in secondi
-_TOKEN_CACHE_MAX_SIZE = 500  # max token in cache (evita memory leak)
+_TOKEN_CACHE_TTL = 25 * 60
+_TOKEN_CACHE_MAX_SIZE = 500
 
 def _cache_get(token: str) -> dict | None:
     """Ritorna il decoded token dalla cache se valido, altrimenti None."""
@@ -40,20 +35,17 @@ def _cache_get(token: str) -> dict | None:
         return None
     decoded, expire_at = entry
     if time.monotonic() > expire_at:
-        # Scaduto — rimuovi
         _TOKEN_CACHE.pop(token, None)
         return None
     return decoded
 
 def _cache_set(token: str, decoded: dict) -> None:
     """Salva il decoded token in cache con TTL."""
-    # Evita crescita illimitata: se piena, svuota i più vecchi
     if len(_TOKEN_CACHE) >= _TOKEN_CACHE_MAX_SIZE:
         now = time.monotonic()
         expired_keys = [k for k, (_, exp) in _TOKEN_CACHE.items() if now > exp]
         for k in expired_keys:
             _TOKEN_CACHE.pop(k, None)
-        # Se ancora piena dopo pulizia expired, rimuovi i primi 100
         if len(_TOKEN_CACHE) >= _TOKEN_CACHE_MAX_SIZE:
             keys_to_remove = list(_TOKEN_CACHE.keys())[:100]
             for k in keys_to_remove:
@@ -90,12 +82,10 @@ async def verify_token(authorization: str = Header(...)):
     if not token:
         raise HTTPException(status_code=401, detail="Empty token")
 
-    # Cache hit → risposta immediata, nessuna chiamata Firebase
     cached = _cache_get(token)
     if cached is not None:
         return cached
 
-    # Cache miss → verifica con Firebase Auth e salva in cache
     try:
         decoded_token = await run_in_threadpool(auth.verify_id_token, token)
         _cache_set(token, decoded_token)

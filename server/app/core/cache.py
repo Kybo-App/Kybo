@@ -40,13 +40,11 @@ class RedisCache:
     - Prefisso namespace per evitare collisioni chiavi
     """
 
-    _client = None           # redis.asyncio.Redis
-    _initialized = False     # True dopo primo tentativo di connessione
-    _available = False       # True solo se Redis è davvero raggiungibile
+    _client = None
+    _initialized = False
+    _available = False
 
     NAMESPACE = "kybo"
-
-    # ─── Init & connessione ──────────────────────────────────────────────────
 
     async def _ensure_connected(self) -> bool:
         """
@@ -74,7 +72,6 @@ class RedisCache:
                 retry_on_timeout=False,
                 max_connections=20,
             )
-            # Verifica connessione
             await self._client.ping()
             self._available = True
             logger.info("redis_connected", url=settings.REDIS_URL.split("@")[-1])
@@ -84,12 +81,8 @@ class RedisCache:
 
         return self._available
 
-    # ─── Chiave con namespace ────────────────────────────────────────────────
-
     def _key(self, key: str) -> str:
         return f"{self.NAMESPACE}:{key}"
-
-    # ─── API pubblica ─────────────────────────────────────────────────────────
 
     async def get(self, key: str) -> Optional[Any]:
         """
@@ -205,7 +198,5 @@ class RedisCache:
         """True se Redis è stato connesso con successo."""
         return self._available
 
-
-# ─── Singleton globale ────────────────────────────────────────────────────────
 
 redis_cache = RedisCache()

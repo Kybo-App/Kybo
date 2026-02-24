@@ -1,3 +1,5 @@
+// Entry point dell'app admin Kybo. Inizializza Firebase, LanguageProvider e
+// gestisce il flusso auth: LoginScreen → AdminPasswordGuard → TwoFactorGuard → RoleCheckScreen.
 import 'package:kybo_admin/guards/admin_password_guard.dart';
 import 'package:kybo_admin/guards/two_factor_guard.dart';
 import 'package:kybo_admin/screens/dashboard_screen.dart';
@@ -54,11 +56,11 @@ class AdminApp extends StatelessWidget {
       ],
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Kybo Light BG
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32), // Kybo Green Primary
+          seedColor: const Color(0xFF2E7D32),
           primary: const Color(0xFF2E7D32),
-          secondary: const Color(0xFFE65100), // Kybo Orange Accent
+          secondary: const Color(0xFFE65100),
           surface: Colors.white,
         ),
         cardTheme: CardThemeData(
@@ -171,8 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo Icon
-              Container(
+                      Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
@@ -187,7 +188,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Title
               Text(
                 "Kybo Admin",
                 style: TextStyle(
@@ -203,7 +203,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 36),
 
-              // Email Field
               Container(
                 height: 52,
                 decoration: BoxDecoration(
@@ -233,7 +232,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Password Field with visibility toggle
               Container(
                 height: 52,
                 decoration: BoxDecoration(
@@ -277,7 +275,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Login Button
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
@@ -320,7 +317,6 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           .get();
       final role = doc.data()?['role'];
 
-      // ACCESSO CONSENTITO SOLO A STAFF
       if (role == 'admin' || role == 'nutritionist') {
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -328,13 +324,12 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           );
         }
       } else {
-        // BLOCCA CLIENT E INDEPENDENT
         await FirebaseAuth.instance.signOut();
 
         if (mounted) {
           showDialog(
             context: context,
-            barrierDismissible: false, // L'utente deve premere il tasto
+            barrierDismissible: false,
             builder: (ctx) => AlertDialog(
               title: const Text("Accesso Web non consentito"),
               content: const Text(
@@ -344,8 +339,7 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(ctx).pop(); // Chiude il dialog
-                    // Rimanda al login pulito
+                    Navigator.of(ctx).pop();
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     );
