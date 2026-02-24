@@ -82,6 +82,33 @@ class AdminRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getAppConfig() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/config/app'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    }
+    return {};
+  }
+
+  Future<void> setAppConfig(Map<String, dynamic> config) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/config/app'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(config),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update app config: ${response.body}');
+    }
+  }
+
   // --- USER MANAGEMENT ---
 
   Future<void> createUser({
