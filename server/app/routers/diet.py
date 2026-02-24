@@ -17,9 +17,10 @@ from app.core.limiter import limiter
 
 from app.core.dependencies import (
     verify_token, verify_professional, get_current_uid,
-    heavy_tasks_semaphore, MAX_FILE_SIZE, validate_file_content, validate_extension
+    heavy_tasks_semaphore, validate_file_content, validate_extension
 )
 from app.core.logging import logger, sanitize_error_message
+from app.services.app_config_service import get_app_config
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
@@ -198,8 +199,8 @@ async def upload_diet(
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
     file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+    if len(file_content) > get_app_config().get("max_file_size_mb", 10) * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File troppo grande.")
 
     if not validate_file_content(file_content, '.pdf'):
         raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
@@ -329,8 +330,8 @@ async def upload_diet_admin(
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
     file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+    if len(file_content) > get_app_config().get("max_file_size_mb", 10) * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File troppo grande.")
 
     if not validate_file_content(file_content, '.pdf'):
         raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
@@ -450,8 +451,8 @@ async def scan_receipt(
     ext = validate_extension(file.filename or "")
 
     file_content = await file.read()
-    if len(file_content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File troppo grande. Massimo 10MB.")
+    if len(file_content) > get_app_config().get("max_file_size_mb", 10) * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File troppo grande.")
 
     if not validate_file_content(file_content, ext):
         raise HTTPException(status_code=400, detail="Il file non è un'immagine valida.")

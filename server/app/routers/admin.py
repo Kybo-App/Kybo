@@ -19,6 +19,7 @@ from app.core.dependencies import verify_admin, verify_professional
 from app.core.logging import logger, sanitize_error_message
 from app.broadcast import broadcast_message
 from app.core.limiter import limiter
+from app.services.app_config_service import get_app_config, invalidate_app_config_cache
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -367,3 +368,38 @@ async def cancel_maintenance_schedule(request: Request, requester: dict = Depend
         "maintenance_message": firestore.DELETE_FIELD
     })
     return {"status": "cancelled"}
+
+
+class AppConfigRequest(BaseModel):
+    gemini_model: Optional[str] = None
+    gemini_global_prompt_prefix: Optional[str] = None
+    notification_diet_title: Optional[str] = None
+    notification_diet_body: Optional[str] = None
+    max_file_size_mb: Optional[int] = None
+    max_pdf_pages: Optional[int] = None
+
+
+@router.get("/config/app")
+@limiter.limit("120/minute")
+async def get_app_config_endpoint(request: Request, requester: dict = Depends(verify_admin)):
+    """Legge la configurazione app corrente (Gemini, notifiche, limiti upload)."""
+    return get_app_config()
+
+
+@router.post("/config/app")
+@limiter.limit("30/minute")
+async def set_app_config_endpoint(
+    request: Request,
+    body: AppConfigRequest,
+    requester: dict = Depends(verify_admin),
+):
+    """Aggiorna la configurazione app in Firestore e invalida la cache locale."""
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nessun campo da aggiornare.")
+    updates["updated_by"] = requester["uid"]
+    firebase_admin.firestore.client().collection("config").document("global").set(
+        updates, merge=True
+    )
+    invalidate_app_config_cache()
+    return {"updated": list(updates.keys())}

@@ -3,6 +3,8 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 import os
 
+from app.services.app_config_service import get_app_config
+
 logger = logging.getLogger(__name__)
 
 class NotificationService:
@@ -44,10 +46,11 @@ class NotificationService:
             return
 
         try:
+            cfg = get_app_config()
             message = messaging.Message(
                 notification=messaging.Notification(
-                    title="Dieta Pronta! 🥗",
-                    body="Il tuo piano nutrizionale è stato elaborato."
+                    title=cfg["notification_diet_title"],
+                    body=cfg["notification_diet_body"],
                 ),
                 token=fcm_token,
             )
