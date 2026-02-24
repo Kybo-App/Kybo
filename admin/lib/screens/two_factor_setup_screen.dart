@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
-/// Two-Factor Authentication Setup Screen
-/// Allows users to enable/disable 2FA
+// Schermata configurazione 2FA: attivazione con codice TOTP, visualizzazione secret e salvataggio codici di backup.
+// _verifyAndEnable — verifica il codice e abilita 2FA restituendo i backup codes; _disable2FA — disabilita con conferma codice.
 class TwoFactorSetupScreen extends StatefulWidget {
   const TwoFactorSetupScreen({super.key});
 
@@ -18,15 +18,12 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   bool _isLoading = true;
   bool _is2FAEnabled = false;
 
-  // Setup state
   bool _isSettingUp = false;
   String? _secret;
 
-  // Verification
   final _codeController = TextEditingController();
   bool _isVerifying = false;
 
-  // Backup codes
   List<String>? _backupCodes;
 
   @override
@@ -246,17 +243,14 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   }
 
   Widget _buildContent() {
-    // Show backup codes if just enabled
     if (_backupCodes != null) {
       return _buildBackupCodesView();
     }
 
-    // Show setup wizard
     if (_isSettingUp && _secret != null) {
       return _buildSetupWizard();
     }
 
-    // Show status
     return _buildStatusView();
   }
 
@@ -269,7 +263,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Status icon
               Container(
                 width: 100,
                 height: 100,
@@ -287,7 +280,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Status text
               Text(
                 _is2FAEnabled
                     ? "2FA Attivo"
@@ -310,7 +302,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Action button
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
@@ -336,7 +327,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              // Header
               Icon(
                 Icons.qr_code_2_rounded,
                 size: 64,
@@ -353,7 +343,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Instructions
               PillCard(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -369,7 +358,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // QR Code placeholder (in real app, generate actual QR)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -379,7 +367,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                 ),
                 child: Column(
                   children: [
-                    // In real implementation, use qr_flutter package
                     Container(
                       width: 200,
                       height: 200,
@@ -407,7 +394,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Manual entry secret
                     Text(
                       "Oppure inserisci manualmente:",
                       style: TextStyle(
@@ -442,7 +428,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Verification code input
               TextField(
                 controller: _codeController,
                 keyboardType: TextInputType.number,
@@ -466,7 +451,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Actions
               Row(
                 children: [
                   Expanded(
@@ -540,7 +524,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              // Success icon
               Container(
                 width: 80,
                 height: 80,
@@ -571,7 +554,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Backup codes
               PillCard(
                 padding: const EdgeInsets.all(20),
                 backgroundColor: KyboColors.warning.withValues(alpha: 0.05),
@@ -628,7 +610,6 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Continue button
               SizedBox(
                 width: double.infinity,
                 child: PillButton(

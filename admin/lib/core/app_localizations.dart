@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Kybo Admin - Sistema di localizzazione (italiano + inglese)
-/// Aggiungere nuove chiavi in AppLocalizations e nei delegate _it / _en
+// Sistema di localizzazione italiano/inglese per l'admin panel.
+// Aggiungere nuove chiavi in AppLocalizations e nei delegate corrispondenti.
 
 class AppLocalizations {
   final Locale locale;
@@ -16,9 +16,6 @@ class AppLocalizations {
 
   bool get isItalian => locale.languageCode == 'it';
 
-  // ───────────────────────────────────────────────────────────────
-  // NAVIGATION
-  // ───────────────────────────────────────────────────────────────
   String get navUsers => isItalian ? 'Utenti' : 'Users';
   String get navChat => 'Chat';
   String get navCalculator => isItalian ? 'Calcolatrice' : 'Calculator';
@@ -28,9 +25,6 @@ class AppLocalizations {
   String get navGdpr => 'GDPR';
   String get navAuditLog => isItalian ? 'Audit Log' : 'Audit Log';
 
-  // ───────────────────────────────────────────────────────────────
-  // COMMON
-  // ───────────────────────────────────────────────────────────────
   String get confirm => isItalian ? 'Conferma' : 'Confirm';
   String get cancel => isItalian ? 'Annulla' : 'Cancel';
   String get save => isItalian ? 'Salva' : 'Save';
@@ -46,9 +40,6 @@ class AppLocalizations {
   String get user => isItalian ? 'Utente' : 'User';
   String get noResults => isItalian ? 'Nessun risultato' : 'No results';
 
-  // ───────────────────────────────────────────────────────────────
-  // AUTH
-  // ───────────────────────────────────────────────────────────────
   String get logout => isItalian ? 'Esci' : 'Logout';
   String get logoutConfirm =>
       isItalian ? 'Sei sicuro di voler uscire?' : 'Are you sure you want to logout?';
@@ -63,16 +54,10 @@ class AppLocalizations {
   String get email => 'Email';
   String get password => isItalian ? 'Password' : 'Password';
 
-  // ───────────────────────────────────────────────────────────────
-  // DASHBOARD
-  // ───────────────────────────────────────────────────────────────
   String get adminPanel => isItalian ? 'Admin Panel' : 'Admin Panel';
   String get darkMode => isItalian ? 'Modalità Scura' : 'Dark Mode';
   String get lightMode => isItalian ? 'Modalità Chiara' : 'Light Mode';
 
-  // ───────────────────────────────────────────────────────────────
-  // GLOBAL SEARCH
-  // ───────────────────────────────────────────────────────────────
   String get globalSearch =>
       isItalian ? 'Ricerca Globale' : 'Global Search';
   String get searchHint =>
@@ -87,9 +72,6 @@ class AppLocalizations {
           ? 'Inizia a digitare per cercare...'
           : 'Start typing to search...';
 
-  // ───────────────────────────────────────────────────────────────
-  // KEYBOARD SHORTCUTS DIALOG
-  // ───────────────────────────────────────────────────────────────
   String get keyboardShortcuts =>
       isItalian ? 'Scorciatoie da tastiera' : 'Keyboard Shortcuts';
   String get shortcutNewUser =>
@@ -101,9 +83,6 @@ class AppLocalizations {
   String get shortcutTheme =>
       isItalian ? 'Cambia tema' : 'Toggle theme';
 
-  // ───────────────────────────────────────────────────────────────
-  // USER MANAGEMENT
-  // ───────────────────────────────────────────────────────────────
   String get newUser => isItalian ? 'Nuovo Utente' : 'New User';
   String get searchUser =>
       isItalian ? 'Cerca utente per nome o email...' : 'Search user by name or email...';
@@ -112,9 +91,6 @@ class AppLocalizations {
   String get noUsersFound =>
       isItalian ? 'Nessun utente trovato' : 'No users found';
 
-  // ───────────────────────────────────────────────────────────────
-  // LANGUAGE
-  // ───────────────────────────────────────────────────────────────
   String get language => isItalian ? 'Lingua' : 'Language';
   String get italian => isItalian ? 'Italiano' : 'Italian';
   String get english => isItalian ? 'Inglese' : 'English';

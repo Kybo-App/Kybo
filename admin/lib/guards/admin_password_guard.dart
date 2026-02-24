@@ -1,3 +1,4 @@
+// Guard che reindirizza a ChangePasswordScreen se requires_password_change è true.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,7 +11,6 @@ class AdminPasswordGuard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    // Se non loggato, mostra child (LoginScreen)
     if (user == null) return child;
 
     return StreamBuilder<DocumentSnapshot>(
@@ -29,11 +29,9 @@ class AdminPasswordGuard extends StatelessWidget {
         bool mustChange = data?['requires_password_change'] ?? false;
 
         if (mustChange) {
-          // BLOCCA: Mostra solo la schermata di cambio password
           return const ChangePasswordScreen();
         }
 
-        // PASSA: Mostra la schermata successiva (RoleCheck -> Dashboard)
         return child;
       },
     );

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
-/// Dashboard metriche server — visibile solo agli admin.
-/// Legge /metrics/api e /health/detailed dal backend.
+// Dashboard metriche server: stato servizi, chiamate Gemini, cache hit ratio e infrastruttura (OCR, Redis).
+// Legge /metrics/api e /health/detailed dal backend via AdminRepository.
 class ServerMetricsView extends StatefulWidget {
   const ServerMetricsView({super.key});
 
@@ -53,10 +53,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
       }
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -165,9 +161,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ═══════════════════════════════════════════════════════════════
-          // STAT CARD SUMMARY ROW
-          // ═══════════════════════════════════════════════════════════════
           Row(
             children: [
               Expanded(
@@ -223,18 +216,12 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
 
           const SizedBox(height: 28),
 
-          // ═══════════════════════════════════════════════════════════════
-          // STATO SERVIZI
-          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Stato Servizi', Icons.health_and_safety_rounded),
           const SizedBox(height: 12),
           _buildHealthSection(),
 
           const SizedBox(height: 28),
 
-          // ═══════════════════════════════════════════════════════════════
-          // GEMINI AI
-          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Gemini AI', Icons.auto_awesome_rounded),
           const SizedBox(height: 12),
           Row(
@@ -264,18 +251,12 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
 
           const SizedBox(height: 28),
 
-          // ═══════════════════════════════════════════════════════════════
-          // CACHE
-          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Cache Hit Ratio', Icons.layers_rounded),
           const SizedBox(height: 12),
           _buildCacheSection(diet, sug),
 
           const SizedBox(height: 28),
 
-          // ═══════════════════════════════════════════════════════════════
-          // OCR + REDIS (riga finale)
-          // ═══════════════════════════════════════════════════════════════
           _buildSectionTitle('Infrastruttura', Icons.dns_rounded),
           const SizedBox(height: 12),
           Row(
@@ -292,10 +273,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SEZIONI
-  // ─────────────────────────────────────────────────────────────────────────
-
   Widget _buildHealthSection() {
     final checks = (_health?['checks'] as Map<String, dynamic>?) ?? {};
     final overallStatus = _health?['status'] as String? ?? 'unknown';
@@ -311,7 +288,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Overall badge row
           Row(
             children: [
               _StatusChip(
@@ -341,7 +317,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
             ],
           ),
           const SizedBox(height: 16),
-          // Servizi in riga
           Row(
             children: checks.entries.map((e) {
               final svc = e.value as Map<String, dynamic>;
@@ -430,7 +405,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
             padding: const EdgeInsets.only(bottom: 14),
             child: Row(
               children: [
-                // Label
                 SizedBox(
                   width: 110,
                   child: Column(
@@ -455,7 +429,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Bar + ratio
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,10 +607,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────────────────────────────────
-
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
@@ -682,10 +651,6 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
     return 0.0;
   }
 }
-
-// =============================================================================
-// WIDGET: SUMMARY CARD (riga in cima)
-// =============================================================================
 
 class _SummaryCard extends StatelessWidget {
   final IconData icon;
@@ -754,10 +719,6 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// WIDGET: SERVICE CARD
-// =============================================================================
-
 class _ServiceCard extends StatelessWidget {
   final String name;
   final String status;
@@ -822,10 +783,6 @@ class _ServiceCard extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// WIDGET: GEMINI CARD
-// =============================================================================
 
 class _GeminiCard extends StatelessWidget {
   final String title;
@@ -898,10 +855,6 @@ class _GeminiCard extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// WIDGET: STATUS CHIP
-// =============================================================================
-
 class _StatusChip extends StatelessWidget {
   final String label;
   final Color color;
@@ -939,10 +892,6 @@ class _StatusChip extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// WIDGET: METRIC ROW
-// =============================================================================
 
 class _MetricRow extends StatelessWidget {
   final String label;

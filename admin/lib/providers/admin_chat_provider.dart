@@ -5,12 +5,9 @@ import 'package:file_picker/file_picker.dart';
 import '../models/chat.dart';
 import '../admin_repository.dart';
 
-/// Provider for managing chat functionality in admin dashboard
-///
-/// Visibilità chat per ruolo:
-/// - ADMIN: vede solo chat admin-nutritionist dove è partecipante (clientId)
-/// - NUTRITIONIST: vede tutte le chat dove è nutritionistId
-///   (sia nutritionist-client che admin-nutritionist)
+// Provider per la gestione chat dell'admin.
+// Admin vede solo chat admin-nutritionist (come clientId); nutritionist vede tutte le sue chat.
+// resolveUserName — recupera nome da Firestore con caching; prefetchNamesForChats — pre-carica nomi in bulk.
 class AdminChatProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -23,14 +20,10 @@ class AdminChatProvider with ChangeNotifier {
   String? get userRole => _userRole;
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Cache UID → "Nome Cognome" per evitare letture Firestore ripetute
   final Map<String, String> _userNameCache = {};
 
-  /// Restituisce il nome cached per un uid (null se non ancora caricato).
   String? getCachedName(String uid) => _userNameCache[uid];
 
-  /// Recupera first_name + last_name da Firestore, caching per sessione.
-  /// Non lancia mai eccezioni — usa [fallback] in caso di errore.
   Future<String> resolveUserName(String uid, {String fallback = ''}) async {
     if (_userNameCache.containsKey(uid)) return _userNameCache[uid]!;
     try {
@@ -53,7 +46,6 @@ class AdminChatProvider with ChangeNotifier {
     return _userNameCache[uid]!;
   }
 
-  /// Pre-fetch dei nomi per tutte le chat nutritionist-client non ancora in cache.
   Future<void> prefetchNamesForChats(List<Chat> chats) async {
     final uids = chats
         .where((c) =>
@@ -75,7 +67,6 @@ class AdminChatProvider with ChangeNotifier {
     super.dispose();
   }
 
-  /// Initialize: fetch user role
   Future<void> _ensureRole() async {
     if (_userRole != null) return;
     final user = _auth.currentUser;
@@ -86,7 +77,7 @@ class AdminChatProvider with ChangeNotifier {
           await _firestore.collection('users').doc(user.uid).get();
       if (_isDisposed) return;
       _userRole = userDoc.data()?['role'] as String?;
-      notifyListeners(); // Notify UI that role is now available
+      notifyListeners();
     } catch (e) {
       debugPrint('Error fetching user role: $e');
       if (_isDisposed) return;
@@ -95,7 +86,6 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Get chats for current user, filtered by role
   Stream<List<Chat>> getChatsForCurrentUser() async* {
     final user = _auth.currentUser;
     if (user == null) {
@@ -107,14 +97,12 @@ class AdminChatProvider with ChangeNotifier {
 
     Query query;
     if (_userRole == 'admin') {
-      // Admin vede SOLO le chat admin-nutritionist dove è clientId
       query = _firestore
           .collection('chats')
           .where('chatType', isEqualTo: 'admin-nutritionist')
           .where('participants.clientId', isEqualTo: user.uid)
           .orderBy('lastMessageTime', descending: true);
     } else {
-      // Nutritionist vede tutte le chat dove è nutritionistId
       query = _firestore
           .collection('chats')
           .where('participants.nutritionistId', isEqualTo: user.uid)
@@ -126,18 +114,14 @@ class AdminChatProvider with ChangeNotifier {
     });
   }
 
-  /// Get the correct unread count for current user based on role + chatType
   int getMyUnreadCount(Chat chat) {
     if (_userRole == 'admin') {
-      // Admin: unread stored in 'client' field (admin is clientId)
       return chat.unreadCountClient;
     } else {
-      // Nutritionist: unread stored in 'nutritionist' field
       return chat.unreadCountNutritionist;
     }
   }
 
-  /// Get messages for a specific chat
   Stream<List<ChatMessage>> getMessagesForChat(String chatId) {
     return _firestore
         .collection('chats')
@@ -150,7 +134,6 @@ class AdminChatProvider with ChangeNotifier {
             .toList());
   }
 
-  /// Send a message as nutritionist or admin
   Future<void> sendMessage(
     String chatId, 
     String messageText, {
@@ -182,7 +165,6 @@ class AdminChatProvider with ChangeNotifier {
           .collection('messages')
           .add(message.toMap());
 
-      // Determine unread update based on chatType
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
       final chatType = chatDoc.data()?['chatType'] ?? 'nutritionist-client';
 
@@ -200,7 +182,6 @@ class AdminChatProvider with ChangeNotifier {
           };
         }
       } else {
-        // nutritionist-client: nutri sends -> increment client, reset nutri
         unreadUpdate = {
           'client': FieldValue.increment(1),
           'nutritionist': 0,
@@ -219,7 +200,6 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Mark messages as read for current user
   Future<void> markAsRead(String chatId) async {
     try {
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
@@ -268,7 +248,6 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Select a chat
   void selectChat(String? chatId) {
     _selectedChatId = chatId;
     notifyListeners();
@@ -278,7 +257,6 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Get list of nutritionists for creating a new chat (admin only)
   Future<List<Map<String, dynamic>>> getNutritionists() async {
     try {
       final snapshot = await _firestore
@@ -301,7 +279,6 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Create a new admin-nutritionist chat
   Future<void> createChatWithNutritionist({
     required String nutritionistId,
     required String nutritionistName,
@@ -311,7 +288,6 @@ class AdminChatProvider with ChangeNotifier {
     if (user == null) return;
 
     try {
-      // Check if chat already exists
       final existing = await _firestore
           .collection('chats')
           .where('chatType', isEqualTo: 'admin-nutritionist')
@@ -321,12 +297,10 @@ class AdminChatProvider with ChangeNotifier {
           .get();
 
       if (existing.docs.isNotEmpty) {
-        // Chat already exists, select it
         selectChat(existing.docs.first.id);
         return;
       }
 
-      // Create new chat
       final chatRef = _firestore.collection('chats').doc();
       await chatRef.set({
         'chatType': 'admin-nutritionist',
@@ -352,12 +326,10 @@ class AdminChatProvider with ChangeNotifier {
     }
   }
 
-  /// Upload a file attachment
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
     return await _repo.uploadChatAttachment(file);
   }
 
-  /// Send a broadcast message to all clients
   Future<Map<String, dynamic>> broadcastMessage(String message) async {
     return await _repo.broadcastMessage(message);
   }

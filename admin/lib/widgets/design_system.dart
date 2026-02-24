@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Sistema di Design Kybo Admin - Pill-shaped UI
-/// Tutti i componenti hanno forme ellittiche/pill
-/// Supporta Dark Mode
-
-// =============================================================================
-// THEME PROVIDER
-// =============================================================================
-
+// Sistema di design Kybo Admin: componenti pill-shaped con supporto dark mode.
+// KyboThemeProvider — singleton ChangeNotifier per toggle dark mode globale; KyboColors — getter dinamici luce/buio.
 class KyboThemeProvider extends ChangeNotifier {
   static final KyboThemeProvider _instance = KyboThemeProvider._internal();
   factory KyboThemeProvider() => _instance;
@@ -27,69 +21,53 @@ class KyboThemeProvider extends ChangeNotifier {
   }
 }
 
-// =============================================================================
-// COSTANTI DI DESIGN
-// =============================================================================
-
 class KyboColors {
-  // Theme provider instance
   static final _theme = KyboThemeProvider();
   static bool get isDark => _theme.isDarkMode;
 
-  // Primary
   static const Color primary = Color(0xFF2E7D32);
   static const Color primaryLight = Color(0xFF60AD5E);
   static const Color primaryDark = Color(0xFF005005);
 
-  // Backgrounds - Light
   static const Color _backgroundLight = Color(0xFFF8FAFC);
   static const Color _surfaceLight = Colors.white;
 
-  // Backgrounds - Dark
   static const Color _backgroundDark = Color(0xFF0F172A);
   static const Color _surfaceDark = Color(0xFF1E293B);
   static const Color _surfaceElevatedDark = Color(0xFF334155);
 
-  // Dynamic getters
   static Color get background => isDark ? _backgroundDark : _backgroundLight;
   static Color get surface => isDark ? _surfaceDark : _surfaceLight;
   static Color get surfaceElevated =>
       isDark ? _surfaceElevatedDark : _surfaceLight;
 
-  // Text - Light
   static const Color _textPrimaryLight = Color(0xFF1E293B);
   static const Color _textSecondaryLight = Color(0xFF64748B);
   static const Color _textMutedLight = Color(0xFF94A3B8);
 
-  // Text - Dark
   static const Color _textPrimaryDark = Color(0xFFF1F5F9);
   static const Color _textSecondaryDark = Color(0xFF94A3B8);
   static const Color _textMutedDark = Color(0xFF64748B);
 
-  // Dynamic text getters
   static Color get textPrimary => isDark ? _textPrimaryDark : _textPrimaryLight;
   static Color get textSecondary =>
       isDark ? _textSecondaryDark : _textSecondaryLight;
   static Color get textMuted => isDark ? _textMutedDark : _textMutedLight;
 
-  // Accents (same for both modes)
   static const Color accent = Color(0xFF3B82F6);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
 
-  // Macro nutrient colors
   static const Color protein = Color(0xFF3B82F6);
   static const Color carbs = Color(0xFFF59E0B);
   static const Color fat = Color(0xFFEF4444);
 
-  // Role Colors (same for both modes)
   static const Color roleAdmin = Color(0xFF8B5CF6);
   static const Color roleNutritionist = Color(0xFF3B82F6);
   static const Color roleIndependent = Color(0xFFF59E0B);
   static const Color roleUser = Color(0xFF10B981);
 
-  // Shadows - Darker and more visible
   static List<BoxShadow> get softShadow => [
     BoxShadow(
       color: isDark
@@ -112,7 +90,6 @@ class KyboColors {
     ),
   ];
 
-  // Border colors
   static Color get border => isDark
       ? Colors.white.withValues(alpha: 0.1)
       : Colors.black.withValues(alpha: 0.08);

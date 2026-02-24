@@ -1,3 +1,5 @@
+// Vista audit log: tabella real-time dei log di accesso da Firestore con esportazione CSV.
+// _exportCsv — converte i documenti in CSV e triggera il download via html.AnchorElement.
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +15,6 @@ class AuditLogView extends StatelessWidget {
   Future<void> _exportCsv(List<QueryDocumentSnapshot> docs) async {
     List<List<dynamic>> rows = [];
 
-    // Intestazioni
     rows.add([
       "Data e Ora",
       "Admin Richiedente (ID)",
@@ -23,7 +24,6 @@ class AuditLogView extends StatelessWidget {
       "User Agent",
     ]);
 
-    // Dati
     for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
       final timestamp = data['timestamp'] as Timestamp?;
@@ -41,10 +41,8 @@ class AuditLogView extends StatelessWidget {
       ]);
     }
 
-    // Conversione in stringa CSV
     String csvData = const ListToCsvConverter().convert(rows);
 
-    // Download del file (Web)
     final bytes = utf8.encode(csvData);
     final blob = html.Blob([bytes]);
     final url = html.Url.createObjectUrlFromBlob(blob);
@@ -79,16 +77,8 @@ class AuditLogView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ═══════════════════════════════════════════════════════════════════
-        // HEADER
-        // ═══════════════════════════════════════════════════════════════════
         _buildHeader(),
-
         const SizedBox(height: 24),
-
-        // ═══════════════════════════════════════════════════════════════════
-        // LOGS TABLE
-        // ═══════════════════════════════════════════════════════════════════
         Expanded(child: _buildLogsTable()),
       ],
     );
@@ -131,7 +121,6 @@ class AuditLogView extends StatelessWidget {
             ],
           ),
         ),
-        // Export Button
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('access_logs')
@@ -252,7 +241,7 @@ class AuditLogView extends StatelessWidget {
 
         return PillCard(
           padding: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias, // Masks content to pill shape
+          clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
             scrollDirection: Axis.vertical,
             child: SingleChildScrollView(
@@ -334,7 +323,6 @@ class AuditLogView extends StatelessWidget {
 
                   return DataRow(
                     cells: [
-                      // Date/Time
                       DataCell(
                         Row(
                           mainAxisSize: MainAxisSize.min,

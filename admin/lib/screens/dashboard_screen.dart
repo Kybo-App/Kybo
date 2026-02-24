@@ -1,3 +1,5 @@
+// Schermata principale del dashboard admin: top bar con navigazione pill, ricerca globale e scorciatoie da tastiera.
+// _handleKeyEvent — gestisce Ctrl+K/N/1-8 e Shift+7; _openGlobalSearch — dialog ricerca utenti Firestore.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +51,6 @@ class _DashboardContentState extends State<_DashboardContent> {
   bool _isAdmin = false;
   bool _isLoading = true;
 
-  // Focus node per catturare le scorciatoie da tastiera
   final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
@@ -122,10 +123,6 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RICERCA GLOBALE
-  // ─────────────────────────────────────────────────────────────────────────
-
   void _openGlobalSearch(List<_NavItem> navItems) {
     showDialog(
       context: context,
@@ -140,10 +137,6 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SCORCIATOIE DA TASTIERA
-  // ─────────────────────────────────────────────────────────────────────────
-
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event, List<_NavItem> navItems) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
@@ -151,19 +144,16 @@ class _DashboardContentState extends State<_DashboardContent> {
         HardwareKeyboard.instance.isMetaPressed;
 
     if (isCtrl) {
-      // Ctrl+K → Ricerca globale
       if (event.logicalKey == LogicalKeyboardKey.keyK) {
         _openGlobalSearch(navItems);
         return KeyEventResult.handled;
       }
 
-      // Ctrl+N → Nuovo utente (naviga alla tab Utenti)
       if (event.logicalKey == LogicalKeyboardKey.keyN) {
         _onNavSelected(0);
         return KeyEventResult.handled;
       }
 
-      // Ctrl+1..8 → Navigazione tab
       final digitMap = {
         LogicalKeyboardKey.digit1: 0,
         LogicalKeyboardKey.digit2: 1,
@@ -183,9 +173,6 @@ class _DashboardContentState extends State<_DashboardContent> {
       }
     }
 
-    // Shift+7 → mostra dialog scorciatoie
-    // Intercetta sia slash+shift (layout US) che digit7+shift (layout IT)
-    // e consuma l'evento per evitare che il carattere '?' venga scritto
     final isShift = HardwareKeyboard.instance.isShiftPressed;
     if (isShift &&
         (event.logicalKey == LogicalKeyboardKey.slash ||
@@ -240,10 +227,6 @@ class _DashboardContentState extends State<_DashboardContent> {
       ),
     );
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -321,14 +304,7 @@ class _DashboardContentState extends State<_DashboardContent> {
         backgroundColor: KyboColors.background,
         body: Column(
           children: [
-            // ═══════════════════════════════════════════════════════════════
-            // TOP BAR
-            // ═══════════════════════════════════════════════════════════════
             _buildTopBar(navItems, l10n),
-
-            // ═══════════════════════════════════════════════════════════════
-            // CONTENT AREA
-            // ═══════════════════════════════════════════════════════════════
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -354,23 +330,10 @@ class _DashboardContentState extends State<_DashboardContent> {
       ),
       child: Row(
         children: [
-          // ─────────────────────────────────────────────────────────────────
-          // LOGO
-          // ─────────────────────────────────────────────────────────────────
           _buildLogo(l10n),
-
           const SizedBox(width: 48),
-
-          // ─────────────────────────────────────────────────────────────────
-          // NAVIGATION PILLS
-          // ─────────────────────────────────────────────────────────────────
           _buildNavigation(navItems),
-
           const Spacer(),
-
-          // ─────────────────────────────────────────────────────────────────
-          // USER SECTION
-          // ─────────────────────────────────────────────────────────────────
           _buildUserSection(navItems, l10n),
         ],
       ),
@@ -454,7 +417,6 @@ class _DashboardContentState extends State<_DashboardContent> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Ricerca Globale (Ctrl+K)
         PillIconButton(
           icon: Icons.search_rounded,
           color: KyboColors.textSecondary,
@@ -464,12 +426,10 @@ class _DashboardContentState extends State<_DashboardContent> {
 
         const SizedBox(width: 4),
 
-        // Toggle Lingua
         _LanguageToggle(provider: langProvider, l10n: l10n),
 
         const SizedBox(width: 4),
 
-        // Dark Mode Toggle
         PillIconButton(
           icon: KyboColors.isDark
               ? Icons.light_mode_rounded
@@ -484,7 +444,6 @@ class _DashboardContentState extends State<_DashboardContent> {
 
         const SizedBox(width: 8),
 
-        // User Info
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -494,7 +453,6 @@ class _DashboardContentState extends State<_DashboardContent> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Avatar
               Container(
                 width: 36,
                 height: 36,
@@ -517,7 +475,6 @@ class _DashboardContentState extends State<_DashboardContent> {
               ),
               const SizedBox(width: 12),
 
-              // Name & Role
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -540,7 +497,6 @@ class _DashboardContentState extends State<_DashboardContent> {
 
         const SizedBox(width: 12),
 
-        // Scorciatoie (?)
         PillIconButton(
           icon: Icons.keyboard_rounded,
           color: KyboColors.textSecondary,
@@ -550,7 +506,6 @@ class _DashboardContentState extends State<_DashboardContent> {
 
         const SizedBox(width: 4),
 
-        // Logout Button
         PillIconButton(
           icon: Icons.logout_rounded,
           color: KyboColors.error,
@@ -561,10 +516,6 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 }
-
-// =============================================================================
-// LANGUAGE TOGGLE WIDGET
-// =============================================================================
 
 class _LanguageToggle extends StatelessWidget {
   final LanguageProvider provider;
@@ -606,10 +557,6 @@ class _LanguageToggle extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// RICERCA GLOBALE DIALOG
-// =============================================================================
 
 class _GlobalSearchDialog extends StatefulWidget {
   final List<_NavItem> navItems;
@@ -673,14 +620,13 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
             title: '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'.trim(),
             subtitle: data['email'] ?? '',
             badge: role,
-            tabIndex: 0, // naviga alla tab Utenti
+            tabIndex: 0,
           ));
         }
       }
 
       if (mounted) setState(() => _results = results);
     } catch (_) {
-      // Ignora errori di ricerca
     } finally {
       if (mounted) setState(() => _isSearching = false);
     }
@@ -702,7 +648,6 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ─── Search Bar ────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
               child: Container(
@@ -755,7 +700,6 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
 
             const Divider(height: 1),
 
-            // ─── Results ──────────────────────────────────────────────────
             Flexible(
               child: _query.isEmpty
                   ? _buildEmptyState(l10n)
@@ -764,7 +708,6 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
                       : _buildResults(l10n),
             ),
 
-            // ─── Footer hint ──────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -807,7 +750,6 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
             style: TextStyle(color: KyboColors.textMuted, fontSize: 14),
           ),
           const SizedBox(height: 8),
-          // Mostra tab navigabili come suggerimenti
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -913,10 +855,6 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
   }
 }
 
-// =============================================================================
-// HELPER WIDGETS
-// =============================================================================
-
 class _ShortcutRow extends StatelessWidget {
   final String keys;
   final String description;
@@ -968,10 +906,6 @@ class _KeyChip extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// DATA MODELS
-// =============================================================================
 
 class _NavItem {
   final IconData icon;

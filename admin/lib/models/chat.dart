@@ -1,18 +1,19 @@
+// Modelli Firestore per chat e messaggi.
+// Chat.fromFirestore — deserializza documento chats/; ChatMessage.fromFirestore — deserializza messaggi.
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Model for a chat between client and nutritionist
 class Chat {
-  final String id; // chat document ID
+  final String id;
   final String clientId;
   final String nutritionistId;
   final String clientName;
   final String clientEmail;
   final String lastMessage;
   final DateTime lastMessageTime;
-  final String lastMessageSender; // 'client' or 'nutritionist' or 'admin'
+  final String lastMessageSender;
   final int unreadCountClient;
   final int unreadCountNutritionist;
-  final String chatType; // 'admin-nutritionist' or 'nutritionist-client'
+  final String chatType;
 
   Chat({
     required this.id,
@@ -44,21 +45,20 @@ class Chat {
       lastMessageSender: data['lastMessageSender'] ?? 'client',
       unreadCountClient: unreadCount['client'] ?? 0,
       unreadCountNutritionist: unreadCount['nutritionist'] ?? 0,
-      chatType: data['chatType'] ?? 'nutritionist-client', // default to nutritionist-client for backward compatibility
+      chatType: data['chatType'] ?? 'nutritionist-client',
     );
   }
 }
 
-/// Model for a single chat message
 class ChatMessage {
   final String id;
   final String senderId;
-  final String senderType; // 'client' or 'nutritionist'
+  final String senderType;
   final String message;
   final DateTime timestamp;
   final bool read;
   final String? attachmentUrl;
-  final String? attachmentType; // 'image' or 'pdf'
+  final String? attachmentType;
   final String? fileName;
 
   ChatMessage({
