@@ -18,7 +18,6 @@ from app.services.totp_service import TOTPService
 router = APIRouter(prefix="/admin/2fa", tags=["2fa"])
 
 
-# --- SCHEMAS ---
 class SetupResponse(BaseModel):
     secret: str
     qr_uri: str
@@ -27,7 +26,7 @@ class SetupResponse(BaseModel):
 
 class VerifyRequest(BaseModel):
     code: str
-    secret: str  # The secret from setup (not yet saved)
+    secret: str
 
 
 class VerifyResponse(BaseModel):
@@ -44,8 +43,6 @@ class StatusResponse(BaseModel):
     enabled: bool
     user_id: str
 
-
-# --- ENDPOINTS ---
 
 @router.post("/setup", response_model=SetupResponse)
 @limiter.limit("10/hour")
@@ -65,7 +62,6 @@ async def setup_2fa(
     try:
         user_id = user_data['uid']
 
-        # Get user email from Firestore
         db = firestore.client()
         user_doc = db.collection('users').document(user_id).get()
         if not user_doc.exists:
@@ -73,7 +69,6 @@ async def setup_2fa(
 
         email = user_doc.to_dict().get('email', f"user_{user_id[:8]}")
 
-        # Check if 2FA already enabled
         if user_doc.to_dict().get('two_factor_enabled'):
             raise HTTPException(
                 status_code=400,
@@ -200,11 +195,9 @@ async def disable_2fa(
 
         service = TOTPService()
 
-        # Verify current code first
         if not await service.verify_code(user_id, body.code):
             raise HTTPException(status_code=401, detail="Codice 2FA non valido")
 
-        # Disable 2FA
         success = await service.disable_2fa(user_id)
 
         if success:
@@ -267,11 +260,9 @@ async def regenerate_backup_codes(
 
         service = TOTPService()
 
-        # Verify current code first
         if not await service.verify_code(user_id, body.code):
             raise HTTPException(status_code=401, detail="Codice 2FA non valido")
 
-        # Regenerate backup codes
         new_codes = await service.regenerate_backup_codes(user_id)
 
         if new_codes:

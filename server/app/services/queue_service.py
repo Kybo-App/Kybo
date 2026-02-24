@@ -17,8 +17,8 @@ from typing import Optional
 from app.core.config import settings
 from app.core.logging import logger
 
-_diet_queue = None   # rq.Queue singleton
-_rq_redis = None     # redis.Redis connection (sync, richiesto da rq)
+_diet_queue = None
+_rq_redis = None
 
 
 def get_diet_queue():
@@ -35,12 +35,11 @@ def get_diet_queue():
         return None
 
     try:
-        # rq usa redis-py sync (non asyncio)
         from redis import Redis
         from rq import Queue
 
         _rq_redis = Redis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
-        _rq_redis.ping()  # verifica connessione subito
+        _rq_redis.ping()
 
         _diet_queue = Queue(
             settings.RQ_QUEUE_NAME,
@@ -81,13 +80,11 @@ def get_job_status(job_id: str) -> Optional[dict]:
             return {"status": "done", "result": job.result, "error": None}
         elif status == JobStatus.FAILED:
             exc_info = job.exc_info or ""
-            # Prendi solo l'ultima riga del traceback per non esporre dettagli interni
             error_summary = exc_info.strip().splitlines()[-1] if exc_info else "Parsing fallito"
             return {"status": "failed", "result": None, "error": error_summary}
         elif status in (JobStatus.STARTED, JobStatus.DEFERRED):
             return {"status": "started", "result": None, "error": None}
         else:
-            # QUEUED o SCHEDULED
             return {"status": "queued", "result": None, "error": None}
 
     except Exception as e:

@@ -56,7 +56,6 @@ def process_diet_upload(
         logger.error("rq_diet_parse_error", uid=target_uid, error=sanitize_error_message(e))
         raise
 
-    # Inline conversion (mirrors _convert_to_app_format in the router)
     from app.routers.diet import _convert_to_app_format
     formatted_data = _convert_to_app_format(raw_data)
     dict_data = formatted_data.dict()

@@ -45,7 +45,6 @@ async def _check_and_notify():
     """Controlla le chat con messaggi non letti e invia notifiche se necessario."""
     db = firebase_admin.firestore.client()
 
-    # Recupera le configurazioni degli alert attivi
     alert_configs = _get_active_alert_configs(db)
     if not alert_configs:
         return
@@ -56,7 +55,6 @@ async def _check_and_notify():
         threshold_days = config.get("threshold_days", settings.UNREAD_NOTIFY_DEFAULT_DAYS)
         last_notified = config.get("last_notified_chats", {})
 
-        # Cerca le chat del nutrizionista con messaggi non letti
         chats = db.collection("chats") \
             .where("chatType", "==", "nutritionist-client") \
             .where("participants.nutritionistId", "==", nutritionist_uid) \
@@ -72,7 +70,6 @@ async def _check_and_notify():
             if not last_msg_time:
                 continue
 
-            # Normalizza a datetime aware
             if hasattr(last_msg_time, "seconds"):
                 last_msg_dt = datetime.fromtimestamp(last_msg_time.seconds, tz=timezone.utc)
             elif isinstance(last_msg_time, datetime):
@@ -84,20 +81,17 @@ async def _check_and_notify():
             if days_unread < threshold_days:
                 continue
 
-            # Evita notifiche duplicate: controlla l'ultima notifica per questa chat
             last_chat_notify = last_notified.get(chat_doc.id)
             if last_chat_notify:
                 try:
                     last_notify_dt = datetime.fromisoformat(last_chat_notify)
                     if last_notify_dt.tzinfo is None:
                         last_notify_dt = last_notify_dt.replace(tzinfo=timezone.utc)
-                    # Non re-notificare prima di threshold_days giorni dall'ultima notifica
                     if (now - last_notify_dt).days < threshold_days:
                         continue
                 except ValueError:
                     pass
 
-            # Recupera dati nutrizionista e cliente
             nutritionist_data = _get_user_data(db, nutritionist_uid)
             if not nutritionist_data or not nutritionist_data.get("email"):
                 continue
@@ -109,7 +103,6 @@ async def _check_and_notify():
             nutritionist_name = _format_name(nutritionist_data)
             nutritionist_email = nutritionist_data["email"]
 
-            # Invia email
             sent = await send_unread_messages_alert(
                 nutritionist_email=nutritionist_email,
                 nutritionist_name=nutritionist_name,
@@ -126,7 +119,6 @@ async def _check_and_notify():
                     unread=unread,
                     days=days_unread,
                 )
-                # Aggiorna il timestamp dell'ultima notifica per questa chat
                 _update_last_notified(db, nutritionist_uid, chat_doc.id, now)
 
 

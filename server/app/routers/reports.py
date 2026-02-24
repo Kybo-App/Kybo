@@ -17,15 +17,12 @@ from app.services.report_service import ReportService
 router = APIRouter(prefix="/admin/reports", tags=["reports"])
 
 
-# --- SCHEMAS ---
 class GenerateReportRequest(BaseModel):
     nutritionist_id: str
     year: int
     month: int  # 1-12
     force_regenerate: bool = False
 
-
-# --- ENDPOINTS ---
 
 @router.get("/monthly")
 @limiter.limit("60/minute")
@@ -42,7 +39,6 @@ async def get_monthly_report(
     - Nutritionist: può vedere solo il proprio report
     """
     try:
-        # Parse month
         try:
             year, month_num = map(int, month.split('-'))
             if not (1 <= month_num <= 12):
@@ -103,7 +99,6 @@ async def generate_report(
     - Nutritionist: può generare solo il proprio
     """
     try:
-        # Permission check
         requester_role = requester['role']
         requester_id = requester['uid']
 
@@ -113,7 +108,6 @@ async def generate_report(
                 detail="Non autorizzato a generare questo report"
             )
 
-        # Validate month
         if not (1 <= body.month <= 12):
             raise HTTPException(status_code=400, detail="Mese non valido (1-12)")
 
@@ -169,7 +163,6 @@ async def list_reports(
         requester_role = requester['role']
         requester_id = requester['uid']
 
-        # Non-admin can only see their own reports
         if requester_role != 'admin':
             nutritionist_id = requester_id
 
@@ -202,14 +195,12 @@ async def get_report_by_id(
     ID format: nutritionist_id_YYYY-MM
     """
     try:
-        # Extract nutritionist_id from report_id
         parts = report_id.rsplit('_', 1)
         if len(parts) != 2:
             raise HTTPException(status_code=400, detail="ID report non valido")
 
         nutritionist_id = parts[0]
 
-        # Permission check
         requester_role = requester['role']
         requester_id = requester['uid']
 

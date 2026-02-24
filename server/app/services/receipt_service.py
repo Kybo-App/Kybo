@@ -1,3 +1,8 @@
+"""
+Servizio di scansione scontrini via OCR Tesseract + Gemini AI.
+Pre-processa l'immagine per migliorare l'accuratezza OCR, poi usa Gemini
+per estrarre gli alimenti corrispondenti alla lista consentita dalla dieta.
+"""
 import logging
 import pytesseract
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
@@ -9,7 +14,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# [FIX 3.2] Modelli Pydantic per validazione rigorosa
 class ReceiptItem(BaseModel):
     name: str = Field(description="Nome del prodotto alimentare trovato nello scontrino")
     quantity: str = Field(description="Quantità indicata (es. '1kg', '2pz', '300g')")
@@ -27,13 +31,9 @@ class ReceiptScanner:
             clean_key = api_key.strip().replace('"', '').replace("'", "")
             self.client = genai.Client(api_key=clean_key)
 
-        # [FIX COSTI] Limitiamo il contesto a max 500 elementi per evitare token overflow
-        # Se la lista è enorme, l'AI si confonde ("Lost in the Middle") e i costi esplodono.
         max_context_items = 500
         clean_list = [str(f).lower().strip() for f in allowed_foods_list if f]
-        
         if len(clean_list) > max_context_items:
-            # Prendiamo i primi N (o si potrebbe implementare una logica più smart)
             clean_list = clean_list[:max_context_items]
             logger.warning("Context truncated: using top %d foods", max_context_items)
             
@@ -60,20 +60,15 @@ class ReceiptScanner:
         - Sharpening
         - Ridimensionamento se troppo piccola (Tesseract lavora meglio con DPI ≥ 200)
         """
-        # Convert to grayscale
         image = image.convert('L')
 
-        # Auto-level (stretch histogram to full range)
         image = ImageOps.autocontrast(image, cutoff=2)
 
-        # Increase contrast
         enhancer = ImageEnhance.Contrast(image)
         image = enhancer.enhance(2.0)
 
-        # Sharpen to make text crisper
         image = image.filter(ImageFilter.SHARPEN)
 
-        # Upscale if too small (Tesseract prefers ≥ 1000px wide)
         min_width = 1000
         if image.width < min_width:
             scale = min_width / image.width
@@ -82,7 +77,6 @@ class ReceiptScanner:
 
         return image
 
-    # [FIX I/O] Accetta file_obj (stream) invece di path
     def scan_receipt(self, file_obj) -> list[dict]:
         if not self.client:
             logger.error("Gemini client not initialized, skipping receipt scan")
@@ -92,7 +86,6 @@ class ReceiptScanner:
             # 1. OCR con Tesseract e pre-processing immagine
             image = Image.open(file_obj)
             processed = self._preprocess_image(image)
-            # PSM 6 = assume a single uniform block of text (good for receipts)
             custom_config = r'--oem 3 --psm 6'
             text = pytesseract.image_to_string(processed, lang='ita', config=custom_config)
             
@@ -100,7 +93,6 @@ class ReceiptScanner:
                 logger.warning("OCR text empty or unreadable")
                 return []
             
-            # 2. Prepare Prompt
             prompt = f"""
             Analizza questo scontrino e estrai gli alimenti.
             
@@ -113,22 +105,18 @@ class ReceiptScanner:
             </allowed_foods_context>
             """
 
-            # 3. Call Gemini con Pydantic Schema
             response = self.client.models.generate_content(
                 model=settings.GEMINI_MODEL,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=self.system_instruction,
                     response_mime_type="application/json",
-                    response_schema=ReceiptAnalysis # <--- VALIDAZIONE FORTE
+                    response_schema=ReceiptAnalysis
                 )
             )
 
-            # 4. Parsing Robusto (Niente più "guesswork")
             found_items = []
-            
             if response.parsed:
-                # response.parsed è garantito essere un'istanza di ReceiptAnalysis
                 for item in response.parsed.items:
                     if item.name:
                         logger.debug("Receipt match: %s (%s)", item.name, item.quantity)

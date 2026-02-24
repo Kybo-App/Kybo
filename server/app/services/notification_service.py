@@ -1,3 +1,8 @@
+"""
+Servizio notifiche push per Kybo.
+Invia messaggi FCM tramite Firebase Messaging.
+NotificationService è un singleton che inizializza Firebase se non già fatto.
+"""
 import logging
 import firebase_admin
 from firebase_admin import credentials, messaging
@@ -16,26 +21,18 @@ class NotificationService:
             NotificationService._initialized = True
 
     def _init_firebase(self):
-        # Evita inizializzazioni doppie
         if firebase_admin._apps:
             return
 
-        # RECUPERA IL PERCORSO DALLE VARIABILI D'AMBIENTE (Render Secret Files)
         key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
         try:
             if key_path and os.path.exists(key_path):
-                # Caso Render / Locale con file puntato da env var
                 cred = credentials.Certificate(key_path)
                 firebase_admin.initialize_app(cred)
                 logger.info("Firebase Admin Initialized (File: %s)", key_path)
             else:
-                # Fallback: Prova Application Default (es. se sei su Google Cloud nativo)
-                # O se il file non esiste/variabile non settata
                 logger.warning("GOOGLE_APPLICATION_CREDENTIALS non settata o file mancante.")
-                # Opzionale: Tenta comunque ADC se vuoi robustezza
-                # cred = credentials.ApplicationDefault()
-                # firebase_admin.initialize_app(cred)
 
         except Exception as e:
             logger.error("Firebase Init Error: %s", e)

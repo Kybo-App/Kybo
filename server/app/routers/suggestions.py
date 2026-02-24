@@ -28,24 +28,20 @@ from app.core.metrics import (
 router = APIRouter(tags=["suggestions"])
 
 
-# ─── Pydantic schemas per la risposta ────────────────────────────────────────
-
 class SuggestedDish(BaseModel):
     name: str
     qty: str
-    meal_type: str          # "Colazione", "Pranzo", etc.
-    description: str        # Breve descrizione/perché è adatto
-    ingredients: List[str]  # Lista ingredienti principali
-    calories_estimate: Optional[str] = None  # "~350 kcal" approssimativo
+    meal_type: str
+    description: str
+    ingredients: List[str]
+    calories_estimate: Optional[str] = None
 
 
 class MealSuggestionsResponse(BaseModel):
     suggestions: List[SuggestedDish]
-    context_used: str       # Cosa ha usato Gemini per generare ("dieta attuale", "preferenze", ecc.)
-    generated_at: int       # Unix timestamp
+    context_used: str
+    generated_at: int
 
-
-# ─── TypedDicts per Gemini structured output ─────────────────────────────────
 
 class SuggeritoDish(typing.TypedDict):
     name: str
@@ -60,10 +56,8 @@ class SuggerimentiOutput(typing.TypedDict):
     suggestions: list[SuggeritoDish]
 
 
-# ─── Cache L1 in-memory (fallback quando Redis non disponibile) ───────────────
-
 _suggestions_cache: dict = {}
-_CACHE_TTL = 1800  # 30 minuti
+_CACHE_TTL = 1800
 
 
 def _get_from_memory_cache(key: str):
@@ -74,14 +68,11 @@ def _get_from_memory_cache(key: str):
 
 
 def _save_to_memory_cache(key: str, data: dict):
-    # Mantieni max 200 entry (LRU eviction)
     if len(_suggestions_cache) >= 200:
         oldest = min(_suggestions_cache, key=lambda k: _suggestions_cache[k]["ts"])
         del _suggestions_cache[oldest]
     _suggestions_cache[key] = {"data": data, "ts": time.time()}
 
-
-# ─── Endpoint principale ──────────────────────────────────────────────────────
 
 @router.get("/meal-suggestions", response_model=MealSuggestionsResponse)
 @limiter.limit("60/minute")
@@ -112,19 +103,16 @@ async def get_meal_suggestions(
 
     user_data = _load_user_context(db, uid)
 
-    # Normalizza pantry_items in lista
     pantry_list: List[str] = []
     if pantry_items:
         pantry_list = [item.strip() for item in pantry_items.split(",") if item.strip()]
 
-    # Chiave cache: uid + meal_type + count + pantry + hash contesto dieta
     context_hash = hashlib.md5(
         json.dumps(user_data, sort_keys=True, default=str).encode()
     ).hexdigest()[:8]
     pantry_key = hashlib.md5(",".join(sorted(pantry_list)).encode()).hexdigest()[:6] if pantry_list else "nopantry"
     cache_key = f"suggestions:{uid}:{meal_type or 'all'}:{count}:{pantry_key}:{context_hash}"
 
-    # ✅ CACHE L1: RAM locale (microsecondi)
     cached = _get_from_memory_cache(cache_key)
     if cached:
         logger.info("suggestions_cache_hit", layer="L1_ram", uid=uid)
@@ -132,7 +120,6 @@ async def get_meal_suggestions(
         return MealSuggestionsResponse(**cached)
     suggestions_cache_misses_total.labels(layer="L1_ram").inc()
 
-    # ✅ CACHE L1.5: Redis (millisecondi, condiviso tra istanze)
     redis_cached = await redis_cache.get(cache_key)
     if redis_cached:
         logger.info("suggestions_cache_hit", layer="L1.5_redis", uid=uid)
@@ -141,7 +128,6 @@ async def get_meal_suggestions(
         return MealSuggestionsResponse(**redis_cached)
     suggestions_cache_misses_total.labels(layer="L1.5_redis").inc()
 
-    # Genera con Gemini
     suggestions_gemini_calls_total.inc()
     try:
         with suggestions_duration_seconds.time():
@@ -163,14 +149,11 @@ async def get_meal_suggestions(
         "generated_at": int(time.time()),
     }
 
-    # Salva in L1 (RAM) e L1.5 (Redis)
     _save_to_memory_cache(cache_key, response_data)
     await redis_cache.set(cache_key, response_data, ttl=settings.REDIS_SUGGESTIONS_TTL)
 
     return MealSuggestionsResponse(**response_data)
 
-
-# ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _load_user_context(db, uid: str) -> dict:
     """
@@ -179,21 +162,19 @@ def _load_user_context(db, uid: str) -> dict:
     - Ultime note pasti (mood, preferenze)
     """
     context = {
-        "current_dishes": [],       # Piatti già presenti nella dieta
-        "meals_config": [],         # Tipi di pasto (Colazione, Pranzo...)
-        "allergens": [],            # Allergeni dell'utente
-        "relaxable_foods": [],      # Frutta/verdura rilassabili
-        "recent_moods": [],         # Mood dalle note pasti recenti
+        "current_dishes": [],
+        "meals_config": [],
+        "allergens": [],
+        "relaxable_foods": [],
+        "recent_moods": [],
     }
 
     try:
-        # Dieta corrente
         diet_doc = db.collection("users").document(uid).collection("diets").document("current").get()
         if diet_doc.exists:
             diet_data = diet_doc.to_dict() or {}
             plan = diet_data.get("plan", {})
 
-            # Estrai tutti i nomi dei piatti (prime 30 per non sovraccaricare il prompt)
             dishes = []
             for day_meals in plan.values():
                 for meal_dishes in day_meals.values():
@@ -205,17 +186,13 @@ def _load_user_context(db, uid: str) -> dict:
                                     dishes.append(name)
             context["current_dishes"] = dishes[:30]
 
-            # Config dieta
             cfg = diet_data.get("config", {})
             if cfg:
                 context["meals_config"] = cfg.get("meals", [])
                 context["relaxable_foods"] = cfg.get("relaxable_foods", [])
 
-            # Allergeni
             context["allergens"] = diet_data.get("allergens", [])
 
-        # Ultime note pasti (mood tracking) — query separata per non bloccare
-        # il resto del contesto se l'indice Firestore non esiste
         try:
             from firebase_admin import firestore as _fs
             notes_query = (
@@ -254,7 +231,6 @@ async def _generate_suggestions(
 
     client = genai.Client(api_key=settings.GOOGLE_API_KEY.strip())
 
-    # Costruisci il prompt con il contesto utente
     current_dishes_str = (
         ", ".join(user_data["current_dishes"])
         if user_data["current_dishes"]
@@ -350,7 +326,7 @@ Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
             model=settings.GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json",  # forza JSON puro, niente markdown
+                response_mime_type="application/json",
                 temperature=0.8,
                 max_output_tokens=8192,
             ),
@@ -358,11 +334,9 @@ Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
 
     response = await run_in_threadpool(_call_gemini)
 
-    # Parsing risposta — multi-tentativo robusto
     raw = response.text or "{}"
     suggestions_raw = _parse_gemini_response(raw)
 
-    # Normalizza in lista di dict
     result = []
     for s in suggestions_raw:
         if isinstance(s, dict) and s.get("name"):
@@ -388,10 +362,8 @@ def _parse_gemini_response(raw: str) -> list:
     if not raw or not raw.strip():
         return []
 
-    # Normalizza: rimuovi BOM, whitespace iniziale/finale
     cleaned = raw.strip().lstrip('\ufeff')
 
-    # Tentativo 1: JSON diretto sul testo pulito
     try:
         parsed = json.loads(cleaned)
         if isinstance(parsed, dict):
@@ -401,7 +373,6 @@ def _parse_gemini_response(raw: str) -> list:
     except json.JSONDecodeError as e:
         logger.debug(f"[parser T1] json.loads fallito: {e}")
 
-    # Tentativo 2: estrai da blocco markdown ```json ... ```
     md_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', cleaned)
     if md_match:
         try:
@@ -413,7 +384,6 @@ def _parse_gemini_response(raw: str) -> list:
         except json.JSONDecodeError as e:
             logger.debug(f"[parser T2] markdown block fallito: {e}")
 
-    # Tentativo 3: trova il PRIMO { e l'ULTIMO } per catturare tutto l'oggetto
     first_brace = cleaned.find('{')
     last_brace = cleaned.rfind('}')
     if first_brace != -1 and last_brace > first_brace:
@@ -425,7 +395,6 @@ def _parse_gemini_response(raw: str) -> list:
         except json.JSONDecodeError as e:
             logger.debug(f"[parser T3] brace extraction fallito: {e}")
 
-    # Tentativo 4: trova il PRIMO [ e l'ULTIMO ] per catturare l'array
     first_bracket = cleaned.find('[')
     last_bracket = cleaned.rfind(']')
     if first_bracket != -1 and last_bracket > first_bracket:

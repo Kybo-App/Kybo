@@ -25,10 +25,10 @@ from app.core.logging import logger, sanitize_error_message
 @dataclass
 class RetentionConfig:
     """Configurazione per la retention policy."""
-    retention_months: int = 24  # Default: 2 anni
+    retention_months: int = 24
     is_enabled: bool = False
-    dry_run: bool = True  # Se True, non elimina realmente i dati
-    exclude_roles: list = None  # Ruoli esclusi dalla purge (es. admin)
+    dry_run: bool = True
+    exclude_roles: list = None
 
     def __post_init__(self):
         if self.exclude_roles is None:
@@ -72,7 +72,6 @@ class GDPRRetentionService:
         results = await service.purge_inactive_users(dry_run=True)
     """
 
-    # Collection names per riferimento
     USERS_COLLECTION = 'users'
     DIETS_SUBCOLLECTION = 'diets'
     DIET_HISTORY_COLLECTION = 'diet_history'
@@ -84,10 +83,6 @@ class GDPRRetentionService:
 
     def __init__(self):
         self.db = firestore.client()
-
-    # =========================================================================
-    # CONFIGURATION MANAGEMENT
-    # =========================================================================
 
     async def get_retention_config(self) -> RetentionConfig:
         """
@@ -155,10 +150,6 @@ class GDPRRetentionService:
             logger.error("gdpr_config_update_error", error=sanitize_error_message(e))
             return False
 
-    # =========================================================================
-    # INACTIVE USER IDENTIFICATION
-    # =========================================================================
-
     def _get_last_activity(self, user_data: dict) -> Optional[datetime]:
         """
         Determina l'ultima attività dell'utente basandosi su vari campi.
@@ -175,7 +166,6 @@ class GDPRRetentionService:
             value = user_data.get(field)
             if value:
                 if isinstance(value, datetime):
-                    # Assicura timezone-aware
                     if value.tzinfo is None:
                         return value.replace(tzinfo=timezone.utc)
                     return value
@@ -200,7 +190,6 @@ class GDPRRetentionService:
         Returns:
             Lista di InactiveUser
         """
-        # Usa config se non specificato
         if retention_months is None or exclude_roles is None:
             config = await self.get_retention_config()
             retention_months = retention_months or config.retention_months
@@ -212,7 +201,6 @@ class GDPRRetentionService:
         inactive_users = []
 
         try:
-            # Query tutti gli utenti
             users_ref = self.db.collection(self.USERS_COLLECTION)
             users = users_ref.stream()
 
@@ -221,19 +209,14 @@ class GDPRRetentionService:
                 uid = user_doc.id
                 role = user_data.get('role', 'client')
 
-                # Salta ruoli esclusi
                 if role in exclude_roles:
                     continue
 
                 last_activity = self._get_last_activity(user_data)
 
-                # Se non ha attività registrata, usa createdAt o considera inattivo
                 if last_activity is None:
-                    # Senza dati, consideriamo l'utente potenzialmente vecchio
-                    # ma lo segnaliamo per revisione manuale
                     last_activity = cutoff_date - timedelta(days=1)
 
-                # Verifica se inattivo
                 if last_activity < cutoff_date:
                     days_inactive = (now - last_activity).days
                     retention_deadline = last_activity + timedelta(days=retention_months * 30)
@@ -281,7 +264,6 @@ class GDPRRetentionService:
             retention_months = config.retention_months
 
         now = datetime.now(timezone.utc)
-        # Calcola finestra: utenti che scadranno tra 0 e days_before_deadline giorni
         cutoff_approaching = now - timedelta(days=(retention_months * 30) - days_before_deadline)
         cutoff_expired = now - timedelta(days=retention_months * 30)
 
@@ -306,7 +288,6 @@ class GDPRRetentionService:
                 if last_activity is None:
                     continue
 
-                # Utenti nella finestra di warning (non ancora scaduti)
                 if cutoff_expired <= last_activity < cutoff_approaching:
                     days_inactive = (now - last_activity).days
                     retention_deadline = last_activity + timedelta(days=retention_months * 30)
@@ -326,10 +307,6 @@ class GDPRRetentionService:
         except Exception as e:
             logger.error("gdpr_approaching_search_error", error=sanitize_error_message(e))
             return []
-
-    # =========================================================================
-    # DATA DELETION (CASCADE)
-    # =========================================================================
 
     async def purge_user(
         self,
@@ -362,7 +339,6 @@ class GDPRRetentionService:
         deleted_collections = []
 
         try:
-            # Log inizio operazione
             logger.info(
                 "gdpr_purge_started",
                 uid=uid,
@@ -371,7 +347,6 @@ class GDPRRetentionService:
                 dry_run=dry_run
             )
 
-            # Crea audit log PRIMA dell'eliminazione
             if not dry_run:
                 self.db.collection(self.ACCESS_LOGS_COLLECTION).add({
                     'requester_id': requester_id,
@@ -382,7 +357,6 @@ class GDPRRetentionService:
                     'dry_run': dry_run
                 })
 
-            # 1. Elimina subcollection diets
             diets_deleted = await self._delete_subcollection(
                 f"{self.USERS_COLLECTION}/{uid}/{self.DIETS_SUBCOLLECTION}",
                 dry_run
@@ -390,7 +364,6 @@ class GDPRRetentionService:
             if diets_deleted > 0:
                 deleted_collections.append(f"diets ({diets_deleted} docs)")
 
-            # 2. Elimina diet_history
             history_deleted = await self._delete_by_field(
                 self.DIET_HISTORY_COLLECTION,
                 'userId',
@@ -400,12 +373,10 @@ class GDPRRetentionService:
             if history_deleted > 0:
                 deleted_collections.append(f"diet_history ({history_deleted} docs)")
 
-            # 3. Elimina chats dove l'utente è partecipante
             chats_deleted = await self._delete_user_chats(uid, dry_run)
             if chats_deleted > 0:
                 deleted_collections.append(f"chats ({chats_deleted} docs)")
 
-            # 4. Elimina consent_logs
             consent_deleted = await self._delete_by_field(
                 self.CONSENT_LOGS_COLLECTION,
                 'user_id',
@@ -415,15 +386,10 @@ class GDPRRetentionService:
             if consent_deleted > 0:
                 deleted_collections.append(f"consent_logs ({consent_deleted} docs)")
 
-            # 5. NON eliminare access_logs per audit trail permanente
-            # (necessario per compliance GDPR)
-
-            # 6. Elimina user document
             if not dry_run:
                 self.db.collection(self.USERS_COLLECTION).document(uid).delete()
             deleted_collections.append("user document")
 
-            # 7. Elimina Firebase Auth record
             if not dry_run:
                 try:
                     auth.delete_user(uid)
@@ -505,10 +471,8 @@ class GDPRRetentionService:
         """
         deleted = 0
         try:
-            # Query chats dove l'utente è client o nutritionist
             chats_ref = self.db.collection(self.CHATS_COLLECTION)
 
-            # Cerca in participants.clientId
             client_chats = chats_ref.where('participants.clientId', '==', uid).stream()
             for chat in client_chats:
                 # Prima elimina messages subcollection
@@ -520,7 +484,6 @@ class GDPRRetentionService:
                     chat.reference.delete()
                 deleted += 1
 
-            # Cerca anche in participants.nutritionistId (caso raro)
             nutritionist_chats = chats_ref.where('participants.nutritionistId', '==', uid).stream()
             for chat in nutritionist_chats:
                 await self._delete_subcollection(
@@ -535,10 +498,6 @@ class GDPRRetentionService:
             logger.error("delete_chats_error", uid=uid, error=sanitize_error_message(e))
 
         return deleted
-
-    # =========================================================================
-    # BATCH OPERATIONS (FOR CRON/BACKGROUND TASKS)
-    # =========================================================================
 
     async def purge_inactive_users(
         self,
@@ -558,7 +517,6 @@ class GDPRRetentionService:
         """
         config = await self.get_retention_config()
 
-        # Verifica se la retention è abilitata
         if not config.is_enabled:
             logger.info("gdpr_retention_disabled", message="Retention policy is disabled")
             return []
@@ -566,7 +524,6 @@ class GDPRRetentionService:
         if dry_run is None:
             dry_run = config.dry_run
 
-        # Identifica utenti inattivi
         inactive_users = await self.get_inactive_users(
             retention_months=config.retention_months,
             exclude_roles=config.exclude_roles
@@ -587,7 +544,6 @@ class GDPRRetentionService:
             )
             results.append(result)
 
-        # Summary log
         successful = sum(1 for r in results if r.success)
         failed = len(results) - successful
 
@@ -601,10 +557,6 @@ class GDPRRetentionService:
 
         return results
 
-    # =========================================================================
-    # DASHBOARD / REPORTING
-    # =========================================================================
-
     async def get_retention_dashboard(self) -> dict:
         """
         Genera statistiche per la dashboard GDPR.
@@ -616,7 +568,6 @@ class GDPRRetentionService:
         inactive_users = await self.get_inactive_users()
         approaching_users = await self.get_users_approaching_retention(days_before_deadline=30)
 
-        # Conta utenti per ruolo
         total_users = 0
         users_by_role = {}
 
@@ -650,7 +601,7 @@ class GDPRRetentionService:
                     "days_inactive": u.days_inactive,
                     "retention_deadline": u.retention_deadline.isoformat() if u.retention_deadline else None
                 }
-                for u in inactive_users[:50]  # Limita a 50 per performance
+                for u in inactive_users[:50]
             ],
             "approaching_deadline": [
                 {

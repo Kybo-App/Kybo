@@ -19,8 +19,6 @@ from app.core.logging import logger, sanitize_error_message
 router = APIRouter(prefix="/admin/communication", tags=["communication"])
 
 
-# --- SCHEMAS ---
-
 class BroadcastRequest(BaseModel):
     message: str
     subject: Optional[str] = None
@@ -28,7 +26,7 @@ class BroadcastRequest(BaseModel):
 
 class NoteCreateRequest(BaseModel):
     content: str
-    category: Optional[str] = "general"  # general, medical, dietary, follow-up
+    category: Optional[str] = "general"
 
 
 class NoteUpdateRequest(BaseModel):
@@ -39,12 +37,8 @@ class NoteUpdateRequest(BaseModel):
 
 class EmailAlertConfigRequest(BaseModel):
     enabled: bool
-    threshold_days: int = 3  # Giorni di inattività prima della notifica
+    threshold_days: int = 3
 
-
-# ══════════════════════════════════════════════════════════════════════
-# EMAIL ALERT CONFIG - Configurazione notifiche email messaggi non letti
-# ══════════════════════════════════════════════════════════════════════
 
 @router.get("/email-alert-config")
 @limiter.limit("60/minute")
@@ -117,10 +111,6 @@ async def set_email_alert_config(
         raise HTTPException(status_code=500, detail="Errore nel salvataggio della configurazione.")
 
 
-# ══════════════════════════════════════════════════════════════════════
-# BROADCAST - Invia messaggio a tutti i clienti del nutrizionista
-# ══════════════════════════════════════════════════════════════════════
-
 @router.post("/broadcast")
 @limiter.limit("10/hour")
 async def broadcast_to_clients(
@@ -145,7 +135,6 @@ async def broadcast_to_clients(
         db = firebase_admin.firestore.client()
 
         if requester_role == 'nutritionist':
-            # Nutritionist broadcasts to their own clients
             chats_query = db.collection('chats') \
                 .where('chatType', '==', 'nutritionist-client') \
                 .where('participants.nutritionistId', '==', requester_id)
@@ -153,8 +142,6 @@ async def broadcast_to_clients(
             unread_key = 'client'
             sender_type = 'nutritionist'
         else:
-            # Admin broadcasts ONLY to nutritionists via admin-nutritionist chats
-            # Admins never communicate directly with end clients (privacy)
             chats_query = db.collection('chats') \
                 .where('chatType', '==', 'admin-nutritionist') \
                 .where('participants.adminId', '==', requester_id)
@@ -170,12 +157,11 @@ async def broadcast_to_clients(
         sent_count = 0
         batch = db.batch()
         batch_ops = 0
-        MAX_BATCH = 400  # Leave room for 2 ops per chat
+        MAX_BATCH = 400
 
         for chat_doc in chats:
             chat_id = chat_doc.id
 
-            # Add message to chat
             msg_ref = db.collection('chats').document(chat_id).collection('messages').document()
             batch.set(msg_ref, {
                 'senderId': requester_id,
@@ -187,7 +173,6 @@ async def broadcast_to_clients(
             })
             batch_ops += 1
 
-            # Update chat metadata
             batch.set(db.collection('chats').document(chat_id), {
                 'lastMessage': body.message.strip()[:100],
                 'lastMessageTime': firestore.SERVER_TIMESTAMP,
@@ -208,7 +193,6 @@ async def broadcast_to_clients(
         if batch_ops > 0:
             batch.commit()
 
-        # Log the broadcast
         db.collection('access_logs').add({
             'requester_id': requester_id,
             'action': 'BROADCAST_MESSAGE',
@@ -225,10 +209,6 @@ async def broadcast_to_clients(
         logger.error("broadcast_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'invio del broadcast.")
 
-
-# ══════════════════════════════════════════════════════════════════════
-# INTERNAL NOTES - Note private sul cliente
-# ══════════════════════════════════════════════════════════════════════
 
 @router.get("/notes/{client_uid}")
 @limiter.limit("120/minute")
@@ -247,7 +227,6 @@ async def get_client_notes(
     try:
         db = firebase_admin.firestore.client()
 
-        # Verify access
         if requester_role == 'nutritionist':
             user_doc = db.collection('users').document(client_uid).get()
             if not user_doc.exists:
@@ -256,7 +235,6 @@ async def get_client_notes(
             if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
-        # Fetch notes
         notes_ref = db.collection('users').document(client_uid) \
             .collection('internal_notes') \
             .order_by('updated_at', direction=firestore.Query.DESCENDING)
@@ -265,7 +243,6 @@ async def get_client_notes(
         for doc in notes_ref.stream():
             note = doc.to_dict()
             note['id'] = doc.id
-            # Convert timestamps to ISO strings
             for ts_field in ['created_at', 'updated_at']:
                 if ts_field in note and note[ts_field]:
                     note[ts_field] = note[ts_field].isoformat()
@@ -298,7 +275,6 @@ async def create_client_note(
     try:
         db = firebase_admin.firestore.client()
 
-        # Verify access
         if requester_role == 'nutritionist':
             user_doc = db.collection('users').document(client_uid).get()
             if not user_doc.exists:
@@ -307,7 +283,6 @@ async def create_client_note(
             if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
-        # Create note
         note_data = {
             'content': body.content.strip(),
             'category': body.category or 'general',
@@ -351,7 +326,6 @@ async def update_client_note(
         if not note_doc.exists:
             raise HTTPException(status_code=404, detail="Nota non trovata")
 
-        # Only the author can update
         note_data = note_doc.to_dict()
         if note_data.get('author_id') != requester_id and requester.get('role') != 'admin':
             raise HTTPException(status_code=403, detail="Solo l'autore può modificare questa nota")

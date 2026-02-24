@@ -35,17 +35,14 @@ async def upload_attachment(
         from app.core.config import settings
         bucket = storage.bucket(name=settings.STORAGE_BUCKET)
 
-        # Genera nome file univoco
         ext = file.filename.split('.')[-1].lower() if '.' in file.filename else "bin"
         filename = f"{uuid.uuid4()}.{ext}"
         blob_path = f"chat_uploads/{filename}"
 
         blob = bucket.blob(blob_path)
 
-        # Upload
         blob.upload_from_string(file_content, content_type=file.content_type)
 
-        # Genera signed URL (valido 7 giorni) invece di rendere pubblico
         from datetime import timedelta
         signed_url = blob.generate_signed_url(expiration=timedelta(days=7))
 
