@@ -1,3 +1,5 @@
+// Vista gestione utenti: lista, creazione, modifica, eliminazione, assegnazione a nutrizionista e upload diete.
+// _checkCurrentUser — carica ruolo dai token claims; _buildAdminGroupedLayout — raggruppa utenti per nutrizionista.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
@@ -19,17 +21,14 @@ class _UserManagementViewState extends State<UserManagementView> {
   final AdminRepository _repo = AdminRepository();
   bool _isLoading = false;
 
-  // UI Filters
   String _searchQuery = "";
   String _roleFilter = "all";
   final TextEditingController _searchCtrl = TextEditingController();
 
-  // Current User Data
   String _currentUserId = '';
   String _currentUserRole = '';
   bool _isDataLoaded = false;
 
-  // DATI UTENTI (Ora scaricati via API Secure)
   Future<List<dynamic>>? _usersFuture;
 
   @override
@@ -44,12 +43,10 @@ class _UserManagementViewState extends State<UserManagementView> {
     super.dispose();
   }
 
-  // UPDATED: Usa i claims del token, zero letture DB!
   Future<void> _checkCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Forza il refresh del token per avere i claims aggiornati
         final tokenResult = await user.getIdTokenResult(true);
         final role = tokenResult.claims?['role'] ?? 'user';
 
@@ -62,7 +59,6 @@ class _UserManagementViewState extends State<UserManagementView> {
           _refreshList();
         }
       } catch (e) {
-        // Fallback in caso di errore di rete
         if (mounted) setState(() => _isDataLoaded = true);
       }
     }
@@ -74,8 +70,6 @@ class _UserManagementViewState extends State<UserManagementView> {
     });
   }
 
-  // --- ACTIONS ---
-
   Future<void> _syncUsers() async {
     setState(() => _isLoading = true);
     try {
@@ -84,7 +78,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.blue),
         );
-        _refreshList(); // Ricarica lista dopo sync
+        _refreshList();
       }
     } catch (e) {
       if (mounted) {
@@ -133,7 +127,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text("Utente eliminato.")));
-          _refreshList(); // Ricarica lista
+          _refreshList();
         }
       } catch (e) {
         if (mounted) {
@@ -153,7 +147,6 @@ class _UserManagementViewState extends State<UserManagementView> {
       allowedExtensions: ['pdf'],
     );
     if (result != null && result.files.single.bytes != null) {
-      // Mostra dialog con progress
       if (!mounted) return;
       showDialog(
         context: context,
@@ -164,7 +157,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       try {
         await _repo.uploadDietForUser(targetUid, result.files.single);
         if (mounted) {
-          Navigator.of(context).pop(); // Chiudi dialog
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Dieta caricata!"),
@@ -174,7 +167,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         }
       } catch (e) {
         if (mounted) {
-          Navigator.of(context).pop(); // Chiudi dialog
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Errore upload: $e"),
@@ -228,12 +221,10 @@ class _UserManagementViewState extends State<UserManagementView> {
     final firstCtrl = TextEditingController(text: currentFirst);
     final lastCtrl = TextEditingController(text: currentLast);
     
-    // Nutritionist specific
     final isNutritionist = userData['role'] == 'nutritionist';
     final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
     final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
     final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
-    // [NUOVO] Controller per limite clienti
     final limitCtrl = TextEditingController(
       text: (userData['max_clients'] ?? 50).toString(),
     );
@@ -322,7 +313,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Utente aggiornato")),
                   );
-                  _refreshList(); // Ricarica
+                  _refreshList();
                 }
               } catch (e) {
                 if (mounted) {
@@ -343,8 +334,6 @@ class _UserManagementViewState extends State<UserManagementView> {
       ),
     );
   }
-
-  // --- ASSIGNMENT LOGIC ---
 
   Future<void> _assignUser(
     String targetUid,
@@ -390,7 +379,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Utente assegnato!")),
                     );
-                    _refreshList(); // Ricarica
+                    _refreshList();
                   }
                 } catch (e) {
                   if (mounted) {
@@ -462,7 +451,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("Assegnazione rimossa.")),
                       );
-                      _refreshList(); // Ricarica
+                      _refreshList();
                     }
                   } catch (e) {
                     if (mounted) {
@@ -496,7 +485,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Utente trasferito!")),
                     );
-                    _refreshList(); // Ricarica
+                    _refreshList();
                   }
                 } catch (e) {
                   if (mounted) {
@@ -521,7 +510,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     final passCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
     final surnameCtrl = TextEditingController();
-    final limitCtrl = TextEditingController(); // [NUOVO]
+    final limitCtrl = TextEditingController();
     String role = 'user';
 
     List<DropdownMenuItem<String>> allowedRoles = [
@@ -629,7 +618,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Utente creato!")),
                     );
-                    _refreshList(); // Ricarica
+                    _refreshList();
                   }
                 } catch (e) {
                   if (mounted) {
@@ -672,9 +661,6 @@ class _UserManagementViewState extends State<UserManagementView> {
 
     return Column(
       children: [
-        // ═══════════════════════════════════════════════════════════════════
-        // TOP TOOLBAR - Pill-shaped container
-        // ═══════════════════════════════════════════════════════════════════
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -685,7 +671,6 @@ class _UserManagementViewState extends State<UserManagementView> {
           ),
           child: Row(
             children: [
-              // 1. BARRA DI RICERCA (Per Tutti)
               Expanded(
                 flex: 2,
                 child: Container(
@@ -722,7 +707,6 @@ class _UserManagementViewState extends State<UserManagementView> {
 
               const SizedBox(width: 12),
 
-              // 2. FILTRO RUOLI (Solo Admin)
               if (_currentUserRole == 'admin') ...[
                 Container(
                   height: 44,
@@ -767,7 +751,6 @@ class _UserManagementViewState extends State<UserManagementView> {
                 const SizedBox(width: 12),
               ],
 
-              // 3. REFRESH (Per Tutti)
               PillIconButton(
                 icon: Icons.refresh_rounded,
                 color: KyboColors.primary,
@@ -775,7 +758,6 @@ class _UserManagementViewState extends State<UserManagementView> {
                 onPressed: _refreshList,
               ),
 
-              // 4. SYNC DB (Solo Admin)
               if (_currentUserRole == 'admin') ...[
                 const SizedBox(width: 4),
                 PillIconButton(
@@ -788,7 +770,6 @@ class _UserManagementViewState extends State<UserManagementView> {
 
               const SizedBox(width: 12),
 
-              // 5. TASTO NUOVO UTENTE (Admin E Nutrizionista)
               if (_currentUserRole == 'admin' ||
                   _currentUserRole == 'nutritionist')
                 PillButton(
@@ -805,7 +786,6 @@ class _UserManagementViewState extends State<UserManagementView> {
 
         const SizedBox(height: 24),
 
-        // Loading indicator
         if (_isLoading)
           LinearProgressIndicator(
             backgroundColor: KyboColors.background,
@@ -814,7 +794,6 @@ class _UserManagementViewState extends State<UserManagementView> {
 
         const SizedBox(height: 16),
 
-        // --- CONTENT ---
         Expanded(
           child: FutureBuilder<List<dynamic>>(
             future: _usersFuture,
@@ -1248,7 +1227,6 @@ class _UserCardState extends State<_UserCard> {
         widget.currentUserRole == 'nutritionist' &&
         data['parent_id'] == widget.currentUserId;
 
-    // Privacy Logic
     final bool shouldMask =
         !_isUnlocked &&
         ((isAdmin && (role == 'user' || role == 'independent')) ||
@@ -1295,7 +1273,6 @@ class _UserCardState extends State<_UserCard> {
           }
         }
       } catch (e) {
-        // ignore
       }
     }
 
@@ -1304,12 +1281,8 @@ class _UserCardState extends State<_UserCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─────────────────────────────────────────────────────────────────
-          // HEADER: Avatar + Info + Badge
-          // ─────────────────────────────────────────────────────────────────
           Row(
             children: [
-              // Avatar
               Container(
                 width: 52,
                 height: 52,
@@ -1332,7 +1305,6 @@ class _UserCardState extends State<_UserCard> {
               ),
               const SizedBox(width: 16),
 
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1395,7 +1367,6 @@ class _UserCardState extends State<_UserCard> {
                 ),
               ),
 
-              // Lock button
               if (shouldMask)
                 _isUnlocking
                     ? const SizedBox(
@@ -1416,16 +1387,12 @@ class _UserCardState extends State<_UserCard> {
 
               const SizedBox(width: 8),
 
-              // Role Badge
               PillBadge.role(role.toString()),
             ],
           ),
 
           const Spacer(),
 
-            // ─────────────────────────────────────────────────────────────────
-          // STATUS BADGES
-          // ─────────────────────────────────────────────────────────────────
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1456,9 +1423,6 @@ class _UserCardState extends State<_UserCard> {
           if (data['two_factor_enabled'] == true || requiresPassChange || isDietExpired)
             const SizedBox(height: 12),
 
-          // ─────────────────────────────────────────────────────────────────
-          // ACTIONS ROW
-          // ─────────────────────────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
@@ -1540,9 +1504,6 @@ class _UserCardState extends State<_UserCard> {
             ),
           ),
 
-          // ─────────────────────────────────────────────────────────────────
-          // FOOTER
-          // ─────────────────────────────────────────────────────────────────
           Text(
             "Creato il: $dateStr",
             style: TextStyle(fontSize: 11, color: KyboColors.textMuted),
@@ -1571,7 +1532,6 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
     _historyFuture = _repo.getSecureUserHistory(widget.targetUid);
   }
 
-  // UPDATED: Usa l'API sicura per cancellare
   void _deleteDiet(BuildContext context, String dietId) async {
     bool confirm =
         await showDialog(
@@ -1596,7 +1556,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
 
     if (confirm) {
       try {
-        await _repo.deleteDiet(dietId); // <--- API CALL
+        await _repo.deleteDiet(dietId);
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
@@ -1690,7 +1650,6 @@ class _DietDetailScreen extends StatelessWidget {
     final parsedData = data['parsedData'] as Map<String, dynamic>?;
     final plan = parsedData?['plan'] as Map<String, dynamic>?;
 
-    // Lista ordinata per forzare la sequenza corretta
     final orderedDays = [
       "Lunedì",
       "Martedì",
@@ -1727,7 +1686,6 @@ class _DietDetailScreen extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: orderedDays.map((day) {
-                // Se il giorno non esiste nel piano (es. dieta di 5 giorni), lo saltiamo
                 if (!plan.containsKey(day)) return const SizedBox.shrink();
 
                 final meals = plan[day] as Map<String, dynamic>;
@@ -1821,7 +1779,6 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
     try {
       final bytes = utf8.encode(_promptController.text);
 
-      // Upload tramite repository (direttamente dai bytes, senza file temporanei)
       await _repo.uploadParserConfig(
         widget.targetUid,
         PlatformFile(
@@ -2389,13 +2346,12 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                   );
                 }
 
-                // Sort: pinned first, then by date
                 final sorted = List<dynamic>.from(notes);
                 sorted.sort((a, b) {
                   final aPinned = a['pinned'] == true ? 0 : 1;
                   final bPinned = b['pinned'] == true ? 0 : 1;
                   if (aPinned != bPinned) return aPinned.compareTo(bPinned);
-                  return 0; // Already sorted by date from backend
+                  return 0;
                 });
 
                 return ListView.separated(

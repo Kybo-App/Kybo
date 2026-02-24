@@ -1,3 +1,5 @@
+// Schermata obbligatoria al primo accesso: forza il cambio della password temporanea.
+// _updatePassword — aggiorna Auth e sblocca il flag requires_password_change su Firestore.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,10 +31,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // 1. Aggiorna Auth
       await user.updatePassword(_passCtrl.text.trim());
 
-      // 2. Sblocca su Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
         {'requires_password_change': false},
       );

@@ -3,8 +3,8 @@ import 'package:intl/intl.dart';
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
-/// GDPR Privacy & Retention Policy Management View
-/// Admin-only section for managing data retention and GDPR compliance
+// Vista GDPR privacy: dashboard retention, statistiche inattività e purge utenti.
+// _executePurge — lancia purge reale o simulazione con dialog di conferma; _saveConfig — aggiorna la policy via API.
 class GDPRPrivacyView extends StatefulWidget {
   const GDPRPrivacyView({super.key});
 
@@ -18,10 +18,8 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   bool _isLoading = true;
   String? _error;
 
-  // Dashboard data
   Map<String, dynamic>? _dashboard;
 
-  // Config form
   int _retentionMonths = 24;
   bool _isEnabled = false;
   bool _dryRun = true;
@@ -43,7 +41,6 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       if (mounted) {
         setState(() {
           _dashboard = dashboard;
-          // Update form with current config
           final config = dashboard['config'] as Map<String, dynamic>?;
           if (config != null) {
             _retentionMonths = config['retention_months'] ?? 24;
@@ -235,23 +232,18 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Header
-          _buildHeader(),
+            _buildHeader(),
           const SizedBox(height: 24),
 
-          // Statistics Cards
           _buildStatisticsSection(),
           const SizedBox(height: 24),
 
-          // Configuration Section
           _buildConfigurationSection(),
           const SizedBox(height: 24),
 
-          // Inactive Users List
           _buildInactiveUsersSection(),
           const SizedBox(height: 24),
 
-          // Approaching Deadline Section
           _buildApproachingDeadlineSection(),
         ],
       ),
@@ -385,7 +377,6 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           ),
           const SizedBox(height: 20),
 
-          // Retention months slider
           Row(
             children: [
               Expanded(
@@ -437,7 +428,6 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           ),
           const SizedBox(height: 16),
 
-          // Toggles
           _buildToggleRow(
             title: "Retention Automatica",
             subtitle: "Abilita purge automatica degli utenti inattivi",
@@ -456,7 +446,6 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
 
           const SizedBox(height: 20),
 
-          // Action buttons
           Row(
             children: [
               Expanded(

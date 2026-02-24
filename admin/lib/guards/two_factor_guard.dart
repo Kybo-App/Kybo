@@ -5,8 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
-/// Guard che blocca l'accesso se l'utente ha 2FA attivo
-/// e non ha ancora verificato il codice TOTP per questa sessione.
+// Guard che blocca l'accesso finché il codice TOTP non è verificato per la sessione corrente.
 class TwoFactorGuard extends StatefulWidget {
   final Widget child;
   const TwoFactorGuard({super.key, required this.child});
@@ -44,7 +43,6 @@ class _TwoFactorGuardState extends State<TwoFactorGuard> {
           return widget.child;
         }
 
-        // 2FA attivo ma non ancora verificato: mostra schermata TOTP
         return _TwoFactorVerifyScreen(
           onVerified: () {
             if (mounted) setState(() => _isVerified = true);
@@ -123,7 +121,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon
               Container(
                 width: 80,
                 height: 80,
@@ -139,7 +136,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Title
               Text(
                 "Verifica 2FA",
                 style: TextStyle(
@@ -159,7 +155,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
               ),
               const SizedBox(height: 36),
 
-              // Code Input
               Container(
                 height: 52,
                 decoration: BoxDecoration(
@@ -202,7 +197,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
                 ),
               ),
 
-              // Error
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Text(
@@ -225,7 +219,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
 
               const SizedBox(height: 28),
 
-              // Verify Button
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
@@ -241,7 +234,6 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
 
               const SizedBox(height: 16),
 
-              // Logout link
               TextButton(
                 onPressed: _logout,
                 child: Text(

@@ -1,3 +1,5 @@
+// Carica variabili d'ambiente da .env (dev) o .env.prod (release).
+// apiUrl — URL base API; isProd — true in release o se IS_PROD=true.
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

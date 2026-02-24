@@ -9,8 +9,8 @@ import 'package:universal_html/html.dart' as html;
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
 
-/// Report Nutrizionisti View
-/// Visualizza report mensili per admin e nutrizionisti
+// Vista report mensili: lista report con filtri per nutrizionista/mese, dettaglio statistiche e download PDF.
+// _generateReport — crea/rigenera report via API; _downloadPdf — costruisce PDF lato client con package pdf.
 class ReportsView extends StatefulWidget {
   const ReportsView({super.key});
 
@@ -26,18 +26,14 @@ class _ReportsViewState extends State<ReportsView> {
   String? _currentUserId;
   String? _error;
 
-  // Report list
   List<dynamic> _reports = [];
 
-  // Selected report
   Map<String, dynamic>? _selectedReport;
   bool _loadingReport = false;
 
-  // Filters
   String? _selectedNutritionistId;
   List<Map<String, dynamic>> _nutritionists = [];
 
-  // Month picker
   DateTime _selectedMonth = DateTime.now();
 
   @override
@@ -87,7 +83,7 @@ class _ReportsViewState extends State<ReportsView> {
         }).toList();
       });
     } catch (e) {
-      // Ignore error, just won't have nutritionist filter
+      // ignore
     }
   }
 
@@ -234,20 +230,17 @@ class _ReportsViewState extends State<ReportsView> {
 
     return Row(
       children: [
-        // Left panel - Report list and generator
         Expanded(
           flex: 2,
           child: _buildLeftPanel(),
         ),
 
-        // Divider
         Container(
           width: 1,
           color: KyboColors.textMuted.withValues(alpha: 0.2),
           margin: const EdgeInsets.symmetric(horizontal: 16),
         ),
 
-        // Right panel - Report details
         Expanded(
           flex: 3,
           child: _buildRightPanel(),
@@ -260,7 +253,6 @@ class _ReportsViewState extends State<ReportsView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
         Text(
           "Report Mensili",
           style: TextStyle(
@@ -271,7 +263,6 @@ class _ReportsViewState extends State<ReportsView> {
         ),
         const SizedBox(height: 16),
 
-        // Filters (admin only)
         if (_isAdmin && _nutritionists.isNotEmpty) ...[
           Text(
             "Nutrizionista",
@@ -313,7 +304,6 @@ class _ReportsViewState extends State<ReportsView> {
           const SizedBox(height: 16),
         ],
 
-        // Month picker & generate
         Row(
           children: [
             Expanded(
@@ -337,7 +327,6 @@ class _ReportsViewState extends State<ReportsView> {
         ),
         const SizedBox(height: 24),
 
-        // Report list
         Text(
           "Storico Report",
           style: TextStyle(
@@ -526,7 +515,6 @@ class _ReportsViewState extends State<ReportsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Expanded(
@@ -568,7 +556,6 @@ class _ReportsViewState extends State<ReportsView> {
           ),
           const SizedBox(height: 24),
 
-          // Stats cards
           Row(
             children: [
               Expanded(
@@ -633,7 +620,6 @@ class _ReportsViewState extends State<ReportsView> {
           ),
           const SizedBox(height: 24),
 
-          // Diet breakdown
           if ((report['diets_by_client'] as Map<String, dynamic>?)?.isNotEmpty ?? false) ...[
             Text(
               "Diete per Cliente",
@@ -735,7 +721,6 @@ class _ReportsViewState extends State<ReportsView> {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // Header
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -769,7 +754,6 @@ class _ReportsViewState extends State<ReportsView> {
                 pw.Divider(thickness: 2),
                 pw.SizedBox(height: 20),
 
-                // Stats grid
                 pw.Text(
                   'Riepilogo',
                   style: pw.TextStyle(
@@ -799,7 +783,6 @@ class _ReportsViewState extends State<ReportsView> {
                 ),
                 pw.SizedBox(height: 24),
 
-                // Diets by client
                 if ((report['diets_by_client'] as Map<String, dynamic>?)?.isNotEmpty ?? false) ...[
                   pw.Text(
                     'Diete per Cliente',
@@ -826,7 +809,6 @@ class _ReportsViewState extends State<ReportsView> {
 
                 pw.Spacer(),
 
-                // Footer
                 pw.Divider(color: PdfColors.grey400),
                 pw.SizedBox(height: 8),
                 pw.Row(

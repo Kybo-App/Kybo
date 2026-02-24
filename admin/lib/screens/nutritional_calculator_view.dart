@@ -1,3 +1,5 @@
+// Calcolatrice nutrizionale: inserimento ingredienti con quantità e macro per 100g, calcolo totali in tempo reale.
+// _calculateTotals — ricalcola kcal/proteine/carboidrati/grassi sommando tutti gli ingredienti validi.
 import 'package:flutter/material.dart';
 import '../widgets/design_system.dart';
 
@@ -19,7 +21,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
   @override
   void initState() {
     super.initState();
-    _addIngredient(); // Start with one row
+    _addIngredient();
   }
 
   void _addIngredient() {
@@ -64,7 +66,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header
         Row(
           children: [
             Icon(Icons.calculate_rounded, color: KyboColors.primary, size: 28),
@@ -86,11 +87,9 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         ),
         const SizedBox(height: 24),
 
-        // Totals Card
         _buildTotalsCard(),
         const SizedBox(height: 24),
 
-        // Ingredients List
         Expanded(
           child: PillCard(
             padding: const EdgeInsets.all(0),
@@ -182,7 +181,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Index
         Padding(
           padding: const EdgeInsets.only(top: 18, right: 12),
           child: Text(
@@ -194,7 +192,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
           ),
         ),
 
-        // Name
         Expanded(
           flex: 2,
           child: PillTextField(
@@ -205,7 +202,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         ),
         const SizedBox(width: 12),
 
-        // Quantity (g)
         Expanded(
           child: PillTextField(
             labelText:"Quantità (g)",
@@ -219,7 +215,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         ),
         const SizedBox(width: 12),
 
-        // Macros (per 100g)
         Expanded(
           child: PillTextField(
             labelText:"Kcal/100g",
@@ -265,7 +260,6 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         ),
 
         const SizedBox(width: 12),
-        // Delete Button
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: IconButton(

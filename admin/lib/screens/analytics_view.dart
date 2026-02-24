@@ -1,3 +1,5 @@
+// Vista analytics: overview KPI, trend upload diete (grafico lineare), attività nutrizionisti e utenti inattivi.
+// _loadAllData — carica tutti i dati in parallelo; _buildLineChart — grafico fl_chart con tooltip e assi localizzati.
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -211,40 +213,18 @@ class _AnalyticsViewState extends State<AnalyticsView> {
           ),
 
           const SizedBox(height: 24),
-
-          // ═══════════════════════════════════════════════════════════════════
-          // OVERVIEW CARDS
-          // ═══════════════════════════════════════════════════════════════════
           _buildOverviewCards(),
-
           const SizedBox(height: 24),
-
-          // ═══════════════════════════════════════════════════════════════════
-          // DIET TREND CHART
-          // ═══════════════════════════════════════════════════════════════════
           _buildDietTrendSection(),
-
           const SizedBox(height: 24),
-
-          // ═══════════════════════════════════════════════════════════════════
-          // NUTRITIONIST ACTIVITY (admin vede tutti, nutritionist solo sé)
-          // ═══════════════════════════════════════════════════════════════════
           _buildNutritionistActivitySection(),
-
           const SizedBox(height: 24),
-
-          // ═══════════════════════════════════════════════════════════════════
-          // INACTIVE USERS
-          // ═══════════════════════════════════════════════════════════════════
           _buildInactiveUsersSection(),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // OVERVIEW CARDS
-  // ─────────────────────────────────────────────────────────────────
   Widget _buildOverviewCards() {
     final totalUsers = _overview['total_users'] ?? 0;
     final activeLast30 = _overview['active_last_30_days'] ?? 0;
@@ -304,9 +284,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // DIET TREND CHART
-  // ─────────────────────────────────────────────────────────────────
   Widget _buildDietTrendSection() {
     return PillCard(
       padding: const EdgeInsets.all(24),
@@ -402,11 +379,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       final item = _trendData[i];
       spots.add(FlSpot(i.toDouble(), (item['count'] as num).toDouble()));
 
-      // Label per asse X
       final dateStr = item['date'] as String;
       String label;
       if (_trendPeriod == 'monthly') {
-        // "2026-01" → "Gen"
         try {
           final parts = dateStr.split('-');
           label = DateFormat.MMM('it').format(DateTime(int.parse(parts[0]), int.parse(parts[1])));
@@ -414,7 +389,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
           label = dateStr;
         }
       } else {
-        // "2026-01-15" → "15/01"
         try {
           final dt = DateTime.parse(dateStr);
           label = DateFormat('dd/MM').format(dt);
@@ -524,9 +498,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // NUTRITIONIST ACTIVITY
-  // ─────────────────────────────────────────────────────────────────
   Widget _buildNutritionistActivitySection() {
     return PillCard(
       padding: const EdgeInsets.all(24),
@@ -629,7 +600,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                   ],
                 ),
               ),
-              // Client capacity indicator
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -652,7 +622,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
           const SizedBox(height: 12),
 
-          // Client capacity bar
           ClipRRect(
             borderRadius: KyboBorderRadius.pill,
             child: LinearProgressIndicator(
@@ -671,7 +640,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
 
           const SizedBox(height: 12),
 
-          // Stats row
           Row(
             children: [
               _miniStat(Icons.restaurant_menu_rounded, "$diets", "diete", KyboColors.primary),
@@ -707,9 +675,6 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // INACTIVE USERS
-  // ─────────────────────────────────────────────────────────────────
   Widget _buildInactiveUsersSection() {
     return PillCard(
       padding: const EdgeInsets.all(24),

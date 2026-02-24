@@ -1,3 +1,5 @@
+// Vista configurazione server: toggle manutenzione manuale, schedulazione programmata e sezione configurazione app.
+// _initStream — ascolta Firestore config/global in real-time; _scheduleMaintenance — valida e salva data/ora.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -232,23 +234,14 @@ class _ConfigViewState extends State<ConfigView> {
     return ListView(
       padding: const EdgeInsets.all(8),
       children: [
-        // ═══════════════════════════════════════════════════════════════════
-        // STATUS CARD
-        // ═══════════════════════════════════════════════════════════════════
         _buildStatusCard(),
 
         const SizedBox(height: 24),
 
-        // ═══════════════════════════════════════════════════════════════════
-        // MANUAL OVERRIDE
-        // ═══════════════════════════════════════════════════════════════════
         _buildManualOverrideCard(),
 
         const SizedBox(height: 24),
 
-        // ═══════════════════════════════════════════════════════════════════
-        // SCHEDULE SECTION
-        // ═══════════════════════════════════════════════════════════════════
         _buildScheduleSection(),
 
         const SizedBox(height: 32),
@@ -382,7 +375,6 @@ class _ConfigViewState extends State<ConfigView> {
         ),
         const SizedBox(height: 16),
 
-        // Current Schedule
         if (_isScheduled && _scheduledDate != null)
           PillCard(
             padding: const EdgeInsets.all(20),
@@ -438,7 +430,6 @@ class _ConfigViewState extends State<ConfigView> {
 
         const SizedBox(height: 16),
 
-        // New Schedule
         PillCard(
           padding: const EdgeInsets.all(20),
           child: Column(

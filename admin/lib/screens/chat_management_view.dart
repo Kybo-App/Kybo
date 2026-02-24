@@ -1,3 +1,5 @@
+// Vista gestione chat: pannello lista a sinistra e interfaccia messaggi a destra.
+// Supporta upload allegati, broadcast e dialog di configurazione alert email per messaggi non letti.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -30,15 +32,11 @@ class _ChatManagementContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // ════════════════════════════════════════════════════════════════
-        // LEFT PANEL: Chat List
-        // ════════════════════════════════════════════════════════════════
         SizedBox(
           width: 350,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header with new chat button
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -93,14 +91,7 @@ class _ChatManagementContent extends StatelessWidget {
           ),
         ),
 
-        // ════════════════════════════════════════════════════════════════
-        // DIVIDER
-        // ════════════════════════════════════════════════════════════════
         VerticalDivider(width: 1, color: KyboColors.border),
-
-        // ════════════════════════════════════════════════════════════════
-        // RIGHT PANEL: Chat Interface
-        // ════════════════════════════════════════════════════════════════
         Expanded(child: _ChatInterface()),
       ],
     );
@@ -389,9 +380,6 @@ class _NutritionistTileState extends State<_NutritionistTile> {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// CHAT LIST
-// ════════════════════════════════════════════════════════════════════════
 class _ChatList extends StatefulWidget {
   @override
   State<_ChatList> createState() => _ChatListState();
@@ -429,7 +417,6 @@ class _ChatListState extends State<_ChatList> {
 
         final chats = snapshot.data ?? [];
 
-        // Pre-fetch nomi reali da Firestore (una sola volta per uid, cached)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.read<AdminChatProvider>().prefetchNamesForChats(chats);
         });
@@ -461,9 +448,6 @@ class _ChatListState extends State<_ChatList> {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// CHAT LIST TILE
-// ════════════════════════════════════════════════════════════════════════
 class _ChatListTile extends StatelessWidget {
   final Chat chat;
 
@@ -476,7 +460,6 @@ class _ChatListTile extends StatelessWidget {
     final unread = provider.getMyUnreadCount(chat);
     final hasUnread = unread > 0;
 
-    // Determine display name and type
     String displayName = chat.clientName;
     bool isSupportChat = false;
 
@@ -486,8 +469,6 @@ class _ChatListTile extends StatelessWidget {
       isSupportChat = true;
     }
 
-    // Per il nutrizionista che vede chat nutritionist-client: mostra nome reale
-    // del paziente da Firestore (cached), con fallback sul campo clientName
     if (provider.userRole != 'admin' &&
         chat.chatType == 'nutritionist-client') {
       final cachedName = provider.getCachedName(chat.clientId);
@@ -515,7 +496,6 @@ class _ChatListTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Avatar
               CircleAvatar(
                 backgroundColor: isSupportChat
                     ? KyboColors.roleAdmin.withValues(alpha: 0.2)
@@ -535,7 +515,6 @@ class _ChatListTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,7 +559,6 @@ class _ChatListTile extends StatelessWidget {
                 ),
               ),
 
-              // Unread badge
               if (hasUnread) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -625,9 +603,6 @@ class _ChatListTile extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// CHAT INTERFACE
-// ════════════════════════════════════════════════════════════════════════
 class _ChatInterface extends StatefulWidget {
   @override
   State<_ChatInterface> createState() => _ChatInterfaceState();
@@ -748,12 +723,10 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           final participants = data['participants'] as Map<String, dynamic>? ?? {};
 
           if (chatType == 'admin-nutritionist') {
-            // Admin vede la chat col nutrizionista
             final nutriId = participants['nutritionistId'] as String? ?? '';
             contactName = provider.getCachedName(nutriId) ?? (data['clientName'] ?? 'Nutrizionista');
             contactRole = 'Nutrizionista';
           } else {
-            // Nutrizionista vede la chat col paziente
             final clientId = participants['clientId'] as String? ?? '';
             contactName = provider.getCachedName(clientId) ??
                 (data['clientName'] as String? ?? '');
@@ -767,7 +740,6 @@ class _ChatInterfaceState extends State<_ChatInterface> {
 
         return Column(
           children: [
-            // Header con nome contatto
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
@@ -814,7 +786,6 @@ class _ChatInterfaceState extends State<_ChatInterface> {
               ),
             ),
 
-        // Messages list
         Expanded(
           child: StreamBuilder<List<ChatMessage>>(
             stream: provider.getMessagesForChat(selectedChatId),
@@ -852,7 +823,6 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           ),
         ),
 
-        // Message input
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -921,14 +891,12 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Attachment Button
               IconButton(
                 icon: const Icon(Icons.attach_file_rounded),
                 color: _pickedFile != null ? KyboColors.primary : KyboColors.textSecondary,
                 onPressed: _isUploading ? null : _pickFile,
               ),
               const SizedBox(width: 8),
-              // Send Button
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -963,9 +931,6 @@ class _ChatInterfaceState extends State<_ChatInterface> {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// MESSAGE BUBBLE
-// ════════════════════════════════════════════════════════════════════════
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
 
@@ -1078,7 +1043,6 @@ class _MessageBubble extends StatelessWidget {
         ),
       );
     } else {
-      // PDF or other
       return InkWell(
         onTap: () => _launchUrl(message.attachmentUrl!),
         child: Container(
@@ -1116,11 +1080,6 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-// EMAIL ALERT CONFIG DIALOG
-// Permette al nutrizionista di configurare gli alert email per messaggi non letti
-// ══════════════════════════════════════════════════════════════════════════════
 
 class _EmailAlertConfigDialog extends StatefulWidget {
   const _EmailAlertConfigDialog();
@@ -1222,7 +1181,6 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Email non configurata → warning
                   if (!_emailConfigured) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -1252,7 +1210,6 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Toggle abilitazione
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
@@ -1302,7 +1259,6 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
 
                   const SizedBox(height: 16),
 
-                  // Soglia giorni
                   Text(
                     'Giorni di inattività prima della notifica',
                     style: TextStyle(
