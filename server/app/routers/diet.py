@@ -21,6 +21,7 @@ from app.core.dependencies import (
 )
 from app.core.logging import logger, sanitize_error_message
 from app.services.app_config_service import get_app_config
+from app.services.diet_save_service import save_diet_to_firestore
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
@@ -243,34 +244,7 @@ async def upload_diet(
             dict_data = formatted_data.dict()
 
             db = firebase_admin.firestore.client()
-            user_diets_ref = db.collection('users').document(user_id).collection('diets')
-
-            diet_payload = {
-                'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
-                'lastUpdated': firebase_admin.firestore.SERVER_TIMESTAMP,
-                'plan': dict_data.get('plan'),
-                'substitutions': dict_data.get('substitutions'),
-                'config': dict_data.get('config'),
-                'activeSwaps': {},
-                'uploadedBy': 'user_upload',
-                'fileName': file.filename
-            }
-
-            user_diets_ref.document('current').set(diet_payload)
-            user_diets_ref.add(diet_payload)
-
-            db.collection('users').document(user_id).set({
-                'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
-                'allergies': dict_data.get('allergens', [])
-            }, merge=True)
-
-            db.collection('diet_history').add({
-                'userId': user_id,
-                'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
-                'fileName': file.filename,
-                'parsedData': dict_data,
-                'uploadedBy': user_id
-            })
+            save_diet_to_firestore(db, user_id, user_id, file.filename, dict_data, set_as_current=True)
 
             if fcm_token:
                 await run_in_threadpool(notification_service.send_diet_ready, fcm_token)
@@ -406,26 +380,7 @@ async def upload_diet_admin(
         formatted_data = _convert_to_app_format(raw_data)
         dict_data = formatted_data.dict()
 
-        db.collection('diet_history').add({
-            'userId': target_uid,
-            'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
-            'fileName': file.filename,
-            'parsedData': dict_data,
-            'uploadedBy': requester_id
-        })
-
-        db.collection('users').document(target_uid).collection('diets').add({
-            'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
-            'plan': dict_data.get('plan'),
-            'substitutions': dict_data.get('substitutions'),
-            'config': dict_data.get('config'),
-            'uploadedBy': 'nutritionist'
-        })
-
-        db.collection('users').document(target_uid).set({
-            'last_diet_update': firebase_admin.firestore.SERVER_TIMESTAMP,
-            'allergies': dict_data.get('allergens', [])
-        }, merge=True)
+        save_diet_to_firestore(db, target_uid, requester_id, file.filename, dict_data, set_as_current=False)
 
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)

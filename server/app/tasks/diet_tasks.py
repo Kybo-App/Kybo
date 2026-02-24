@@ -7,7 +7,6 @@ import io
 import os
 
 import firebase_admin
-from firebase_admin import firestore as fs
 
 
 def _ensure_firebase():
@@ -42,6 +41,7 @@ def process_diet_upload(
     _ensure_firebase()
 
     from app.services.diet_service import DietParser
+    from app.services.diet_save_service import save_diet_to_firestore
     from app.services.notification_service import NotificationService
     from app.core.logging import logger, sanitize_error_message
 
@@ -62,42 +62,7 @@ def process_diet_upload(
     dict_data = formatted_data.dict()
 
     db = firebase_admin.firestore.client()
-
-    diet_payload = {
-        "uploadedAt":  fs.SERVER_TIMESTAMP,
-        "lastUpdated": fs.SERVER_TIMESTAMP,
-        "plan":          dict_data.get("plan"),
-        "substitutions": dict_data.get("substitutions"),
-        "config":        dict_data.get("config"),
-        "activeSwaps":   {},
-        "uploadedBy":    requester_id,
-        "fileName":      file_name,
-    }
-
-    user_diets_ref = db.collection("users").document(target_uid).collection("diets")
-
-    if set_as_current:
-        user_diets_ref.document("current").set(diet_payload)
-
-    user_diets_ref.add(diet_payload)
-
-    db.collection("users").document(target_uid).set(
-        {
-            "last_diet_update": fs.SERVER_TIMESTAMP,
-            "allergies": dict_data.get("allergens", []),
-        },
-        merge=True,
-    )
-
-    db.collection("diet_history").add(
-        {
-            "userId":     target_uid,
-            "uploadedAt": fs.SERVER_TIMESTAMP,
-            "fileName":   file_name,
-            "parsedData": dict_data,
-            "uploadedBy": requester_id,
-        }
-    )
+    save_diet_to_firestore(db, target_uid, requester_id, file_name, dict_data, set_as_current=set_as_current)
 
     if fcm_token:
         try:
