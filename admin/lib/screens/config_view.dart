@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_repository.dart';
 import '../widgets/design_system.dart';
+import '../widgets/app_config_section.dart';
 
 class ConfigView extends StatefulWidget {
   const ConfigView({super.key});
@@ -249,6 +250,10 @@ class _ConfigViewState extends State<ConfigView> {
         // SCHEDULE SECTION
         // ═══════════════════════════════════════════════════════════════════
         _buildScheduleSection(),
+
+        const SizedBox(height: 32),
+
+        AppConfigSection(repo: _repo),
       ],
     );
   }
