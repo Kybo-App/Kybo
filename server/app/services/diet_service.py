@@ -9,6 +9,7 @@ from google import genai
 logger = logging.getLogger(__name__)
 from google.genai import types
 from app.core.config import settings
+from app.services.app_config_service import get_app_config
 from app.core.metrics import (
     diet_gemini_calls_total,
     diet_gemini_errors_total,
@@ -207,8 +208,9 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         try:
             # Apriamo direttamente l'oggetto in memoria senza toccare il disco
             with pdfplumber.open(file_obj) as pdf:
-                if len(pdf.pages) > settings.MAX_PDF_PAGES:
-                    raise ValueError(f"Il PDF ha troppe pagine (Max {settings.MAX_PDF_PAGES}).")
+                max_pages = get_app_config().get("max_pdf_pages", settings.MAX_PDF_PAGES)
+                if len(pdf.pages) > max_pages:
+                    raise ValueError(f"Il PDF ha troppe pagine (Max {max_pages}).")
                 
                 for page in pdf.pages:
                     extracted = page.extract_text(layout=True) 
@@ -362,7 +364,7 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return cached_result
         diet_cache_misses_total.labels(layer="L2_firestore").inc()
 
-        model_name = settings.GEMINI_MODEL
+        model_name = get_app_config().get("gemini_model", settings.GEMINI_MODEL)
         final_instruction = custom_instructions if custom_instructions else self.system_instruction
 
         diet_gemini_calls_total.inc()
