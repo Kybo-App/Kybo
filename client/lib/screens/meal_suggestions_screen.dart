@@ -1,10 +1,12 @@
+// Schermata suggerimenti pasti AI generati da Gemini.
+// SuggestedDish.fromJson — deserializza un suggerimento dalla risposta API.
+// _fetchSuggestions — chiama /meal-suggestions con filtri tipo pasto e items dispensa.
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
 import '../services/api_client.dart';
 import '../services/shortcuts_service.dart';
 import '../widgets/design_system.dart';
 
-/// Modello per un singolo suggerimento pasto da Gemini AI.
 class SuggestedDish {
   final String name;
   final String qty;
@@ -34,9 +36,6 @@ class SuggestedDish {
   }
 }
 
-/// Schermata Suggerimenti Pasti AI — generati da Gemini in base alla
-/// dieta corrente, allergeni e mood recente dell'utente.
-/// Se [pantryItems] è fornito, genera ricette basate sugli ingredienti in dispensa.
 class MealSuggestionsScreen extends StatefulWidget {
   final List<PantryItem>? pantryItems;
 
@@ -71,7 +70,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
   void initState() {
     super.initState();
     _fetchSuggestions();
-    // Dona shortcut a Siri ogni volta che l'utente apre questa schermata
     ShortcutsService().donateShortcut(ShortcutsService.suggestionsActivity);
   }
 
@@ -87,7 +85,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         queryParams.write('&meal_type=${Uri.encodeComponent(_selectedMealType)}');
       }
       if (_isPantryMode) {
-        // Passa nome + quantità + unità (es. "pollo 150g") per rispettare le grammature della dieta
         final items = widget.pantryItems!.map((p) {
           final qty = p.quantity == p.quantity.roundToDouble()
               ? p.quantity.round().toString()
@@ -184,7 +181,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     );
   }
 
-  // ─── Filtri tipo pasto ──────────────────────────────────────────────────────
   Widget _buildFilters(BuildContext context) {
     return SizedBox(
       height: 48,
@@ -238,7 +234,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     );
   }
 
-  // ─── Banner modalità dispensa ───────────────────────────────────────────────
   Widget _buildPantryBanner(BuildContext context) {
     final items = widget.pantryItems!;
     final preview = items.take(3).map((p) => p.name).join(', ');
@@ -271,7 +266,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     );
   }
 
-  // ─── Badge contesto usato ───────────────────────────────────────────────────
   Widget _buildContextBadge(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -296,7 +290,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     );
   }
 
-  // ─── Contenuto principale ───────────────────────────────────────────────────
   Widget _buildContent(BuildContext context) {
     if (_loading) return _buildLoading(context);
     if (_error != null) return _buildError(context);
@@ -448,7 +441,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     );
   }
 
-  // ─── Card singolo suggerimento ──────────────────────────────────────────────
   Widget _buildSuggestionCard(BuildContext context, SuggestedDish dish) {
     final mealColor = _mealColors[dish.mealType] ?? KyboColors.primary;
 
@@ -473,7 +465,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: meal type chip + calorie
             Row(
               children: [
                 Container(
@@ -514,7 +505,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
 
             const SizedBox(height: 10),
 
-            // Nome piatto + quantità
             Text(
               dish.name,
               style: TextStyle(
@@ -539,7 +529,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
 
             const SizedBox(height: 8),
 
-            // Descrizione
             Text(
               dish.description,
               style: TextStyle(
@@ -551,7 +540,6 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
               overflow: TextOverflow.ellipsis,
             ),
 
-            // Ingredienti
             if (dish.ingredients.isNotEmpty) ...[
               const SizedBox(height: 10),
               Divider(color: KyboColors.border(context), height: 1),

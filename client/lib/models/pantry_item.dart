@@ -1,7 +1,8 @@
+// Modello per un singolo articolo della dispensa con nome, quantità e unità di misura.
 class PantryItem {
   String name;
   double quantity;
-  String unit; // "g" o "pz"
+  String unit;
 
   PantryItem({required this.name, required this.quantity, required this.unit});
 
@@ -13,7 +14,6 @@ class PantryItem {
   factory PantryItem.fromJson(Map<String, dynamic> json) {
     return PantryItem(
       name: json['name'] ?? '',
-      // FIX 2.2: Cast sicuro (gestisce int, double e null)
       quantity: (json['quantity'] as num?)?.toDouble() ?? 0.0,
       unit: json['unit'] ?? '',
     );

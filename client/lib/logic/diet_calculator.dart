@@ -1,8 +1,10 @@
+// Calcolo disponibilità ingredienti e parsing unità per la dieta.
+// calculateAvailabilityIsolate — simulazione frigo per i giorni futuri (eseguibile in Isolate).
+// buildGroups — raggruppa piatti per header N/A; parseQty/parseUnit — parsing stringa quantità.
 import 'package:kybo/constants.dart'
     show DietUnits, UnitConversions;
-import 'package:kybo/models/pantry_item.dart'; // Assicurati che l'import sia corretto per il tuo progetto
+import 'package:kybo/models/pantry_item.dart';
 
-// --- ECCEZIONI DI DOMINIO ---
 class UnitMismatchException implements Exception {
   final PantryItem item;
   final String requiredUnit;
@@ -18,9 +20,7 @@ class IngredientException implements Exception {
   String toString() => message;
 }
 
-// --- LOGICA PURA & PARSING ---
 class DietCalculator {
-  // Funzione Isolate (Top-level o static)
   static Map<String, bool> calculateAvailabilityIsolate(
     Map<String, dynamic> payload,
   ) {
@@ -41,22 +41,16 @@ class DietCalculator {
 
     Map<String, bool> newMap = {};
 
-// ✅ FIX MIDNIGHT BUG: Usa mezzanotte del giorno corrente come riferimento
-// Questo previene race condition se il calcolo attraversa la mezzanotte
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day); // 00:00:00 di oggi
+    final today = DateTime(now.year, now.month, now.day);
     int todayIndex = today.weekday - 1;
 
-    // [FIX] Usa i giorni dinamici passati nel payload
     final List<String> daysToCheck = (payload['days'] as List<dynamic>?)?.cast<String>() ?? [];
-    // [FIX] Usa i pasti dinamici passati nel payload
     final List<String> mealsToCheck = (payload['meals'] as List<dynamic>?)?.cast<String>() ?? [];
 
     for (int d = 0; d < daysToCheck.length; d++) {
       String day = daysToCheck[d];
 
-      // Saltiamo i giorni già passati (prima di oggi)
-      // La simulazione parte dalla dispensa ATTUALE per i pasti FUTURI
       if (d < todayIndex) continue;
 
       if (!dietData.containsKey(day)) continue;
@@ -72,28 +66,22 @@ class DietCalculator {
           List<int> indices = groups[gIdx];
           if (indices.isEmpty) continue;
 
-          // MODIFICA 2: Controllo "Già Consumato"
           bool isConsumed = false;
           if (dishes[indices[0]]['consumed'] == true) {
             isConsumed = true;
           }
 
           if (isConsumed) {
-            // Se è già consumato, NON sottraiamo ingredienti dal frigo simulato.
-            // L'ingrediente è già stato tolto dal frigo "vero" quando l'utente ha cliccato check.
             for (int originalIdx in indices) {
-              // Mettiamo false (grigio) o true (verde) a seconda di come vuoi la UI
-              // Ma il punto cruciale è il CONTINUE qui sotto.
               newMap["${day}_${mType}_$originalIdx"] = false;
             }
-            continue; // Saltiamo il calcolo consumo per questo pasto
+            continue;
           }
 
           final firstDish = dishes[indices[0]];
           final String? instanceId = firstDish['instance_id']?.toString();
           final int cadCode = firstDish['cad_code'] ?? 0;
 
-          // IMPORTANTE: usa "::" come separatore (stesso formato di meal_card.dart)
           String swapKey = (instanceId != null && instanceId.isNotEmpty)
               ? "$day::$mType::$instanceId"
               : "$day::$mType::$cadCode";
@@ -187,7 +175,6 @@ class DietCalculator {
     String iRawQty = item['qty'].toString().toLowerCase();
     double iQty = parseQty(iRawQty);
 
-    // Normalizzazione rapida per simulazione (usa costanti centralizzate)
     if (iRawQty.contains('kg') ||
         (iRawQty.contains('l') && !iRawQty.contains('ml'))) {
       iQty *= UnitConversions.kgToGrams;
@@ -228,7 +215,6 @@ class DietCalculator {
   }
 
   static double parseQty(String raw) {
-    // Gestione "q.b." normalizzato dal server
     if (raw.toLowerCase().contains("q.b")) return 0.0;
 
     final regExp = RegExp(r'(\d+[.,]?\d*)');
@@ -239,25 +225,20 @@ class DietCalculator {
     return 1.0;
   }
 
-  // [MODIFICA PUNTO 4.3] Parser Unità con Costanti
   static String parseUnit(String raw, String name) {
     String lower = raw.toLowerCase().trim();
 
-    // 1. Unità Standard (Uso costanti)
     if (lower.contains(DietUnits.KG)) return DietUnits.KG;
-    if (lower.contains('mg')) return 'mg'; // Possiamo lasciare mg se raro
+    if (lower.contains('mg')) return 'mg';
     if (lower.contains(DietUnits.ML)) return DietUnits.ML;
 
-    // Gestione spaziata " l " o fine stringa " l"
     if (lower.contains(' ${DietUnits.LITER} ') ||
         lower.endsWith(' ${DietUnits.LITER}')) {
       return DietUnits.LITER;
     }
 
-    // Regex per 'g' isolato o 'gr'
     if (RegExp(r'\b(g|gr)\b').hasMatch(lower)) return DietUnits.GRAMS;
 
-    // Unità discrete (Uso costanti)
     if (lower.contains(DietUnits.VASETTO)) return DietUnits.VASETTO;
     if (lower.contains(DietUnits.CUCCHIAINO)) return DietUnits.CUCCHIAINO;
     if (lower.contains(DietUnits.CUCCHIAIO)) return DietUnits.CUCCHIAIO;
@@ -265,12 +246,10 @@ class DietCalculator {
     if (lower.contains(DietUnits.BICCHIERE)) return DietUnits.BICCHIERE;
     if (lower.contains(DietUnits.FETTE)) return DietUnits.FETTE;
 
-    // --- Retro-compatibilità (Plurali) ---
-    // Mappiamo i plurali alle costanti SINGOLARI
     if (lower.contains('vasetti')) return DietUnits.VASETTO;
     if (lower.contains('cucchiai')) return DietUnits.CUCCHIAIO;
     if (lower.contains('grammi')) return DietUnits.GRAMS;
 
-    return ""; // Default vuoto (pezzi implici)
+    return "";
   }
 }

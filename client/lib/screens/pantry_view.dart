@@ -1,3 +1,4 @@
+// Vista dispensa: aggiunta manuale, rimozione swipe, griglia tablet, accesso a ricette AI.
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
 import '../screens/meal_suggestions_screen.dart';
@@ -120,7 +121,6 @@ class _PantryViewState extends State<PantryView> {
               ),
             ),
 
-            // INPUT FORM
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(12),
@@ -220,7 +220,6 @@ class _PantryViewState extends State<PantryView> {
 
             const SizedBox(height: 16),
 
-            // LISTA
             Expanded(
               child: widget.pantryItems.isEmpty
                   ? Center(
@@ -254,7 +253,6 @@ class _PantryViewState extends State<PantryView> {
     );
   }
 
-  // ─── Lista lineare (mobile) ─────────────────────────────────────────────
   Widget _buildLinearList(BuildContext context) {
     return ListView.builder(
       itemCount: widget.pantryItems.length,
@@ -263,7 +261,6 @@ class _PantryViewState extends State<PantryView> {
     );
   }
 
-  // ─── Griglia 2 colonne (tablet) ─────────────────────────────────────────
   Widget _buildGridList(BuildContext context) {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
@@ -278,7 +275,6 @@ class _PantryViewState extends State<PantryView> {
     );
   }
 
-  // ─── Tile singolo articolo dispensa ─────────────────────────────────────
   Widget _buildPantryTile(BuildContext context, int index) {
     final item = widget.pantryItems[index];
     return Container(

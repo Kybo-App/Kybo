@@ -1,3 +1,5 @@
+// Entrypoint dell'app Kybo: inizializza Firebase, providers e MaterialApp con tema chiaro/scuro.
+// MaintenanceGuard — legge config/global da Firestore e mostra schermata di manutenzione se attiva.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,10 +24,8 @@ void main() {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      // 1. Env
       await Env.init();
 
-      // 2. Init Firebase
       try {
         final firebaseOptions = Env.isProd
             ? prod.DefaultFirebaseOptions.currentPlatform
@@ -35,16 +35,14 @@ void main() {
           await Firebase.initializeApp(options: firebaseOptions);
         }
 
-        // [IMPORTANTE] Abilita la persistenza offline di Firestore subito
         FirebaseFirestore.instance.settings = const Settings(
           persistenceEnabled: true,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
       } catch (e) {
-        debugPrint("⚠️ Firebase Init Error: $e");
+        debugPrint("Firebase Init Error: $e");
       }
 
-      // 3. Avvio UI Immediato
       runApp(
         MultiProvider(
           providers: [
@@ -72,8 +70,6 @@ void main() {
         ),
       );
 
-      // 4. Avvio Notifiche "Lazy" (Non blocca l'app)
-      // Non aspettiamo il risultato, lo lasciamo andare in background
       Future.delayed(const Duration(seconds: 3), () {
         if (Firebase.apps.isNotEmpty) {
           NotificationService().init();
@@ -81,7 +77,7 @@ void main() {
       });
     },
     (error, stack) {
-      debugPrint("🔴 Global Error: $error");
+      debugPrint("Global Error: $error");
     },
   );
 }
@@ -98,9 +94,6 @@ class DietApp extends StatelessWidget {
       title: 'Kybo',
       debugShowCheckedModeBanner: false,
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-      // ═══════════════════════════════════════════════════════════════════════
-      // LIGHT THEME - Colori identici a Kybo Admin
-      // ═══════════════════════════════════════════════════════════════════════
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -179,9 +172,6 @@ class DietApp extends StatelessWidget {
           ),
         ),
       ),
-      // ═══════════════════════════════════════════════════════════════════════
-      // DARK THEME - Colori identici a Kybo Admin
-      // ═══════════════════════════════════════════════════════════════════════
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -260,7 +250,6 @@ class DietApp extends StatelessWidget {
           ),
         ),
       ),
-      // Qui usiamo il MaintenanceGuard basato su Firestore
       builder: (context, child) {
         return MaintenanceGuard(child: PasswordGuard(child: child!));
       },
@@ -269,9 +258,6 @@ class DietApp extends StatelessWidget {
   }
 }
 
-// -------------------------------------------------------
-// 🛡️ MAINTENANCE GUARD (SOLO FIRESTORE)
-// -------------------------------------------------------
 class MaintenanceGuard extends StatelessWidget {
   final Widget child;
   const MaintenanceGuard({super.key, required this.child});
@@ -286,12 +272,7 @@ class MaintenanceGuard extends StatelessWidget {
           .doc('global')
           .snapshots(),
       builder: (context, snapshot) {
-        // Se siamo offline, Firestore proverà a usare la cache.
-        // Se non ha cache o c'è errore, snapshot.hasError potrebbe essere true o connectionState waiting.
-        // IN OGNI CASO DI DUBBIO -> Lasciamo passare l'utente (Fail Open)
-
         if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-          // Non blocchiamo l'utente se non riusciamo a leggere la config
           return child;
         }
 

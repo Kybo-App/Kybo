@@ -1,10 +1,8 @@
+// Schermata connessione bilancia smart: tab Bluetooth LE e tab Withings (stub).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/scale_service.dart';
 
-/// Schermata per connettere una bilancia smart.
-/// Tab 1: Bluetooth LE (bilance generiche, Xiaomi, ecc.)
-/// Tab 2: Withings (stub, configurazione futura)
 class ScaleConnectScreen extends StatefulWidget {
   const ScaleConnectScreen({super.key});
 
@@ -58,10 +56,6 @@ class _ScaleConnectScreenState extends State<ScaleConnectScreen>
     );
   }
 }
-
-// =============================================================================
-// TAB 1: BLUETOOTH LE
-// =============================================================================
 
 class _BleTab extends StatelessWidget {
   const _BleTab();
@@ -312,10 +306,6 @@ class _BleTab extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// TAB 2: WITHINGS (stub)
-// =============================================================================
-
 class _WithingsTab extends StatelessWidget {
   const _WithingsTab();
 
@@ -390,7 +380,7 @@ class _WithingsTab extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12)),
                 backgroundColor: Colors.grey[400],
               ),
-              onPressed: null, // disabilitato — configurazione futura
+              onPressed: null,
             ),
           ),
           const SizedBox(height: 12),

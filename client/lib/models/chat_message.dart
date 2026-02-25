@@ -1,16 +1,16 @@
+// Modello per un singolo messaggio della chat, serializzabile da/verso Firestore.
+// Supporta backward compatibility col campo 'text' legacy (ora rinominato 'message').
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Represents a single message in the chat
-/// Campo unificato: 'message' (identico al modello admin)
 class ChatMessage {
   final String id;
   final String message;
   final String senderId;
-  final String senderType; // 'client' | 'nutritionist' | 'admin'
+  final String senderType;
   final DateTime timestamp;
   final bool read;
   final String? attachmentUrl;
-  final String? attachmentType; // 'image' | 'pdf'
+  final String? attachmentType;
   final String? fileName;
 
   ChatMessage({
@@ -27,12 +27,10 @@ class ChatMessage {
 
   bool get hasAttachment => attachmentUrl != null;
 
-  /// Create ChatMessage from Firestore document
   factory ChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ChatMessage(
       id: doc.id,
-      // Supporta sia 'message' (nuovo) che 'text' (legacy) per backward compatibility
       message: data['message'] ?? data['text'] ?? '',
       senderId: data['senderId'] ?? '',
       senderType: data['senderType'] ?? 'client',
@@ -44,7 +42,6 @@ class ChatMessage {
     );
   }
 
-  /// Convert to Firestore format
   Map<String, dynamic> toFirestore() {
     return {
       'message': message,
@@ -58,7 +55,6 @@ class ChatMessage {
     };
   }
 
-  /// Create a copy with modified fields
   ChatMessage copyWith({
     String? id,
     String? message,
