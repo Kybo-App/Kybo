@@ -1,3 +1,5 @@
+// Schermata di onboarding iniziale con scelta tra utente con nutrizionista e indipendente.
+// _handleInviteCode — mostra dialog per inserire codice invito manuale.
 import 'package:flutter/material.dart';
 import '../widgets/design_system.dart';
 import 'login_screen.dart';
@@ -6,10 +8,6 @@ class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   void _navigateToLogin(BuildContext context, {bool isIndependent = false}) {
-    // Navigate to Login/Register.
-    // In a real flow, we might pass a flag to Registration screen.
-    // For now, let's go to LoginScreen which should have a "Register" option.
-    // We can simulate passing data via arguments if needed.
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LoginScreen(isIndependent: isIndependent),
@@ -18,7 +16,6 @@ class OnboardingScreen extends StatelessWidget {
   }
 
   void _handleInviteCode(BuildContext context) {
-    // Show dialog to enter code manually if not via deep link
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -73,7 +70,6 @@ class OnboardingScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // Logo & Title
               Center(
                 child: Container(
                   width: 80,
@@ -110,7 +106,6 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const Spacer(),
 
-              // Options
               _buildOptionCard(
                 context,
                 icon: Icons.person_pin_circle_rounded,

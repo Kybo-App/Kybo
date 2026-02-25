@@ -1,3 +1,4 @@
+// Schermata impostazioni: password, allarmi pasti, budget spesa, dark mode, privacy, tutorial.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,7 +34,6 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Change Password
           PillCard(
             child: PillListTile(
               leading: Container(
@@ -57,7 +57,6 @@ class SettingsScreen extends StatelessWidget {
           ),
 
 
-          // Manage Alarms
           PillCard(
             child: PillListTile(
               leading: Container(
@@ -77,7 +76,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Budget Spesa Settimanale
           Consumer<DietProvider>(
             builder: (context, dietProvider, _) {
               final budget = dietProvider.weeklyBudget;
@@ -106,7 +104,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Dark Mode Toggle
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, _) => PillCard(
               child: SwitchListTile(
@@ -148,7 +145,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Privacy Policy
           PillCard(
             child: PillListTile(
               leading: Container(
@@ -168,7 +164,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Reset Tutorial
           PillCard(
             child: PillListTile(
               leading: Container(
@@ -188,7 +183,6 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // App Info
           Center(
             child: Text(
               'Kybo v1.0.0',

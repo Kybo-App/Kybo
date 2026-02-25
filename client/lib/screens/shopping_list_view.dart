@@ -1,3 +1,6 @@
+// Vista lista della spesa: generazione da dieta, raggruppamento per categoria, budget stimato, condivisione.
+// _generateListFromSelection — aggrega ingredienti dai pasti selezionati sottraendo la dispensa.
+// _categorizeItem — assegna una categoria merceologica italiana a un nome ingrediente.
 import 'package:flutter/material.dart';
 import 'package:kybo/models/diet_models.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +15,7 @@ import '../services/pricing_service.dart';
 
 class ShoppingListView extends StatefulWidget {
   final List<String> shoppingList;
-  final DietPlan? dietPlan; // <--- CAMBIATO: da Map a DietPlan
+  final DietPlan? dietPlan;
   final Map<String, ActiveSwap> activeSwaps;
   final List<PantryItem> pantryItems;
   final Function(List<String>) onUpdateList;
@@ -21,7 +24,7 @@ class ShoppingListView extends StatefulWidget {
   const ShoppingListView({
     super.key,
     required this.shoppingList,
-    required this.dietPlan, // <--- Aggiornato
+    required this.dietPlan,
     required this.activeSwaps,
     required this.pantryItems,
     required this.onUpdateList,
@@ -32,10 +35,8 @@ class ShoppingListView extends StatefulWidget {
   State<ShoppingListView> createState() => _ShoppingListViewState();
 }
 
-// Grocery category keywords for grouping
 const _categoryKeywords = {
   'Frutta & Verdura': [
-    // Frutta
     'mela', 'mele', 'pera', 'pere', 'banana', 'banane', 'arancia', 'arance',
     'limone', 'limoni', 'uva', 'fragola', 'fragole', 'kiwi', 'ananas',
     'mango', 'avocado', 'pesca', 'pesche', 'albicocca', 'albicocche',
@@ -44,7 +45,6 @@ const _categoryKeywords = {
     'susina', 'susine', 'melagrana', 'melograno', 'clementina', 'clementine',
     'mandarino', 'mandarini', 'pompelmo', 'nettarina', 'papaya', 'maracuja',
     'ribes', 'mora', 'more', 'castagna', 'castagne',
-    // Verdura
     'pomodoro', 'pomodori', 'insalata', 'lattuga', 'spinaci', 'spinaco',
     'broccoli', 'broccolo', 'carota', 'carote', 'zucchina', 'zucchine',
     'melanzana', 'melanzane', 'peperone', 'peperoni', 'cipolla', 'cipolle',
@@ -58,20 +58,17 @@ const _categoryKeywords = {
     'verdura', 'frutta',
   ],
   'Carne & Pesce': [
-    // Carne
     'pollo', 'manzo', 'maiale', 'tacchino', 'vitello', 'agnello', 'coniglio',
     'cinghiale', 'anatra', 'faraona', 'piccione', 'struzzo',
     'carne', 'bistecca', 'filetto', 'arrosto', 'costine', 'braciola',
     'prosciutto', 'bresaola', 'mortadella', 'salame', 'speck', 'pancetta',
     'wurstel', 'cotechino', 'zampone', 'lardo', 'coppa', 'guanciale',
     'carpaccio', 'hamburger', 'polpette', 'salsiccia', 'salsicce',
-    // Pesce
     'pesce', 'salmone', 'tonno', 'merluzzo', 'branzino', 'orata', 'baccalà',
     'sgombro', 'alici', 'acciughe', 'sardina', 'sardine', 'aringa',
     'pesce spada', 'rombo', 'sogliola', 'dentice', 'cernia', 'triglia',
     'trota', 'spigola', 'anguilla', 'halibut', 'palombo', 'mormora',
     'sarago', 'leccia', 'palamita', 'rana pescatrice',
-    // Frutti di mare & molluschi
     'frutti di mare', 'molluschi', 'crostacei',
     'gambero', 'gamberi', 'gamberetto', 'gamberetti', 'mazzancolla', 'mazzancolle',
     'scampi', 'scampo', 'aragosta', 'astice', 'granchio', 'granciporro',
@@ -128,11 +125,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   final Set<String> _selectedMealKeys = {};
   bool _groupByCategory = false;
 
-  // ─── Banner budget stimato ───────────────────────────────────────────────
   Widget _buildBudgetBanner(BuildContext context) {
     final provider = context.watch<DietProvider>();
 
-    // Nessun articolo → non mostrare
     if (widget.shoppingList.isEmpty) return const SizedBox.shrink();
 
     final activeItems = widget.shoppingList

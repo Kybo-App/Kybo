@@ -1,6 +1,8 @@
-/// Modelli per tracking progressi e statistiche utente
+// Modelli per tracking progressi e statistiche utente.
+// WeightEntry — singola misurazione peso; DailyMealStats — aderenza giornaliera;
+// WeeklyStats — aggregato settimanale; UserGoal — obiettivo personalizzato; MealNote — diario pasto.
 
-/// Entry per tracking del peso
+/// Entry per tracking del peso.
 class WeightEntry {
   final DateTime date;
   final double weightKg;
@@ -27,12 +29,12 @@ class WeightEntry {
       };
 }
 
-/// Statistiche giornaliere dei pasti consumati
+/// Statistiche giornaliere dei pasti consumati.
 class DailyMealStats {
   final DateTime date;
   final int mealsPlanned;
   final int mealsConsumed;
-  final Map<String, bool> mealCompletion; // es. {"Colazione": true, "Pranzo": false}
+  final Map<String, bool> mealCompletion;
 
   DailyMealStats({
     required this.date,
@@ -61,13 +63,13 @@ class DailyMealStats {
       };
 }
 
-/// Statistiche settimanali aggregate
+/// Statistiche settimanali aggregate.
 class WeeklyStats {
   final DateTime weekStart;
   final int totalMealsPlanned;
   final int totalMealsConsumed;
-  final int daysWithFullAdherence; // Giorni con 100% aderenza
-  final int currentStreak; // Streak giorni consecutivi 100%
+  final int daysWithFullAdherence;
+  final int currentStreak;
 
   WeeklyStats({
     required this.weekStart,
@@ -99,14 +101,14 @@ class WeeklyStats {
       };
 }
 
-/// Obiettivo personalizzato dell'utente
+/// Obiettivo personalizzato dell'utente.
 class UserGoal {
   final String id;
   final String title;
   final String? description;
   final double targetValue;
   final double currentValue;
-  final String unit; // "L", "kg", "pasti", etc.
+  final String unit;
   final bool isCompleted;
 
   UserGoal({
@@ -145,14 +147,14 @@ class UserGoal {
       };
 }
 
-/// Nota del diario alimentare per un singolo pasto
+/// Nota del diario alimentare per un singolo pasto.
 class MealNote {
   final String id;
   final DateTime date;
-  final String day; // es. "Lunedì"
-  final String mealType; // es. "Pranzo"
+  final String day;
+  final String mealType;
   final String note;
-  final String? mood; // emoji opzionale: 😊, 😐, 😔
+  final String? mood;
 
   MealNote({
     required this.id,

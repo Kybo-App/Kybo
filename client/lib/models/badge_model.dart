@@ -1,3 +1,4 @@
+// Modello badge con registro statico dei badge predefiniti dell'app.
 import 'package:flutter/material.dart';
 
 enum BadgeType {
@@ -13,8 +14,7 @@ class BadgeModel {
   final IconData icon;
   final BadgeType type;
   final bool isSecret;
-  
-  // Runtime state
+
   bool isUnlocked;
   DateTime? unlockedAt;
 
@@ -57,7 +57,6 @@ class BadgeModel {
     };
   }
 
-  // Predefined Badges Registry
   static List<BadgeModel> get registry => [
     BadgeModel(
       id: 'first_login',
