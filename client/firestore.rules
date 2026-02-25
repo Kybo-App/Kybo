@@ -24,10 +24,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // READ: Invariato
       allow read: if isOwner(userId) ||
                   hasRole('admin') ||
-                  (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
+                  (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid)) ||
+                  (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.parent_id == userId);
 
       // [SECURITY FIX] Create: Solo il proprio profilo con validazione campi
       allow create: if isOwner(userId) &&
