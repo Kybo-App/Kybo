@@ -1,8 +1,9 @@
+// Gestisce deep link e shortcuts Siri/App Actions emettendo target di navigazione su stream.
+// getNavigationTarget — mappa un URI a un NavTarget; getInviteCode — estrae il codice invito da URI.
 import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
-/// Target di navigazione emessi dal navigationStream
 class NavTarget {
   static const String diet = 'diet';
   static const String suggestions = 'suggestions';
@@ -16,15 +17,11 @@ class DeepLinkService {
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
 
-  // Stream di navigazione per shortcuts Siri / App Actions Android
   final StreamController<String> _navigationController =
       StreamController<String>.broadcast();
 
-  /// Stream che emette NavTarget quando un deep link di navigazione arriva
   Stream<String> get navigationStream => _navigationController.stream;
 
-  /// Initialize deep link listener
-  /// Returns the initial link if present
   Future<Uri?> init() async {
     try {
       final initialLink = await _appLinks.getInitialLink();
@@ -53,9 +50,6 @@ class DeepLinkService {
     _navigationController.close();
   }
 
-  /// Restituisce il target di navigazione da un URI, se riconosciuto.
-  /// - kybo://diet → NavTarget.diet
-  /// - kybo://suggestions → NavTarget.suggestions
   static String? getNavigationTarget(Uri? uri) {
     if (uri == null) return null;
     final host = uri.host.toLowerCase();
@@ -64,13 +58,8 @@ class DeepLinkService {
     return null;
   }
 
-  /// Parse invite code from URI
-  /// Supported formats:
-  /// - kybo://invite?code=123
-  /// - https://kybo.app/invite?code=123
   static String? getInviteCode(Uri? uri) {
     if (uri == null) return null;
-    // Check path or host depending on scheme
     if (uri.path.contains('invite') || uri.host == 'invite') {
       return uri.queryParameters['code'];
     }

@@ -1,3 +1,5 @@
+// HTTP client con retry e exponential backoff per le chiamate API.
+// _retryableRequest — esegue richieste con retry su errori di rete; _performUpload — upload multipart con token Firebase.
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
@@ -8,7 +10,6 @@ import 'package:retry/retry.dart';
 import 'package:flutter/foundation.dart';
 import '../core/env.dart';
 
-// Eccezione per errori di business (es. 400, 500, dati non validi)
 class ApiException implements Exception {
   final String message;
   final int statusCode;
@@ -17,7 +18,6 @@ class ApiException implements Exception {
   String toString() => 'ApiException: $message (Code: $statusCode)';
 }
 
-// Eccezione per errori di rete (es. Timeout, DNS)
 class NetworkException implements Exception {
   final String message;
   NetworkException(this.message);
@@ -30,11 +30,9 @@ class ApiClient {
   factory ApiClient() => _instance;
   ApiClient._internal();
 
-  // [NEW] Configurazione retry globale
   static const int _maxRetries = 3;
   static const Duration _baseDelay = Duration(seconds: 1);
 
-  /// Wrapper generico per richieste HTTP con retry e exponential backoff
   Future<http.Response> _retryableRequest(
     Future<http.Response> Function() requestFn, {
     int maxRetries = _maxRetries,
@@ -42,7 +40,7 @@ class ApiClient {
     final r = RetryOptions(
       maxAttempts: maxRetries,
       delayFactor: _baseDelay,
-      randomizationFactor: 0.25, // Jitter per evitare thundering herd
+      randomizationFactor: 0.25,
     );
 
     return await r.retry(
@@ -56,7 +54,6 @@ class ApiClient {
     );
   }
 
-  /// GET request con retry automatico
   Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
     try {
       final uri = Uri.parse('${Env.apiUrl}$endpoint');
@@ -83,7 +80,6 @@ class ApiClient {
     }
   }
 
-  /// POST request con retry automatico
   Future<dynamic> post(
     String endpoint, {
     Map<String, dynamic>? body,
@@ -116,7 +112,6 @@ class ApiClient {
     }
   }
 
-  /// Parser comune per le risposte
   dynamic _parseResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
@@ -141,7 +136,7 @@ class ApiClient {
     String endpoint,
     String filePath, {
     Map<String, String>? fields,
-    Function(int sent, int total)? onProgress, // ✅ AGGIUNGI questo parametro
+    Function(int sent, int total)? onProgress,
   }) async {
     final r = RetryOptions(
       maxAttempts: 3,
@@ -153,16 +148,14 @@ class ApiClient {
         () async {
           return await _performUpload(endpoint, filePath, fields);
         },
-        // Riprova solo su errori di rete puri, non su errori logici (4xx/5xx)
         retryIf: (e) =>
             e is SocketException ||
             e is TimeoutException ||
             e is NetworkException,
       );
     } catch (e) {
-      // Logga l'errore grezzo per debug
       debugPrint("🛑 ApiClient Error: $e");
-      rethrow; // Passa la palla al Repository -> Provider
+      rethrow;
     }
   }
 
@@ -174,15 +167,12 @@ class ApiClient {
     var uri = Uri.parse('${Env.apiUrl}$endpoint');
     var request = http.MultipartRequest('POST', uri);
 
-    // --- FIX AUTH: INIEZIONE TOKEN ---
-    // Recuperiamo il token fresco da Firebase Auth
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final token = await user.getIdToken();
       request.headers['Authorization'] = 'Bearer $token';
       debugPrint("🔑 Token iniettato per l'upload");
     }
-    // ---------------------------------
 
     request.headers.addAll({'Accept': 'application/json'});
 
@@ -190,7 +180,6 @@ class ApiClient {
       request.fields.addAll(fields);
     }
 
-    // Verifica esistenza file prima dell'invio
     final file = File(filePath);
     if (!await file.exists()) {
       throw const FileSystemException("Il file da caricare non esiste");
@@ -202,7 +191,7 @@ class ApiClient {
 
     try {
       var streamedResponse = await request.send().timeout(
-        const Duration(seconds: 60), // Timeout generoso per upload
+        const Duration(seconds: 60),
         onTimeout: () {
           throw NetworkException("Il server non risponde. Connessione lenta.");
         },
@@ -222,7 +211,6 @@ class ApiClient {
           );
         }
       } else {
-        // Gestione errori server
         String errorMsg = "Errore sconosciuto";
         try {
           final errorJson = json.decode(utf8.decode(response.bodyBytes));
@@ -230,7 +218,6 @@ class ApiClient {
             errorMsg = errorJson['detail'].toString();
           }
         } catch (_) {
-          // Fallback se non è JSON
           errorMsg = response.body.isNotEmpty
               ? response.body.substring(0, min(response.body.length, 200))
               : "Errore HTTP ${response.statusCode}";

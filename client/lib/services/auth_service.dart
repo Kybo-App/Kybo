@@ -1,3 +1,5 @@
+// Gestisce autenticazione Firebase: email/password, Google Sign-In e creazione profilo utente.
+// _ensureUserDoc — crea il documento Firestore dell'utente se non esiste (self-healing).
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,7 +18,6 @@ class AuthService {
     return await currentUser?.getIdToken(false);
   }
 
-  // Crea il documento utente se non esiste (Self-healing)
   Future<void> _ensureUserDoc(User user, {String role = 'independent', Map<String, dynamic>? additionalData}) async {
     try {
       final docRef = _db.collection('users').doc(user.uid);
@@ -37,17 +38,14 @@ class AuthService {
       }
     } catch (e) {
       debugPrint("⚠️ Errore creazione doc utente: $e");
-      // Non blocchiamo il login per questo, ma lo logghiamo
     }
   }
 
   Future<UserCredential> signInWithGoogle() async {
     try {
-      // Triggera il flusso di autenticazione
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        // L'utente ha chiuso il popup
         throw PlatformException(
           code: 'sign_in_canceled',
           message: 'Login annullato dall\'utente',
@@ -71,7 +69,7 @@ class AuthService {
       return userCred;
     } catch (e) {
       debugPrint("❌ Google Sign-In Error: $e");
-      rethrow; // Il Provider gestirà l'errore UI
+      rethrow;
     }
   }
 
@@ -106,7 +104,6 @@ class AuthService {
     await _auth.signOut();
   }
 
-  /// Aggiorna il timestamp di ultimo accesso
   Future<void> updateLastLogin(String uid) async {
     try {
       await _db.collection('users').doc(uid).update({

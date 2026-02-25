@@ -1,46 +1,27 @@
+// Sistema di design Kybo Client: componenti pill-shaped con supporto dark mode tramite ThemeProvider.
+// Colori identici alla webapp admin. KyboColors usa context.watch per i getter dinamici e context.read per quelli statici.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 
-/// Sistema di Design Kybo Client - Pill-shaped UI
-/// Tutti i componenti hanno forme ellittiche/pill
-/// Supporta Dark Mode tramite ThemeProvider
-/// Colori IDENTICI alla webapp admin
-
-// =============================================================================
-// BREAKPOINTS RESPONSIVE
-// =============================================================================
-
 class KyboBreakpoints {
-  /// Larghezza minima per considerare il dispositivo un tablet
   static const double tablet = 600.0;
-
-  /// Larghezza minima per layout desktop/large tablet
   static const double desktop = 900.0;
 
-  /// True se lo schermo è largo almeno quanto un tablet
   static bool isTablet(BuildContext context) =>
       MediaQuery.of(context).size.width >= tablet;
 
-  /// True se lo schermo è largo almeno quanto un desktop
   static bool isDesktop(BuildContext context) =>
       MediaQuery.of(context).size.width >= desktop;
 
-  /// Colonne griglia per la dispensa: 2 su tablet, 1 su mobile
   static int pantryColumns(BuildContext context) =>
       isTablet(context) ? 2 : 1;
 
-  /// Colonne griglia per la lista spesa: 2 su tablet, 1 su mobile
   static int shoppingColumns(BuildContext context) =>
       isTablet(context) ? 2 : 1;
 }
 
-// =============================================================================
-// COSTANTI DI DESIGN - COLORI IDENTICI ALLA WEBAPP
-// =============================================================================
-
 class KyboColors {
-  // Ottiene lo stato dark mode dal ThemeProvider
   static bool isDarkFromContext(BuildContext context) {
     return context.watch<ThemeProvider>().isDarkMode;
   }
@@ -49,45 +30,34 @@ class KyboColors {
     return context.read<ThemeProvider>().isDarkMode;
   }
 
-  // Primary - IDENTICO ADMIN
   static const Color primary = Color(0xFF2E7D32);
   static const Color primaryLight = Color(0xFF60AD5E);
   static const Color primaryDark = Color(0xFF005005);
 
-  // Backgrounds - Light - IDENTICO ADMIN
   static const Color backgroundLight = Color(0xFFF8FAFC);
   static const Color surfaceLight = Colors.white;
 
-  // Backgrounds - Dark - IDENTICO ADMIN
   static const Color backgroundDark = Color(0xFF0F172A);
   static const Color surfaceDark = Color(0xFF1E293B);
   static const Color surfaceElevatedDark = Color(0xFF334155);
 
-  // Text - Light - IDENTICO ADMIN
   static const Color textPrimaryLight = Color(0xFF1E293B);
   static const Color textSecondaryLight = Color(0xFF64748B);
   static const Color textMutedLight = Color(0xFF94A3B8);
 
-  // Text - Dark - IDENTICO ADMIN
   static const Color textPrimaryDark = Color(0xFFF1F5F9);
   static const Color textSecondaryDark = Color(0xFF94A3B8);
   static const Color textMutedDark = Color(0xFF64748B);
 
-  // Accents (same for both modes) - IDENTICO ADMIN
   static const Color accent = Color(0xFF3B82F6);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
 
-  // Role Colors (same for both modes) - IDENTICO ADMIN
   static const Color roleAdmin = Color(0xFF8B5CF6);
   static const Color roleNutritionist = Color(0xFF3B82F6);
   static const Color roleIndependent = Color(0xFFF59E0B);
   static const Color roleUser = Color(0xFF10B981);
-
-  // =========================================================================
-  // GETTERS DINAMICI CON CONTEXT
-  // =========================================================================
 
   static Color background(BuildContext context) =>
       isDarkFromContext(context) ? backgroundDark : backgroundLight;
@@ -111,7 +81,6 @@ class KyboColors {
       ? Colors.white.withValues(alpha: 0.1)
       : Colors.black.withValues(alpha: 0.08);
 
-  // Shadows - IDENTICO ADMIN
   static List<BoxShadow> softShadow(BuildContext context) => [
         BoxShadow(
           color: isDarkFromContext(context)
@@ -134,10 +103,6 @@ class KyboColors {
         ),
       ];
 
-  // =========================================================================
-  // GETTERS SENZA CONTEXT (usa context.read per evitare rebuild)
-  // =========================================================================
-
   static Color backgroundStatic(BuildContext context) =>
       isDarkFromContextRead(context) ? backgroundDark : backgroundLight;
 
@@ -154,10 +119,6 @@ class KyboColors {
       isDarkFromContextRead(context) ? textMutedDark : textMutedLight;
 }
 
-// =============================================================================
-// SPACING E BORDER RADIUS - IDENTICO ADMIN
-// =============================================================================
-
 class KyboSpacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -173,10 +134,6 @@ class KyboBorderRadius {
   static BorderRadius get medium => BorderRadius.circular(16);
   static BorderRadius get small => BorderRadius.circular(12);
 }
-
-// =============================================================================
-// PILL BUTTON - Bottone principale ellittico
-// =============================================================================
 
 class PillButton extends StatelessWidget {
   final String label;
@@ -295,10 +252,6 @@ class PillButton extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// PILL ICON BUTTON - Bottone icona circolare (mobile-friendly)
-// =============================================================================
-
 class PillIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
@@ -353,16 +306,12 @@ class PillIconButton extends StatelessWidget {
     }
     return Semantics(
       button: true,
-      label: 'Icona', // Fallback generico se non c'e tooltip
+      label: 'Icona',
       enabled: onPressed != null,
       child: button,
     );
   }
 }
-
-// =============================================================================
-// PILL CARD - Card con bordi arrotondati
-// =============================================================================
 
 class PillCard extends StatelessWidget {
   final Widget child;
@@ -404,10 +353,6 @@ class PillCard extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// PILL BADGE - Badge per ruoli e stati
-// =============================================================================
 
 class PillBadge extends StatelessWidget {
   final String label;
@@ -492,10 +437,6 @@ class PillBadge extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// PILL SEARCH - Barra di ricerca ellittica
-// =============================================================================
-
 class PillSearch extends StatelessWidget {
   final TextEditingController? controller;
   final String hintText;
@@ -544,10 +485,6 @@ class PillSearch extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// PILL TEXT FIELD - Campo di input con stile pill
-// =============================================================================
 
 class PillTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -675,10 +612,6 @@ class _PillTextFieldState extends State<PillTextField> {
   }
 }
 
-// =============================================================================
-// PILL LIST TILE - List tile con stile pill
-// =============================================================================
-
 class PillListTile extends StatelessWidget {
   final Widget? leading;
   final String title;
@@ -760,10 +693,6 @@ class PillListTile extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// PILL CHIP - Chip selezionabile
-// =============================================================================
-
 class PillChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -808,10 +737,6 @@ class PillChip extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// PILL TAB BAR - Tab bar con stile pill
-// =============================================================================
 
 class PillTabBar extends StatelessWidget {
   final List<String> tabs;
@@ -874,10 +799,6 @@ class PillTabBar extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// PILL BOTTOM NAV - Bottom navigation con stile pill
-// =============================================================================
 
 class PillBottomNavItem {
   final IconData icon;
@@ -973,10 +894,6 @@ class PillBottomNav extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// PILL DIALOG - Dialog con stile pill
-// =============================================================================
-
 Future<T?> showPillDialog<T>({
   required BuildContext context,
   required String title,
@@ -1038,10 +955,6 @@ Future<T?> showPillDialog<T>({
   );
 }
 
-// =============================================================================
-// PILL SNACKBAR - Snackbar con stile pill
-// =============================================================================
-
 void showPillSnackbar({
   required BuildContext context,
   required String message,
@@ -1076,10 +989,6 @@ void showPillSnackbar({
     ),
   );
 }
-
-// =============================================================================
-// LOADING OVERLAY
-// =============================================================================
 
 class PillLoadingOverlay extends StatelessWidget {
   final bool isLoading;
@@ -1129,10 +1038,6 @@ class PillLoadingOverlay extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// EMPTY STATE
-// =============================================================================
 
 class PillEmptyState extends StatelessWidget {
   final IconData icon;
@@ -1200,10 +1105,6 @@ class PillEmptyState extends StatelessWidget {
     );
   }
 }
-
-// =============================================================================
-// SECTION HEADER
-// =============================================================================
 
 class PillSectionHeader extends StatelessWidget {
   final String title;

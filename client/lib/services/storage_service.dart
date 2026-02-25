@@ -1,3 +1,4 @@
+// Persistenza locale sicura tramite FlutterSecureStorage (dieta, dispensa, swap) e SharedPreferences (allarmi, conversioni, budget).
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,7 +14,6 @@ class StorageService {
 
   Future<Map<String, dynamic>?> loadDiet() async {
     try {
-      // MODIFICA: Leggi da Storage Sicuro invece che da SharedPreferences
       String? jsonString = await _storage.read(key: 'diet_plan');
       if (jsonString == null) return null;
       return jsonDecode(jsonString);
@@ -24,13 +24,11 @@ class StorageService {
   }
 
   Future<void> saveDiet(Map<String, dynamic> dietData) async {
-    // MODIFICA: Scrivi su Storage Sicuro
     await _storage.write(key: 'diet_plan', value: jsonEncode(dietData));
   }
 
   Future<List<PantryItem>> loadPantry() async {
     try {
-      // MODIFICA
       String? jsonString = await _storage.read(key: 'pantry');
       if (jsonString == null) return [];
       List<dynamic> list = jsonDecode(jsonString);
@@ -42,7 +40,6 @@ class StorageService {
   }
 
   Future<void> savePantry(List<PantryItem> items) async {
-    // MODIFICA
     await _storage.write(
       key: 'pantry',
       value: jsonEncode(items.map((e) => e.toJson()).toList()),
@@ -86,8 +83,8 @@ class StorageService {
 
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Pulisce le preferenze (allarmi, conversioni)
-    await _storage.deleteAll(); // Pulisce i dati sicuri (dieta, dispensa)
+    await prefs.clear();
+    await _storage.deleteAll();
   }
 
   Future<Map<String, double>> loadConversions() async {
@@ -107,8 +104,6 @@ class StorageService {
     await prefs.setString('custom_conversions', jsonEncode(conversions));
   }
 
-  // ─── Budget settimanale ──────────────────────────────────────────────────
-
   Future<double?> loadWeeklyBudget() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('weekly_budget')
@@ -125,8 +120,6 @@ class StorageService {
     }
   }
 
-  // ─── Lista spesa persistente ─────────────────────────────────────────────
-
   Future<List<String>> loadShoppingList() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList('shopping_list') ?? [];
@@ -136,8 +129,6 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('shopping_list', list);
   }
-
-  // ─── Daily Consumed Reset ────────────────────────────────────────────────
 
   Future<String?> loadLastConsumedResetDate() async {
     final prefs = await SharedPreferences.getInstance();
