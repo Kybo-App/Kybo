@@ -352,7 +352,7 @@ class SettingsScreen extends StatelessWidget {
 
   void _resetTutorial(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('seen_tutorial_v10', false);
+    await prefs.setBool('seen_tutorial_v11', false);
 
     if (context.mounted) {
       Navigator.of(context).pop();
