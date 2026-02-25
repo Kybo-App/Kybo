@@ -73,6 +73,7 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   final GlobalKey _menuKey = GlobalKey();
   final GlobalKey _tranquilKey = GlobalKey();
+  final GlobalKey _swapDayKey = GlobalKey();
   final GlobalKey _pantryTabKey = GlobalKey();
   final GlobalKey _shoppingTabKey = GlobalKey();
 
@@ -246,7 +247,7 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    bool seen = prefs.getBool('seen_tutorial_v10') ?? false;
+    bool seen = prefs.getBool('seen_tutorial_v11') ?? false;
 
     if (!seen) {
       _startShowcase();
@@ -279,7 +280,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (mounted) {
       ShowCaseWidget.of(context).startShowCase([_menuKey]);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('seen_tutorial_v10', true);
+      await prefs.setBool('seen_tutorial_v11', true);
     }
   }
 
@@ -326,6 +327,12 @@ class _MainScreenContentState extends State<MainScreenContent>
         ShowCaseWidget.of(context).startShowCase([_tranquilKey]);
       });
     } else if (key == _tranquilKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        ShowCaseWidget.of(context).startShowCase([_swapDayKey]);
+      });
+    } else if (key == _swapDayKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await Future.delayed(const Duration(milliseconds: 250));
         if (!mounted) return;
@@ -459,6 +466,103 @@ class _MainScreenContentState extends State<MainScreenContent>
     return _buildMobileLayout(context, provider, user);
   }
 
+  void _showDaySwapSheet(BuildContext context, DietProvider provider) {
+    final days = provider.getDays();
+    final currentDayIndex = _tabController?.index ?? 0;
+    if (currentDayIndex >= days.length) return;
+    final currentDay = days[currentDayIndex];
+    final otherDays = days.where((d) => d != currentDay).toList();
+
+    if (otherDays.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: KyboColors.surface(context),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Text(
+                'Scambia $currentDay con...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: KyboColors.textPrimary(context),
+                ),
+              ),
+            ),
+            ...otherDays.map((day) => ListTile(
+              leading: Icon(Icons.swap_horiz, color: KyboColors.primary),
+              title: Text(day, style: TextStyle(color: KyboColors.textPrimary(context))),
+              onTap: () {
+                Navigator.pop(ctx);
+                showDialog(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                    backgroundColor: KyboColors.surface(context),
+                    shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+                    title: Text(
+                      'Scambia giorni',
+                      style: TextStyle(color: KyboColors.textPrimary(context)),
+                    ),
+                    content: Text(
+                      'Vuoi scambiare i pasti di $currentDay con quelli di $day?\nLo scambio è permanente ma reversibile.',
+                      style: TextStyle(color: KyboColors.textSecondary(context)),
+                    ),
+                    actions: [
+                      PillButton(
+                        label: 'Annulla',
+                        onPressed: () => Navigator.pop(c),
+                        backgroundColor: KyboColors.surface(context),
+                        textColor: KyboColors.textPrimary(context),
+                        height: 44,
+                      ),
+                      PillButton(
+                        label: 'Scambia',
+                        onPressed: () async {
+                          Navigator.pop(c);
+                          await provider.swapDays(currentDay, day, provider.selectedWeek);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('$currentDay e $day scambiati!'),
+                                backgroundColor: KyboColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+                              ),
+                            );
+                          }
+                        },
+                        backgroundColor: KyboColors.primary,
+                        textColor: Colors.white,
+                        height: 44,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMobileLayout(BuildContext context, DietProvider provider, user) {
     return Scaffold(
       key: _scaffoldKey,
@@ -492,6 +596,18 @@ class _MainScreenContentState extends State<MainScreenContent>
                 },
               ),
               actions: [
+                Showcase(
+                  key: _swapDayKey,
+                  title: 'Scambia Giorni',
+                  description:
+                      'Tocca per scambiare i pasti di questo giorno\ncon un altro. Permanente ma sempre reversibile.',
+                  targetShapeBorder: const CircleBorder(),
+                  child: IconButton(
+                    icon: const Icon(Icons.swap_horiz),
+                    tooltip: 'Scambia giorno',
+                    onPressed: () => _showDaySwapSheet(context, provider),
+                  ),
+                ),
                 Showcase(
                   key: _tranquilKey,
                   title: 'Modalità Relax',
@@ -971,6 +1087,17 @@ class _MainScreenContentState extends State<MainScreenContent>
         ),
       ),
       actions: [
+        Showcase(
+          key: _swapDayKey,
+          title: 'Scambia Giorni',
+          description: 'Tocca per scambiare i pasti di questo giorno\ncon un altro. Permanente ma sempre reversibile.',
+          targetShapeBorder: const CircleBorder(),
+          child: IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: 'Scambia giorno',
+            onPressed: () => _showDaySwapSheet(context, provider),
+          ),
+        ),
         Showcase(
           key: _tranquilKey,
           title: 'Modalità Relax',

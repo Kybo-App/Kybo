@@ -986,6 +986,31 @@ class DietProvider extends ChangeNotifier {
     await _recalcAvailability();
   }
 
+  Future<void> swapDays(String day1, String day2, int weekIndex) async {
+    if (_dietPlan == null) return;
+    if (weekIndex < 0 || weekIndex >= _dietPlan!.weeks.length) return;
+    final week = _dietPlan!.weeks[weekIndex];
+    if (!week.containsKey(day1) || !week.containsKey(day2)) return;
+
+    final temp = week[day1]!;
+    week[day1] = week[day2]!;
+    week[day2] = temp;
+
+    await _storage.saveDiet(_dietPlan!.toJson());
+
+    final dietJson = _dietPlan!.toJson();
+    await _firestore.saveCurrentDiet(
+      _sanitize(dietJson['plan'] as Map<String, dynamic>),
+      _sanitize(dietJson['substitutions'] as Map<String, dynamic>),
+      {},
+      weeks: dietJson['weeks'] as List<dynamic>?,
+    );
+
+    _lastSyncedDiet = _deepCopy(dietJson['plan'] as Map<String, dynamic>);
+    _lastCloudSave = DateTime.now();
+    notifyListeners();
+  }
+
   Future<void> _fetchGlobalConfig() async {
     final data = await _firestore.fetchGlobalConfig();
     if (data != null) {
