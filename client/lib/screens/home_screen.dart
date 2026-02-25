@@ -1,4 +1,8 @@
-﻿import 'dart:async';
+// Schermata principale con navbar (Dispensa/Piano/Lista), drawer laterale e layout tablet adattivo.
+// _ensureTabController — ricrea il TabController quando cambiano i giorni o la settimana selezionata.
+// _findNextMeal — individua il prossimo pasto non consumato in base all'ora corrente.
+// _onShowcaseComplete — gestisce le transizioni tra le fasi del tutorial interattivo.
+import 'dart:async';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -33,7 +37,6 @@ import '../services/jailbreak_service.dart';
 import '../services/deep_link_service.dart';
 import '../services/shortcuts_service.dart';
 
-// --- 1. WRAPPER PRINCIPALE ---
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
 
@@ -52,7 +55,6 @@ class MainScreen extends StatelessWidget {
   }
 }
 
-// --- 2. CONTENUTO DELLA SCHERMATA ---
 class MainScreenContent extends StatefulWidget {
   const MainScreenContent({super.key});
 
@@ -65,17 +67,15 @@ class _MainScreenContentState extends State<MainScreenContent>
   int _currentIndex = 1;
   TabController? _tabController;
   int _lastDaysCount = 0;
-  int _lastSelectedWeek = 0; // Traccia cambio settimana per ricreare TabController
+  int _lastSelectedWeek = 0;
   final AuthService _auth = AuthService();
   StreamSubscription<String>? _deepLinkNavSubscription;
 
-  // CHIAVI TUTORIAL — navbar
   final GlobalKey _menuKey = GlobalKey();
   final GlobalKey _tranquilKey = GlobalKey();
   final GlobalKey _pantryTabKey = GlobalKey();
   final GlobalKey _shoppingTabKey = GlobalKey();
 
-  // CHIAVI TUTORIAL — drawer
   final GlobalKey _drawerChatKey = GlobalKey();
   final GlobalKey _drawerUploadKey = GlobalKey();
   final GlobalKey _drawerHistoryKey = GlobalKey();
@@ -85,18 +85,14 @@ class _MainScreenContentState extends State<MainScreenContent>
   final GlobalKey _drawerStatsKey = GlobalKey();
   final GlobalKey _drawerSuggestionsKey = GlobalKey();
 
-  // Chiave per aprire/chiudere il drawer in modo programmatico
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Flag per sapere se mostrare Chat o Carica Dieta nel tour
   bool _hasNutritionistForTutorial = false;
 
   @override
   void initState() {
     super.initState();
     _initialPermissionCheck();
-    // TabController viene creato/aggiornato in _ensureTabController()
-    // dopo che getDays() ha i dati reali
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkJailbreak();
@@ -104,7 +100,6 @@ class _MainScreenContentState extends State<MainScreenContent>
       _checkTutorial();
     });
 
-    // Ascolta deep link da Siri shortcuts / Android App Actions
     _deepLinkNavSubscription = DeepLinkService().navigationStream.listen(_handleNavTarget);
   }
 
@@ -115,7 +110,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     super.dispose();
   }
 
-  /// Naviga alla schermata corretta quando arriva un deep link da Siri / Assistant
+  /// Naviga alla schermata corretta quando arriva un deep link da Siri / Assistant.
   void _handleNavTarget(String target) {
     if (!mounted) return;
     switch (target) {
@@ -131,25 +126,21 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
   }
 
-  /// Crea o ricrea il TabController quando il numero di giorni cambia.
-  /// Calcola l'initialIndex trovando il nome del giorno corrente nella lista.
+  /// Crea o ricrea il TabController quando cambia il numero di giorni o la settimana selezionata.
   void _ensureTabController(List<String> days, int selectedWeek) {
     if (days.isEmpty) return;
-    // Ricrea il TabController se cambiano i giorni OPPURE la settimana selezionata
     if (_tabController != null &&
         days.length == _lastDaysCount &&
         selectedWeek == _lastSelectedWeek) return;
 
-    // Mappa weekday di Dart (1=Mon..7=Sun) ai nomi italiani standard
     const italianWeekdays = [
       'lunedì', 'martedì', 'mercoledì', 'giovedì',
       'venerdì', 'sabato', 'domenica',
     ];
 
-    final todayWeekday = DateTime.now().weekday; // 1=Mon..7=Sun
+    final todayWeekday = DateTime.now().weekday;
     final todayName = italianWeekdays[todayWeekday - 1];
 
-    // Trova l'indice del giorno corrente nella lista della dieta
     int initialIndex = 0;
     for (int i = 0; i < days.length; i++) {
       if (days[i].toLowerCase() == todayName) {
@@ -175,7 +166,6 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
   }
 
-  // Dialog "Hard": Spiega e manda alle impostazioni
   void _showForcePermissionDialog() {
     showDialog(
       context: context,
@@ -227,27 +217,21 @@ class _MainScreenContentState extends State<MainScreenContent>
 
     final storage = StorageService();
     try {
-      // FIX: Rimosso check ridondante 'data is List'
       var data = await storage.loadAlarms();
       if (data.isNotEmpty) {
-        // NUOVO
         if (mounted) {
-          // Chiediamo al provider di rischedulare usando i dati che possiede
           await context.read<DietProvider>().scheduleMealNotifications();
         }
       }
     } catch (_) {}
 
-    // Check Badges (First Login, Streak)
     if (mounted) {
       context.read<BadgeService>().checkLoginStreak();
     }
 
-    // Dona shortcut dieta a Siri (iOS) dopo che l'utente ha usato l'app
     ShortcutsService().donateShortcut(ShortcutsService.dietActivity);
   }
 
-// Fix #2: Usa direttamente JailbreakService invece di cercare Provider<bool>
   Future<void> _checkJailbreak() async {
     try {
       final jailbreakService = JailbreakService();
@@ -256,12 +240,10 @@ class _MainScreenContentState extends State<MainScreenContent>
         _showJailbreakWarning();
       }
     } catch (e) {
-      // Ignora errore se jailbreak detection non disponibile (es. emulatore)
       debugPrint('Jailbreak check error: $e');
     }
   }
 
-  // --- LOGICA TUTORIAL ---
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     bool seen = prefs.getBool('seen_tutorial_v10') ?? false;
@@ -290,13 +272,11 @@ class _MainScreenContentState extends State<MainScreenContent>
       } catch (_) {}
     }
 
-    // Aspetta che il TabController sia pronto (dieta caricata) — max 6 s
     for (int i = 0; i < 10 && _tabController == null && mounted; i++) {
       await Future.delayed(const Duration(milliseconds: 600));
     }
 
     if (mounted) {
-      // Fase 1: solo il bottone menu
       ShowCaseWidget.of(context).startShowCase([_menuKey]);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('seen_tutorial_v10', true);
@@ -308,7 +288,6 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (!mounted) return;
 
     if (key == _menuKey) {
-      // Fase 1 completata → apri drawer e avvia il tour interno
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         _scaffoldKey.currentState?.openDrawer();
         await Future.delayed(const Duration(milliseconds: 450));
@@ -335,7 +314,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         ShowCaseWidget.of(context).startShowCase(drawerKeys);
       });
     } else if (key == _drawerSuggestionsKey) {
-      // Fase 2 completata → chiudi drawer, torna al Piano, mostra Relax
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (_scaffoldKey.currentState?.isDrawerOpen == true) {
           _scaffoldKey.currentState?.closeDrawer();
@@ -348,7 +326,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         ShowCaseWidget.of(context).startShowCase([_tranquilKey]);
       });
     } else if (key == _tranquilKey) {
-      // Fase 3 completata → naviga su Dispensa
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await Future.delayed(const Duration(milliseconds: 250));
         if (!mounted) return;
@@ -358,7 +335,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         ShowCaseWidget.of(context).startShowCase([_pantryTabKey]);
       });
     } else if (key == _pantryTabKey) {
-      // Fase 4 completata → naviga su Lista Spesa
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await Future.delayed(const Duration(milliseconds: 250));
         if (!mounted) return;
@@ -368,7 +344,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         ShowCaseWidget.of(context).startShowCase([_shoppingTabKey]);
       });
     } else if (key == _shoppingTabKey) {
-      // Fase 5 completata → tutorial finito, torna su Piano
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _currentIndex = 1);
       });
@@ -484,7 +459,6 @@ class _MainScreenContentState extends State<MainScreenContent>
     return _buildMobileLayout(context, provider, user);
   }
 
-  // ─── LAYOUT MOBILE (invariato) ───────────────────────────────────────────
   Widget _buildMobileLayout(BuildContext context, DietProvider provider, user) {
     return Scaffold(
       key: _scaffoldKey,
@@ -603,25 +577,20 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  // ─── LAYOUT TABLET ───────────────────────────────────────────────────────
   Widget _buildTabletLayout(BuildContext context, DietProvider provider, user) {
     return Scaffold(
       backgroundColor: KyboColors.background(context),
       body: Row(
         children: [
-          // ── Sidebar sinistra: NavigationRail + drawer content ────────────
           _buildTabletSidebar(context, provider, user),
-          // Separatore verticale
           VerticalDivider(
             width: 1,
             thickness: 1,
             color: KyboColors.border(context),
           ),
-          // ── Area contenuto principale ────────────────────────────────────
           Expanded(
             child: Column(
               children: [
-                // AppBar solo per la tab Piano (giorni della settimana)
                 if (_currentIndex == 1 && _tabController != null)
                   _buildTabletAppBar(context, provider),
                 Expanded(child: _buildBody(provider)),
@@ -633,7 +602,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Sidebar tablet: logo + NavigationRail + menu items del drawer
+  /// Sidebar tablet: logo + NavigationRail + menu items del drawer.
   Widget _buildTabletSidebar(BuildContext context, DietProvider provider, user) {
     final String initial = (user?.email != null && user!.email!.isNotEmpty)
         ? user.email![0].toUpperCase()
@@ -646,7 +615,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header profilo ──────────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
               decoration: BoxDecoration(
@@ -714,7 +682,6 @@ class _MainScreenContentState extends State<MainScreenContent>
 
             const SizedBox(height: 8),
 
-            // ── NavigationRail items (Dispensa, Piano, Lista) ──────────
             _buildSidebarNavItem(
               context: context,
               icon: Icons.kitchen,
@@ -736,7 +703,6 @@ class _MainScreenContentState extends State<MainScreenContent>
 
             Divider(color: KyboColors.border(context), indent: 12, endIndent: 12),
 
-            // ── Menu items del drawer ──────────────────────────────────
             Expanded(
               child: _buildTabletDrawerItems(context, provider, user),
             ),
@@ -746,7 +712,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Singolo item di navigazione nella sidebar tablet
+  /// Singolo item di navigazione nella sidebar tablet.
   Widget _buildSidebarNavItem({
     required BuildContext context,
     required IconData icon,
@@ -802,7 +768,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Menu items secondari nella sidebar tablet (stesso contenuto del drawer mobile)
+  /// Menu items secondari nella sidebar tablet (stesso contenuto del drawer mobile).
   Widget _buildTabletDrawerItems(BuildContext context, DietProvider provider, user) {
     if (user == null) return const SizedBox.shrink();
 
@@ -824,7 +790,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         return ListView(
           padding: const EdgeInsets.symmetric(vertical: 4),
           children: [
-            // Chat o Upload
             if (hasNutritionist)
               Consumer<ChatProvider>(
                 builder: (context, chatProvider, _) {
@@ -917,7 +882,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Singolo item di menu nella sidebar tablet
+  /// Singolo item di menu nella sidebar tablet.
   Widget _buildSidebarMenuItem({
     required BuildContext context,
     required IconData icon,
@@ -991,7 +956,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// AppBar per tablet: senza hamburger menu, con TabBar giorni
+  /// AppBar per tablet: senza hamburger menu, con TabBar giorni.
   PreferredSizeWidget _buildTabletAppBar(BuildContext context, DietProvider provider) {
     return AppBar(
       automaticallyImplyLeading: false,
@@ -1043,7 +1008,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Returns (mealName, dayName) of the next upcoming meal, or null if none found.
+  /// Restituisce (mealName, dayName) del prossimo pasto in base all'ora corrente, null se non trovato.
   (String, String)? _findNextMeal(DietProvider provider) {
     if (provider.dietPlan == null) return null;
     final weekPlan = provider.currentWeekPlan;
@@ -1052,13 +1017,11 @@ class _MainScreenContentState extends State<MainScreenContent>
     final days = provider.getDays();
     if (days.isEmpty) return null;
 
-    // Ordered meal times for determining "next" meal by name
     const mealOrder = [
       'Colazione', 'Seconda Colazione', 'Pranzo', 'Merenda', 'Cena',
       'Spuntino', 'Spuntino Serale',
     ];
 
-    // Map Italian weekday index (1=Mon) to day name
     const italianWeekdays = [
       'lunedì', 'martedì', 'mercoledì', 'giovedì',
       'venerdì', 'sabato', 'domenica',
@@ -1067,7 +1030,6 @@ class _MainScreenContentState extends State<MainScreenContent>
     final now = DateTime.now();
     final todayName = italianWeekdays[now.weekday - 1];
 
-    // Find today in the plan
     String? todayKey;
     for (final day in days) {
       if (day.toLowerCase() == todayName) {
@@ -1080,7 +1042,6 @@ class _MainScreenContentState extends State<MainScreenContent>
     final dayPlan = weekPlan[todayKey];
     if (dayPlan == null || dayPlan.isEmpty) return null;
 
-    // Hour-based: estimate next meal based on current hour
     final hour = now.hour;
     final String nextMealName;
     if (hour < 9) {
@@ -1097,7 +1058,6 @@ class _MainScreenContentState extends State<MainScreenContent>
       nextMealName = 'Spuntino Serale';
     }
 
-    // Find in plan (case-insensitive partial match)
     for (final mealKey in dayPlan.keys) {
       if (mealKey.toLowerCase().contains(nextMealName.toLowerCase()) ||
           nextMealName.toLowerCase().contains(mealKey.toLowerCase())) {
@@ -1108,7 +1068,6 @@ class _MainScreenContentState extends State<MainScreenContent>
       }
     }
 
-    // Fall back to first non-consumed meal in order
     for (final orderedMeal in mealOrder) {
       for (final mealKey in dayPlan.keys) {
         if (mealKey.toLowerCase().contains(orderedMeal.toLowerCase())) {
@@ -1132,12 +1091,9 @@ class _MainScreenContentState extends State<MainScreenContent>
     final dishes = weekPlan[_findNextMeal(provider)!.$2]?[mealName] ?? [];
     if (dishes.isEmpty) return const SizedBox.shrink();
 
-    // Show first 2 dishes as preview
     final preview = dishes.take(2).map((d) => d.name).join(', ');
     final more = dishes.length > 2 ? ' +${dishes.length - 2}' : '';
 
-    // Outer container a larghezza piena + background opaco: nasconde le
-    // meal card che scorrono dietro il banner evitando il taglio laterale.
     return Container(
       color: KyboColors.background(context),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -1182,7 +1138,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
-  /// Row di pill-chip "Sett. 1 / Sett. 2 / ..." visibile solo per diete multi-settimana
+  /// Row di pill-chip "Sett. 1 / Sett. 2 / ..." visibile solo per diete multi-settimana.
   Widget _buildWeekSelector(BuildContext context, DietProvider provider) {
     if (provider.weekCount <= 1) return const SizedBox.shrink();
 
@@ -1201,7 +1157,6 @@ class _MainScreenContentState extends State<MainScreenContent>
               child: GestureDetector(
                 onTap: () {
                   provider.setWeek(i);
-                  // Forza ricreazione TabController per la nuova settimana
                   setState(() => _lastDaysCount = 0);
                 },
                 child: AnimatedContainer(
@@ -1250,7 +1205,6 @@ class _MainScreenContentState extends State<MainScreenContent>
           onScanTap: () => _scanReceipt(provider),
         );
       case 1:
-        // [FIX] TabController null = giorni non ancora caricati
         if (_tabController == null || provider.getDays().isEmpty) {
           return Center(
             child: CircularProgressIndicator(color: KyboColors.primary),
@@ -1258,7 +1212,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         }
         return Column(
           children: [
-            // Selettore settimane — visibile solo per diete multi-settimana
             _buildWeekSelector(context, provider),
             _buildNextMealBanner(provider),
             Expanded(
@@ -1281,8 +1234,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       case 2:
         return ShoppingListView(
           shoppingList: provider.shoppingList,
-          dietPlan:
-              provider.dietPlan, // <--- PASSA L'OGGETTO (prima era dietData)
+          dietPlan: provider.dietPlan,
           activeSwaps: provider.activeSwaps,
           pantryItems: provider.pantryItems,
           onUpdateList: provider.updateShoppingList,
@@ -1302,7 +1254,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     String? showcaseDesc,
   }) {
     final isSelected = _currentIndex == index;
-    
+
     Widget navItem = InkWell(
       onTap: () => setState(() => _currentIndex = index),
       borderRadius: KyboBorderRadius.large,
@@ -1314,7 +1266,7 @@ class _MainScreenContentState extends State<MainScreenContent>
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? KyboColors.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: KyboBorderRadius.large,
@@ -1439,21 +1391,16 @@ class _MainScreenContentState extends State<MainScreenContent>
                   child: StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
                     builder: (context, snapshot) {
-                      // Determine if user has a nutritionist by checking parent_id or created_by
-                      // If user has parent_id/created_by, they are a client with nutritionist → Show Chat
-                      // If user doesn't have parent_id, they are independent → Show Upload
                       bool hasNutritionist = false;
                       if (snapshot.hasData && snapshot.data!.exists) {
                         final data = snapshot.data!.data() as Map<String, dynamic>?;
                         hasNutritionist = ((data?['parent_id'] != null && (data?['parent_id'].toString().isNotEmpty ?? false)) ||
                                          (data?['created_by'] != null && (data?['created_by'].toString().isNotEmpty ?? false)));
                       }
-                      
+
                       return Column(
                         children: [
-                          // 💬 Chat OR 📤 Upload (mutually exclusive)
                           if (hasNutritionist) ...[
-                            // User has nutritionist → Show Chat
                             Showcase(
                               key: _drawerChatKey,
                               title: 'Chat',
@@ -1513,9 +1460,8 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 );
                               },
                             ),
-                            ), // close Showcase(_drawerChatKey)
+                            ),
                           ] else ...[
-                            // User is independent → Show Upload Diet
                             Showcase(
                               key: _drawerUploadKey,
                               title: 'Carica Dieta',
@@ -1536,10 +1482,9 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 _uploadDiet(drawerCtx);
                               },
                             ),
-                            ), // close Showcase(_drawerUploadKey)
+                            ),
                           ],
 
-                          // 📜 Cronologia
                           Showcase(
                             key: _drawerHistoryKey,
                             title: 'Cronologia',
@@ -1564,7 +1509,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // 🏆 Traguardi / Badges
                           Showcase(
                             key: _drawerBadgesKey,
                             title: 'Traguardi',
@@ -1589,7 +1533,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // 📄 Esporta Dieta PDF
                           Showcase(
                             key: _drawerPdfKey,
                             title: 'Esporta PDF',
@@ -1612,7 +1555,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // ⚙️ Impostazioni
                           Showcase(
                             key: _drawerSettingsKey,
                             title: 'Impostazioni',
@@ -1637,7 +1579,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // 📊 Statistiche
                           Showcase(
                             key: _drawerStatsKey,
                             title: 'Statistiche',
@@ -1663,7 +1604,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // ✨ Suggerimenti AI
                           Showcase(
                             key: _drawerSuggestionsKey,
                             title: 'Suggerimenti AI',
@@ -1689,7 +1629,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          // 🚪 Esci
                           PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
@@ -1734,13 +1673,12 @@ class _MainScreenContentState extends State<MainScreenContent>
       );
 
       if (result == null || result.files.single.path == null) {
-        return; // Utente ha annullato
+        return;
       }
 
       final filePath = result.files.single.path!;
       final fileName = result.files.single.name;
 
-      // ✅ Mostra dialog con progresso
       if (context.mounted) {
         showDialog(
           context: context,
@@ -1757,7 +1695,6 @@ class _MainScreenContentState extends State<MainScreenContent>
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ✅ Progress bar reale con Consumer
                   Consumer<DietProvider>(
                     builder: (_, prov, __) {
                       final progress = prov.uploadProgress;
@@ -1797,7 +1734,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 16),
-                          // ✅ Messaggio dinamico basato su progresso
                           Text(
                             percentage < 95
                                 ? "Upload in corso..."
@@ -1818,10 +1754,8 @@ class _MainScreenContentState extends State<MainScreenContent>
         );
       }
 
-      // ✅ Esegui upload (progress viene tracciato automaticamente)
       await provider.uploadDiet(filePath);
 
-      // Chiudi dialog
       if (context.mounted) {
         Navigator.of(context).pop();
 
@@ -1834,7 +1768,6 @@ class _MainScreenContentState extends State<MainScreenContent>
         );
       }
     } catch (e) {
-      // Chiudi dialog se aperto
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
 
@@ -1872,7 +1805,6 @@ class _MainScreenContentState extends State<MainScreenContent>
       );
 
       if (response.statusCode == 200) {
-        // Launch the API URL with auth token as query param for direct browser download
         final downloadUri = Uri.parse(
           '${Env.apiUrl}/export-diet-pdf?token=${Uri.encodeComponent(token!)}',
         );

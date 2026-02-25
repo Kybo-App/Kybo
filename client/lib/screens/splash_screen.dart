@@ -1,3 +1,4 @@
+// Splash screen con gestione deep link invito, autenticazione e routing verso onboarding o home.
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -21,12 +22,10 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    // 1. Check Deep Link first (can happen cold start)
     final initialUri = await DeepLinkService().init();
     final inviteCode = DeepLinkService.getInviteCode(initialUri);
 
     if (inviteCode != null && mounted) {
-      // Deep Link Invite -> Go directly to Login/Register with code
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => LoginScreen(inviteCode: inviteCode),
@@ -35,7 +34,6 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // 2. Normal flow with min delay
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -43,14 +41,12 @@ class _SplashScreenState extends State<SplashScreen> {
     final user = AuthService().currentUser;
 
     if (user != null) {
-      // Aggiorna l'ultimo accesso anche se l'utente è già loggato
       AuthService().updateLastLogin(user.uid);
-      
+
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainScreen()),
       );
     } else {
-      // Not logged in -> Onboarding
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
@@ -65,14 +61,11 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // [FIX] LOGO APP (Assicurati che il file esista in assets!)
-            // Se il file si chiama diversamente (es. icon.png), cambia la stringa qui sotto.
             Image.asset(
               'assets/icon/icon_nobg.png',
               width: 120,
               height: 120,
               errorBuilder: (context, error, stackTrace) {
-                // Fallback nel caso l'immagine non venga trovata (per evitare crash)
                 return const Icon(
                   Icons.eco,
                   size: 100,
@@ -83,7 +76,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
             const SizedBox(height: 30),
 
-            // Loading con colore del brand
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(KyboColors.primary),
             ),

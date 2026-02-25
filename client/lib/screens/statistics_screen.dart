@@ -1,3 +1,4 @@
+// Schermata statistiche: aderenza settimanale, tracking peso con grafico, streak e obiettivi personalizzati.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -8,7 +9,6 @@ import '../services/scale_service.dart';
 import 'scale_connect_screen.dart';
 import 'package:provider/provider.dart';
 
-/// Screen per visualizzare statistiche e progressi
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -46,7 +46,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     final stats = await _trackingService.calculateWeeklyStats();
 
-    // Weight history stream
     _subscriptions.add(
       _trackingService.getWeightHistory(days: 30).listen((history) {
         if (mounted) {
@@ -55,7 +54,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       }),
     );
 
-    // Goals stream
     _subscriptions.add(
       _trackingService.getGoals().listen((goals) {
         if (mounted) {
@@ -112,7 +110,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildWeeklyOverview() {
     final stats = _weeklyStats!;
-    
+
     return Card(
       elevation: 2,
       child: Padding(
@@ -160,7 +158,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Progress bar
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -383,7 +380,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildStreakCard() {
     final streak = _weeklyStats?.currentStreak ?? 0;
-    
+
     return Card(
       elevation: 2,
       color: streak >= 3 ? Colors.green[50] : null,
@@ -550,7 +547,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Future<void> _incrementGoal(UserGoal goal) async {
     final newValue = goal.currentValue + 1;
     await _trackingService.updateGoalProgress(goal.id, newValue);
-    
+
     if (newValue >= goal.targetValue && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -565,7 +562,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final titleController = TextEditingController();
     final targetController = TextEditingController();
     String selectedUnit = 'L';
-    
+
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -649,14 +646,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
 
     await _trackingService.saveWeight(weight);
-    
-    // Trigger Badge Check
+
     if (mounted) {
       context.read<BadgeService>().onWeightLogged();
     }
 
     _weightController.clear();
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Peso salvato: ${weight.toStringAsFixed(1)} kg')),

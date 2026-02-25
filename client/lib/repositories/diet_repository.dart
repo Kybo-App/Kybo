@@ -1,3 +1,4 @@
+// Repository per upload dieta PDF e scansione scontrini via API backend.
 import 'dart:convert';
 import 'package:kybo/services/upload_client.dart';
 
@@ -10,19 +11,18 @@ class DietRepository {
   Future<Map<String, dynamic>> uploadDiet(
     String filePath, {
     String? fcmToken,
-    Function(double progress)? onProgress, // ✅ AGGIUNGI callback
+    Function(double progress)? onProgress,
   }) async {
     final Map<String, String> fields = {};
     if (fcmToken != null) {
       fields['fcm_token'] = fcmToken;
     }
 
-    // ✅ USA il nuovo UploadClient con progress
     final response = await _uploadClient.uploadFile(
       endpoint: '/upload-diet',
       filePath: filePath,
       fields: fields,
-      onProgress: onProgress, // ✅ Passa callback
+      onProgress: onProgress,
     );
 
     return response;

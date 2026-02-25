@@ -1,3 +1,4 @@
+// Schermata cronologia diete cloud con ripristino, eliminazione e viewer JSON/debug AI response.
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/firestore_service.dart';
 import '../providers/diet_provider.dart';
-import '../core/error_handler.dart'; // [IMPORTANTE]
+import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
 
 class HistoryScreen extends StatelessWidget {
@@ -126,13 +127,11 @@ class HistoryScreen extends StatelessWidget {
         ),
         iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
         actions: [
-          // Bottone per vedere JSON dieta corrente
           IconButton(
             icon: const Icon(Icons.data_object),
             tooltip: "Vedi JSON Dieta Corrente",
             onPressed: () => _showCurrentDietJson(context),
           ),
-          // [DEBUG] Vedi RAW AI Response
           Consumer<DietProvider>(
             builder: (_, provider, __) {
               if (provider.lastRawParsedData == null) return const SizedBox.shrink();
@@ -143,7 +142,6 @@ class HistoryScreen extends StatelessWidget {
               );
             },
           ),
-          // ADMIN: Upload Config Init
           IconButton(
             icon: const Icon(Icons.cloud_upload_outlined),
             tooltip: "Admin Init Config",
@@ -167,13 +165,11 @@ class HistoryScreen extends StatelessWidget {
             const SnackBar(content: Text('⏳ Esecuzione Sync Forzato...')),
           );
 
-          // Esegue il sync
           final result = await Provider.of<DietProvider>(
             context,
             listen: false,
           ).runSmartSyncCheck(forceSync: true);
 
-          // [FIX LINTER] Verifica se il widget è ancora attivo prima di usare context
           if (!context.mounted) return;
 
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -198,7 +194,6 @@ class HistoryScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            // [UX] Errore tradotto
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -304,8 +299,8 @@ class HistoryScreen extends StatelessWidget {
                             label: "Ripristina",
                             onPressed: () {
                               context.read<DietProvider>().loadHistoricalDiet(
-                                diet, // I dati
-                                diet['id'], // L'ID Firestore
+                                diet,
+                                diet['id'],
                               );
                               Navigator.pop(c);
                               Navigator.pop(context);

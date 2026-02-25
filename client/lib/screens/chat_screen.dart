@@ -1,3 +1,4 @@
+// Schermata chat con il nutrizionista: messaggi in real-time, upload allegati (jpg/png/pdf).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -162,7 +163,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Message List
           Expanded(
             child: StreamBuilder<List<ChatMessage>>(
               stream: context.watch<ChatProvider>().getMessages(),
@@ -218,10 +218,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // File preview
           if (_pickedFile != null) _buildFilePreview(),
 
-          // Input
           _buildMessageInput(),
         ],
       ),
@@ -296,7 +294,6 @@ class _ChatScreenState extends State<ChatScreen> {
       child: SafeArea(
         child: Row(
           children: [
-            // Attachment button
             Container(
               decoration: BoxDecoration(
                 color: KyboColors.background(context),
@@ -367,10 +364,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-
-// =============================================================================
-// MESSAGE BUBBLE
-// =============================================================================
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -502,7 +495,6 @@ class _MessageBubble extends StatelessWidget {
       );
     }
 
-    // PDF
     return GestureDetector(
       onTap: () => _openUrl(message.attachmentUrl!),
       child: Container(
