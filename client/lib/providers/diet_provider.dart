@@ -1,3 +1,7 @@
+// Provider principale per la gestione della dieta, dispensa, swap e sync cloud.
+// runSmartSyncCheck — esegue sync differenziale verso Firestore (veloce <3h, storico >3h).
+// _recalcAvailability — ricalcola la disponibilità ingredienti su Isolate separato.
+// getDays/getMeals/getRelaxableFoods — restituiscono config dieta con fallback a global config.
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -19,7 +23,6 @@ import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
 import '../services/pricing_service.dart';
-// import '../constants.dart' show italianDays, orderedMealTypes, relaxableFoods; -> RIMOSSO
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -29,19 +32,17 @@ class DietProvider extends ChangeNotifier {
   final TrackingService _trackingService = TrackingService();
   final BadgeService _badgeService;
 
-  DietPlan?
-      _dietPlan; // Oggetto unico che contiene sia il piano che le sostituzioni
-  int _selectedWeek = 0; // Settimana selezionata (0-indexed)
+  DietPlan? _dietPlan;
+  int _selectedWeek = 0;
   List<PantryItem> _pantryItems = [];
   Map<String, ActiveSwap> _activeSwaps = {};
   List<String> _shoppingList = [];
-  double? _weeklyBudget; // null = nessun budget impostato
+  double? _weeklyBudget;
   Map<String, bool> _availabilityMap = {};
   Map<String, double> _conversions = {};
   bool _isCalculating = false;
-  DateTime? _calculationStartTime; // [FIX] Per timeout del lock
+  DateTime? _calculationStartTime;
 
-  // Campi per il Sync Intelligente
   DateTime _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _lastSyncedDiet;
   Map<String, dynamic>? _lastSyncedSubstitutions;
@@ -49,12 +50,10 @@ class DietProvider extends ChangeNotifier {
 
   static const Duration _cloudSaveInterval = Duration(hours: 3);
 
-  // --- GLOBAL CONFIG (Step 11 & 12) ---
   Set<String>? _globalRelaxableFoods;
   List<String>? _globalDays;
   List<String>? _globalMeals;
 
-  // [DEBUG] Salva il raw JSON ritornato dal parser
   Map<String, dynamic>? _lastRawParsedData;
   Map<String, dynamic>? get lastRawParsedData => _lastRawParsedData;
 
@@ -63,29 +62,25 @@ class DietProvider extends ChangeNotifier {
   String? _error;
   double _uploadProgress = 0.0;
   final NotificationService _notificationService =
-      NotificationService(); // Servizio notifiche
+      NotificationService();
 
   bool _needsNotificationPermissions = false;
   bool get needsNotificationPermissions => _needsNotificationPermissions;
 
   void resetPermissionFlag() {
     _needsNotificationPermissions = false;
-    // Non chiamiamo notifyListeners() qui per evitare loop di rebuild
   }
 
-  // [NUOVO] Logica di Sync Intelligente
   Future<String> runSmartSyncCheck({bool forceSync = false}) async {
     final user = _auth.currentUser;
     if (user == null || _dietPlan == null) return "Errore: Dati mancanti.";
 
-    // Serializziamo per il confronto
     final currentDietJson = _dietPlan!.toJson();
     final currentPlanJson = currentDietJson['plan'] as Map<String, dynamic>;
     final currentSubsJson = currentDietJson['substitutions'] as Map<String, dynamic>;
     final currentWeeksJson = currentDietJson['weeks'] as List<dynamic>?;
 
     bool hasSwapsChanged = _activeSwaps.isNotEmpty;
-    // Confrontiamo il JSON corrente con l'ultimo syncato
     bool hasStructuralChanges =
         _hasStructuralChanges(currentPlanJson, _lastSyncedDiet) ||
             hasSwapsChanged;
@@ -94,11 +89,9 @@ class DietProvider extends ChangeNotifier {
 
     final now = DateTime.now();
 
-    // Preparazione Swap
     final Map<String, dynamic> swapsToSave = {};
     _activeSwaps.forEach((k, v) => swapsToSave[k] = v.toMap());
 
-    // Sync Veloce (se < 3 ore)
     if (!forceSync && now.difference(_lastCloudSave).inHours < 3) {
       await _firestore.saveCurrentDiet(
         _sanitize(currentPlanJson),
@@ -109,9 +102,7 @@ class DietProvider extends ChangeNotifier {
       return "☁️ Modifiche sincronizzate.";
     }
 
-    // Backup Storico (> 3 ore o force)
     try {
-      // 1. Aggiorna Current
       await _firestore.saveCurrentDiet(
         _sanitize(currentPlanJson),
         _sanitize(currentSubsJson),
@@ -119,7 +110,6 @@ class DietProvider extends ChangeNotifier {
         weeks: currentWeeksJson,
       );
 
-      // 2. Crea voce Storico
       if (_currentFirestoreId == null) {
         String newId = await _firestore.saveDietToHistory(
           _sanitize(currentPlanJson),
@@ -139,14 +129,13 @@ class DietProvider extends ChangeNotifier {
       }
 
       _lastCloudSave = now;
-      _lastSyncedDiet = _deepCopy(currentPlanJson); // Aggiorniamo baseline
+      _lastSyncedDiet = _deepCopy(currentPlanJson);
       return "✅ Backup Storico e Sync completati.";
     } catch (e) {
       return "❌ Errore Sync: $e";
     }
   }
 
-  // [FIX] Helper privato per triggerare il sync dopo update manuali - ora async
   Future<void> _triggerSmartSyncCheck() async {
     if (_auth.currentUser != null && _dietPlan != null) {
       bool timePassed =
@@ -161,14 +150,12 @@ class DietProvider extends ChangeNotifier {
           jsonEncode(currentSubsJson) != jsonEncode(_lastSyncedSubstitutions);
 
       if (timePassed && isStructurallyDifferent) {
-        await runSmartSyncCheck(forceSync: true); // [FIX] Ora awaited
+        await runSmartSyncCheck(forceSync: true);
         debugPrint("☁️ Auto-Sync attivato da modifica manuale");
       }
     }
   }
 
-  // Getters
-// Espone direttamente l'oggetto strutturato
   DietPlan? get dietPlan => _dietPlan;
   String? _currentFirestoreId;
   List<PantryItem> get pantryItems => _pantryItems;
@@ -197,8 +184,6 @@ class DietProvider extends ChangeNotifier {
   double get uploadProgress => _uploadProgress;
   bool get hasError => _error != null;
 
-  // ─── WEEK SELECTION ────────────────────────────────────────────────────────
-
   /// Settimana attualmente visualizzata (0-indexed)
   int get selectedWeek => _selectedWeek;
 
@@ -221,29 +206,20 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ========== GETTER DINAMICI (da config JSON o fallback hardcoded) ==========
-
-  /// Restituisce i giorni della settimana dalla config della dieta,
-  /// oppure fallback ai valori hardcoded italiani se non disponibili
-  /// Restituisce i giorni della settimana dalla config della dieta,
-  /// oppure inferiti dal piano, oppure fallback su Global/Hardcoded
+  /// Restituisce i giorni dalla config della dieta, inferiti dal piano, o da global config.
   List<String> getDays() {
-    // 1. Configurazione Esplicita (Metadata JSON)
     final config = _dietPlan?.config;
     if (config != null && config.days.isNotEmpty) {
       return config.days;
     }
 
-    // 2. Inferiti dal Piano (dalla settimana corrente)
     if (_dietPlan != null && currentWeekPlan.isNotEmpty) {
       final daysFromPlan = currentWeekPlan.keys.toList();
-      
-      // Ordinamento: Usa Global come riferimento
+
       final referenceOrder = (_globalDays != null && _globalDays!.isNotEmpty)
           ? _globalDays!
           : [];
-          
-      // Ordina daysFromPlan basandosi su referenceOrder
+
       daysFromPlan.sort((a, b) {
         int idxA = referenceOrder.indexOf(a);
         int idxB = referenceOrder.indexOf(b);
@@ -251,54 +227,43 @@ class DietProvider extends ChangeNotifier {
         if (idxB == -1) idxB = 999;
         return idxA.compareTo(idxB);
       });
-      
+
       return daysFromPlan;
     }
 
-    // 3. Global Config (Fallback puro)
     if (_globalDays != null && _globalDays!.isNotEmpty) {
       return _globalDays!;
     }
-    
-    // 4. Default Hardcoded
+
     return [];
   }
 
-  /// Restituisce i tipi di pasto dalla config della dieta,
-  /// oppure fallback ai valori hardcoded se non disponibili
+  /// Restituisce i tipi di pasto dalla config della dieta con smart merge per preservare l'ordine.
   List<String> getMeals() {
-    // 1. Configurazione Esplicita (Metadata JSON)
     final config = _dietPlan?.config;
     if (config != null && config.meals.isNotEmpty) {
       return config.meals;
     }
 
-    // 2. Inferiti dal Piano (Smart Merge — dalla settimana corrente)
     if (_dietPlan != null && currentWeekPlan.isNotEmpty) {
       List<String> masterList = [];
 
-      // Itera sui giorni nell'ordine corretto (se possibile)
       final days = getDays();
 
       for (var day in days) {
         final dayMealsMap = currentWeekPlan[day];
         if (dayMealsMap == null) continue;
-        
+
         final dayMeals = dayMealsMap.keys.toList();
-        
-        // Merge dayMeals into masterList preserving order
+
         int mIndex = 0;
         for (var meal in dayMeals) {
-          // Se il pasto è già nella master list
           if (masterList.contains(meal)) {
-            // Avanza l'indice master fino a trovare il pasto (o superarlo se l'ordine è diverso)
-            // Semplificazione: Cerchiamo l'indice di questo pasto
             int existingIndex = masterList.indexOf(meal);
             if (existingIndex >= mIndex) {
               mIndex = existingIndex + 1;
             }
           } else {
-            // Se il pasto non c'è, inseriscilo alla posizione corrente
             if (mIndex < masterList.length) {
               masterList.insert(mIndex, meal);
             } else {
@@ -314,17 +279,14 @@ class DietProvider extends ChangeNotifier {
       }
     }
 
-    // 3. Global Config (Fallback puro)
     if (_globalMeals != null && _globalMeals!.isNotEmpty) {
       return _globalMeals!;
     }
 
-    // 4. Default Hardcoded
     return [];
   }
 
-  /// Restituisce i relaxable foods dalla config della dieta,
-  /// oppure fallback ai valori hardcoded se non disponibili
+  /// Restituisce i relaxable foods dalla config della dieta o da global config.
   Set<String> getRelaxableFoods() {
     final config = _dietPlan?.config;
     if (config != null && config.relaxableFoods.isNotEmpty) {
@@ -333,24 +295,19 @@ class DietProvider extends ChangeNotifier {
     if (config != null && config.relaxableFoods.isNotEmpty) {
       return config.relaxableFoods;
     }
-    // 2. Global Config
     if (_globalRelaxableFoods != null && _globalRelaxableFoods!.isNotEmpty) {
       return _globalRelaxableFoods!;
     }
-    // 3. Fallback
     return {};
   }
 
-  /// Verifica se un alimento è "relaxable" (frutta/verdura)
-  /// Gestisce matching intelligente singolare/plurale (es. Mela <-> Mele)
+  /// Verifica se un alimento è relaxable con matching singolare/plurale e blacklist.
   bool isRelaxable(String foodName) {
     final relaxableSet = getRelaxableFoods();
     if (relaxableSet.isEmpty) return false;
 
     final String lowerName = foodName.toLowerCase();
-    
-    // [FIX] Blacklist: Parole che NON sono MAI relaxable anche se contengono frutti/verdure
-    // Es: "Marmellata di mele" contiene "mele" ma non è relaxable
+
     const blacklist = [
       'marmellata', 'confettura', 'olio', 'burro', 'margarina',
       'zucchero', 'miele', 'pane', 'pasta', 'crema', 'succo'
@@ -358,64 +315,44 @@ class DietProvider extends ChangeNotifier {
     for (String banned in blacklist) {
       if (lowerName.contains(banned)) return false;
     }
-    
-    // 1. Controllo diretto (containment)
+
     for (String tag in relaxableSet) {
       if (lowerName.contains(tag)) return true;
     }
 
-    // 2. Controllo Plurale/Singolare Smart
-    // Se "Mele" contiene il radicale di "Mela" (Mel) e la lunghezza è simile
     for (String tag in relaxableSet) {
-      if (tag.length < 3) continue; // Ignora tag troppo corti
+      if (tag.length < 3) continue;
 
-      // [FIX] Gestione PLURALI SPECIALI (-cia, -gia -> -ce, -ge)
-      // Es. arancia (tag) -> arance (piano): rimuovi 'ia' = 'aranc', matcha 'aranc' in 'arance'
       if (tag.endsWith('cia') || tag.endsWith('gia')) {
-         String stemShort = tag.substring(0, tag.length - 2); // 'aranc'
+         String stemShort = tag.substring(0, tag.length - 2);
          if (lowerName.contains(stemShort)) return true;
       }
 
-      // Rimuovi l'ultima lettera (spesso vocale) per ottenere il radicale
       String stem = tag.substring(0, tag.length - 1);
-      
-      // Cerca se il nome contiene questo radicale all'inizio di una parola
+
       if (lowerName.contains(stem)) {
-        // Euristiche extra potrebbero essere aggiunte qui (es. controllo lunghezza parola trovata)
-        // Per ora ci fidiamo del radicale lungo (es. "pomodor" per "pomodori")
-        
-        // Verifica euristica sulla lunghezza per evitare falsi positivi (Mela vs Melanzana)
-        // Se la parola che contiene il stem è molto più lunga del tag originale, probabilmente non è lo stesso cibo
-        // (Qui semplifichiamo assumendo che se c'è match di stem e il contesto è cibo, è ok)
-        
-        // Controllo lunghezza approssimativo: se foodName è molto lungo ma il tag è corto, occhio.
-        // Ma "Insalata mista" contiene "insalata".
-        // "Torta di mele" contiene "mele" -> stem "mel" (da mela).
-        return true; 
+        return true;
       }
     }
-    
+
     return false;
   }
 
-  /// Trova l'indice del giorno corrente nella lista dei giorni della dieta
-  /// Restituisce -1 se non trovato
+  /// Restituisce l'indice del giorno corrente nella lista dei giorni della dieta, -1 se non trovato.
   int getTodayIndex() {
     final days = getDays();
     if (days.isEmpty) return -1;
 
     final now = DateTime.now();
-    // DateTime.weekday: 1 = Monday, 7 = Sunday
-    // Assumiamo che la lista days inizi da Lunedì (o equivalente)
-    int weekdayIndex = now.weekday - 1; // 0 = Monday
+    int weekdayIndex = now.weekday - 1;
 
     if (weekdayIndex >= 0 && weekdayIndex < days.length) {
       return weekdayIndex;
     }
-    return 0; // Default al primo giorno
+    return 0;
   }
 
-  /// Restituisce il nome del giorno corrente secondo la config della dieta
+  /// Restituisce il nome del giorno corrente secondo la config della dieta.
   String getTodayName() {
     final days = getDays();
     final index = getTodayIndex();
@@ -426,8 +363,6 @@ class DietProvider extends ChangeNotifier {
   }
 
   DietProvider(this._repository, this._badgeService);
-
-  // --- INIT & SYNC ---
 
   Future<bool> loadFromCache() async {
     bool hasData = false;
@@ -441,14 +376,11 @@ class DietProvider extends ChangeNotifier {
       await _loadBudget();
 
       if (savedDiet != null && savedDiet['plan'] != null) {
-        // Conversione da JSON cache a Oggetto Dart
         _dietPlan = DietPlan.fromJson(savedDiet);
 
-        // Setup Sync
         _lastSyncedDiet = _deepCopy(savedDiet['plan']);
         _lastSyncedSubstitutions = _deepCopy(savedDiet['substitutions']);
 
-        // [NUOVO] Reset consumed a inizio giornata
         await _checkDailyReset();
 
         _recalcAvailability();
@@ -459,8 +391,7 @@ class DietProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
-    
-    // Inizia caricamento config globale in background (non bloccante)
+
     _fetchGlobalConfig();
 
     notifyListeners();
@@ -479,8 +410,6 @@ class DietProvider extends ChangeNotifier {
       if (docSnapshot.exists) {
         final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
-          // [FIX] Salva lo stato consumed locale prima di sovrascrivere
-          // Itera su TUTTE le settimane per preservare tutti gli stati
           final Map<String, bool> localConsumedStates = {};
           if (_dietPlan != null) {
             for (final weekPlan in _dietPlan!.weeks) {
@@ -496,10 +425,8 @@ class DietProvider extends ChangeNotifier {
             }
           }
 
-          // Conversione da Mappa Firestore a Oggetto DietPlan
           _dietPlan = DietPlan.fromJson(data);
 
-          // [FIX] Ripristina lo stato consumed su tutte le settimane
           if (localConsumedStates.isNotEmpty) {
             for (final weekPlan in _dietPlan!.weeks) {
               weekPlan.forEach((day, meals) {
@@ -515,21 +442,18 @@ class DietProvider extends ChangeNotifier {
             debugPrint("🔄 Ripristinati ${localConsumedStates.length} stati consumo (multi-week)");
           }
 
-          // Salvataggio cache locale (con stati consumed preservati)
           await _storage.saveDiet(_dietPlan!.toJson());
 
-          // Aggiorna baseline sync
           final jsonMap = _dietPlan!.toJson();
           _lastSyncedDiet = _deepCopy(jsonMap['plan']);
           _lastSyncedSubstitutions = _deepCopy(jsonMap['substitutions']);
           _lastCloudSave = DateTime.now();
 
-          // [NUOVO] Reset consumed a inizio giornata
           await _checkDailyReset();
 
           _recalcAvailability();
           await scheduleMealNotifications();
-          await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo sync
+          await _updateDailyStats();
           notifyListeners();
           debugPrint("☁️ Sync Cloud completato (da 'current')");
         }
@@ -542,10 +466,9 @@ class DietProvider extends ChangeNotifier {
   void loadHistoricalDiet(Map<String, dynamic> dietData, String docId) {
     debugPrint("📂 Caricamento dieta ID: $docId");
 
-    // [FIX] Ricostruiamo l'oggetto dai dati passati
     _dietPlan = DietPlan.fromJson(dietData);
     _currentFirestoreId = docId;
-    _selectedWeek = 0; // Reset alla prima settimana su caricamento storico
+    _selectedWeek = 0;
 
     _activeSwaps = {};
 
@@ -565,7 +488,6 @@ class DietProvider extends ChangeNotifier {
       }
     }
 
-    // Persistenza
     _storage.saveDiet(_dietPlan!.toJson());
     _storage.saveSwaps(_activeSwaps);
 
@@ -580,10 +502,7 @@ class DietProvider extends ChangeNotifier {
     await _recalcAvailability();
   }
 
-  // --- RESET GIORNALIERO CONSUMED ---
-
-  /// Controlla se il giorno è cambiato e resetta tutti i flag isConsumed.
-  /// Viene chiamato al caricamento dalla cache e dopo il sync da Firebase.
+  /// Controlla se il giorno è cambiato e resetta tutti i flag isConsumed su tutte le settimane.
   Future<void> _checkDailyReset() async {
     if (_dietPlan == null) return;
 
@@ -592,9 +511,8 @@ class DietProvider extends ChangeNotifier {
 
     final lastResetDate = await _storage.loadLastConsumedResetDate();
 
-    if (lastResetDate == todayStr) return; // Già resettato oggi
+    if (lastResetDate == todayStr) return;
 
-    // Resetta tutti i flag consumed su TUTTE le settimane
     bool anyReset = false;
     for (final weekPlan in _dietPlan!.weeks) {
       weekPlan.forEach((day, meals) {
@@ -609,7 +527,6 @@ class DietProvider extends ChangeNotifier {
       });
     }
 
-    // Salva la data di reset e la dieta aggiornata
     await _storage.saveLastConsumedResetDate(todayStr);
     if (anyReset) {
       await _storage.saveDiet(_dietPlan!.toJson());
@@ -617,9 +534,6 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  // --- LOGICA CONSUMO & AGGIORNAMENTO ---
-
-  // [FIX] Cambiato da void a Future<void> per permettere await
   Future<void> updateDietMeal(
     String day,
     String meal,
@@ -629,7 +543,6 @@ class DietProvider extends ChangeNotifier {
     String? instanceId,
     int? cadCode,
   }) async {
-    // Check di sicurezza sui dati (usa la settimana corrente)
     if (_dietPlan == null ||
         !currentWeekPlan.containsKey(day) ||
         !currentWeekPlan[day]!.containsKey(meal)) {
@@ -638,7 +551,6 @@ class DietProvider extends ChangeNotifier {
 
     final List<Dish> currentMeals = currentWeekPlan[day]![meal]!;
 
-    // 1. Trova l'indice reale (usando instanceId per precisione)
     int realIndex = unsafeIndex;
     if (instanceId != null || cadCode != null) {
       final foundIndex = currentMeals.indexWhere((d) {
@@ -656,34 +568,29 @@ class DietProvider extends ChangeNotifier {
     }
 
     if (realIndex >= 0 && realIndex < currentMeals.length) {
-      // 2. Crea un NUOVO oggetto Dish con i dati aggiornati (Dish è immutabile)
       final oldDish = currentMeals[realIndex];
 
       final newDish = Dish(
         instanceId: oldDish.instanceId,
-        name: name, // Aggiornato
-        qty: qty, // Aggiornato
+        name: name,
+        qty: qty,
         cadCode: oldDish.cadCode,
         isComposed: oldDish.isComposed,
         ingredients: oldDish.ingredients,
         isConsumed: oldDish.isConsumed,
       );
 
-      // 3. Sostituisci nella lista
       currentMeals[realIndex] = newDish;
 
-      // 4. Salva (Serializzando l'oggetto)
       await _storage.saveDiet(_dietPlan!.toJson());
 
-      // 5. Trigger Sync Intelligente [FIX] Ora awaited
       await _triggerSmartSyncCheck();
 
       await _recalcAvailability();
-      await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo modifica
+      await _updateDailyStats();
       notifyListeners();
     }
   }
-  // [REFACTORING 4.1] Logica delegata a DietLogic
 
   Future<void> consumeMeal(
     String day,
@@ -695,13 +602,11 @@ class DietProvider extends ChangeNotifier {
   }) async {
     if (_dietPlan == null) return;
 
-    // Usa la settimana corrente per consumo pasto
     final mealsMap = currentWeekPlan[day];
     if (mealsMap == null || !mealsMap.containsKey(mealType)) return;
 
     final List<Dish> meals = mealsMap[mealType]!;
 
-    // 1. Risoluzione Indice
     int realIndex = unsafeIndex;
     if (instanceId != null || cadCode != null) {
       final foundIndex = meals.indexWhere((d) {
@@ -714,8 +619,6 @@ class DietProvider extends ChangeNotifier {
 
     if (realIndex >= meals.length) return;
 
-    // 2. Identificazione Gruppo
-    // [IMPORTANTE] Convertiamo in JSON per DietCalculator.buildGroups che si aspetta Maps
     final mealsAsMaps = meals.map((e) => e.toJson()).toList();
     List<List<int>> groups = DietCalculator.buildGroups(mealsAsMaps);
 
@@ -728,12 +631,11 @@ class DietProvider extends ChangeNotifier {
     }
     if (targetGroupIndices.isEmpty) targetGroupIndices = [realIndex];
 
-    // 3. Preparazione Ingredienti (Usa il nuovo DietLogic che accetta Dish)
     List<Map<String, String>> allIngredientsToProcess = [];
     for (int i in targetGroupIndices) {
       var dish = meals[i];
       var ingredients = DietLogic.resolveIngredients(
-        dish: dish, // Passiamo l'oggetto Dish
+        dish: dish,
         day: day,
         mealType: mealType,
         activeSwaps: _activeSwaps,
@@ -741,7 +643,6 @@ class DietProvider extends ChangeNotifier {
       allIngredientsToProcess.addAll(ingredients);
     }
 
-    // 4. Validazione e Consumo Dispensa (Logica invariata)
     if (!force) {
       for (var ing in allIngredientsToProcess) {
         DietLogic.validateItem(
@@ -768,11 +669,9 @@ class DietProvider extends ChangeNotifier {
       _storage.savePantry(_pantryItems);
     }
 
-    // 5. MARCATURA CONSUMATO (Aggiorniamo la proprietà isConsumed)
     for (int i in targetGroupIndices) {
       if (i < meals.length) {
         final old = meals[i];
-        // Creiamo nuova istanza con isConsumed = true
         meals[i] = Dish(
           instanceId: old.instanceId,
           name: old.name,
@@ -780,20 +679,17 @@ class DietProvider extends ChangeNotifier {
           cadCode: old.cadCode,
           isComposed: old.isComposed,
           ingredients: old.ingredients,
-          isConsumed: true, // <--- ECCO LA MODIFICA
+          isConsumed: true,
         );
       }
     }
 
-    // 6. Salvataggio e Aggiornamento
     await _storage.saveDiet(_dietPlan!.toJson());
 
     await _recalcAvailability();
-    await _updateDailyStats(); // [NUOVO] Aggiorna stats dopo consumo
-    // Non serve notifyListeners() perché _recalcAvailability lo fa già
+    await _updateDailyStats();
   }
 
-  // Anche consumeSmart diventa un wrapper one-line
   void consumeSmart(String name, String qty) {
     try {
       DietLogic.validateItem(
@@ -819,48 +715,42 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  /// Calcola e salva le statistiche giornaliere
+  /// Calcola e salva le statistiche giornaliere tramite TrackingService.
   Future<void> _updateDailyStats() async {
     if (_dietPlan == null) return;
-    
-    // 1. Identifica giorno corrente nel piano (settimana corrente)
+
     final todayName = getTodayName();
     if (todayName.isEmpty || !currentWeekPlan.containsKey(todayName)) return;
 
     final dayMeals = currentWeekPlan[todayName]!;
-    
+
     int planned = 0;
     int consumed = 0;
 
-    // 2. Conta pasti pianificati e consumati
     dayMeals.forEach((mealType, dishes) {
       if (dishes.isNotEmpty) {
-        planned++; // Conta come 1 pasto se ha piatti
-        // Un pasto è "consumato" se TUTTI i suoi piatti sono consumati
+        planned++;
         if (dishes.every((d) => d.isConsumed)) {
           consumed++;
         }
       }
     });
 
-    // 3. Salva tramite TrackingService
     try {
       final stats = DailyMealStats(
         date: DateTime.now(),
         mealsPlanned: planned,
         mealsConsumed: consumed,
-        mealCompletion: {}, // [FIX] Aggiunta mappa vuota per ora, implementare logica
+        mealCompletion: {},
       );
       await _trackingService.saveDailyStats(stats);
-      
-      // Trigger Badge Check (Direct call)
+
       await _badgeService.checkDailyGoals(planned, consumed);
     } catch (e) {
       debugPrint("⚠️ Errore aggiornamento stats: $e");
     }
   }
 
-  // --- HELPER METODS ---
   Future<void> resolveUnitMismatch(
     String itemName,
     String fromUnit,
@@ -876,7 +766,7 @@ class DietProvider extends ChangeNotifier {
 
   Future<void> uploadDiet(String path) async {
     _setLoading(true);
-    _uploadProgress = 0.0; // ✅ Reset
+    _uploadProgress = 0.0;
     clearError();
 
     try {
@@ -885,28 +775,24 @@ class DietProvider extends ChangeNotifier {
         token = await FirebaseMessaging.instance.getToken();
       } catch (_) {}
 
-      // ✅ Upload con progress callback REALE
       final result = await _repository.uploadDiet(
         path,
         fcmToken: token,
         onProgress: (progress) {
           _uploadProgress = progress;
-          notifyListeners(); // ✅ Aggiorna UI in tempo reale
+          notifyListeners();
         },
       );
 
-      _uploadProgress = 1.0; // ✅ Completo
+      _uploadProgress = 1.0;
 
-      // [DEBUG] Salva raw JSON per ispezione utente
       _lastRawParsedData = result;
 
       _dietPlan = DietPlan.fromJson(result);
-      _selectedWeek = 0; // Reset alla prima settimana su nuova dieta
+      _selectedWeek = 0;
 
-      // Salvataggio Locale (Serializziamo l'oggetto in JSON)
       await _storage.saveDiet(_dietPlan!.toJson());
 
-      // Reset Stato Locale
       _activeSwaps = {};
       await _storage.saveSwaps({});
 
@@ -990,9 +876,7 @@ class DietProvider extends ChangeNotifier {
   }
 
   Future<void> _recalcAvailability() async {
-    // [FIX] PROTEZIONE con timeout: Se c'è già un calcolo in corso, verifica timeout
     if (_isCalculating) {
-      // Timeout di 30 secondi per evitare lock permanente
       if (_calculationStartTime != null &&
           DateTime.now().difference(_calculationStartTime!).inSeconds > 30) {
         debugPrint("⚠️ Lock calcolo scaduto, reset forzato");
@@ -1005,16 +889,15 @@ class DietProvider extends ChangeNotifier {
 
     if (_dietPlan == null) return;
 
-    _isCalculating = true; // ✅ LOCK attivato
-    _calculationStartTime = DateTime.now(); // [FIX] Timestamp per timeout
+    _isCalculating = true;
+    _calculationStartTime = DateTime.now();
 
-    // Serializziamo la settimana corrente perchè l'Isolate lavora con dati puri
     final planJson = _serializeWeekPlan(currentWeekPlan);
 
     final payload = {
       'dietData': planJson,
-      'days': getDays(), // [FIX] Giorni dinamici per isolare
-      'meals': getMeals(), // [FIX] Pasti dinamici per isolare
+      'days': getDays(),
+      'meals': getMeals(),
       'pantryItems': _pantryItems
           .map((p) => {'name': p.name, 'quantity': p.quantity, 'unit': p.unit})
           .toList(),
@@ -1038,16 +921,14 @@ class DietProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("Isolate Calc Error: $e");
     } finally {
-      _isCalculating = false; // ✅ LOCK rilasciato (sempre, anche in caso di errore)
-      _calculationStartTime = null; // [FIX] Reset timestamp
+      _isCalculating = false;
+      _calculationStartTime = null;
     }
   }
 
-  // --- UTILS & HELPERS ---
   List<String> _extractAllowedFoods() {
     final Set<String> foods = {};
     if (_dietPlan != null) {
-      // Iterazione su TUTTE le settimane per il riconoscimento scontrini
       for (final weekPlan in _dietPlan!.weeks) {
         weekPlan.forEach((day, meals) {
           meals.forEach((mealType, dishes) {
@@ -1058,7 +939,6 @@ class DietProvider extends ChangeNotifier {
         });
       }
 
-      // Iterazione Sostituzioni
       _dietPlan!.substitutions.forEach((key, group) {
         for (var opt in group.options) {
           foods.add(opt.name);
@@ -1089,8 +969,6 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── Budget settimanale ──────────────────────────────────────────────────
-
   Future<void> setWeeklyBudget(double? budget) async {
     _weeklyBudget = budget;
     await _storage.saveWeeklyBudget(budget);
@@ -1104,9 +982,7 @@ class DietProvider extends ChangeNotifier {
   Future<void> swapMeal(String key, ActiveSwap swap) async {
     _activeSwaps[key] = swap;
     _storage.saveSwaps(_activeSwaps);
-    // Notifica subito per aggiornare l'icona swap nella UI
     notifyListeners();
-    // Ricalcola disponibilità e notifica di nuovo quando finito
     await _recalcAvailability();
   }
 
@@ -1128,7 +1004,7 @@ class DietProvider extends ChangeNotifier {
 
   Future<void> clearData() async {
     await _storage.clearAll();
-    _dietPlan = null; // [FIX] Nullifichiamo l'oggetto
+    _dietPlan = null;
     _pantryItems = [];
     _activeSwaps = {};
     _shoppingList = [];
@@ -1136,19 +1012,16 @@ class DietProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Deep copy e Helpers per il Sync differenziale
-// Deep copy tramite serializzazione/deserializzazione JSON
   Map<String, dynamic>? _deepCopy(Map<String, dynamic>? input) {
     if (input == null) return null;
     return jsonDecode(jsonEncode(input));
   }
 
-  // Sanitize: Rimuove 'consumed' e stati UI per confrontare la struttura pura
+  /// Rimuove il flag 'consumed' e stati UI per confrontare la struttura pura in fase di sync.
   dynamic _sanitize(dynamic input) {
     if (input is Map) {
       final newMap = <String, dynamic>{};
       input.forEach((key, value) {
-        // Rimuoviamo il flag locale 'consumed' per i confronti di sync
         if (key != 'consumed') {
           newMap[key.toString()] = _sanitize(value);
         }
@@ -1177,7 +1050,6 @@ class DietProvider extends ChangeNotifier {
     var status = await Permission.notification.status;
 
     if (status.isGranted) {
-      // Passiamo piano e giorni dalla config dieta
       await _notificationService.scheduleDietNotifications(
         currentWeekPlan,
         days: getDays(),
@@ -1189,7 +1061,7 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  /// Serializza un piano settimanale in JSON puro (per Isolate e altri usi)
+  /// Serializza un piano settimanale in JSON puro per Isolate e altri usi.
   Map<String, dynamic> _serializeWeekPlan(
       Map<String, Map<String, List<Dish>>> weekPlan) {
     final Map<String, dynamic> jsonPlan = {};
@@ -1203,7 +1075,6 @@ class DietProvider extends ChangeNotifier {
     return jsonPlan;
   }
 
-  // Fix #8-9: Dispose di risorse per evitare memory leak
   @override
   void dispose() {
     _repository.dispose();
@@ -1212,6 +1083,3 @@ class DietProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-
-// --- FALLBACK CONSTANTS (Private copies for reliability) ---
-// Rimosso: i fallback sono stati eliminati per supportare la configurazione dinamica globale.

@@ -1,3 +1,4 @@
+// Schermata login/registrazione con supporto codice invito, Google Sign-In e privacy dialog.
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../core/error_handler.dart';
@@ -30,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     if (widget.inviteCode != null || widget.isIndependent) {
-      _isLogin = false; // Switch to register automatically
+      _isLogin = false;
     }
   }
 
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await _auth.signIn(email, pass);
       } else {
         await _auth.signUp(
-          email, 
+          email,
           pass,
           role: widget.inviteCode != null ? 'client' : 'independent',
           additionalData: widget.inviteCode != null ? {'invite_code': widget.inviteCode} : null,
@@ -149,11 +150,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
                   const DietLogo(size: 100),
                   const SizedBox(height: 24),
-                  
-                  // Title
+
                   Text(
                     _isLogin ? "Bentornato!" : "Crea Account",
                     style: TextStyle(
@@ -164,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _isLogin 
+                    _isLogin
                         ? "Accedi al tuo account Kybo"
                         : "Inizia il tuo percorso nutrizionale",
                     style: TextStyle(
@@ -193,7 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                   const SizedBox(height: 40),
 
-                  // Email Field
                   PillTextField(
                     controller: _emailCtrl,
                     labelText: "Email",
@@ -204,7 +202,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Password Field
                   PillTextField(
                     controller: _passCtrl,
                     labelText: "Password",
@@ -217,7 +214,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Login/Register Button
                   PillButton(
                     label: _isLogin ? "ACCEDI" : "REGISTRATI",
                     onPressed: _submit,
@@ -229,7 +225,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Divider
                   Row(
                     children: [
                       Expanded(
@@ -258,7 +253,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Google Login Button
                   PillButton(
                     label: "Accedi con Google",
                     icon: Icons.g_mobiledata,
@@ -270,7 +264,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Toggle Login/Register
                   TextButton(
                     onPressed: () => setState(() => _isLogin = !_isLogin),
                     child: Text(
@@ -287,7 +280,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Privacy Disclaimer
                   GestureDetector(
                     onTap: _showPrivacyDialog,
                     child: Text(

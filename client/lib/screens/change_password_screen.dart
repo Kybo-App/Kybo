@@ -1,6 +1,7 @@
+// Schermata cambio password con validazione complessità (min 12 caratteri, maiuscole, minuscole, numeri).
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../core/error_handler.dart'; // [IMPORTANTE]
+import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -29,12 +30,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _showError("Le password non coincidono");
       return;
     }
-    // [SECURITY] Password minima aumentata a 12 caratteri
     if (_passCtrl.text.length < 12) {
       _showError("La password deve avere almeno 12 caratteri");
       return;
     }
-    // [SECURITY] Verifica complessità password
     final hasUppercase = _passCtrl.text.contains(RegExp(r'[A-Z]'));
     final hasLowercase = _passCtrl.text.contains(RegExp(r'[a-z]'));
     final hasDigit = _passCtrl.text.contains(RegExp(r'[0-9]'));
@@ -63,7 +62,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        // [UX] Errore tradotto
         _showError(ErrorMapper.toUserMessage(e));
       }
     } finally {

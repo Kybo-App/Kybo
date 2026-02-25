@@ -1,3 +1,4 @@
+// Schermata badge e livelli utente con griglia sbloccabile e progress verso il prossimo livello.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/badge_service.dart';
@@ -16,7 +17,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Controlla se c'è un badge appena sbloccato o un level-up da mostrare
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkForCelebration());
   }
 
@@ -145,12 +145,10 @@ class _BadgesScreenState extends State<BadgesScreen> {
     final totalCount = badges.length;
     final level = svc.currentLevel;
 
-    // Prossimo livello
     final levelIndex = kBadgeLevels.indexOf(level);
     final isMaxLevel = levelIndex == kBadgeLevels.length - 1;
     final nextLevel = isMaxLevel ? null : kBadgeLevels[levelIndex + 1];
 
-    // Progress verso il prossimo livello
     final progressInLevel = unlockedCount - level.minBadges;
     final neededForNext = isMaxLevel ? 1 : (nextLevel!.minBadges - level.minBadges);
     final levelProgress = neededForNext > 0
@@ -170,7 +168,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ─── LEVEL CARD ───────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -237,7 +234,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Progress bar verso prossimo livello
                   if (!isMaxLevel) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -270,7 +266,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
                       ),
                     ),
                   ] else ...[
-                    // Livello massimo raggiunto
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
@@ -294,7 +289,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
             const SizedBox(height: 16),
 
-            // ─── SCALA LIVELLI ────────────────────────────────────────
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -345,7 +339,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
 
             const SizedBox(height: 28),
 
-            // ─── TITOLO GRIGLIA ───────────────────────────────────────
             Text(
               'I tuoi badge',
               style: TextStyle(
@@ -356,7 +349,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
             ),
             const SizedBox(height: 12),
 
-            // ─── GRIGLIA BADGE ────────────────────────────────────────
             GridView.builder(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
@@ -378,10 +370,6 @@ class _BadgesScreenState extends State<BadgesScreen> {
     );
   }
 }
-
-// =============================================================================
-// BADGE CARD
-// =============================================================================
 
 class _BadgeCard extends StatelessWidget {
   final BadgeModel badge;
@@ -415,7 +403,6 @@ class _BadgeCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Icona
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -434,7 +421,6 @@ class _BadgeCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
 
-          // Titolo
           Text(
             badge.title,
             textAlign: TextAlign.center,
@@ -450,7 +436,6 @@ class _BadgeCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
 
-          // Descrizione
           Text(
             isUnlocked ? badge.description : '???',
             textAlign: TextAlign.center,
@@ -462,7 +447,6 @@ class _BadgeCard extends StatelessWidget {
             ),
           ),
 
-          // Data sblocco
           if (isUnlocked && badge.unlockedAt != null) ...[
             const SizedBox(height: 6),
             Text(
@@ -475,7 +459,6 @@ class _BadgeCard extends StatelessWidget {
             ),
           ],
 
-          // Lucchetto se bloccato
           if (!isUnlocked) ...[
             const SizedBox(height: 6),
             Icon(

@@ -1,3 +1,6 @@
+// Provider per la chat con il nutrizionista.
+// initializeChat — risolve il nutrizionista dal documento utente e crea il documento chat se assente.
+// runSmartSyncCheck — non usato qui, ma il pattern Firestore unificato è: /chats/{uid}_chat/messages/{id}.
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -9,17 +12,6 @@ import 'package:http_parser/http_parser.dart';
 import '../core/env.dart';
 import '../models/chat_message.dart';
 
-/// Provider for managing chat with nutritionist
-/// Struttura Firestore unificata con admin:
-///   /chats/{chatId}
-///     - chatType: 'nutritionist-client'
-///     - participants: { clientId, nutritionistId }
-///     - clientName, clientEmail
-///     - lastMessage, lastMessageTime, lastMessageSender
-///     - unreadCount: { client, nutritionist }
-///   /chats/{chatId}/messages/{msgId}
-///     - senderId, senderType, message, timestamp, read
-///     - attachmentUrl, attachmentType, fileName (opzionali)
 class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -36,19 +28,15 @@ class ChatProvider extends ChangeNotifier {
   String? _clientEmail;
   bool _initialized = false;
 
-  /// Nome visualizzabile del contatto chat:
-  /// - per il cliente: nome del nutrizionista (o "Nutrizionista" come fallback)
   String get nutritionistName => _nutritionistName ?? 'Nutrizionista';
 
   StreamSubscription? _unreadSubscription;
 
-  /// Initialize chat: resolve nutritionist from user document
   Future<void> initializeChat() async {
     final user = _auth.currentUser;
     if (user == null || _initialized) return;
 
     try {
-      // Fetch user document to get parent_id (nutritionist UID)
       final userDoc =
           await _firestore.collection('users').doc(user.uid).get();
 
@@ -70,11 +58,9 @@ class ChatProvider extends ChangeNotifier {
 
       if (_nutritionistId == null || _nutritionistId!.isEmpty) {
         debugPrint('Chat: No nutritionist assigned (parent_id is null)');
-        // User is independent or not yet assigned - no chat available
         return;
       }
 
-      // Fetch nutritionist name to display in chat header
       try {
         final nutriDoc = await _firestore
             .collection('users')
@@ -91,14 +77,11 @@ class ChatProvider extends ChangeNotifier {
         debugPrint('Chat: Could not fetch nutritionist name: $e');
       }
 
-      // Chat ID: deterministic format based on client UID
       _currentChatId = '${user.uid}_chat';
       _initialized = true;
 
-      // Ensure chat document exists with correct metadata
       await _ensureChatDocument();
 
-      // Listen to unread count
       _listenToUnreadCount();
 
       debugPrint(
@@ -108,7 +91,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Ensure the chat document exists with all required fields
   Future<void> _ensureChatDocument() async {
     if (_currentChatId == null) return;
 
@@ -119,7 +101,6 @@ class ChatProvider extends ChangeNotifier {
     final chatDoc = await chatRef.get();
 
     if (!chatDoc.exists) {
-      // Create chat document with full metadata
       await chatRef.set({
         'chatType': 'nutritionist-client',
         'participants': {
@@ -137,7 +118,6 @@ class ChatProvider extends ChangeNotifier {
         },
       });
     } else {
-      // Update metadata if changed (name, nutritionist reassignment)
       final data = chatDoc.data()!;
       final existingNutriId =
           (data['participants'] as Map<String, dynamic>?)?['nutritionistId'];
@@ -154,7 +134,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Listen to unread count changes
   void _listenToUnreadCount() {
     _unreadSubscription?.cancel();
     if (_currentChatId == null) return;
@@ -176,7 +155,6 @@ class ChatProvider extends ChangeNotifier {
     );
   }
 
-  /// Get messages stream for current chat
   Stream<List<ChatMessage>> getMessages() {
     if (_currentChatId == null) {
       return Stream.value([]);
@@ -195,7 +173,6 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  /// Upload attachment via backend API, returns {url, fileType, fileName}
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
     final token = await _auth.currentUser?.getIdToken();
     if (token == null) throw Exception('Non autenticato');
@@ -247,7 +224,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Send a new message (with optional attachment)
   Future<void> sendMessage(
     String text, {
     String? attachmentUrl,
@@ -273,20 +249,17 @@ class ChatProvider extends ChangeNotifier {
         fileName: fileName,
       );
 
-      // Add message to subcollection
       await _firestore
           .collection('chats')
           .doc(_currentChatId)
           .collection('messages')
           .add(message.toFirestore());
 
-      // Build lastMessage preview
       String lastMessagePreview = text.trim();
       if (lastMessagePreview.isEmpty && attachmentType != null) {
         lastMessagePreview = attachmentType == 'pdf' ? '📄 Documento' : '📷 Immagine';
       }
 
-      // Update chat metadata
       await _firestore.collection('chats').doc(_currentChatId).set({
         'chatType': 'nutritionist-client',
         'participants': {
@@ -299,8 +272,8 @@ class ChatProvider extends ChangeNotifier {
         'lastMessageTime': Timestamp.now(),
         'lastMessageSender': 'client',
         'unreadCount': {
-          'client': 0, // Reset own unread
-          'nutritionist': FieldValue.increment(1), // Increment other side
+          'client': 0,
+          'nutritionist': FieldValue.increment(1),
         },
         'messageCount': FieldValue.increment(1),
       }, SetOptions(merge: true));
@@ -310,17 +283,14 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Mark all messages as read (messages from nutritionist/admin)
   Future<void> markAsRead() async {
     if (_currentChatId == null) return;
 
     try {
-      // Reset client unread count
       await _firestore.collection('chats').doc(_currentChatId).update({
         'unreadCount.client': 0,
       });
 
-      // Mark individual messages from nutritionist/admin as read
       final messagesSnapshot = await _firestore
           .collection('chats')
           .doc(_currentChatId)
@@ -340,10 +310,8 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  /// Check if chat is available (user has a nutritionist assigned)
   bool get isChatAvailable => _currentChatId != null && _nutritionistId != null;
 
-  /// Clear chat data (on logout)
   void clearChat() {
     _unreadSubscription?.cancel();
     _currentChatId = null;

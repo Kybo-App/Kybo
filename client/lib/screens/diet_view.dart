@@ -1,3 +1,6 @@
+// Vista giornaliera della dieta con selezione porzioni, consumo pasti, swap e diario alimentare.
+// _showSwapDialog — mostra le sostituzioni disponibili per un piatto tramite codice CAD.
+// _showNoteDialog — apre il diario per annotare umore e note sul pasto.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/diet_provider.dart';
@@ -40,7 +43,7 @@ class _DietViewState extends State<DietView> {
     final provider = context.read<DietProvider>();
     final days = provider.getDays();
     final now = DateTime.now();
-    int index = now.weekday - 1; // 0 = Monday
+    int index = now.weekday - 1;
     if (index >= 0 && index < days.length) {
       return days[index].toLowerCase() == dayName.toLowerCase();
     }
@@ -53,7 +56,6 @@ class _DietViewState extends State<DietView> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Usa il piano della settimana correntemente selezionata dal provider
     final currentWeekPlan = context.read<DietProvider>().currentWeekPlan;
 
     if (widget.dietPlan == null || currentWeekPlan.isEmpty) {
@@ -245,8 +247,6 @@ class _DietViewState extends State<DietView> {
     DietProvider provider,
     UnitMismatchException e,
   ) {
-    // ... (Logica invariata, ma usa e.item che ora è typed se DietLogic è aggiornato)
-    // Per sicurezza, assumiamo che DietLogic lanci l'eccezione corretta
     final controller = TextEditingController();
     showDialog(
       context: context,
@@ -321,13 +321,10 @@ class _DietViewState extends State<DietView> {
     );
   }
 
-  // [FIX] Logica Swap aggiornata per usare DietPlan (Oggetti) invece di Map
   void _showSwapDialog(BuildContext context, String swapKey, int cadCode) {
-    // Accesso sicuro tramite dietPlan
     final subs = widget.dietPlan?.substitutions;
     final String lookupCode = cadCode.toString();
 
-    // Controllo esistenza sostituzioni
     if (subs == null ||
         !subs.containsKey(lookupCode) ||
         subs[lookupCode]!.options.isEmpty) {
@@ -358,7 +355,6 @@ class _DietViewState extends State<DietView> {
       return;
     }
 
-    // [FIX] Estrazione dati tipizzati
     final substitutionGroup = subs[lookupCode]!;
     final List<SubstitutionOption> options = substitutionGroup.options;
 
@@ -413,13 +409,11 @@ class _DietViewState extends State<DietView> {
     );
   }
 
-  // --- DIARIO ALIMENTARE ---
   void _showNoteDialog(BuildContext context, String day, String mealType) {
     final trackingService = TrackingService();
     final noteController = TextEditingController();
     String? selectedMood;
 
-    // Carica nota esistente
     final today = DateTime.now().toIso8601String().split('T')[0];
     final noteId = '${today}_${day}_$mealType';
 
