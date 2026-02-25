@@ -1,16 +1,11 @@
-/// PricingService - Stima prezzi ingredienti al supermercato italiano
-///
-/// Prezzi medi al kg/litro/pz basati su supermercati italiani (2024).
-/// Usato per stimare il costo totale della lista della spesa.
+// Stima prezzi ingredienti al supermercato italiano per il calcolo del costo della lista della spesa.
+// estimatePrice — stima il prezzo di una stringa item nel formato Kybo; _toKg — converte qualsiasi unità in kg per confronto uniforme.
 library;
 
 class PricingService {
   PricingService._();
 
-  // ─── Prezzi medi italiani (€/kg oppure €/pz dove indicato) ───────────────
-  // Fonte: prezzi medi supermercati (Esselunga, Coop, Conad) 2024
   static const Map<String, double> _pricePerKg = {
-    // Frutta
     'mela': 2.50,
     'pera': 2.80,
     'banana': 2.00,
@@ -35,8 +30,6 @@ class PricingService {
     'clementina': 2.00,
     'mandarino': 2.00,
     'pompelmo': 2.00,
-
-    // Verdura
     'pomodoro': 2.50,
     'insalata': 2.00,
     'lattuga': 2.00,
@@ -63,8 +56,6 @@ class PricingService {
     'zucca': 1.50,
     'bietola': 2.00,
     'porro': 2.00,
-
-    // Carne
     'pollo': 6.00,
     'petto di pollo': 8.00,
     'coscia di pollo': 5.00,
@@ -78,8 +69,6 @@ class PricingService {
     'vitello': 18.00,
     'agnello': 14.00,
     'coniglio': 9.00,
-
-    // Salumi
     'prosciutto cotto': 14.00,
     'prosciutto crudo': 25.00,
     'prosciutto': 15.00,
@@ -89,8 +78,6 @@ class PricingService {
     'speck': 25.00,
     'pancetta': 12.00,
     'wurstel': 8.00,
-
-    // Pesce
     'salmone': 18.00,
     'tonno fresco': 15.00,
     'merluzzo': 12.00,
@@ -104,8 +91,6 @@ class PricingService {
     'sgombro': 8.00,
     'alici': 6.00,
     'baccalà': 14.00,
-
-    // Latticini (prezzi al kg o litro)
     'latte': 1.40,
     'yogurt': 2.50,
     'mozzarella': 8.00,
@@ -121,8 +106,6 @@ class PricingService {
     'feta': 10.00,
     'mascarpone': 8.00,
     'kefir': 3.00,
-
-    // Pasta, Cereali, Pane
     'pasta': 2.00,
     'riso': 2.50,
     'pane': 3.00,
@@ -138,8 +121,6 @@ class PricingService {
     'cous cous': 4.00,
     'polenta': 2.00,
     'miglio': 5.00,
-
-    // Legumi
     'fagioli': 3.00,
     'ceci': 3.50,
     'lenticchie': 3.00,
@@ -147,15 +128,11 @@ class PricingService {
     'soia': 4.00,
     'tofu': 8.00,
     'edamame': 6.00,
-
-    // Condimenti & Oli (prezzi al litro/kg)
     'olio': 7.00,
     'olio di oliva': 9.00,
     'olio evo': 12.00,
     'aceto': 2.00,
     'aceto balsamico': 8.00,
-
-    // Frutta secca
     'mandorle': 14.00,
     'noci': 12.00,
     'nocciole': 16.00,
@@ -169,26 +146,22 @@ class PricingService {
     'arachidi': 8.00,
     'uvetta': 8.00,
     'datteri': 12.00,
-
-    // Uova (al pezzo, vedi sotto)
-    // Bevande
     'acqua': 0.30,
     'succo': 2.00,
   };
 
-  /// Prezzi a pezzo (€/pz) per prodotti che non si misurano al kg
   static const Map<String, double> _pricePerPiece = {
     'uovo': 0.25,
     'uova': 0.25,
-    'vasetto': 1.50, // yogurt
-    'mozzarella': 1.50, // pallina da 125g
+    'vasetto': 1.50,
+    'mozzarella': 1.50,
     'limone': 0.30,
     'arancia': 0.40,
     'banana': 0.20,
     'avocado': 1.50,
     'pomodoro': 0.30,
     'cipolla': 0.30,
-    'aglio': 0.50, // testa
+    'aglio': 0.50,
     'peperone': 0.80,
     'zucchina': 0.40,
     'melanzana': 0.60,
@@ -196,10 +169,9 @@ class PricingService {
     'finocchio': 0.80,
     'carciofo': 0.80,
     'piadina': 0.50,
-    'pane': 0.50, // fetta o panino
+    'pane': 0.50,
   };
 
-  /// Prezzi medi per categoria (fallback quando ingrediente non trovato)
   static const Map<String, double> _categoryFallback = {
     'Frutta & Verdura': 2.50,
     'Carne & Pesce': 12.00,
@@ -212,17 +184,8 @@ class PricingService {
     'Altro': 3.00,
   };
 
-  /// Prezzo generico di fallback quando non si riesce a stimare nulla
   static const double _defaultFallback = 3.00;
 
-  // ─── API pubblica ─────────────────────────────────────────────────────────
-
-  /// Stima il prezzo di un articolo della lista spesa.
-  ///
-  /// [itemString] è nel formato usato da Kybo:
-  ///   "Nome (100 g) • 3 pasti"  oppure  "Nome (2 pz)"
-  ///
-  /// Restituisce il prezzo stimato in euro per la quantità specificata.
   static double estimatePrice(String itemString) {
     final parsed = _parseItem(itemString);
     if (parsed == null) return 0.0;
@@ -234,44 +197,34 @@ class PricingService {
     return _calculatePrice(name, qty, unit);
   }
 
-  /// Stima il costo totale di una lista di articoli.
   static double estimateTotalCost(List<String> items) {
     return items.fold(0.0, (sum, item) => sum + estimatePrice(item));
   }
 
-  /// Stima il prezzo e restituisce anche la stringa formattata (es. "~€ 1,50")
   static String formatEstimatedPrice(String itemString) {
     final price = estimatePrice(itemString);
     if (price <= 0) return '';
     return '~€ ${price.toStringAsFixed(2).replaceAll('.', ',')}';
   }
 
-  /// Stima il prezzo direttamente da nome + qty + unit (usato internamente)
   static double estimateFromParts(String name, double qty, String unit) {
     return _calculatePrice(name, qty, unit);
   }
 
-  /// Prezzo medio di fallback per categoria (es. 'Frutta & Verdura' → 2.50 €/kg)
   static double fallbackForCategory(String category) {
     return _categoryFallback[category] ?? _defaultFallback;
   }
 
-  // ─── Internals ───────────────────────────────────────────────────────────
-
-  /// Parsa una stringa item della shopping list
   static Map<String, dynamic>? _parseItem(String itemString) {
-    // Rimuovi "• X pasti" finale
     final cleaned = itemString
         .replaceAll(RegExp(r'\s*•\s*\d+\s*past[io]$'), '')
         .trim();
 
-    // Pattern: "Nome (qty unit)"
     final match = RegExp(
       r'^(.*?)\s*\((\d+(?:[.,]\d+)?)\s*([^)]*)\)$',
     ).firstMatch(cleaned);
 
     if (match == null) {
-      // Nessuna quantità: assume 1 pz
       return {'name': cleaned, 'qty': 1.0, 'unit': 'pz'};
     }
 
@@ -283,17 +236,14 @@ class PricingService {
     return {'name': name, 'qty': qty, 'unit': unit};
   }
 
-  /// Calcola il prezzo per un ingrediente dato nome, quantità e unità
   static double _calculatePrice(String name, double qty, String unit) {
     final lowerName = name.toLowerCase().trim();
 
-    // Unità a pezzo → cerca nel dizionario pz
     if (unit == 'pz' || unit == 'vasetto' || unit == 'fette') {
       final pzPrice = _findPiecePrice(lowerName);
       return pzPrice * qty;
     }
 
-    // Converti tutto in kg/litro per confronto uniforme
     final qtyKg = _toKg(qty, unit);
     if (qtyKg <= 0) return 0.0;
 
@@ -301,12 +251,9 @@ class PricingService {
     return kgPrice * qtyKg;
   }
 
-  /// Cerca il prezzo al kg facendo match parziale sul nome
   static double _findKgPrice(String name) {
-    // Match esatto
     if (_pricePerKg.containsKey(name)) return _pricePerKg[name]!;
 
-    // Match parziale (es. "petto di pollo" trova "pollo")
     for (final entry in _pricePerKg.entries) {
       if (name.contains(entry.key) || entry.key.contains(name)) {
         return entry.value;
@@ -316,7 +263,6 @@ class PricingService {
     return _defaultFallback;
   }
 
-  /// Cerca il prezzo al pezzo facendo match parziale
   static double _findPiecePrice(String name) {
     if (_pricePerPiece.containsKey(name)) return _pricePerPiece[name]!;
 
@@ -326,11 +272,9 @@ class PricingService {
       }
     }
 
-    // Se non trovato come pz, prova il prezzo al kg con quantità media 0.1kg
     return _findKgPrice(name) * 0.1;
   }
 
-  /// Converte qualsiasi unità in kg (o litri, equivalenti per la stima)
   static double _toKg(double qty, String unit) {
     switch (unit.toLowerCase().trim()) {
       case 'kg':
@@ -345,15 +289,13 @@ class PricingService {
         return qty / 1000.0;
       case 'cl':
         return qty / 100.0;
-      // Cucchiaini e cucchiai: unità tipiche per olio/condimenti
       case 'cucchiaino':
       case 'cucchiaini':
-        return qty * 0.005; // 1 cucchiaino ≈ 5 ml
+        return qty * 0.005;
       case 'cucchiaio':
       case 'cucchiai':
-        return qty * 0.015; // 1 cucchiaio ≈ 15 ml
+        return qty * 0.015;
       default:
-        // Unità sconosciuta: assume grammi se numero grande (>10), altrimenti kg
         return qty > 10 ? qty / 1000.0 : qty;
     }
   }

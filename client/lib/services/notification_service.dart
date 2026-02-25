@@ -1,29 +1,28 @@
+// Gestisce notifiche locali e push Firebase: inizializzazione, schedulazione pasti e permessi.
+// scheduleDietNotifications — schedula notifiche settimanali per ogni pasto/giorno del piano dieta.
 import 'dart:convert';
-import 'dart:async'; // ✅ AGGIUNGI se non c'è già
-import 'dart:io'; // Recuperato per Platform.isAndroid
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // Recuperato
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/diet_models.dart'; // Fondamentale per i nuovi oggetti Dish
+import '../models/diet_models.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  // --- Parte Firebase (RIPRISTINATA) ---
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   StreamSubscription<RemoteMessage>? _messageSubscription;
 
-  // --- Parte Locale ---
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  // Getter richiesto da InventoryService
   FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin =>
       _localNotifications;
 
@@ -34,12 +33,10 @@ class NotificationService {
     if (_isInitialized) return;
 
     try {
-      // 1. Init Timezone
       tz.initializeTimeZones();
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
 
-      // 2. Init Settings
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings(_iconName);
 
@@ -62,9 +59,7 @@ class NotificationService {
         },
       );
 
-      // 3. Listener Firebase con gestione memoria
-      _messageSubscription
-          ?.cancel(); // ✅ Cancella listener precedente se esiste
+      _messageSubscription?.cancel();
       _messageSubscription =
           FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint(
@@ -78,8 +73,6 @@ class NotificationService {
       debugPrint("⚠️ Notification Init Error: $e");
     }
   }
-
-  // --- Metodi Firebase (RIPRISTINATI) ---
 
   Future<void> requestPermissions() async {
     try {
@@ -120,7 +113,7 @@ class NotificationService {
         notification.body,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'kybo_push_channel', // Canale separato per le push
+            'kybo_push_channel',
             'Avvisi Manutenzione',
             channelDescription: 'Notifiche importanti dal server',
             importance: Importance.max,
@@ -134,12 +127,6 @@ class NotificationService {
     }
   }
 
-  // --- Metodi Schedulazione Dieta (VERSIONE NUOVA TYPE-SAFE) ---
-
-  /// Questa funzione DEVE rimanere in questa forma perché il DietProvider
-  /// le passa un oggetto `Map<String, Map<String, List<Dish>>>`.
-  /// La vecchia versione (dynamic) non funzionerebbe con la nuova architettura.
-  /// [days] opzionale: lista giorni dalla config dieta (fallback a italianDays)
   Future<void> scheduleDietNotifications(
       Map<String, Map<String, List<Dish>>> plan,
       {List<String>? days}) async {
@@ -147,7 +134,6 @@ class NotificationService {
 
     await cancelAllNotifications();
 
-    // Recupero orari preferiti
     final prefs = await SharedPreferences.getInstance();
     final alarmsJson = prefs.getString('meal_alarms');
     Map<String, TimeOfDay> alarmSettings = {};
@@ -172,17 +158,15 @@ class NotificationService {
     int notificationId = 0;
     final now = DateTime.now();
 
-    // Usa giorni dalla config o da mappa chiavi
     final effectiveDays = days ?? (plan.isNotEmpty ? plan.keys.toList() : []);
 
-    // Costruisce daysMap (index 0 = Lunedì = weekday 1)
     final daysMap = {
       for (int i = 0; i < effectiveDays.length; i++) effectiveDays[i]: i + 1
     };
 
     for (var entry in plan.entries) {
       String dayName = entry.key;
-      var mealsMap = entry.value; // Map<String, List<Dish>>
+      var mealsMap = entry.value;
 
       int? targetWeekday = daysMap[dayName];
       if (targetWeekday == null) continue;
@@ -195,7 +179,6 @@ class NotificationService {
 
         if (!alarmSettings.containsKey(mealType)) continue;
 
-        // Qui usiamo i NUOVI OGGETTI Dish (.name)
         String body = dishes.map((d) => d.name).take(2).join(", ");
         if (dishes.length > 2) body += " e altri...";
         if (body.isEmpty) body = "Controlla il tuo piano alimentare";
@@ -225,8 +208,6 @@ class NotificationService {
     }
     debugPrint("🔔 Schedulate $notificationId notifiche pasti.");
   }
-
-  // --- Helpers ---
 
   DateTime _nextWeekday(int targetWeekday, DateTime from) {
     int diff = targetWeekday - from.weekday;
@@ -272,9 +253,8 @@ class NotificationService {
     await _localNotifications.cancelAll();
   }
 
-  /// Pulisce le risorse quando il servizio non serve più
   void dispose() {
     _messageSubscription?.cancel();
     debugPrint("🧹 NotificationService disposed");
   }
-} // ← Questa è la graffa finale della classe
+}

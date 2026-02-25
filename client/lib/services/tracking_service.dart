@@ -1,15 +1,14 @@
+// Gestisce tracking peso, statistiche giornaliere/settimanali, obiettivi e note pasti su Firestore.
+// calculateWeeklyStats — aggrega i dati della settimana calcolando streak e aderenza; saveDailyStats — usa la data come ID documento per evitare duplicati.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/tracking_models.dart';
 
-/// Service per gestire tracking peso, statistiche e obiettivi
 class TrackingService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // --- WEIGHT TRACKING ---
-  /// Salva una nuova misurazione del peso
   Future<void> saveWeight(double weightKg, {String? note}) async {
     try {
       final user = _auth.currentUser;
@@ -34,7 +33,6 @@ class TrackingService {
     }
   }
 
-  /// Stream dello storico pesi (ultimi 30 giorni)
   Stream<List<WeightEntry>> getWeightHistory({int days = 30}) {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -53,7 +51,6 @@ class TrackingService {
             .toList());
   }
 
-  /// Ultimo peso registrato
   Future<WeightEntry?> getLatestWeight() async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -70,14 +67,11 @@ class TrackingService {
     return WeightEntry.fromJson(snapshot.docs.first.data());
   }
 
-  // --- DAILY STATS ---
-  /// Salva le statistiche dei pasti del giorno
   Future<void> saveDailyStats(DailyMealStats stats) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // Usa la data come ID documento per evitare duplicati
       final docId = stats.date.toIso8601String().split('T')[0];
 
       await _db
@@ -94,7 +88,6 @@ class TrackingService {
     }
   }
 
-  /// Stream statistiche settimanali (ultimi 7 giorni)
   Stream<List<DailyMealStats>> getWeeklyStats() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -113,7 +106,6 @@ class TrackingService {
             .toList());
   }
 
-  /// Calcola statistiche aggregate della settimana
   Future<WeeklyStats> calculateWeeklyStats() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -145,12 +137,12 @@ class TrackingService {
       final stats = DailyMealStats.fromJson({...doc.data(), 'date': doc.id});
       totalPlanned += stats.mealsPlanned;
       totalConsumed += stats.mealsConsumed;
-      
+
       if (stats.mealsPlanned > 0 && stats.mealsConsumed == stats.mealsPlanned) {
         fullAdherenceDays++;
         currentStreak++;
       } else {
-        currentStreak = 0; // Reset streak
+        currentStreak = 0;
       }
     }
 
@@ -163,8 +155,6 @@ class TrackingService {
     );
   }
 
-  // --- USER GOALS ---
-  /// Salva/aggiorna un obiettivo
   Future<void> saveGoal(UserGoal goal) async {
     try {
       final user = _auth.currentUser;
@@ -184,7 +174,6 @@ class TrackingService {
     }
   }
 
-  /// Stream obiettivi attivi
   Stream<List<UserGoal>> getGoals() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -199,7 +188,6 @@ class TrackingService {
             snapshot.docs.map((doc) => UserGoal.fromJson(doc.data())).toList());
   }
 
-  /// Aggiorna progresso obiettivo
   Future<void> updateGoalProgress(String goalId, double newValue) async {
     try {
       final user = _auth.currentUser;
@@ -229,8 +217,6 @@ class TrackingService {
     }
   }
 
-  // --- MEAL NOTES (DIARIO ALIMENTARE) ---
-  /// Salva una nota per un pasto
   Future<void> saveMealNote(MealNote note) async {
     try {
       final user = _auth.currentUser;
@@ -250,7 +236,6 @@ class TrackingService {
     }
   }
 
-  /// Recupera nota per un giorno/pasto specifico
   Future<MealNote?> getMealNote(String day, String mealType) async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -269,7 +254,6 @@ class TrackingService {
     return MealNote.fromJson(doc.data()!);
   }
 
-  /// Stream note del giorno
   Stream<List<MealNote>> getTodayNotes() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);

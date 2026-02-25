@@ -1,18 +1,20 @@
+// Card per la visualizzazione di un pasto giornaliero con supporto swap, consumo, note e modalità tranquilla.
+// _scaleQty — moltiplica la parte numerica iniziale di una stringa quantità per il portionMultiplier.
 import 'package:flutter/material.dart';
 import '../widgets/design_system.dart';
 import '../models/active_swap.dart';
-import '../models/diet_models.dart'; // [IMPORTANTE] Serve per capire cos'è un Dish
+import '../models/diet_models.dart';
 
 class MealCard extends StatelessWidget {
   final String day;
   final String mealName;
-  final List<Dish> foods; // [FIX] Ora è tipizzato correttamente
+  final List<Dish> foods;
   final Map<String, ActiveSwap> activeSwaps;
   final Map<String, bool> availabilityMap;
   final bool isTranquilMode;
   final bool isToday;
-  final bool Function(String) isRelaxable; // Callback per check relaxable
-  final List<String> orderedMeals; // Pasti ordinati dalla config dieta
+  final bool Function(String) isRelaxable;
+  final List<String> orderedMeals;
   final Function(int) onEat;
   final Function(String, int) onSwap;
   final Function(int, String, String) onEdit;
@@ -39,8 +41,6 @@ class MealCard extends StatelessWidget {
     this.portionMultiplier = 1,
   });
 
-  /// Moltiplica la parte numerica iniziale di una stringa qty (es. "150 g" → "300 g").
-  /// Se non trova un numero iniziale o il moltiplicatore è 1, restituisce la stringa invariata.
   static String _scaleQty(String qty, int multiplier) {
     if (multiplier == 1 || qty.isEmpty || qty == 'A piacere') return qty;
     final match = RegExp(r'^(\d+(?:[.,]\d+)?)\s*(.*)$').firstMatch(qty.trim());
@@ -57,7 +57,6 @@ class MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [FIX] Usa .isConsumed invece di ['consumed']
     bool allConsumed = foods.isNotEmpty && foods.every((f) => f.isConsumed);
 
     return Container(
@@ -83,12 +82,11 @@ class MealCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Barra Laterale Decorativa
               Container(
                 width: 4,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: allConsumed 
+                    colors: allConsumed
                         ? [KyboColors.textMuted(context), KyboColors.textMuted(context)]
                         : [KyboColors.primary, KyboColors.primaryDark],
                     begin: Alignment.topCenter,
@@ -97,12 +95,10 @@ class MealCard extends StatelessWidget {
                 ),
               ),
 
-              // Contenuto Card
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Pasto
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Row(
@@ -111,8 +107,8 @@ class MealCard extends StatelessWidget {
                           Text(
                             mealName.toUpperCase(),
                             style: TextStyle(
-                              color: allConsumed 
-                                  ? KyboColors.textMuted(context) 
+                              color: allConsumed
+                                  ? KyboColors.textMuted(context)
                                   : KyboColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -135,7 +131,6 @@ class MealCard extends StatelessWidget {
                           else
                             Row(
                               children: [
-                                // Icona Nota Pasto
                                 if (onNote != null)
                                   InkWell(
                                     onTap: onNote,
@@ -177,33 +172,26 @@ class MealCard extends StatelessWidget {
                       color: KyboColors.border(context),
                     ),
 
-                    // Lista Piatti
                     Column(
                       children: List.generate(foods.length, (index) {
-                        final originalFood =
-                            foods[index]; // Ora è un oggetto Dish
+                        final originalFood = foods[index];
                         final int cadCode = originalFood.cadCode;
                         final String instanceId = originalFood.instanceId;
 
-                        // Generazione chiave robusta
                         final String swapKey = (instanceId.isNotEmpty)
                             ? "$day::$mealName::$instanceId"
                             : "$day::$mealName::$cadCode";
 
-                        // --- LOGICA SWAP ---
                         final bool isSwapped = activeSwaps.containsKey(swapKey);
                         final activeSwap =
                             isSwapped ? activeSwaps[swapKey] : null;
 
-                        // Dati da visualizzare (Swap o Originale)
-                        // [FIX] Usa .name e .qty invece di ['name']
                         final String displayName =
                             isSwapped ? activeSwap!.name : originalFood.name;
 
                         final String displayQtyRaw = isSwapped
                             ? "${activeSwap!.qty} ${activeSwap.unit}"
-                            : originalFood
-                                .qty; // originalFood.qty include già l'unità nel nuovo modello
+                            : originalFood.qty;
 
                         final bool isConsumed = originalFood.isConsumed;
 
@@ -214,28 +202,21 @@ class MealCard extends StatelessWidget {
                         String availKey = "${day}_${mealName}_$index";
                         bool isAvailable = availabilityMap[availKey] ?? false;
 
-                        // Ingredienti
                         final List<Ingredient>? ingredients = isSwapped
                             ? null
-                            : originalFood
-                                .ingredients; // Ora è List<Ingredient>
+                            : originalFood.ingredients;
 
                         final bool hasIngredients =
                             ingredients != null && ingredients.isNotEmpty;
 
-                        // Mostra ingredienti solo se:
-                        // - Ci sono 2+ ingredienti, OPPURE
-                        // - C'è 1 ingrediente con nome diverso dal piatto
                         final bool shouldShowIngredients = hasIngredients &&
                             (ingredients.length > 1 ||
                                 !ingredients.first.name
                                     .toLowerCase()
                                     .contains(displayName.toLowerCase()));
 
-                        // Logica Relax
                         bool isRelaxableItem = isRelaxable(displayName);
 
-                        // Se abbiamo 1 ingrediente uguale al piatto, usa la sua qty
                         String effectiveQty = displayQtyRaw;
                         if (hasIngredients &&
                             !shouldShowIngredients &&
@@ -301,7 +282,6 @@ class MealCard extends StatelessWidget {
                                   ),
                                 const SizedBox(width: 12),
 
-                                // Testi
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -331,7 +311,6 @@ class MealCard extends StatelessWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      // Mostra ingredienti se rilevanti (non se è solo 1 uguale al piatto)
                                       if (shouldShowIngredients)
                                         ...ingredients.map((ing) {
                                           String iName = ing.name;
@@ -379,9 +358,7 @@ class MealCard extends StatelessWidget {
                                   ),
                                 ),
 
-                                // Azioni
                                 if (!isConsumed) ...[
-                                  // Swap
                                   if (cadCode > 0)
                                     Container(
                                       margin: const EdgeInsets.only(right: 4),
@@ -412,7 +389,6 @@ class MealCard extends StatelessWidget {
                                       ),
                                     ),
 
-                                  // Consuma
                                   if (isToday)
                                     InkWell(
                                       onTap: () => onEat(index),

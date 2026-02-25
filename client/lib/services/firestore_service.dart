@@ -1,7 +1,9 @@
+// Gestisce salvataggio, lettura e storico delle diete su Firestore con crittografia AES-256.
+// getDietStream — stream della dieta corrente con decrittazione trasparente; getDietHistory — lista storico diete decriptate.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'encryption_service.dart'; // ✅ AGGIUNGI
+import 'encryption_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -11,13 +13,12 @@ class FirestoreService {
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
-    List<dynamic>? weeks, // Tutte le settimane per piani multi-settimana
+    List<dynamic>? weeks,
   }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // ✅ Cripta dati sensibili prima di salvare
       final encryptionService = EncryptionService();
 
       final encryptedPlan = encryptionService.encryptData(plan, user.uid);
@@ -32,13 +33,11 @@ class FirestoreService {
         'encrypted': true,
       };
 
-      // Salva le settimane extra se presenti (piani multi-settimana)
       if (weeks != null && weeks.length > 1) {
         docData['weeks_encrypted'] =
             encryptionService.encryptData({'weeks': weeks}, user.uid);
       }
 
-      // Sovrascriviamo SEMPRE 'current' con versione criptata
       await _db
           .collection('users')
           .doc(user.uid)
@@ -56,13 +55,12 @@ class FirestoreService {
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
-    List<dynamic>? weeks, // Tutte le settimane per piani multi-settimana
+    List<dynamic>? weeks,
   }) async {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception("User null");
 
-      // ✅ Cripta dati sensibili
       final encryptionService = EncryptionService();
 
       final encryptedPlan = encryptionService.encryptData(plan, user.uid);
@@ -83,7 +81,6 @@ class FirestoreService {
             encryptionService.encryptData({'weeks': weeks}, user.uid);
       }
 
-      // Salva nello storico (criptato)
       final docRef =
           await _db.collection('users').doc(user.uid).collection('diets').add(docData);
 
@@ -106,7 +103,6 @@ class FirestoreService {
       final user = _auth.currentUser;
       if (user == null) return;
 
-      // ✅ Cripta dati sensibili
       final encryptionService = EncryptionService();
 
       final encryptedPlan = encryptionService.encryptData(plan, user.uid);
@@ -155,14 +151,12 @@ class FirestoreService {
 
       final data = snapshot.data()!;
 
-      // ✅ Controlla se i dati sono criptati
       final isEncrypted = data['encrypted'] == true;
 
       if (isEncrypted) {
         try {
           final encryptionService = EncryptionService();
 
-          // Decripta tutti i campi
           final decryptedPlan = encryptionService.decryptData(
             data['plan_encrypted'] as String,
             user.uid,
@@ -178,7 +172,6 @@ class FirestoreService {
             user.uid,
           );
 
-          // Ricostruisci formato originale
           return {
             'plan': decryptedPlan,
             'substitutions': decryptedSubs,
@@ -191,7 +184,6 @@ class FirestoreService {
           return null;
         }
       } else {
-        // Backward compatibility: dati vecchi non criptati
         debugPrint('⚠️ Stream data (unencrypted - legacy format)');
         return data;
       }
@@ -211,14 +203,12 @@ class FirestoreService {
         .map((snapshot) {
       final encryptionService = EncryptionService();
 
-      // Filtra il documento 'current' che non è history
       return snapshot.docs.where((doc) => doc.id != 'current').map((doc) {
         final data = doc.data();
         final isEncrypted = data['encrypted'] == true;
 
         if (isEncrypted) {
           try {
-            // Decripta
             final decryptedPlan = encryptionService.decryptData(
               data['plan_encrypted'] as String,
               user.uid,
@@ -247,7 +237,6 @@ class FirestoreService {
             return {'id': doc.id, 'error': 'decryption_failed'};
           }
         } else {
-          // Legacy format
           return {'id': doc.id, ...data};
         }
       }).toList();
@@ -271,10 +260,8 @@ class FirestoreService {
     }
   }
 
-  // --- CONFIGURAZIONE GLOBALE (Step 11 & 12) ---
   Future<Map<String, dynamic>?> fetchGlobalConfig() async {
     try {
-      // Usa una collection pubblica o accessibile agli utenti autenticati
       final doc = await _db.collection('app_config').doc('constants').get();
       if (doc.exists) {
         debugPrint("🌍 Global Config caricata da Firestore");
@@ -286,7 +273,6 @@ class FirestoreService {
     return null;
   }
 
-  // --- UTILITY ADMIN (Da usare solo per init) ---
   Future<void> uploadDefaultGlobalConfig() async {
     try {
       final List<String> foods = [
@@ -312,11 +298,11 @@ class FirestoreService {
         "acqua", "acqua naturale", "acqua frizzante",
         "aceto", "aceto di mele", "aceto balsamico", "succo di limone", "spezie", "erbe aromatiche"
       ];
-      
+
       final List<String> days = [
         "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"
       ];
-      
+
       final List<String> meals = [
         "Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"
       ];

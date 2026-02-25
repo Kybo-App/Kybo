@@ -1,3 +1,4 @@
+// Dialog per configurare i promemoria pasti: mostra i pasti disponibili dalla dieta corrente con orari personalizzabili.
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,7 +15,6 @@ class MealReminderDialog extends StatefulWidget {
 }
 
 class _MealReminderDialogState extends State<MealReminderDialog> {
-  // Fallback defaults if no diet loaded
   final Map<String, String> _fallbackDefaults = {
     'Colazione': '08:00',
     'Pranzo': '13:00',
@@ -45,21 +45,15 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
       } catch (_) {}
     }
 
-    // Load available meals from Provider
     if (mounted) {
       final provider = Provider.of<DietProvider>(context, listen: false);
       _availableMeals = provider.getMeals();
     }
 
-    // Map defaults to fill gaps
-    // If we have dynamic meals, ensure we have a time for them (either saved or default)
-    // If no dynamic meals (e.g. no diet), use fallback list
     if (_availableMeals.isEmpty) {
       _availableMeals = _fallbackDefaults.keys.toList();
     }
 
-    // Config defaults logic
-    // We try to provide sensible defaults based on meal name keywords
     TimeOfDay inferTime(String mealName) {
       final lower = mealName.toLowerCase();
       if (lower.contains('colazione')) return const TimeOfDay(hour: 8, minute: 0);
@@ -67,19 +61,16 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
       if (lower.contains('cena')) return const TimeOfDay(hour: 20, minute: 0);
       if (lower.contains('merenda')) return const TimeOfDay(hour: 16, minute: 0);
       if (lower.contains('spuntino')) {
-        // Morning snack vs afternoon? hard to guess, default to 11
         if (_times.containsKey('Colazione')) return const TimeOfDay(hour: 10, minute: 30);
         return const TimeOfDay(hour: 16, minute: 0);
       }
-      return const TimeOfDay(hour: 12, minute: 0); // Generic default
+      return const TimeOfDay(hour: 12, minute: 0);
     }
 
     setState(() {
       for (var meal in _availableMeals) {
-        // Is it enabled?
         _enabled[meal] = currentAlarms.containsKey(meal);
 
-        // What time?
         if (currentAlarms.containsKey(meal)) {
           final parts = currentAlarms[meal]!.split(':');
           if (parts.length == 2) {
@@ -91,7 +82,6 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
              _times[meal] = inferTime(meal);
           }
         } else {
-          // Check fallback defaults first
           if (_fallbackDefaults.containsKey(meal)) {
              final parts = _fallbackDefaults[meal]!.split(':');
              _times[meal] = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
@@ -103,7 +93,6 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
       _isLoading = false;
     });
 
-    // Request permissions (non-blocking in UI, but necessary)
     NotificationService().requestPermissions();
   }
 
@@ -121,9 +110,8 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
     await prefs.setString('meal_alarms', jsonEncode(toSave));
 
     if (mounted) {
-      // Reschedule
       await context.read<DietProvider>().scheduleMealNotifications();
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(

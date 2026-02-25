@@ -1,10 +1,10 @@
+// Client Dio dedicato per upload file con tracking progresso reale e token Firebase automatico.
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../core/env.dart';
 
-/// Client dedicato per upload con progress tracking
 class UploadClient {
   late final Dio _dio;
 
@@ -12,13 +12,12 @@ class UploadClient {
     _dio = Dio(BaseOptions(
       baseUrl: Env.apiUrl,
       connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 180), // 3 minuti per elaborazione Gemini
+      receiveTimeout: const Duration(seconds: 180),
       headers: {
         'Accept': 'application/json',
       },
     ));
 
-    // Interceptor per aggiungere token Firebase automaticamente
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final user = FirebaseAuth.instance.currentUser;
@@ -35,7 +34,6 @@ class UploadClient {
     ));
   }
 
-  /// Upload file con tracking progresso reale
   Future<Map<String, dynamic>> uploadFile({
     required String endpoint,
     required String filePath,
@@ -43,16 +41,13 @@ class UploadClient {
     Function(double progress)? onProgress,
   }) async {
     try {
-      // Verifica esistenza file
       final file = File(filePath);
       if (!await file.exists()) {
         throw Exception("File non trovato: $filePath");
       }
 
-      // Prepara FormData
       final formData = FormData();
 
-      // Aggiungi file
       formData.files.add(
         MapEntry(
           'file',
@@ -63,7 +58,6 @@ class UploadClient {
         ),
       );
 
-      // Aggiungi campi extra
       if (fields != null) {
         fields.forEach((key, value) {
           formData.fields.add(MapEntry(key, value));
@@ -73,7 +67,6 @@ class UploadClient {
       debugPrint('🚀 Upload starting: $endpoint');
       debugPrint('📦 File size: ${await file.length()} bytes');
 
-      // Esegui upload con tracking
       final response = await _dio.post(
         endpoint,
         data: formData,
@@ -121,7 +114,6 @@ class UploadClient {
     }
   }
 
-  /// Cleanup resources
   void dispose() {
     _dio.close();
   }
