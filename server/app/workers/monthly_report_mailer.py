@@ -52,8 +52,11 @@ async def _send_monthly_reports(now: datetime):
 
     db = firebase_admin.firestore.client()
 
+    # [SECURITY] Limite di sicurezza: evita stream illimitato che causerebbe
+    # Firestore reads eccessive e spike di memoria durante il ciclo mensile.
     nutritionists = db.collection("users") \
         .where("role", "in", ["nutritionist", "admin"]) \
+        .limit(5_000) \
         .stream()
 
     service = ReportService()

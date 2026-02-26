@@ -55,9 +55,12 @@ async def _check_and_notify():
         threshold_days = config.get("threshold_days", settings.UNREAD_NOTIFY_DEFAULT_DAYS)
         last_notified = config.get("last_notified_chats", {})
 
+        # [SECURITY] Limite di sicurezza: evita stream illimitato per nutrizionisti
+        # con molte chat, che causerebbe reads Firestore eccessive ogni ciclo.
         chats = db.collection("chats") \
             .where("chatType", "==", "nutritionist-client") \
             .where("participants.nutritionistId", "==", nutritionist_uid) \
+            .limit(500) \
             .stream()
 
         for chat_doc in chats:
@@ -126,8 +129,9 @@ def _get_active_alert_configs(db) -> dict:
     """Restituisce tutte le configurazioni di alert email attive."""
     try:
         configs = {}
+        # [SECURITY] Limite di sicurezza sulla lettura delle configurazioni alert.
         docs = db.collection("config").document("email_alerts") \
-            .collection("nutritionists").stream()
+            .collection("nutritionists").limit(2_000).stream()
         for doc in docs:
             data = doc.to_dict()
             if data.get("enabled", False):
