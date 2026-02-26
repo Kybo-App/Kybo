@@ -1,5 +1,7 @@
 // Repository centralizzato per tutte le chiamate HTTP al backend Kybo.
 // _pollDietJob: polling asincrono sul job RQ fino a completamento o timeout (~5 min).
+// _checkUnauthorized: forza signOut su 401, il StreamBuilder in AuthGate reindirizza.
+// _safeBody: estrae solo il campo 'detail' dal JSON del server, non espone stack trace.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +17,28 @@ class AdminRepository {
 
   Future<String?> _getToken() async {
     return await FirebaseAuth.instance.currentUser?.getIdToken();
+  }
+
+  // [SECURITY] 401 → forza signOut per invalidare la sessione lato client.
+  // Il StreamBuilder su authStateChanges() in AuthGate reindirizza automaticamente.
+  Future<void> _checkUnauthorized(http.Response response) async {
+    if (response.statusCode == 401) {
+      await FirebaseAuth.instance.signOut();
+      throw Exception('Sessione scaduta. Effettua nuovamente il login.');
+    }
+  }
+
+  // [SECURITY] Estrae solo il campo 'detail' dalla risposta JSON del server,
+  // evitando di esporre stack trace o dati interni nelle exception client.
+  String _safeBody(http.Response response) {
+    try {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final detail = data['detail'];
+      if (detail is String) {
+        return detail.length > 200 ? detail.substring(0, 200) : detail;
+      }
+    } catch (_) {}
+    return 'Errore ${response.statusCode}';
   }
 
   Future<bool> getMaintenanceStatus() async {
@@ -66,7 +90,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to schedule: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to schedule: ${_safeBody(response)}');
     }
   }
 
@@ -78,7 +103,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to cancel: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to cancel: ${_safeBody(response)}');
     }
   }
 
@@ -105,7 +131,8 @@ class AdminRepository {
       body: jsonEncode(config),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to update app config: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to update app config: ${_safeBody(response)}');
     }
   }
 
@@ -134,7 +161,8 @@ class AdminRepository {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to create user: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to create user: ${_safeBody(response)}');
     }
   }
 
@@ -166,7 +194,8 @@ class AdminRepository {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to update user: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to update user: ${_safeBody(response)}');
     }
   }
 
@@ -187,7 +216,8 @@ class AdminRepository {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to assign user: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to assign user: ${_safeBody(response)}');
     }
   }
 
@@ -202,7 +232,8 @@ class AdminRepository {
       body: jsonEncode({'target_uid': targetUid}),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to unassign user: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to unassign user: ${_safeBody(response)}');
     }
   }
 
@@ -213,7 +244,8 @@ class AdminRepository {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete user: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to delete user: ${_safeBody(response)}');
     }
   }
 
@@ -224,7 +256,8 @@ class AdminRepository {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete diet: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Failed to delete diet: ${_safeBody(response)}');
     }
   }
 
@@ -237,7 +270,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['message'] ?? "Sync completato.";
     }
-    throw Exception("Sync fallito: ${response.body}");
+    await _checkUnauthorized(response);
+    throw Exception("Sync fallito: ${_safeBody(response)}");
   }
 
   Future<void> uploadDietForUser(String targetUid, PlatformFile file) async {
@@ -267,8 +301,11 @@ class AdminRepository {
       final data = jsonDecode(body) as Map<String, dynamic>;
       final jobId = data['job_id'] as String;
       await _pollDietJob(jobId, token!);
+    } else if (streamResponse.statusCode == 401) {
+      await FirebaseAuth.instance.signOut();
+      throw Exception('Sessione scaduta. Effettua nuovamente il login.');
     } else {
-      throw Exception(body);
+      throw Exception('Errore ${streamResponse.statusCode}');
     }
   }
 
@@ -321,8 +358,12 @@ class AdminRepository {
       ),
     );
     final response = await request.send();
+    if (response.statusCode == 401) {
+      await FirebaseAuth.instance.signOut();
+      throw Exception('Sessione scaduta. Effettua nuovamente il login.');
+    }
     if (response.statusCode != 200) {
-      throw Exception(await response.stream.bytesToString());
+      throw Exception('Errore upload parser (${response.statusCode})');
     }
   }
 
@@ -341,7 +382,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Audit Log Failed: ${response.body}');
+      await _checkUnauthorized(response);
+      throw Exception('Audit Log Failed: ${_safeBody(response)}');
     }
   }
 
@@ -359,8 +401,9 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
     } else {
+      await _checkUnauthorized(response);
       throw Exception(
-        "Errore Audit Gateway (${response.statusCode}): ${response.body}",
+        "Errore Audit Gateway (${response.statusCode}): ${_safeBody(response)}",
       );
     }
   }
@@ -375,6 +418,7 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>;
     } else {
+      await _checkUnauthorized(response);
       throw Exception("Errore Directory Secure (${response.statusCode})");
     }
   }
@@ -390,6 +434,7 @@ class AdminRepository {
       return jsonDecode(utf8.decode(response.bodyBytes))
           as Map<String, dynamic>;
     } else {
+      await _checkUnauthorized(response);
       throw Exception("Errore Profilo Secure (${response.statusCode})");
     }
   }
@@ -425,7 +470,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception("Upload fallito: ${response.statusCode} - ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Upload fallito: ${_safeBody(response)}");
     }
   }
 
@@ -454,7 +500,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Setup 2FA (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Setup 2FA (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -478,7 +525,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Verifica 2FA (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Verifica 2FA (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -512,7 +560,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Errore Disabilita 2FA (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Disabilita 2FA (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -545,7 +594,8 @@ class AdminRepository {
       final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return List<String>.from(data['backup_codes'] ?? []);
     } else {
-      throw Exception("Errore Rigenera Backup (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Rigenera Backup (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -562,7 +612,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Report (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Report (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -585,7 +636,8 @@ class AdminRepository {
       final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return data['reports'] as List<dynamic>? ?? [];
     } else {
-      throw Exception("Errore Lista Report (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Lista Report (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -613,7 +665,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Generazione Report (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Generazione Report (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -651,7 +704,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore GDPR Dashboard (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore GDPR Dashboard (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -666,7 +720,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Retention Config (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Retention Config (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -693,7 +748,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Errore Salvataggio Config (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Salvataggio Config (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -718,7 +774,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Purge (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Purge (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -739,7 +796,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Broadcast (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Broadcast (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -757,7 +815,8 @@ class AdminRepository {
       final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       return data['notes'] as List<dynamic>? ?? [];
     } else {
-      throw Exception("Errore Note (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Note (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -783,7 +842,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
-      throw Exception("Errore Creazione Nota (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Creazione Nota (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -810,7 +870,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Errore Aggiornamento Nota (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Aggiornamento Nota (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -826,7 +887,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Errore Eliminazione Nota (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore Eliminazione Nota (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 
@@ -843,7 +905,8 @@ class AdminRepository {
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception("Errore recupero config (${response.statusCode}): ${response.body}");
+    await _checkUnauthorized(response);
+    throw Exception("Errore recupero config (${response.statusCode}): ${_safeBody(response)}");
   }
 
   /// Salva la configurazione degli alert email per messaggi non letti
@@ -865,7 +928,8 @@ class AdminRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception("Errore salvataggio config (${response.statusCode}): ${response.body}");
+      await _checkUnauthorized(response);
+      throw Exception("Errore salvataggio config (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 }

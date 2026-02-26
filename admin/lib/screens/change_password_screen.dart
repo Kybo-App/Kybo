@@ -20,9 +20,26 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;
 
     if (_passCtrl.text != _confirmCtrl.text) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Le password non corrispondono")),
+      );
+      return;
+    }
+
+    // [SECURITY] Valida la password lato client prima di chiamare Firebase Auth,
+    // allineandosi con la policy del server (min 12 caratteri, maiuscola, minuscola, numero).
+    final pass = _passCtrl.text.trim();
+    if (pass.length < 12 ||
+        !pass.contains(RegExp(r'[A-Z]')) ||
+        !pass.contains(RegExp(r'[a-z]')) ||
+        !pass.contains(RegExp(r'[0-9]'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "La password deve avere almeno 12 caratteri, una maiuscola, una minuscola e un numero",
+          ),
+        ),
+      );
       return;
     }
 
@@ -31,16 +48,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await user.updatePassword(_passCtrl.text.trim());
+      await user.updatePassword(pass);
 
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
         {'requires_password_change': false},
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Errore durante il cambio password. Riprova.")),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
