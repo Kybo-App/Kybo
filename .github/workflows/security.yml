@@ -1,0 +1,125 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'server/**'
+      - '.github/workflows/security.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'server/**'
+  schedule:
+    # Ogni lunedì alle 08:00 UTC — scansione settimanale automatica
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Finding 1: Dependency vulnerability scanning (A06)
+  # pip-audit controlla ogni libreria in requirements.txt contro
+  # il database CVE di PyPI Advisory e OSV.
+  # Blocca il deploy se trova vulnerabilità note.
+  # ─────────────────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Vulnerability Scan (pip-audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: |
+          pip-audit \
+            -r server/requirements.txt \
+            --strict \
+            --format markdown \
+            --output audit-report.md || (cat audit-report.md && exit 1)
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: audit-report.md
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────
+  # Finding 3: SAST — Static Application Security Testing (A08)
+  # Bandit analizza il codice Python alla ricerca di pattern
+  # di sicurezza problematici (subprocess, pickle, hardcoded
+  # secrets, SQL injection, ecc.).
+  # Fallisce su severità MEDIUM e superiore.
+  # ─────────────────────────────────────────────────────────────
+  sast-bandit:
+    name: SAST — Bandit Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit
+        run: |
+          bandit \
+            -r server/app/ \
+            -ll \
+            --format json \
+            --output bandit-report.json || true
+
+          # Mostra output leggibile in console
+          bandit \
+            -r server/app/ \
+            -ll \
+            --format text
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────
+  # Finding 2 (parziale): verifica che tutte le versioni siano
+  # pinate esattamente (nessun operatore >= senza hash).
+  # Avviso non bloccante — il blocco completo richiede pip-tools.
+  # ─────────────────────────────────────────────────────────────
+  check-pinned-versions:
+    name: Check Pinned Versions
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for unpinned dependencies
+        run: |
+          echo "Checking for unpinned dependencies in requirements.txt..."
+          UNPINNED=$(grep -E "^[a-zA-Z].*>=|^[a-zA-Z].*<=|^[a-zA-Z].*~=" server/requirements.txt || true)
+          if [ -n "$UNPINNED" ]; then
+            echo "⚠️  WARNING: Found non-exact version specs:"
+            echo "$UNPINNED"
+            echo ""
+            echo "Consider pinning to exact versions (==) for supply chain security."
+            echo "Run: pip-compile --generate-hashes requirements.in -o requirements.txt"
+          else
+            echo "✅ All dependencies are pinned to exact versions."
+          fi
+        continue-on-error: true

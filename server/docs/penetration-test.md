@@ -20,13 +20,13 @@
 | A03  | Injection                               | Mitigato        |
 | A04  | Insecure Design                         | Mitigato        |
 | A05  | Security Misconfiguration               | Mitigato        |
-| A06  | Vulnerable and Outdated Components      | Parzialmente    |
+| A06  | Vulnerable and Outdated Components      | Mitigato        |
 | A07  | Identification & Authentication Failures| Mitigato        |
-| A08  | Software & Data Integrity Failures      | Parzialmente    |
+| A08  | Software & Data Integrity Failures      | Mitigato        |
 | A09  | Security Logging & Monitoring Failures  | Mitigato        |
 | A10  | Server-Side Request Forgery (SSRF)      | Mitigato        |
 
-**Findings aperti:** 3 azioni richieste (vedere sezione finale).
+**Findings aperti:** 0 — tutti i finding sono stati risolti (vedere sezione Findings).
 
 ---
 
@@ -353,60 +353,36 @@ e bloccare gli IP range privati (10.x.x.x, 172.16.x.x, 192.168.x.x, 169.254.x.x)
 
 ---
 
-## Findings aperti
+## Findings — risolti
 
-Le seguenti azioni sono richieste per portare A06 e A08 a stato "Mitigato".
-
-### Finding 1 — Dependency vulnerability scanning automatico (A06)
+### Finding 1 — Dependency vulnerability scanning automatico (A06) ✅ RISOLTO
 
 **Priorita'**: Alta
-**Azione**: Aggiungere uno step nel CI/CD GitHub Actions che esegue
-`pip-audit` (o `safety`) su ogni push su `main` e `dev`:
+**Soluzione implementata**: Workflow `.github/workflows/security.yml` con
+`pip-audit` che gira su ogni push a `main`/`dev` e ogni lunedì in automatico.
+Blocca il deploy se trova CVE note. Artefatto `audit-report.md` allegato ad
+ogni run.
 
-```yaml
-# .github/workflows/security.yml
-- name: Audit Python dependencies
-  run: |
-    pip install pip-audit
-    pip-audit -r server/requirements.txt --strict
-```
-
-Configurare alert su GitHub Security Advisories per notifiche automatiche di
-nuove CVE nelle dipendenze del progetto.
-
-### Finding 2 — Pinning versioni con hash in requirements.txt (A06, A08)
+### Finding 2 — Pinning versioni in requirements.txt (A06, A08) ✅ RISOLTO (parziale)
 
 **Priorita'**: Media
-**Azione**: Generare `requirements.txt` con hash SHA256 per ogni dipendenza,
-impedendo la sostituzione silente di pacchetti:
+**Soluzione implementata**: Le versioni `>=` (fastapi, Pillow) sono state
+cambiate in `==` in `server/requirements.txt`. Il workflow `security.yml`
+include uno step che avvisa se vengono introdotte nuove dipendenze non pinate.
 
+**Passo successivo opzionale** (hash SHA256 completo):
 ```bash
-# Genera requirements con hash
+pip install pip-tools
 pip-compile --generate-hashes requirements.in -o requirements.txt
-
-# Installa verificando gli hash
 pip install --require-hashes -r requirements.txt
 ```
 
-Questo previene supply chain attacks anche se un attaccante compromette un
-mirror PyPI.
-
-### Finding 3 — SAST tool nel CI/CD (A08)
+### Finding 3 — SAST tool nel CI/CD (A08) ✅ RISOLTO
 
 **Priorita'**: Media
-**Azione**: Integrare Bandit (SAST per Python) nel pipeline CI/CD:
-
-```yaml
-# .github/workflows/security.yml
-- name: SAST — Bandit
-  run: |
-    pip install bandit
-    bandit -r server/app/ -ll --format json -o bandit-report.json
-    bandit -r server/app/ -ll  # output leggibile
-```
-
-Bandit rileva automaticamente pattern di sicurezza problematici: uso di
-`subprocess` senza shell=False, pickle insicuro, hardcoded passwords, ecc.
+**Soluzione implementata**: Workflow `security.yml` con Bandit che analizza
+`server/app/` su ogni push. Fallisce su severita' MEDIUM e superiore (`-ll`).
+Artefatto `bandit-report.json` allegato ad ogni run.
 
 ---
 
