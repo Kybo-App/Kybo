@@ -218,11 +218,13 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
             return json.loads(text)
         except json.JSONDecodeError:
             pass
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            clean_text = match.group(0)
+        # [SECURITY] Usa find/rfind invece di regex con re.DOTALL per prevenire ReDoS.
+        # r'\{.*\}' con re.DOTALL causa backtracking catastrofico su input malevoli.
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1 and end > start:
             try:
-                return json.loads(clean_text)
+                return json.loads(text[start:end + 1])
             except json.JSONDecodeError:
                 pass
         raise ValueError("Impossibile estrarre JSON valido.")

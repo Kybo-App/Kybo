@@ -111,6 +111,50 @@ async def get_consents(request: Request, user_data: dict = Depends(verify_token)
 
 
 # --- DATA EXPORT (GDPR Art. 20 - Portabilità) ---
+
+def _collect_export_data(db, user_id: str) -> dict:
+    """
+    Raccoglie tutti i dati Firestore dell'utente per l'export GDPR.
+    [SECURITY] Funzione pura separata dall'endpoint HTTP: elimina il pattern
+    fake_user_data che bypassava la dependency injection di FastAPI.
+    """
+    export_data = {
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "user_id": user_id,
+        "profile": None,
+        "diets": [],
+        "diet_history": [],
+        "consent_logs": []
+    }
+
+    user_doc = db.collection('users').document(user_id).get()
+    if user_doc.exists:
+        profile = user_doc.to_dict()
+        for key in ['requires_password_change', 'created_by']:
+            profile.pop(key, None)
+        export_data["profile"] = profile
+
+    for doc in db.collection('users').document(user_id).collection('diets').get():
+        data = doc.to_dict()
+        data['_doc_id'] = doc.id
+        export_data["diets"].append(data)
+
+    for doc in db.collection('diet_history').where('userId', '==', user_id).stream():
+        data = doc.to_dict()
+        data['_doc_id'] = doc.id
+        if 'uploadedAt' in data and hasattr(data['uploadedAt'], 'isoformat'):
+            data['uploadedAt'] = data['uploadedAt'].isoformat()
+        export_data["diet_history"].append(data)
+
+    for doc in db.collection('consent_logs').where('user_id', '==', user_id).stream():
+        data = doc.to_dict()
+        if 'recorded_at' in data and hasattr(data['recorded_at'], 'isoformat'):
+            data['recorded_at'] = data['recorded_at'].isoformat()
+        export_data["consent_logs"].append(data)
+
+    return export_data
+
+
 @router.get("/export")
 @limiter.limit("10/hour")
 async def export_user_data(request: Request, user_data: dict = Depends(verify_token)):
@@ -121,48 +165,9 @@ async def export_user_data(request: Request, user_data: dict = Depends(verify_to
     try:
         db = firebase_admin.firestore.client()
         user_id = user_data['uid']
-        
-        export_data = {
-            "export_date": datetime.now(timezone.utc).isoformat(),
-            "user_id": user_id,
-            "profile": None,
-            "diets": [],
-            "diet_history": [],
-            "consent_logs": []
-        }
-        
-        user_doc = db.collection('users').document(user_id).get()
-        if user_doc.exists:
-            profile = user_doc.to_dict()
-            for key in ['requires_password_change', 'created_by']:
-                profile.pop(key, None)
-            export_data["profile"] = profile
-        
-        current_diet = db.collection('users').document(user_id).collection('diets').get()
-        for doc in current_diet:
-            data = doc.to_dict()
-            data['_doc_id'] = doc.id
-            export_data["diets"].append(data)
-        
-        diet_history = db.collection('diet_history').where('userId', '==', user_id).stream()
-        for doc in diet_history:
-            data = doc.to_dict()
-            data['_doc_id'] = doc.id
-            if 'uploadedAt' in data and hasattr(data['uploadedAt'], 'isoformat'):
-                data['uploadedAt'] = data['uploadedAt'].isoformat()
-            export_data["diet_history"].append(data)
-        
-        consent_logs = db.collection('consent_logs').where('user_id', '==', user_id).stream()
-        for doc in consent_logs:
-            data = doc.to_dict()
-            if 'recorded_at' in data and hasattr(data['recorded_at'], 'isoformat'):
-                data['recorded_at'] = data['recorded_at'].isoformat()
-            export_data["consent_logs"].append(data)
-        
+        export_data = _collect_export_data(db, user_id)
         logger.info("data_export_completed", user_id=user_id)
-        
         return export_data
-        
     except Exception as e:
         logger.error("export_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'export dei dati")
@@ -182,15 +187,14 @@ async def admin_export_user_data(
         db = firebase_admin.firestore.client()
         requester_role = requester['role']
         requester_id = requester['uid']
-        
+
         if requester_role == 'nutritionist':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="User not found")
-            user_data = user_doc.to_dict()
-            if user_data.get('parent_id') != requester_id:
+            if user_doc.to_dict().get('parent_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Not authorized to export this user's data")
-        
+
         db.collection('access_logs').add({
             'requester_id': requester_id,
             'target_uid': target_uid,
@@ -198,10 +202,11 @@ async def admin_export_user_data(
             'reason': 'GDPR Art. 20 Data Portability Request',
             'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
         })
-        
-        fake_user_data = {'uid': target_uid}
-        return await export_user_data(fake_user_data)
-        
+
+        export_data = _collect_export_data(db, target_uid)
+        logger.info("admin_data_export_completed", requester_id=requester_id, target_uid=target_uid)
+        return export_data
+
     except HTTPException:
         raise
     except Exception as e:
