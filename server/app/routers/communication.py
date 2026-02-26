@@ -9,7 +9,7 @@ from typing import Optional, List
 import firebase_admin
 from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.dependencies import verify_professional
@@ -20,18 +20,21 @@ router = APIRouter(prefix="/admin/communication", tags=["communication"])
 
 
 class BroadcastRequest(BaseModel):
-    message: str
-    subject: Optional[str] = None
+    # [SECURITY] Limite dimensione: il messaggio viene replicato N volte (una per cliente).
+    # Senza limite un broadcast da 50 MB moltiplicato per 200 clienti = 10 GB su Firestore.
+    message: str = Field(..., min_length=1, max_length=5_000)
+    subject: Optional[str] = Field(None, max_length=200)
 
 
 class NoteCreateRequest(BaseModel):
-    content: str
-    category: Optional[str] = "general"
+    # [SECURITY] Limite dimensione note interne.
+    content: str = Field(..., min_length=1, max_length=10_000)
+    category: Optional[str] = Field("general", max_length=50)
 
 
 class NoteUpdateRequest(BaseModel):
-    content: Optional[str] = None
-    category: Optional[str] = None
+    content: Optional[str] = Field(None, max_length=10_000)
+    category: Optional[str] = Field(None, max_length=50)
     pinned: Optional[bool] = None
 
 
@@ -316,9 +319,22 @@ async def update_client_note(
 ):
     """Aggiorna una nota interna."""
     requester_id = requester['uid']
+    requester_role = requester.get('role', '')
 
     try:
         db = firebase_admin.firestore.client()
+
+        # [SECURITY] Verifica che il client_uid sia ancora accessibile al richiedente.
+        # Senza questo check un ex-nutrizionista conosce note_id e client_uid e può
+        # modificare note che aveva scritto su un cliente ora assegnato ad altri.
+        if requester_role == 'nutritionist':
+            client_doc = db.collection('users').document(client_uid).get()
+            if not client_doc.exists:
+                raise HTTPException(status_code=404, detail="Cliente non trovato")
+            cd = client_doc.to_dict()
+            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id:
+                raise HTTPException(status_code=403, detail="Accesso negato")
+
         note_ref = db.collection('users').document(client_uid) \
             .collection('internal_notes').document(note_id)
 
@@ -327,7 +343,7 @@ async def update_client_note(
             raise HTTPException(status_code=404, detail="Nota non trovata")
 
         note_data = note_doc.to_dict()
-        if note_data.get('author_id') != requester_id and requester.get('role') != 'admin':
+        if note_data.get('author_id') != requester_id and requester_role != 'admin':
             raise HTTPException(status_code=403, detail="Solo l'autore può modificare questa nota")
 
         update = {'updated_at': firestore.SERVER_TIMESTAMP}
@@ -358,9 +374,21 @@ async def delete_client_note(
 ):
     """Elimina una nota interna."""
     requester_id = requester['uid']
+    requester_role = requester.get('role', '')
 
     try:
         db = firebase_admin.firestore.client()
+
+        # [SECURITY] Stesso check ownership di update: un ex-nutrizionista non può
+        # cancellare note su clienti che non gli appartengono più.
+        if requester_role == 'nutritionist':
+            client_doc = db.collection('users').document(client_uid).get()
+            if not client_doc.exists:
+                raise HTTPException(status_code=404, detail="Cliente non trovato")
+            cd = client_doc.to_dict()
+            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id:
+                raise HTTPException(status_code=403, detail="Accesso negato")
+
         note_ref = db.collection('users').document(client_uid) \
             .collection('internal_notes').document(note_id)
 
@@ -369,7 +397,7 @@ async def delete_client_note(
             raise HTTPException(status_code=404, detail="Nota non trovata")
 
         note_data = note_doc.to_dict()
-        if note_data.get('author_id') != requester_id and requester.get('role') != 'admin':
+        if note_data.get('author_id') != requester_id and requester_role != 'admin':
             raise HTTPException(status_code=403, detail="Solo l'autore può eliminare questa nota")
 
         note_ref.delete()
