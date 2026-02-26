@@ -3,7 +3,6 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:retry/retry.dart';
@@ -71,7 +70,7 @@ class ApiClient {
         ).timeout(const Duration(seconds: 30));
       });
 
-      return _parseResponse(response);
+      return await _parseResponse(response);
     } on SocketException {
       throw NetworkException("Nessuna connessione internet.");
     } catch (e) {
@@ -103,7 +102,7 @@ class ApiClient {
         ).timeout(const Duration(seconds: 30));
       });
 
-      return _parseResponse(response);
+      return await _parseResponse(response);
     } on SocketException {
       throw NetworkException("Nessuna connessione internet.");
     } catch (e) {
@@ -112,7 +111,13 @@ class ApiClient {
     }
   }
 
-  dynamic _parseResponse(http.Response response) {
+  Future<dynamic> _parseResponse(http.Response response) async {
+    // [SECURITY] 401 → forza signOut: il token è scaduto/revocato.
+    // authStateChanges() in AuthGate reindirizza automaticamente al login.
+    if (response.statusCode == 401) {
+      await FirebaseAuth.instance.signOut();
+      throw ApiException('Sessione scaduta. Effettua nuovamente il login.', 401);
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
       try {
@@ -200,6 +205,10 @@ class ApiClient {
       var response = await http.Response.fromStream(streamedResponse);
       debugPrint("📥 Response Status: ${response.statusCode}");
 
+      if (response.statusCode == 401) {
+        await FirebaseAuth.instance.signOut();
+        throw ApiException('Sessione scaduta. Effettua nuovamente il login.', 401);
+      }
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) return {};
         try {
@@ -218,9 +227,7 @@ class ApiClient {
             errorMsg = errorJson['detail'].toString();
           }
         } catch (_) {
-          errorMsg = response.body.isNotEmpty
-              ? response.body.substring(0, min(response.body.length, 200))
-              : "Errore HTTP ${response.statusCode}";
+          errorMsg = "Errore HTTP ${response.statusCode}";
         }
         throw ApiException(errorMsg, response.statusCode);
       }

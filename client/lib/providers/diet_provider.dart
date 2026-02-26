@@ -1034,6 +1034,11 @@ class DietProvider extends ChangeNotifier {
     _activeSwaps = {};
     _shoppingList = [];
     _conversions = {};
+    // [SECURITY] Resetta lo stato di sync per evitare che dati del precedente
+    // utente influenzino i check di modifica del prossimo login sullo stesso device.
+    _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
+    _lastSyncedDiet = null;
+    _lastSyncedSubstitutions = null;
     notifyListeners();
   }
 
