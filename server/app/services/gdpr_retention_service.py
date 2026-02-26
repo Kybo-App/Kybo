@@ -81,6 +81,11 @@ class GDPRRetentionService:
     ACCESS_LOGS_COLLECTION = 'access_logs'
     RETENTION_CONFIG_DOC = 'config/gdpr_retention'
 
+    # [SECURITY] Limite di sicurezza per le scansioni GDPR.
+    # Evita full-collection scan illimitate su database molto grandi.
+    # Se il limite viene raggiunto, viene emesso un warning per ispezione manuale.
+    _MAX_SCAN = 50_000
+
     def __init__(self):
         self.db = firestore.client()
 
@@ -202,9 +207,11 @@ class GDPRRetentionService:
 
         try:
             users_ref = self.db.collection(self.USERS_COLLECTION)
-            users = users_ref.stream()
+            users = users_ref.limit(self._MAX_SCAN).stream()
 
+            scanned = 0
             for user_doc in users:
+                scanned += 1
                 user_data = user_doc.to_dict()
                 uid = user_doc.id
                 role = user_data.get('role', 'client')
@@ -230,9 +237,19 @@ class GDPRRetentionService:
                         retention_deadline=retention_deadline
                     ))
 
+            if scanned >= self._MAX_SCAN:
+                logger.warning(
+                    "gdpr_scan_limit_reached",
+                    scanned=scanned,
+                    limit=self._MAX_SCAN,
+                    message="Il database ha raggiunto il limite di scansione GDPR. "
+                            "Alcuni utenti inattivi potrebbero non essere stati processati."
+                )
+
             logger.info(
                 "gdpr_inactive_users_found",
                 count=len(inactive_users),
+                scanned=scanned,
                 retention_months=retention_months,
                 cutoff_date=cutoff_date.isoformat()
             )
@@ -271,12 +288,14 @@ class GDPRRetentionService:
 
         try:
             users_ref = self.db.collection(self.USERS_COLLECTION)
-            users = users_ref.stream()
+            users = users_ref.limit(self._MAX_SCAN).stream()
 
             config = await self.get_retention_config()
             exclude_roles = config.exclude_roles
 
+            scanned_approaching = 0
             for user_doc in users:
+                scanned_approaching += 1
                 user_data = user_doc.to_dict()
                 uid = user_doc.id
                 role = user_data.get('role', 'client')
@@ -301,6 +320,14 @@ class GDPRRetentionService:
                         days_inactive=days_inactive,
                         retention_deadline=retention_deadline
                     ))
+
+            if scanned_approaching >= self._MAX_SCAN:
+                logger.warning(
+                    "gdpr_approaching_scan_limit_reached",
+                    scanned=scanned_approaching,
+                    limit=self._MAX_SCAN,
+                    message="Limite di scansione raggiunto in get_users_approaching_retention."
+                )
 
             return approaching_users
 
@@ -582,7 +609,9 @@ class GDPRRetentionService:
         users_by_role = {}
 
         try:
-            users = self.db.collection(self.USERS_COLLECTION).stream()
+            # [SECURITY] Usa .limit(_MAX_SCAN) invece di stream() illimitato.
+            # Per una dashboard display purposes, un campione di 50k utenti è sufficiente.
+            users = self.db.collection(self.USERS_COLLECTION).limit(self._MAX_SCAN).stream()
             for user in users:
                 total_users += 1
                 role = user.to_dict().get('role', 'unknown')

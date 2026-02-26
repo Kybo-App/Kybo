@@ -105,7 +105,9 @@ async def admin_create_user(
             body.parent_id = requester['uid']
 
         db = firebase_admin.firestore.client()
-        existing_docs = db.collection('users').where('email', '==', body.email).stream()
+        # [SECURITY] Limite di sicurezza: se per corruzione del DB esistono più di 5
+        # documenti con la stessa email, non cancelliamo tutto silenziosamente.
+        existing_docs = db.collection('users').where('email', '==', body.email).limit(5).stream()
         for doc in existing_docs:
             doc.reference.delete()
 
