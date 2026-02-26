@@ -109,11 +109,13 @@ async def admin_create_user(
         for doc in existing_docs:
             doc.reference.delete()
 
+        # [SECURITY] email_verified=False: l'utente deve confermare l'email prima di accedere.
+        # Il nutrizionista crea l'account, ma la verifica dell'identità email è obbligatoria.
         user = auth.create_user(
             email=body.email,
             password=body.password,
             display_name=f"{body.first_name} {body.last_name}",
-            email_verified=True
+            email_verified=False
         )
         auth.set_custom_user_claims(user.uid, {'role': body.role})
 

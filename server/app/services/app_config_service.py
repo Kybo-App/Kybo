@@ -32,7 +32,9 @@ def get_app_config() -> dict:
     global _cache, _cache_expiry
     now = time.time()
     if _cache and now < _cache_expiry:
-        return _cache
+        # [SECURITY] Restituisce copia, non il riferimento diretto alla cache.
+        # Se il chiamante modifica il dict ritornato, non altera la cache globale.
+        return dict(_cache)
 
     try:
         import firebase_admin
@@ -51,7 +53,7 @@ def get_app_config() -> dict:
             _cache = dict(_DEFAULTS)
 
     _cache_expiry = now + _CACHE_TTL
-    return _cache
+    return dict(_cache)
 
 
 def invalidate_app_config_cache() -> None:
