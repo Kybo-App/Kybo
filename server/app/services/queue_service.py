@@ -63,6 +63,7 @@ def get_job_status(job_id: str) -> Optional[dict]:
             "status": "queued" | "started" | "done" | "failed",
             "result": <dict> | None,
             "error":  <str>  | None,
+            "owner_uid": <str> | None,   # [SECURITY] per verifica ownership nell'endpoint
         }
         oppure None se il job non esiste o Redis non è disponibile.
     """
@@ -75,17 +76,18 @@ def get_job_status(job_id: str) -> Optional[dict]:
 
         job = Job.fetch(job_id, connection=_rq_redis)
         status = job.get_status()
+        owner_uid = (job.meta or {}).get('owner_uid')
 
         if status == JobStatus.FINISHED:
-            return {"status": "done", "result": job.result, "error": None}
+            return {"status": "done", "result": job.result, "error": None, "owner_uid": owner_uid}
         elif status == JobStatus.FAILED:
             exc_info = job.exc_info or ""
             error_summary = exc_info.strip().splitlines()[-1] if exc_info else "Parsing fallito"
-            return {"status": "failed", "result": None, "error": error_summary}
+            return {"status": "failed", "result": None, "error": error_summary, "owner_uid": owner_uid}
         elif status in (JobStatus.STARTED, JobStatus.DEFERRED):
-            return {"status": "started", "result": None, "error": None}
+            return {"status": "started", "result": None, "error": None, "owner_uid": owner_uid}
         else:
-            return {"status": "queued", "result": None, "error": None}
+            return {"status": "queued", "result": None, "error": None, "owner_uid": owner_uid}
 
     except Exception as e:
         logger.warning("rq_job_fetch_error", job_id=job_id, error=str(e))

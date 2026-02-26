@@ -101,7 +101,13 @@ service cloud.firestore {
     }
 
     match /diet_history/{docId} {
-      allow read: if isOwner(resource.data.userId) || hasRole('admin') || (hasRole('nutritionist') && resource.data.uploadedBy == request.auth.uid);
+      // [SECURITY FIX] Il nutrizionista può leggere solo se è ANCORA assegnato al client
+      // (parent_id attuale). Un ex-nutrizionista non vede più lo storico.
+      allow read: if isOwner(resource.data.userId) ||
+                  hasRole('admin') ||
+                  (hasRole('nutritionist') &&
+                   resource.data.uploadedBy == request.auth.uid &&
+                   get(/databases/$(database)/documents/users/$(resource.data.userId)).data.parent_id == request.auth.uid);
       allow create: if hasRole('nutritionist') || hasRole('admin');
       allow delete: if hasRole('admin');
     }
