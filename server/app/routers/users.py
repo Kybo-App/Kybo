@@ -9,7 +9,7 @@ import firebase_admin
 from firebase_admin import auth, firestore
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.config import settings
 from app.core.dependencies import verify_admin, verify_professional, verify_token
@@ -23,10 +23,10 @@ class CreateUserRequest(BaseModel):
     email: EmailStr
     password: str
     role: str
-    first_name: str
-    last_name: str
-    parent_id: Optional[str] = None
-    max_clients: Optional[int] = None
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    parent_id: Optional[str] = Field(None, max_length=128)
+    max_clients: Optional[int] = Field(None, ge=1, le=10_000)
 
     @field_validator('password')
     @classmethod
@@ -51,13 +51,13 @@ class CreateUserRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    email: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    bio: Optional[str] = None
-    specializations: Optional[str] = None
-    phone: Optional[str] = None
-    max_clients: Optional[int] = None
+    email: Optional[str] = Field(None, max_length=254)
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    bio: Optional[str] = Field(None, max_length=2_000)
+    specializations: Optional[str] = Field(None, max_length=500)
+    phone: Optional[str] = Field(None, max_length=20)
+    max_clients: Optional[int] = Field(None, ge=1, le=10_000)
 
 
 class AssignUserRequest(BaseModel):
@@ -281,8 +281,11 @@ async def admin_delete_user(
 
         if requester_role == 'nutritionist':
             user_doc = user_ref.get()
+            # [SECURITY] Non rivelare se l'UID esiste o no: un nutrizionista non autorizzato
+            # potrebbe enumerare gli UID validi confrontando 200 vs 403.
+            # Restituiamo sempre 403 se l'utente non è di proprietà (anche se non esiste).
             if not user_doc.exists:
-                return {"message": "User already deleted"}
+                raise HTTPException(status_code=403, detail="Cannot delete this user")
             data = user_doc.to_dict()
             if data.get('parent_id') != requester_id and data.get('created_by') != requester_id:
                 raise HTTPException(status_code=403, detail="Cannot delete this user")
