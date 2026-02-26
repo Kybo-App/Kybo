@@ -105,7 +105,10 @@ async def get_meal_suggestions(
 
     pantry_list: List[str] = []
     if pantry_items:
-        pantry_list = [item.strip() for item in pantry_items.split(",") if item.strip()]
+        # [SECURITY] Limite 100 ingredienti: senza cap, una stringa con migliaia di
+        # elementi causerebbe hashing lento e cache key di dimensione arbitraria (DoS).
+        _MAX_PANTRY = 100
+        pantry_list = [item.strip() for item in pantry_items.split(",") if item.strip()][:_MAX_PANTRY]
 
     context_hash = hashlib.md5(
         json.dumps(user_data, sort_keys=True, default=str).encode()

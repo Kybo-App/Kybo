@@ -523,6 +523,16 @@ class GDPRRetentionService:
 
         if dry_run is None:
             dry_run = config.dry_run
+        elif dry_run is False and config.dry_run is True:
+            # [SECURITY] Il caller sta overriding la config di sicurezza dry_run=True.
+            # Log di audit per tracciare l'azione esplicita prima della purge live.
+            logger.warning(
+                "gdpr_dry_run_config_override",
+                requester_id=requester_id,
+                config_dry_run=config.dry_run,
+                requested_dry_run=dry_run,
+                message="Caller explicitly requested live purge while config is dry_run=True"
+            )
 
         inactive_users = await self.get_inactive_users(
             retention_months=config.retention_months,

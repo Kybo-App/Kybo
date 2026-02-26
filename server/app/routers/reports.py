@@ -111,7 +111,9 @@ async def generate_report(
         if not (1 <= body.month <= 12):
             raise HTTPException(status_code=400, detail="Mese non valido (1-12)")
 
-        if body.year < 2020 or body.year > datetime.now().year + 1:
+        # [SECURITY] Non permettere report futuri: i dati non esistono e si potrebbe
+        # usare per generare report fittizi su periodi non ancora avvenuti.
+        if body.year < 2020 or body.year > datetime.now().year:
             raise HTTPException(status_code=400, detail="Anno non valido")
 
         service = ReportService()
