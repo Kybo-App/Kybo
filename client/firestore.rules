@@ -98,6 +98,14 @@ service cloud.firestore {
                    (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
         allow write: if isOwner(userId);
       }
+
+      // [SECURITY] Note interne visibili/modificabili solo da admin o dal nutrizionista
+      // corrente (parent_id). I client non possono accedere alle proprie note interne.
+      match /internal_notes/{noteId} {
+        allow read, write: if hasRole('admin') ||
+                           (hasRole('nutritionist') &&
+                            get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+      }
     }
 
     match /diet_history/{docId} {
@@ -183,6 +191,17 @@ service cloud.firestore {
     match /access_logs/{logId} {
        allow read: if hasRole('admin');
        allow create, update, delete: if false;
+    }
+
+    // [SECURITY] Cache AI — solo Admin SDK (backend). Client non hanno accesso.
+    match /gemini_cache/{cacheId} {
+      allow read, write: if false;
+    }
+
+    // [SECURITY] Log consensi GDPR — solo backend via Admin SDK.
+    // L'admin può leggere via API (non direttamente da Firestore client).
+    match /consent_logs/{logId} {
+      allow read, write: if false;
     }
 
     match /{document=**} { allow read, write: if false; }
