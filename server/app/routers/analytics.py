@@ -19,6 +19,14 @@ from app.core.limiter import limiter
 
 router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
 
+# [SECURITY] Limite massimo di documenti restituiti nelle query analytics.
+# Evita Firestore reads illimitati che potrebbero causare DoS o costi eccessivi.
+_MAX_USERS = 2_000
+_MAX_DIETS = 5_000
+_MAX_CHATS = 2_000
+_MAX_NUTRITIONISTS = 500
+_MAX_INACTIVE = 1_000
+
 
 def _serialize_timestamp(ts) -> Optional[str]:
     """Converte un Firestore timestamp in stringa ISO."""
@@ -42,9 +50,9 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         uid = requester['uid']
 
         if role == 'admin':
-            users_query = db.collection('users')
+            users_query = db.collection('users').limit(_MAX_USERS)
         else:
-            users_query = db.collection('users').where('parent_id', '==', uid)
+            users_query = db.collection('users').where('parent_id', '==', uid).limit(_MAX_USERS)
 
         users_docs = list(users_query.stream())
         total_users = len(users_docs)
@@ -72,9 +80,9 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
                     pass
 
         if role == 'admin':
-            diet_history_query = db.collection('diet_history')
+            diet_history_query = db.collection('diet_history').limit(_MAX_DIETS)
         else:
-            diet_history_query = db.collection('diet_history').where('uploadedBy', '==', uid)
+            diet_history_query = db.collection('diet_history').where('uploadedBy', '==', uid).limit(_MAX_DIETS)
 
         diet_docs = list(diet_history_query.stream())
         total_diets = len(diet_docs)
@@ -88,11 +96,11 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
                     diets_last_30 += 1
 
         if role == 'admin':
-            chats_query = db.collection('chats')
+            chats_query = db.collection('chats').limit(_MAX_CHATS)
         else:
             chats_query = db.collection('chats').where(
                 'participants.nutritionistId', '==', uid
-            )
+            ).limit(_MAX_CHATS)
 
         chats_docs = list(chats_query.stream())
         total_chats = len(chats_docs)
@@ -192,7 +200,7 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
         uid = requester['uid']
 
         if role == 'admin':
-            nuts_query = db.collection('users').where('role', '==', 'nutritionist')
+            nuts_query = db.collection('users').where('role', '==', 'nutritionist').limit(_MAX_NUTRITIONISTS)
             nuts_docs = list(nuts_query.stream())
         else:
             nut_doc = db.collection('users').document(uid).get()
@@ -203,17 +211,17 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
             nut_data = nut.to_dict()
             nut_id = nut.id
 
-            clients_query = db.collection('users').where('parent_id', '==', nut_id)
+            clients_query = db.collection('users').where('parent_id', '==', nut_id).limit(_MAX_USERS)
             clients = list(clients_query.stream())
             client_count = len(clients)
 
-            diets_query = db.collection('diet_history').where('uploadedBy', '==', nut_id)
+            diets_query = db.collection('diet_history').where('uploadedBy', '==', nut_id).limit(_MAX_DIETS)
             diets = list(diets_query.stream())
             diet_count = len(diets)
 
             chats_query = db.collection('chats').where(
                 'participants.nutritionistId', '==', nut_id
-            )
+            ).limit(_MAX_CHATS)
             chats = list(chats_query.stream())
             chat_count = len(chats)
 
@@ -260,9 +268,9 @@ async def get_inactive_users(
         cutoff = now - timedelta(days=days)
 
         if role == 'admin':
-            users_query = db.collection('users')
+            users_query = db.collection('users').limit(_MAX_INACTIVE)
         else:
-            users_query = db.collection('users').where('parent_id', '==', uid)
+            users_query = db.collection('users').where('parent_id', '==', uid).limit(_MAX_INACTIVE)
 
         users_docs = list(users_query.stream())
 
