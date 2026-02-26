@@ -211,6 +211,7 @@ async def upload_diet(
                 True,
                 result_ttl=settings.RQ_RESULT_TTL,
                 failure_ttl=settings.RQ_FAILURE_TTL,
+                meta={'owner_uid': user_id},
             )
             logger.info("upload_diet_queued", uid=user_id, job_id=job.id)
             return JSONResponse(
@@ -263,12 +264,21 @@ async def get_diet_job(request: Request, job_id: str, token: dict = Depends(veri
     if job_info is None:
         raise HTTPException(status_code=404, detail="Job non trovato o scaduto.")
 
+    # [SECURITY] Verifica che chi chiede lo stato del job sia il proprietario
+    # o un professionista (admin/nutritionist). Previene l'enumerazione di job altrui.
+    requester_uid = token['uid']
+    requester_role = token.get('role', '')
+    owner_uid = job_info.get('owner_uid')
+    if owner_uid and requester_uid != owner_uid and requester_role not in ('admin', 'nutritionist'):
+        raise HTTPException(status_code=403, detail="Non sei autorizzato a controllare questo job.")
+
     status = job_info["status"]
+    safe_info = {k: v for k, v in job_info.items() if k != 'owner_uid'}
 
     if status in ("queued", "started"):
-        return JSONResponse(status_code=202, content=job_info)
+        return JSONResponse(status_code=202, content=safe_info)
 
-    return JSONResponse(status_code=200, content=job_info)
+    return JSONResponse(status_code=200, content=safe_info)
 
 
 @router.post("/upload-diet/{target_uid}", response_model=DietResponse)
@@ -344,6 +354,7 @@ async def upload_diet_admin(
                 False,
                 result_ttl=settings.RQ_RESULT_TTL,
                 failure_ttl=settings.RQ_FAILURE_TTL,
+                meta={'owner_uid': requester_id},
             )
             logger.info("admin_upload_diet_queued", target_uid=target_uid, job_id=job.id)
             await file.close()
@@ -567,6 +578,22 @@ def _parse_import_file(text: str, ext: str) -> dict:
     import csv
     import io
     import json as json_mod
+    import re as _re
+
+    # [SECURITY] Limiti per campo CSV — previene stored-XSS e payload gonfiati.
+    _MAX_FOOD = 150
+    _MAX_MEAL = 50
+    _MAX_DAY  = 40
+    _MAX_QTY  = 30
+    _MAX_UNIT = 20
+    _CTRL_RE  = _re.compile(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]')
+
+    def _sf(s: str | None, max_len: int) -> str:
+        """Sanitizza e tronca un campo stringa CSV."""
+        if not s:
+            return ''
+        s = str(s).strip()[:max_len]
+        return _CTRL_RE.sub('', s)
 
     plan: dict = {}
 
@@ -596,10 +623,10 @@ def _parse_import_file(text: str, ext: str) -> dict:
     for row in reader:
         if is_mfp:
             raw_date = row.get('Date', '') or row.get('date', '')
-            meal = row.get('Meal', '') or row.get('meal', '')
-            food = row.get('Food Name', '') or row.get('food name', '')
-            qty = row.get('Quantity', '') or row.get('quantity', '1')
-            unit = row.get('Unit', '') or row.get('unit', '')
+            meal = _sf(row.get('Meal', '') or row.get('meal', ''), _MAX_MEAL)
+            food = _sf(row.get('Food Name', '') or row.get('food name', ''), _MAX_FOOD)
+            qty  = _sf(row.get('Quantity', '') or row.get('quantity', '1'), _MAX_QTY)
+            unit = _sf(row.get('Unit', '') or row.get('unit', ''), _MAX_UNIT)
 
             if not food or not meal:
                 continue
@@ -610,24 +637,24 @@ def _parse_import_file(text: str, ext: str) -> dict:
                     try:
                         dt = datetime.strptime(raw_date.strip(), fmt)
                         wd = dt.strftime('%A').lower()
-                        day = italian_days.get(wd, f"Giorno {raw_date}")
+                        day = italian_days.get(wd, f"Giorno {raw_date[:10]}")
                         break
                     except ValueError:
                         continue
             except Exception:
                 pass
         else:
-            day = row.get('Giorno', '') or row.get('giorno', '') or row.get('Day', 'Lunedì')
-            meal = row.get('Pasto', '') or row.get('pasto', '') or row.get('Meal', '')
-            food = row.get('Alimento', '') or row.get('alimento', '') or row.get('Food', '')
-            qty = row.get('Quantità', '') or row.get('quantita', '') or row.get('Quantity', '1')
-            unit = row.get('Unità', '') or row.get('unita', '') or row.get('Unit', '')
+            day  = _sf(row.get('Giorno', '') or row.get('giorno', '') or row.get('Day', 'Lunedì'), _MAX_DAY)
+            meal = _sf(row.get('Pasto', '') or row.get('pasto', '') or row.get('Meal', ''), _MAX_MEAL)
+            food = _sf(row.get('Alimento', '') or row.get('alimento', '') or row.get('Food', ''), _MAX_FOOD)
+            qty  = _sf(row.get('Quantità', '') or row.get('quantita', '') or row.get('Quantity', '1'), _MAX_QTY)
+            unit = _sf(row.get('Unità', '') or row.get('unita', '') or row.get('Unit', ''), _MAX_UNIT)
 
             if not food or not meal:
                 continue
 
         qty_str = f"{qty} {unit}".strip() if unit else str(qty)
-        dish = {'name': food.strip(), 'qty': qty_str, 'cadCode': 0, 'isComposed': False, 'ingredients': [], 'instance_id': ''}
+        dish = {'name': food, 'qty': qty_str, 'cadCode': 0, 'isComposed': False, 'ingredients': [], 'instance_id': ''}
 
         plan.setdefault(day, {}).setdefault(meal, []).append(dish)
 

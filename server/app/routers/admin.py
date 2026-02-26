@@ -133,7 +133,24 @@ async def upload_parser_config(
     requester_id = requester['uid']
 
     try:
-        content = (await file.read()).decode("utf-8")
+        raw_bytes = await file.read()
+
+        # [SECURITY] Limite dimensione: prompt arbitrariamente grandi potrebbero
+        # causare OOM e/o inondare Gemini con input non controllato.
+        _MAX_PROMPT_BYTES = 50 * 1024  # 50 KB
+        if len(raw_bytes) > _MAX_PROMPT_BYTES:
+            raise HTTPException(status_code=413, detail="Prompt troppo grande (max 50 KB).")
+
+        try:
+            content = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="File non è UTF-8 valido.")
+
+        # [SECURITY] Rimuovi caratteri di controllo (esclusi \t \n \r) che potrebbero
+        # alterare il comportamento del parser o i log.
+        import re as _re
+        content = _re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', content).strip()
+
         db = firebase_admin.firestore.client()
         db.collection('users').document(target_uid).set({
             'custom_parser_prompt': content,
@@ -141,7 +158,7 @@ async def upload_parser_config(
             'parser_updated_at': firebase_admin.firestore.SERVER_TIMESTAMP
         }, merge=True)
         db.collection('users').document(target_uid).collection('parser_history').add({
-            'content': content,
+            'content': content[:1000],
             'uploadedAt': firebase_admin.firestore.SERVER_TIMESTAMP,
             'uploadedBy': requester_id
         })

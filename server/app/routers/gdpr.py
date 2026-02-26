@@ -112,11 +112,18 @@ async def get_consents(request: Request, user_data: dict = Depends(verify_token)
 
 # --- DATA EXPORT (GDPR Art. 20 - Portabilità) ---
 
+_EXPORT_MAX_DIETS   = 200
+_EXPORT_MAX_HISTORY = 500
+_EXPORT_MAX_LOGS    = 200
+
+
 def _collect_export_data(db, user_id: str) -> dict:
     """
     Raccoglie tutti i dati Firestore dell'utente per l'export GDPR.
     [SECURITY] Funzione pura separata dall'endpoint HTTP: elimina il pattern
     fake_user_data che bypassava la dependency injection di FastAPI.
+    I cap sui documenti prevengono risposte multi-MB che potrebbero saturare
+    memoria server o esporre dati sensibili nei log di error tracking.
     """
     export_data = {
         "export_date": datetime.now(timezone.utc).isoformat(),
@@ -134,19 +141,19 @@ def _collect_export_data(db, user_id: str) -> dict:
             profile.pop(key, None)
         export_data["profile"] = profile
 
-    for doc in db.collection('users').document(user_id).collection('diets').get():
+    for doc in db.collection('users').document(user_id).collection('diets').limit(_EXPORT_MAX_DIETS).get():
         data = doc.to_dict()
         data['_doc_id'] = doc.id
         export_data["diets"].append(data)
 
-    for doc in db.collection('diet_history').where('userId', '==', user_id).stream():
+    for doc in db.collection('diet_history').where('userId', '==', user_id).limit(_EXPORT_MAX_HISTORY).stream():
         data = doc.to_dict()
         data['_doc_id'] = doc.id
         if 'uploadedAt' in data and hasattr(data['uploadedAt'], 'isoformat'):
             data['uploadedAt'] = data['uploadedAt'].isoformat()
         export_data["diet_history"].append(data)
 
-    for doc in db.collection('consent_logs').where('user_id', '==', user_id).stream():
+    for doc in db.collection('consent_logs').where('user_id', '==', user_id).limit(_EXPORT_MAX_LOGS).stream():
         data = doc.to_dict()
         if 'recorded_at' in data and hasattr(data['recorded_at'], 'isoformat'):
             data['recorded_at'] = data['recorded_at'].isoformat()
