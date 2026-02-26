@@ -61,7 +61,10 @@ class DeepLinkService {
   static String? getInviteCode(Uri? uri) {
     if (uri == null) return null;
     if (uri.path.contains('invite') || uri.host == 'invite') {
-      return uri.queryParameters['code'];
+      final code = uri.queryParameters['code'];
+      // [SECURITY] Cap a 64 caratteri: evita DoS da deep link con input abnormemente lunghi.
+      if (code != null && code.length > 64) return null;
+      return code;
     }
     return null;
   }
