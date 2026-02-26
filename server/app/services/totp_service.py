@@ -15,8 +15,28 @@ from typing import Optional
 from urllib.parse import quote
 
 from firebase_admin import firestore
+from google.cloud import firestore as gcloud_firestore
 
 from app.core.logging import logger, sanitize_error_message
+
+
+@gcloud_firestore.transactional
+def _consume_backup_code_txn(transaction, user_ref, code_hash: str) -> bool:
+    """
+    Verifica e consuma atomicamente un backup code 2FA.
+    [SECURITY] La transazione Firestore previene la race condition dove due richieste
+    simultanée con lo stesso codice potrebbero entrambe riuscire (leggi-controlla-scrivi
+    non atomico). Con la transazione, la seconda request ottiene un conflitto e ritorna False.
+    """
+    snapshot = user_ref.get(transaction=transaction)
+    if not snapshot.exists:
+        return False
+    codes = snapshot.to_dict().get('two_factor_backup_codes', [])
+    if code_hash not in codes:
+        return False
+    new_codes = [c for c in codes if c != code_hash]
+    transaction.update(user_ref, {'two_factor_backup_codes': new_codes})
+    return True
 
 
 class TOTPService:
@@ -238,14 +258,10 @@ class TOTPService:
             if self._verify_totp(secret, code):
                 return True
 
-            backup_codes = user_data.get('two_factor_backup_codes', [])
             code_hash = hashlib.sha256(code.upper().encode()).hexdigest()
-
-            if code_hash in backup_codes:
-                backup_codes.remove(code_hash)
-                self.db.collection('users').document(user_id).update({
-                    'two_factor_backup_codes': backup_codes
-                })
+            user_ref = self.db.collection('users').document(user_id)
+            transaction = self.db.transaction()
+            if _consume_backup_code_txn(transaction, user_ref, code_hash):
                 logger.info("2fa_backup_code_used", user_id=user_id)
                 return True
 
