@@ -44,7 +44,9 @@ async def upload_attachment(
         blob.upload_from_string(file_content, content_type=file.content_type)
 
         from datetime import timedelta
-        signed_url = blob.generate_signed_url(expiration=timedelta(days=7))
+        # [SECURITY] URL firmato valido solo 1 ora. 7 giorni era eccessivo:
+        # un URL rubato o condiviso avrebbe dato accesso a documenti medici privati.
+        signed_url = blob.generate_signed_url(expiration=timedelta(hours=1))
 
         return {
             "url": signed_url,

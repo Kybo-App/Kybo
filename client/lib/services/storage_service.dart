@@ -64,10 +64,13 @@ class StorageService {
     await _storage.write(key: 'active_swaps', value: jsonEncode(jsonMap));
   }
 
+  // [SECURITY] Allarmi spostati da SharedPreferences a FlutterSecureStorage.
+  // Gli orari dei pasti sono dati comportamentali sensibili (rivelano le abitudini
+  // alimentari dell'utente). Su device rooted, SharedPreferences è leggibile
+  // senza permessi. FlutterSecureStorage usa AES-256 + Android Keystore / iOS Keychain.
   Future<List<Map<String, dynamic>>> loadAlarms() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? raw = prefs.getString('custom_alarms');
+      String? raw = await _storage.read(key: 'custom_alarms');
       if (raw == null) return [];
       List<dynamic> list = jsonDecode(raw);
       return List<Map<String, dynamic>>.from(list);
@@ -77,8 +80,7 @@ class StorageService {
   }
 
   Future<void> saveAlarms(List<Map<String, dynamic>> alarms) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('custom_alarms', jsonEncode(alarms));
+    await _storage.write(key: 'custom_alarms', value: jsonEncode(alarms));
   }
 
   Future<void> clearAll() async {

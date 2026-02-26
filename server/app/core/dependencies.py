@@ -65,7 +65,10 @@ def validate_file_content(file_content: bytes, expected_type: str) -> bool:
     return False
 
 def validate_extension(filename: str) -> str:
-    """Valida e ritorna l'estensione del file."""
+    """Valida e ritorna l'estensione del file. Controlla lunghezza e tipo."""
+    # [SECURITY] Filename troppo lungo può causare overflow nei log e DoS.
+    if not filename or len(filename) > 255:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Invalid file type")
