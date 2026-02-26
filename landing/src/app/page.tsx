@@ -25,6 +25,10 @@ const AppMockup = dynamic(
   () => import('@/components/sections/AppMockup'),
   { ssr: false, loading: () => <div style={{ minHeight: '500px' }} /> }
 );
+const TestimonialsSection = dynamic(
+  () => import('@/components/sections/TestimonialsSection'),
+  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
+);
 const CTASection = dynamic(
   () => import('@/components/sections/CTASection'),
   { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
@@ -47,6 +51,9 @@ export default function HomePage() {
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
           <ComparisonTable />
+        </Suspense>
+        <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
+          <TestimonialsSection />
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
           <CTASection />

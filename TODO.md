@@ -129,7 +129,7 @@
 ### Feature 8: Integrazioni Esterne
 > Connessioni con servizi terzi. Client + Backend.
 
-- [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate)
+- [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) → spostato a bassa priorità
 - [x] Export dieta in formato PDF
 - [x] Import dieta da altre app (MyFitnessPal, Yazio CSV)
 - [x] Integrazione con bilancia smart (peso automatico)
@@ -167,7 +167,7 @@
 
 **Performance:**
 - [x] Redis cache layer (L1.5 distribuito tra RAM e Firestore, graceful fallback)
-- [ ] Queue system per parsing diete (Celery/RQ invece di semaphore)
+- [x] Queue system per parsing diete (RQ worker + fallback semaphore — worker.py)
 
 **Monitoring:**
 - [x] APM (Application Performance Monitoring) — Prometheus + prometheus-fastapi-instrumentator
@@ -192,6 +192,7 @@
 
 ### Client - Wearables & Voice
 - [x] Siri/Google Assistant integration ("cosa mangio a pranzo?")
+- [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) — Flutter plugin `health`
 
 ### Client - Shopping List (extra)
 - [ ] Preferenze supermercato (salva il tuo negozio preferito)
