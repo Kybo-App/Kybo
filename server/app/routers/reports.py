@@ -49,6 +49,11 @@ async def get_monthly_report(
                 detail="Formato mese non valido. Usa YYYY-MM (es. 2024-03)"
             )
 
+        # [SECURITY] Blocca anni non validi: coerente con POST /generate.
+        # Report futuri non esistono; anni troppo vecchi non sono supportati.
+        if year < 2020 or year > datetime.now().year:
+            raise HTTPException(status_code=400, detail="Anno non valido")
+
         # Permission check
         requester_role = requester['role']
         requester_id = requester['uid']
