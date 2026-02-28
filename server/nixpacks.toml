@@ -1,0 +1,11 @@
+# Nixpacks configuration for Render deployment.
+# Auto-discovered by Render: installs system dependencies before pip install.
+# Fixes: Tesseract OCR unavailable on Python buildpack (no apt-get in runtime).
+
+[phases.setup]
+aptPkgs = [
+    'tesseract-ocr',
+    'tesseract-ocr-ita',
+    'libgl1',
+    'libglib2.0-0',
+]
