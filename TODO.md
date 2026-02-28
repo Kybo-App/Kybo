@@ -7,7 +7,7 @@
 ### 1. Backend - Backup Firestore ✅
 ### 2. Backend - Sentry & Alerting ✅
 ### 3. Backend - Health Check ✅
-- [ ] ⚠️ TODO: Fixare Tesseract su Render dev (cambiare a Docker o configurare build script)
+- [x] ⚠️ TODO: Fixare Tesseract su Render dev → risolto con nixpacks.toml (commit 350ef4d)
 ### 4. Backend - CI/CD ✅
 ### 5. GDPR Base (Obbligo Legale) ✅
 ### 6. Client - Tracking & Statistiche ✅
@@ -114,7 +114,7 @@
 
 ---
 
-### Feature 7: Client - UX & Features
+### Feature 7: Client - UX & Features ✅
 > Miglioramenti app mobile.
 
 - [x] Widget home screen (prossimo pasto, lista spesa)
@@ -179,11 +179,11 @@
 
 **Sicurezza:**
 - [x] Session management avanzato (forza logout da altri dispositivi)
-- [ ] Penetration test report e remediation
+- [x] Penetration test report e remediation → server/docs/penetration-test.md + .github/workflows/security.yml (commit 201f5e4)
 
 **DevOps:**
-- [ ] Database migration strategy
-- [ ] Load testing (k6/Locust)
+- [x] Database migration strategy → server/docs/migration-strategy.md (commit 201f5e4)
+- [x] Load testing (k6/Locust) → server/tests/load/ (auth, diet_upload, chat, smoke) (commit 201f5e4)
 - [x] Docker containerization per sviluppo locale
 
 ---
@@ -204,10 +204,10 @@
 - [x] Porzioni scalabili (cucino per 2, 4, 6 persone)
 
 ### Landing - Contenuti
-- [ ] Sezione testimonianze / recensioni utenti
+- [x] Sezione testimonianze / recensioni utenti → landing/src/components/sections/TestimonialsSection.tsx
 - [ ] Video demo dell'app (embedded YouTube/Vimeo)
-- [ ] Blog / articoli su nutrizione (SEO content marketing)
-- [ ] Sezione FAQ espandibile
+- [x] Blog / articoli su nutrizione (SEO content marketing) → landing/src/app/blog/page.tsx
+- [x] Sezione FAQ espandibile → landing/src/app/faq/page.tsx
 - [x] Pagina "Chi Siamo" con storia e mission
 - [ ] Case study nutrizionisti
 
