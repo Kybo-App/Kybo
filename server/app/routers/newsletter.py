@@ -1,72 +1,101 @@
 """
-Newsletter Router — Kybo API
+Newsletter & Contact Router — Kybo API
 
-Questo router e' DISATTIVATO di default.
-Per attivarlo:
-  1. Togli i commenti dal blocco sottostante
-  2. Aggiungi in server/app/main.py:
-
-     from app.routers import newsletter
-     app.include_router(newsletter.router)
-
-  3. Assicurati che la collezione Firestore "newsletter_subscribers"
-     abbia le regole di sicurezza appropriate (solo admin in lettura).
-
-Funzionalita' coperte:
+Newsletter:
   POST /newsletter/subscribe    — iscrizione via email
   POST /newsletter/unsubscribe  — disiscrizione via email
+
+Contact:
+  POST /contact/submit          — invio modulo di contatto (no auth richiesta)
+  I messaggi vengono salvati in Firestore: contact_requests/{id}
 """
 
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, EmailStr
+from firebase_admin import firestore
+from app.core.firebase import db
+from app.core.limiter import limiter
+
 # ---------------------------------------------------------------------------
-# CODICE COMMENTATO — togli i commenti per attivare il router
+# Newsletter
 # ---------------------------------------------------------------------------
 
-# from fastapi import APIRouter, HTTPException
-# from pydantic import BaseModel, EmailStr
-# from firebase_admin import firestore
-# from app.core.firebase import db
-# import re
-#
-# router = APIRouter(prefix="/newsletter", tags=["newsletter"])
-#
-#
-# class NewsletterSubscribeRequest(BaseModel):
-#     email: EmailStr
-#
-#
-# @router.post("/subscribe")
-# async def subscribe(req: NewsletterSubscribeRequest):
-#     email = req.email.lower().strip()
-#
-#     # Controlla se gia' iscritto
-#     existing = (
-#         db.collection("newsletter_subscribers")
-#         .where("email", "==", email)
-#         .limit(1)
-#         .get()
-#     )
-#     if existing:
-#         return {"message": "Gia' iscritto"}
-#
-#     # Salva in Firestore
-#     db.collection("newsletter_subscribers").add({
-#         "email": email,
-#         "subscribed_at": firestore.SERVER_TIMESTAMP,
-#         "active": True,
-#         "source": "landing_page",
-#     })
-#
-#     return {"message": "Iscrizione completata"}
-#
-#
-# @router.post("/unsubscribe")
-# async def unsubscribe(req: NewsletterSubscribeRequest):
-#     email = req.email.lower().strip()
-#     docs = (
-#         db.collection("newsletter_subscribers")
-#         .where("email", "==", email)
-#         .get()
-#     )
-#     for doc in docs:
-#         doc.reference.update({"active": False})
-#     return {"message": "Disiscrizione completata"}
+router = APIRouter(prefix="/newsletter", tags=["newsletter"])
+
+
+class NewsletterSubscribeRequest(BaseModel):
+    email: EmailStr
+
+
+@router.post("/subscribe")
+@limiter.limit("10/hour")
+async def subscribe(request: Request, req: NewsletterSubscribeRequest):
+    email = req.email.lower().strip()
+
+    existing = (
+        db.collection("newsletter_subscribers")
+        .where("email", "==", email)
+        .limit(1)
+        .get()
+    )
+    if existing:
+        return {"message": "Già iscritto"}
+
+    db.collection("newsletter_subscribers").add({
+        "email": email,
+        "subscribed_at": firestore.SERVER_TIMESTAMP,
+        "active": True,
+        "source": "landing_page",
+    })
+
+    return {"message": "Iscrizione completata"}
+
+
+@router.post("/unsubscribe")
+@limiter.limit("10/hour")
+async def unsubscribe(request: Request, req: NewsletterSubscribeRequest):
+    email = req.email.lower().strip()
+    docs = (
+        db.collection("newsletter_subscribers")
+        .where("email", "==", email)
+        .get()
+    )
+    for doc in docs:
+        doc.reference.update({"active": False})
+    return {"message": "Disiscrizione completata"}
+
+
+# ---------------------------------------------------------------------------
+# Contact form
+# ---------------------------------------------------------------------------
+
+contact_router = APIRouter(prefix="/contact", tags=["contact"])
+
+
+class ContactFormRequest(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
+
+
+@contact_router.post("/submit")
+@limiter.limit("5/hour")
+async def submit_contact(request: Request, req: ContactFormRequest):
+    name = req.name.strip()[:100]
+    message = req.message.strip()[:2000]
+
+    if not name or not message:
+        raise HTTPException(
+            status_code=422,
+            detail="Nome e messaggio sono obbligatori.",
+        )
+
+    db.collection("contact_requests").add({
+        "name": name,
+        "email": req.email.lower().strip(),
+        "message": message,
+        "submitted_at": firestore.SERVER_TIMESTAMP,
+        "status": "new",
+    })
+
+    return {"message": "Messaggio ricevuto. Ti risponderemo entro 24 ore!"}

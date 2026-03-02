@@ -195,12 +195,12 @@
 - [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) — Flutter plugin `health`
 
 ### Client - Shopping List (extra)
-- [ ] Preferenze supermercato (salva il tuo negozio preferito)
+- [x] Preferenze supermercato (salva il tuo negozio preferito) → settings_screen.dart
 - [ ] Lista spesa collaborativa (famiglia/coinquilini)
 
 ### Client - Ricette & Meal Prep
 - [x] Suggerimenti ricette basate sugli ingredienti in dispensa
-- [ ] Timer cottura integrato
+- [x] Timer cottura integrato → client/lib/screens/cooking_timer_screen.dart
 - [x] Porzioni scalabili (cucino per 2, 4, 6 persone)
 
 ### Landing - Contenuti
@@ -212,9 +212,9 @@
 - [ ] Case study nutrizionisti
 
 ### Landing - Conversione
-- [ ] Form contatto funzionante (backend per ricevere richieste demo)
-- [ ] Newsletter signup con integrazione email marketing
-- [ ] Popup/banner "prova gratuita" con timer
+- [x] Form contatto funzionante → contact/page.tsx + POST /contact/submit (Firestore)
+- [x] Newsletter signup con integrazione email marketing → NewsletterSection.tsx + POST /newsletter/subscribe
+- [x] Popup/banner "prova gratuita" con timer → TrialPopup.tsx (appare dopo 8 sec)
 - [ ] Chat widget per supporto live
-- [ ] Link diretto a App Store e Google Play
-- [ ] QR code per download diretto dell'app
+- [x] Link diretto a App Store e Google Play → CTASection.tsx (placeholder, aggiornare con URL reali al lancio)
+- [x] QR code per download diretto dell'app → CTASection.tsx (SVG inline)
