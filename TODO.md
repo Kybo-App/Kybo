@@ -211,6 +211,12 @@
 - [x] Pagina "Chi Siamo" con storia e mission
 - [x] Case study nutrizionisti → /case-study page completa (Dott.ssa Rossi, metriche, timeline)
 
+### Landing - Pagine incomplete
+- [ ] `/privacy` — Privacy Policy (testo legale GDPR completo)
+- [ ] `/terms` — Termini di Servizio (testo legale completo)
+- [ ] `/careers` — Pagina lavora con noi (posizioni aperte o messaggio "non ci sono posizioni aperte")
+- [ ] `/help` — Centro assistenza (FAQ tecniche, guide utente, link contatto)
+
 ### Landing - Conversione
 - [x] Form contatto funzionante → contact/page.tsx + POST /contact/submit (Firestore)
 - [x] Newsletter signup con integrazione email marketing → NewsletterSection.tsx + POST /newsletter/subscribe
