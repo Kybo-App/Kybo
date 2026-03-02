@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import styles from './TestimonialsSection.module.css';
 
 interface Testimonial {
@@ -130,6 +131,12 @@ export default function TestimonialsSection() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className={styles.caseStudyRow}>
+          <Link href="/case-study" className={styles.caseStudyLink}>
+            Leggi il case study completo →
+          </Link>
         </div>
       </div>
     </section>

@@ -195,6 +195,28 @@
   flex-shrink: 0;
 }
 
+/* Case study link */
+.caseStudyRow {
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.caseStudyLink {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #66BB6A;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(102, 187, 106, 0.3);
+  padding-bottom: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.caseStudyLink:hover {
+  color: #a5d6a7;
+  border-color: rgba(165, 214, 167, 0.5);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .grid {
