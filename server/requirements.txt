@@ -1,7 +1,8 @@
 # [SECURITY] Patched Versions — pinned to exact versions (supply chain protection)
 fastapi==0.109.1
 uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+# [SECURITY] GHSA-2jv5-9r88-3w3p + GHSA-r2mh-k6mg-3cf8 — fixed in 0.0.9+
+python-multipart==0.0.12
 pdfplumber==0.10.3
 # [SECURITY] Patched Buffer Overflow Vulnerability
 Pillow==10.3.0
@@ -14,7 +15,8 @@ python-dotenv==1.0.1
 firebase-admin==6.4.0
 email-validator==2.1.0
 aiosmtplib==3.0.1
-jinja2==3.1.4
+# [SECURITY] CVE-2024-56201 + CVE-2024-56326 (sandbox escape) — fixed in 3.1.5
+jinja2==3.1.5
 fpdf2==2.7.9
 slowapi==0.1.9
 structlog==24.1.0
