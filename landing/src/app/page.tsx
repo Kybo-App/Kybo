@@ -17,6 +17,10 @@ const StatsSection = dynamic(
   () => import('@/components/sections/StatsSection'),
   { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
 );
+const VideoSection = dynamic(
+  () => import('@/components/sections/VideoSection'),
+  { ssr: false, loading: () => <div style={{ minHeight: '500px' }} /> }
+);
 const ComparisonTable = dynamic(
   () => import('@/components/sections/ComparisonTable'),
   { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
@@ -56,6 +60,9 @@ export default function HomePage() {
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '500px' }} />}>
           <AppMockup />
+        </Suspense>
+        <Suspense fallback={<div style={{ minHeight: '500px' }} />}>
+          <VideoSection />
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
           <ComparisonTable />

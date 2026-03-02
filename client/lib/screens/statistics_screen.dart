@@ -1,8 +1,9 @@
-// Schermata statistiche: aderenza settimanale, tracking peso con grafico, streak e obiettivi personalizzati.
+// Schermata statistiche: aderenza settimanale, tracking peso con grafico, streak, obiettivi e dati Apple Health / Google Fit.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/tracking_service.dart';
+import '../services/health_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
 import '../services/scale_service.dart';
@@ -25,6 +26,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   List<WeightEntry> _weightHistory = [];
   List<UserGoal> _goals = [];
   bool _isLoading = true;
+
+  final HealthService _healthService = HealthService();
+  HealthData? _healthData;
+  bool _healthAuthorized = false;
 
   @override
   void initState() {
@@ -62,11 +67,32 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       }),
     );
 
+    final healthAuthorized = await _healthService.isAuthorized();
+    if (healthAuthorized) {
+      final healthData = await _healthService.readToday();
+      if (mounted) setState(() { _healthData = healthData; _healthAuthorized = true; });
+    } else {
+      if (mounted) setState(() => _healthAuthorized = false);
+    }
+
     if (mounted) {
       setState(() {
         _weeklyStats = stats;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _connectHealth() async {
+    final granted = await _healthService.requestPermissions();
+    if (!mounted) return;
+    if (granted) {
+      final data = await _healthService.readToday();
+      setState(() { _healthData = data; _healthAuthorized = true; });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permesso health non concesso')),
+      );
     }
   }
 
@@ -101,6 +127,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               _buildWeightChart(),
               const SizedBox(height: 24),
               _buildStreakCard(),
+              const SizedBox(height: 24),
+              _buildHealthCard(),
             ],
           ),
         ),
@@ -632,6 +660,112 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
   }
 
+
+  Widget _buildHealthCard() {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    if (!_healthAuthorized) {
+      return Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.favorite_outline, color: primary),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Apple Health / Google Fit',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Connetti la tua app salute per vedere passi, calorie e peso direttamente qui.',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _connectHealth,
+                icon: const Icon(Icons.link),
+                label: const Text('Connetti Salute'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final data = _healthData;
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.red[400]),
+                const SizedBox(width: 8),
+                const Text(
+                  'Salute — Oggi',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  onPressed: _loadData,
+                  tooltip: 'Aggiorna',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatTile(
+                    'Passi',
+                    data?.steps != null ? '${data!.steps}' : '—',
+                    Icons.directions_walk,
+                    Colors.blue,
+                  ),
+                ),
+                Expanded(
+                  child: _buildStatTile(
+                    'Calorie attive',
+                    data?.activeCalories != null
+                        ? '${data!.activeCalories!.toStringAsFixed(0)} kcal'
+                        : '—',
+                    Icons.local_fire_department,
+                    Colors.orange,
+                  ),
+                ),
+                Expanded(
+                  child: _buildStatTile(
+                    'Peso',
+                    data?.weightKg != null
+                        ? '${data!.weightKg!.toStringAsFixed(1)} kg'
+                        : '—',
+                    Icons.monitor_weight_outlined,
+                    primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _saveWeight() async {
     final text = _weightController.text.trim();

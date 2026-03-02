@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- HealthKit — passi, calorie attive, peso -->
+    <key>NSHealthShareUsageDescription</key>
+    <string>Kybo legge i tuoi passi, le calorie bruciate e il peso da Apple Health per mostrarti i progressi giornalieri nella schermata statistiche.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Kybo può aggiornare il tuo peso su Apple Health quando lo registri manualmente nell'app.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>We need access to photos to scan receipts and upload diets.</string>
     <key>NSCameraUsageDescription</key>
