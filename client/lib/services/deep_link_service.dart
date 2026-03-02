@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 class NavTarget {
   static const String diet = 'diet';
   static const String suggestions = 'suggestions';
+  static const String shoppingList = 'shopping_list';
 }
 
 class DeepLinkService {
@@ -55,7 +56,24 @@ class DeepLinkService {
     final host = uri.host.toLowerCase();
     if (host == NavTarget.diet) return NavTarget.diet;
     if (host == NavTarget.suggestions) return NavTarget.suggestions;
+    // kybo.app/list?id=XXX  oppure  kybo://list?id=XXX
+    if (uri.path.contains('/list') || host == 'list') {
+      return NavTarget.shoppingList;
+    }
     return null;
+  }
+
+  /// Estrae lo share ID da un link lista condivisa.
+  /// Accetta: kybo.app/list?id=XXX  oppure  kybo://list?id=XXX
+  static String? getSharedListId(Uri? uri) {
+    if (uri == null) return null;
+    final isListLink = uri.path.contains('/list') || uri.host == 'list';
+    if (!isListLink) return null;
+    final id = uri.queryParameters['id'];
+    // [SECURITY] Sanity check: solo caratteri URL-safe, max 20 chars
+    if (id == null || id.isEmpty || id.length > 20) return null;
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id)) return null;
+    return id;
   }
 
   static String? getInviteCode(Uri? uri) {
