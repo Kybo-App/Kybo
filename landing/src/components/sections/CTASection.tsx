@@ -124,6 +124,7 @@ export default function CTASection() {
                 <a href="#features">Features</a>
                 <a href="#gallery">Gallery</a>
                 <a href="#stats">Statistiche</a>
+                <Link href="/business">Per Nutrizionisti</Link>
               </div>
 
               <div className={styles.footerColumn}>
@@ -139,6 +140,7 @@ export default function CTASection() {
                 <Link href="/help">Centro Assistenza</Link>
                 <Link href="/contact">Contatti</Link>
                 <Link href="/faq">FAQ</Link>
+                <Link href="/business#prezzi">Prezzi</Link>
               </div>
 
               <div className={styles.footerColumn}>
@@ -146,6 +148,7 @@ export default function CTASection() {
                 <Link href="/privacy">Privacy Policy</Link>
                 <Link href="/terms">Termini di Servizio</Link>
                 <Link href="/cookies">Cookie Policy</Link>
+                <Link href="/privacy">GDPR</Link>
               </div>
             </div>
           </div>
