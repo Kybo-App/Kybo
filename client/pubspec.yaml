@@ -43,7 +43,7 @@ dependencies:
   flutter_blue_plus: ^1.31.0
 
   # Health data (Google Fit / Apple Health via Health Connect)
-  health: ^12.0.0
+  health: ^13.0.0
 
   # Notifications & Background Tasks
   flutter_local_notifications: ^18.0.1
