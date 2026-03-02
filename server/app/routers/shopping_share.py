@@ -8,15 +8,16 @@ La lista viene salvata in Firestore (shared_lists/{share_id}) con TTL di 7 giorn
 L'ID è generato con secrets.token_urlsafe (8 caratteri URL-safe, ~48 bit di entropia).
 """
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from firebase_admin import firestore
-from app.core.firebase import db
-from app.core.limiter import limiter
-from app.core.logging import logger
+import firebase_admin
 import secrets
 import re
 from datetime import datetime, timezone, timedelta
+
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+from firebase_admin import firestore
+from app.core.limiter import limiter
+from app.core.logging import logger
 
 router = APIRouter(prefix="/shopping-list", tags=["shopping-list"])
 
@@ -38,15 +39,15 @@ async def create_share(request: Request, req: ShareListRequest):
         raise HTTPException(status_code=422, detail="La lista è vuota.")
 
     items = req.items[:MAX_ITEMS]
-    # Sanitizza ogni articolo: max 200 caratteri, rimuove control characters
     items = [item.strip()[:200] for item in items if item.strip()]
 
     if not items:
         raise HTTPException(status_code=422, detail="La lista non contiene articoli validi.")
 
-    share_id = secrets.token_urlsafe(6)  # 8 caratteri URL-safe
+    share_id = secrets.token_urlsafe(6)
     expires_at = datetime.now(timezone.utc) + timedelta(days=SHARE_TTL_DAYS)
 
+    db = firebase_admin.firestore.client()
     db.collection("shared_lists").document(share_id).set({
         "items": items,
         "title": req.title.strip()[:100] or "Lista della Spesa",
@@ -54,7 +55,7 @@ async def create_share(request: Request, req: ShareListRequest):
         "expires_at": expires_at.isoformat(),
     })
 
-    logger.info(f"Shared list created: {share_id} ({len(items)} items)")
+    logger.info("shared_list_created", share_id=share_id, item_count=len(items))
 
     return {
         "share_id": share_id,
@@ -69,6 +70,7 @@ async def get_share(share_id: str):
     if not SHARE_ID_RE.match(share_id):
         raise HTTPException(status_code=404, detail="Lista non trovata.")
 
+    db = firebase_admin.firestore.client()
     doc = db.collection("shared_lists").document(share_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Lista non trovata o scaduta.")

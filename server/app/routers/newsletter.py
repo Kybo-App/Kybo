@@ -10,10 +10,10 @@ Contact:
   I messaggi vengono salvati in Firestore: contact_requests/{id}
 """
 
+import firebase_admin
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from firebase_admin import firestore
-from app.core.firebase import db
 from app.core.limiter import limiter
 
 # ---------------------------------------------------------------------------
@@ -30,6 +30,7 @@ class NewsletterSubscribeRequest(BaseModel):
 @router.post("/subscribe")
 @limiter.limit("10/hour")
 async def subscribe(request: Request, req: NewsletterSubscribeRequest):
+    db = firebase_admin.firestore.client()
     email = req.email.lower().strip()
 
     existing = (
@@ -54,6 +55,7 @@ async def subscribe(request: Request, req: NewsletterSubscribeRequest):
 @router.post("/unsubscribe")
 @limiter.limit("10/hour")
 async def unsubscribe(request: Request, req: NewsletterSubscribeRequest):
+    db = firebase_admin.firestore.client()
     email = req.email.lower().strip()
     docs = (
         db.collection("newsletter_subscribers")
@@ -81,6 +83,7 @@ class ContactFormRequest(BaseModel):
 @contact_router.post("/submit")
 @limiter.limit("5/hour")
 async def submit_contact(request: Request, req: ContactFormRequest):
+    db = firebase_admin.firestore.client()
     name = req.name.strip()[:100]
     message = req.message.strip()[:2000]
 
