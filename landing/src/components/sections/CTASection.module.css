@@ -78,6 +78,27 @@
 
 .icon {
   font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.btnText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.btnSub {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btnMain {
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .note {
@@ -85,6 +106,70 @@
   font-size: 0.95rem;
   font-weight: 300;
   margin-top: 1rem;
+}
+
+/* QR Code */
+.qrSection {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding: 1.5rem 2rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.qrBox {
+  width: 90px;
+  height: 90px;
+  background: #0f0f0f;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.qrSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.qrInfo {
+  text-align: left;
+}
+
+.qrTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.qrSub {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.5rem;
+}
+
+.qrBadge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #66BB6A;
+  background: rgba(102, 187, 106, 0.12);
+  border: 1px solid rgba(102, 187, 106, 0.3);
+  border-radius: 100px;
+  padding: 0.2rem 0.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .footer {

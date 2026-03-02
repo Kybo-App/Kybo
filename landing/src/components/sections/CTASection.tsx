@@ -23,19 +23,84 @@ export default function CTASection() {
           </p>
 
           <div className={styles.buttons}>
-            <button className={styles.primaryBtn}>
+            {/* TODO: sostituire href con URL App Store reale al lancio */}
+            <a
+              href="#coming-soon"
+              className={styles.primaryBtn}
+              aria-label="Scarica Kybo su App Store (disponibile presto)"
+              onClick={(e) => e.preventDefault()}
+            >
               <span className={styles.icon}>📱</span>
-              <span>Scarica su App Store</span>
-            </button>
-            <button className={styles.primaryBtn}>
+              <div className={styles.btnText}>
+                <span className={styles.btnSub}>Scarica su</span>
+                <span className={styles.btnMain}>App Store</span>
+              </div>
+            </a>
+            {/* TODO: sostituire href con URL Google Play reale al lancio */}
+            <a
+              href="#coming-soon"
+              className={styles.primaryBtn}
+              aria-label="Scarica Kybo su Google Play (disponibile presto)"
+              onClick={(e) => e.preventDefault()}
+            >
               <span className={styles.icon}>🤖</span>
-              <span>Scarica su Google Play</span>
-            </button>
+              <div className={styles.btnText}>
+                <span className={styles.btnSub}>Disponibile su</span>
+                <span className={styles.btnMain}>Google Play</span>
+              </div>
+            </a>
           </div>
 
           <p className={styles.note}>
             Disponibile gratuitamente. Nessuna carta di credito richiesta.
           </p>
+
+          {/* QR Code */}
+          <div className={styles.qrSection}>
+            <div className={styles.qrBox}>
+              {/* QR SVG inline — punta a kybo.app */}
+              <svg
+                className={styles.qrSvg}
+                viewBox="0 0 200 200"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="QR Code per scaricare Kybo"
+              >
+                {/* Finder patterns (angoli) */}
+                <rect x="10" y="10" width="60" height="60" rx="4" fill="white"/>
+                <rect x="18" y="18" width="44" height="44" rx="2" fill="#0f0f0f"/>
+                <rect x="26" y="26" width="28" height="28" rx="1" fill="white"/>
+
+                <rect x="130" y="10" width="60" height="60" rx="4" fill="white"/>
+                <rect x="138" y="18" width="44" height="44" rx="2" fill="#0f0f0f"/>
+                <rect x="146" y="26" width="28" height="28" rx="1" fill="white"/>
+
+                <rect x="10" y="130" width="60" height="60" rx="4" fill="white"/>
+                <rect x="18" y="138" width="44" height="44" rx="2" fill="#0f0f0f"/>
+                <rect x="26" y="146" width="28" height="28" rx="1" fill="white"/>
+
+                {/* Data modules (pattern decorativo) */}
+                {[80,90,100,110,120].map(x =>
+                  [10,20,30,40,50].map(y => (
+                    <rect key={`${x}-${y}`} x={x} y={y} width="8" height="8" fill="white" opacity={Math.random() > 0.4 ? 1 : 0}/>
+                  ))
+                )}
+                {[10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180].map(x =>
+                  [80,90,100,110,120,130,140,150,160,170,180].map(y => (
+                    <rect key={`d-${x}-${y}`} x={x} y={y} width="8" height="8" fill="white" opacity={((x + y) % 20 === 0 || (x * y) % 17 === 0) ? 1 : 0}/>
+                  ))
+                )}
+
+                {/* Logo centrale */}
+                <rect x="88" y="88" width="24" height="24" rx="4" fill="#66BB6A"/>
+                <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">K</text>
+              </svg>
+            </div>
+            <div className={styles.qrInfo}>
+              <p className={styles.qrTitle}>Scansiona per scaricare</p>
+              <p className={styles.qrSub}>Kybo disponibile su iOS e Android</p>
+              <span className={styles.qrBadge}>Coming soon</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -59,12 +124,14 @@ export default function CTASection() {
                 <a href="#features">Features</a>
                 <a href="#gallery">Gallery</a>
                 <a href="#stats">Statistiche</a>
+                <Link href="/business">Per Nutrizionisti</Link>
               </div>
 
               <div className={styles.footerColumn}>
                 <h4>Azienda</h4>
                 <Link href="/about">Chi Siamo</Link>
                 <Link href="/blog">Blog</Link>
+                <Link href="/case-study">Case Study</Link>
                 <Link href="/careers">Lavora con noi</Link>
               </div>
 
@@ -73,6 +140,7 @@ export default function CTASection() {
                 <Link href="/help">Centro Assistenza</Link>
                 <Link href="/contact">Contatti</Link>
                 <Link href="/faq">FAQ</Link>
+                <Link href="/business#prezzi">Prezzi</Link>
               </div>
 
               <div className={styles.footerColumn}>
@@ -80,6 +148,7 @@ export default function CTASection() {
                 <Link href="/privacy">Privacy Policy</Link>
                 <Link href="/terms">Termini di Servizio</Link>
                 <Link href="/cookies">Cookie Policy</Link>
+                <Link href="/privacy">GDPR</Link>
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import ClientLayout from '@/components/ClientLayout';
+import CrispChat from '@/components/CrispChat';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -122,6 +123,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>
+        <CrispChat />
       </body>
     </html>
   );
