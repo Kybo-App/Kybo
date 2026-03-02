@@ -129,7 +129,7 @@
 ### Feature 8: Integrazioni Esterne
 > Connessioni con servizi terzi. Client + Backend.
 
-- [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) → spostato a bassa priorità
+- [x] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) → health plugin + health_service.dart + UI in statistics_screen
 - [x] Export dieta in formato PDF
 - [x] Import dieta da altre app (MyFitnessPal, Yazio CSV)
 - [x] Integrazione con bilancia smart (peso automatico)
@@ -192,7 +192,7 @@
 
 ### Client - Wearables & Voice
 - [x] Siri/Google Assistant integration ("cosa mangio a pranzo?")
-- [ ] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) — Flutter plugin `health`
+- [x] Sync con Google Fit / Apple Health (passi, peso, calorie bruciate) — Flutter plugin `health`
 
 ### Client - Shopping List (extra)
 - [x] Preferenze supermercato (salva il tuo negozio preferito) → settings_screen.dart
@@ -205,16 +205,16 @@
 
 ### Landing - Contenuti
 - [x] Sezione testimonianze / recensioni utenti → landing/src/components/sections/TestimonialsSection.tsx
-- [ ] Video demo dell'app (embedded YouTube/Vimeo)
+- [x] Video demo dell'app (embedded YouTube/Vimeo) → VideoSection.tsx con placeholder, imposta VIDEO_ID quando hai il video
 - [x] Blog / articoli su nutrizione (SEO content marketing) → landing/src/app/blog/page.tsx
 - [x] Sezione FAQ espandibile → landing/src/app/faq/page.tsx
 - [x] Pagina "Chi Siamo" con storia e mission
-- [ ] Case study nutrizionisti
+- [x] Case study nutrizionisti → /case-study page completa (Dott.ssa Rossi, metriche, timeline)
 
 ### Landing - Conversione
 - [x] Form contatto funzionante → contact/page.tsx + POST /contact/submit (Firestore)
 - [x] Newsletter signup con integrazione email marketing → NewsletterSection.tsx + POST /newsletter/subscribe
 - [x] Popup/banner "prova gratuita" con timer → TrialPopup.tsx (appare dopo 8 sec)
-- [ ] Chat widget per supporto live
+- [x] Chat widget per supporto live → CrispChat.tsx, imposta CRISP_WEBSITE_ID dopo aver creato account su crisp.chat
 - [x] Link diretto a App Store e Google Play → CTASection.tsx (placeholder, aggiornare con URL reali al lancio)
 - [x] QR code per download diretto dell'app → CTASection.tsx (SVG inline)
