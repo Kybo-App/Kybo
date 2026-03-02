@@ -130,6 +130,7 @@ export default function CTASection() {
                 <h4>Azienda</h4>
                 <Link href="/about">Chi Siamo</Link>
                 <Link href="/blog">Blog</Link>
+                <Link href="/case-study">Case Study</Link>
                 <Link href="/careers">Lavora con noi</Link>
               </div>
 
