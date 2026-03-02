@@ -196,7 +196,7 @@
 
 ### Client - Shopping List (extra)
 - [x] Preferenze supermercato (salva il tuo negozio preferito) → settings_screen.dart
-- [ ] Lista spesa collaborativa (famiglia/coinquilini)
+- [x] Lista spesa condivisa via link (kybo.app/list?id=...) → shopping_share.py + landing/list/page.tsx
 
 ### Client - Ricette & Meal Prep
 - [x] Suggerimenti ricette basate sugli ingredienti in dispensa
