@@ -49,3 +49,8 @@ lib/firebase_options_dev.dart
 serviceAccountKey.json
 .env.prod
 .env
+# Firebase — config files with API keys, injected via CI secrets
+.firebase/
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
