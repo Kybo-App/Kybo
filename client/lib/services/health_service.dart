@@ -27,7 +27,7 @@ class HealthService {
 
   Future<bool> requestPermissions() async {
     try {
-      Health().configure(useHealthConnectIfAvailable: true);
+      await Health().configure();
       return await Health().requestAuthorization(_kTypes);
     } catch (e) {
       debugPrint('HealthService: permessi non disponibili — $e');
@@ -37,7 +37,7 @@ class HealthService {
 
   Future<bool> isAuthorized() async {
     try {
-      Health().configure(useHealthConnectIfAvailable: true);
+      await Health().configure();
       return await Health().hasPermissions(_kTypes) ?? false;
     } catch (e) {
       return false;
@@ -46,7 +46,7 @@ class HealthService {
 
   Future<HealthData> readToday() async {
     try {
-      Health().configure(useHealthConnectIfAvailable: true);
+      await Health().configure();
 
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day);
