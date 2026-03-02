@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "it.kybo.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 26 // health plugin requires >= 26 (Android 8.0)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
