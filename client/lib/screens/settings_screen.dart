@@ -1,4 +1,5 @@
-// Schermata impostazioni: password, allarmi pasti, budget spesa, dark mode, privacy, tutorial.
+// Schermata impostazioni: password, allarmi pasti, budget spesa, dark mode, privacy, tutorial,
+// preferenze supermercato, timer cottura.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,10 +7,62 @@ import '../providers/diet_provider.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/design_system.dart';
 import 'change_password_screen.dart';
+import 'cooking_timer_screen.dart';
 import '../widgets/meal_reminder_dialog.dart';
 
-class SettingsScreen extends StatelessWidget {
+const _kSupermarketPrefKey = 'preferred_supermarket';
+const _supermarkets = [
+  'Esselunga',
+  'Conad',
+  'Carrefour',
+  'Lidl',
+  'Eurospin',
+  'Coop',
+  'Pam',
+  'MD Discount',
+  "IN'S Mercato",
+  'Aldi',
+  'Penny Market',
+  'Tigros',
+  'Iper',
+  'Ipercoop',
+  'Altro',
+];
+
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String? _preferredSupermarket;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSupermarketPref();
+  }
+
+  Future<void> _loadSupermarketPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _preferredSupermarket = prefs.getString(_kSupermarketPrefKey);
+      });
+    }
+  }
+
+  Future<void> _saveSupermarketPref(String? value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (value == null) {
+      await prefs.remove(_kSupermarketPrefKey);
+    } else {
+      await prefs.setString(_kSupermarketPrefKey, value);
+    }
+    if (mounted) setState(() => _preferredSupermarket = value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +157,51 @@ class SettingsScreen extends StatelessWidget {
 
           const SizedBox(height: 12),
 
+          // --- Supermercato preferito ---
+          PillCard(
+            child: PillListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.store_rounded, color: Colors.orange, size: 20),
+              ),
+              title: "Supermercato Preferito",
+              subtitle: _preferredSupermarket ?? "Nessuna preferenza impostata",
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showSupermarketDialog(context),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // --- Timer cottura ---
+          PillCard(
+            child: PillListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.timer_rounded, color: Colors.deepOrange, size: 20),
+              ),
+              title: "Timer Cottura",
+              subtitle: "Countdown per i tuoi piatti",
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CookingTimerScreen()),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, _) => PillCard(
               child: SwitchListTile(
@@ -191,6 +289,107 @@ class SettingsScreen extends StatelessWidget {
                 fontSize: 12,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSupermarketDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.store_rounded, color: Colors.orange, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Supermercato Preferito',
+              style: TextStyle(
+                color: KyboColors.textPrimary(context),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Seleziona il supermercato dove fai la spesa più spesso.',
+                style: TextStyle(
+                  color: KyboColors.textSecondary(context),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Opzione "Nessuna preferenza"
+                      RadioListTile<String?>(
+                        value: null,
+                        groupValue: _preferredSupermarket,
+                        onChanged: (v) {
+                          _saveSupermarketPref(v);
+                          Navigator.pop(ctx);
+                        },
+                        title: Text(
+                          'Nessuna preferenza',
+                          style: TextStyle(
+                            color: KyboColors.textSecondary(context),
+                            fontSize: 14,
+                          ),
+                        ),
+                        activeColor: Colors.orange,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      ..._supermarkets.map((name) => RadioListTile<String?>(
+                        value: name,
+                        groupValue: _preferredSupermarket,
+                        onChanged: (v) {
+                          _saveSupermarketPref(v);
+                          Navigator.pop(ctx);
+                        },
+                        title: Text(
+                          name,
+                          style: TextStyle(
+                            color: KyboColors.textPrimary(context),
+                            fontSize: 14,
+                          ),
+                        ),
+                        activeColor: Colors.orange,
+                        contentPadding: EdgeInsets.zero,
+                      )),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          PillButton(
+            label: 'Chiudi',
+            onPressed: () => Navigator.pop(ctx),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 40,
           ),
         ],
       ),

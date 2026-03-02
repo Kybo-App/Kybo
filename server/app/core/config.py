@@ -23,7 +23,10 @@ class Settings(BaseSettings):
 
     _prod_origins: list[str] = [
         "https://app.kybo.it",
-        "https://kybo.it"
+        "https://kybo.it",
+        "https://kybo.app",
+        "https://www.kybo.it",
+        "https://www.kybo.app",
     ]
 
     @property

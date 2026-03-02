@@ -29,9 +29,17 @@ const TestimonialsSection = dynamic(
   () => import('@/components/sections/TestimonialsSection'),
   { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
 );
+const NewsletterSection = dynamic(
+  () => import('@/components/sections/NewsletterSection'),
+  { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
+);
 const CTASection = dynamic(
   () => import('@/components/sections/CTASection'),
   { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
+);
+const TrialPopup = dynamic(
+  () => import('@/components/TrialPopup'),
+  { ssr: false }
 );
 
 export default function HomePage() {
@@ -56,9 +64,13 @@ export default function HomePage() {
           <TestimonialsSection />
         </Suspense>
         <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
+          <NewsletterSection />
+        </Suspense>
+        <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
           <CTASection />
         </Suspense>
       </main>
+      <TrialPopup />
     </>
   );
 }

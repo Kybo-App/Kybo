@@ -43,6 +43,7 @@ from app.routers.reports import router as reports_router
 from app.routers.twofa import router as twofa_router
 from app.routers.communication import router as communication_router
 from app.routers.suggestions import router as suggestions_router
+from app.routers.newsletter import router as newsletter_router, contact_router
 from app.core.cache import redis_cache
 from app.workers.unread_notifier import unread_notification_worker
 from app.workers.monthly_report_mailer import monthly_report_mailer_worker
@@ -128,6 +129,8 @@ app.include_router(reports_router)
 app.include_router(twofa_router)
 app.include_router(communication_router)
 app.include_router(suggestions_router)
+app.include_router(newsletter_router)
+app.include_router(contact_router)
 
 
 async def maintenance_worker():
