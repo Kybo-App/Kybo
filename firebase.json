@@ -11,8 +11,12 @@
     "public": "landing/out",
     "cleanUrls": true,
     "trailingSlash": false,
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": ["firebase.json", "**/.git/**", "**/.gitignore", "**/.env*", "**/.DS_Store", "**/node_modules/**"],
     "rewrites": [
+      {
+        "source": "/list",
+        "destination": "/list/index.html"
+      },
       {
         "source": "/business",
         "destination": "/business/index.html"

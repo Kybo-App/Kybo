@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "it.kybo.app",
+      "sha256_cert_fingerprints": [
+        "DD:14:B3:AA:0E:1F:F1:A1:04:8E:B7:2D:99:49:F5:B0:30:F5:A4:DD:BB:14:B1:08:87:0F:D8:75:10:95:55:6D"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "it.kybo.app.dev",
+      "sha256_cert_fingerprints": [
+        "DD:14:B3:AA:0E:1F:F1:A1:04:8E:B7:2D:99:49:F5:B0:30:F5:A4:DD:BB:14:B1:08:87:0F:D8:75:10:95:55:6D"
+      ]
+    }
+  }
+]
