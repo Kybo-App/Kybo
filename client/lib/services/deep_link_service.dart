@@ -23,9 +23,15 @@ class DeepLinkService {
 
   Stream<String> get navigationStream => _navigationController.stream;
 
+  /// Ultimo URI ricevuto (deep link o initial link). Usato per estrarre parametri
+  /// come share_id dopo che il navigationStream ha già emesso il target.
+  Uri? _lastUri;
+  Uri? get lastUri => _lastUri;
+
   Future<Uri?> init() async {
     try {
       final initialLink = await _appLinks.getInitialLink();
+      _lastUri = initialLink;
       _listenToLinks();
       return initialLink;
     } catch (e) {
@@ -37,6 +43,7 @@ class DeepLinkService {
   void _listenToLinks() {
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       debugPrint("DeepLink Received: $uri");
+      _lastUri = uri;
       final target = getNavigationTarget(uri);
       if (target != null) {
         _navigationController.add(target);

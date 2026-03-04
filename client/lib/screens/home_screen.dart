@@ -3,6 +3,7 @@
 // _findNextMeal — individua il prossimo pasto non consumato in base all'ora corrente.
 // _onShowcaseComplete — gestisce le transizioni tra le fasi del tutorial interattivo.
 import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +32,7 @@ import 'badges_screen.dart';
 import 'meal_suggestions_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../core/env.dart';
 import '../services/jailbreak_service.dart';
 import '../services/deep_link_service.dart';
@@ -124,7 +125,58 @@ class _MainScreenContentState extends State<MainScreenContent>
           MaterialPageRoute(builder: (_) => const MealSuggestionsScreen()),
         );
         break;
+      case NavTarget.shoppingList:
+        setState(() => _currentIndex = 2);
+        final shareId = DeepLinkService.getSharedListId(DeepLinkService().lastUri);
+        if (shareId != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _loadAndShowSharedList(shareId));
+        }
+        break;
     }
+  }
+
+  Future<void> _loadAndShowSharedList(String shareId) async {
+    if (!mounted) return;
+    try {
+      final response = await http.get(
+        Uri.parse('${Env.apiUrl}/shopping-list/share/$shareId'),
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final items = List<String>.from(data['items'] ?? []);
+        final title = data['title'] as String? ?? 'Lista condivisa';
+        _showSharedListDialog(title, items);
+      }
+    } catch (_) {}
+  }
+
+  void _showSharedListDialog(String title, List<String> items) {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: items.length,
+            itemBuilder: (_, i) => ListTile(
+              leading: Icon(Icons.shopping_cart_outlined, color: KyboColors.primary),
+              title: Text(items[i]),
+              dense: true,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Chiudi'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Crea o ricrea il TabController quando cambia il numero di giorni o la settimana selezionata.
@@ -1918,38 +1970,36 @@ class _MainScreenContentState extends State<MainScreenContent>
 
     try {
       final token = await user.getIdToken();
-      final uri = Uri.parse('${Env.apiUrl}/export-diet-pdf');
 
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           const SnackBar(
             content: Text('Generazione PDF in corso...'),
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 3),
           ),
         );
       }
 
       final response = await http.get(
-        uri,
+        Uri.parse('${Env.apiUrl}/export-diet-pdf'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(ctx).hideCurrentSnackBar();
+
       if (response.statusCode == 200) {
-        final downloadUri = Uri.parse(
-          '${Env.apiUrl}/export-diet-pdf?token=${Uri.encodeComponent(token!)}',
+        await Share.shareXFiles(
+          [XFile.fromData(response.bodyBytes, name: 'dieta-kybo.pdf', mimeType: 'application/pdf')],
+          subject: 'Dieta Kybo',
         );
-        if (await canLaunchUrl(downloadUri)) {
-          await launchUrl(downloadUri, mode: LaunchMode.externalApplication);
-        }
       } else {
-        if (ctx.mounted) {
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(
-              content: Text('Errore esportazione: ${response.statusCode}'),
-              backgroundColor: KyboColors.error,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('Errore esportazione: ${response.statusCode}'),
+            backgroundColor: KyboColors.error,
+          ),
+        );
       }
     } catch (e) {
       if (ctx.mounted) {

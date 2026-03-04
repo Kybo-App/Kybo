@@ -64,6 +64,14 @@
                 <data android:scheme="kybo" android:host="diet" />
                 <data android:scheme="kybo" android:host="suggestions" />
             </intent-filter>
+
+            <!-- Deep Links: lista della spesa condivisa -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kybo" android:host="list" />
+            </intent-filter>
         </activity>
 
         <meta-data
