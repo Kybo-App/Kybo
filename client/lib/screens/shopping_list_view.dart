@@ -400,10 +400,13 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final url = data['url'] as String;
+        final shareId = data['share_id'] as String;
+        // Usa lo schema kybo:// per aprire direttamente l'app (https://kybo.app
+        // richiederebbe Digital Asset Links per essere intercettato da Android).
+        final deepLink = 'kybo://list?id=$shareId';
 
         await Share.share(
-          '🛒 Lista della Spesa Kybo\n\nApri il link per vedere tutti gli articoli:\n$url\n\n(Link valido 7 giorni)',
+          '🛒 Lista della Spesa Kybo\n\nApri il link nell\'app Kybo:\n$deepLink\n\n(Link valido 7 giorni)',
           subject: 'Lista della Spesa',
         );
 
