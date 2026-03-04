@@ -195,22 +195,70 @@ class _MainScreenContentState extends State<MainScreenContent>
     );
   }
 
+  // Regex: "200g di pollo" | "2 mele" | "1 kg riso"
+  static final _itemRegex = RegExp(
+    r'^(\d+(?:[.,]\d+)?)\s*(g|gr|kg|ml|l|cl|dl|pz|pezzi|fett[ae]|cucchiai(?:no)?|tazz[ae]?)?\s*(?:di\s+)?(.+)$',
+    caseSensitive: false,
+  );
+
+  static (double, String, String)? _parseItem(String raw) {
+    final text = raw.startsWith('OK_') ? raw.substring(3) : raw;
+    final m = _itemRegex.firstMatch(text.trim());
+    if (m == null) return null;
+    final qty = double.tryParse(m.group(1)!.replaceAll(',', '.')) ?? 1.0;
+    final unit = (m.group(2) ?? '').toLowerCase();
+    final name = m.group(3)!.trim().toLowerCase();
+    return (qty, unit, name);
+  }
+
+  static String _formatItem(double qty, String unit, String name) {
+    final q = qty == qty.roundToDouble() ? qty.toInt().toString() : qty.toStringAsFixed(1);
+    return unit.isNotEmpty ? '$q$unit di $name' : '$q $name';
+  }
+
   void _mergeSharedItems(List<String> incomingItems) {
     if (!mounted) return;
     final provider = context.read<DietProvider>();
-    final current = provider.shoppingList;
-    final currentNames = current.map((e) => e.startsWith('OK_') ? e.substring(3) : e).toSet();
-    final toAdd = incomingItems.where((item) => !currentNames.contains(item)).toList();
-    if (toAdd.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tutti gli articoli sono già nella tua lista.')),
-      );
-      return;
+    final updated = List<String>.from(provider.shoppingList);
+    int added = 0;
+    int summed = 0;
+
+    for (final incoming in incomingItems) {
+      final parsed = _parseItem(incoming);
+      if (parsed != null) {
+        final (inQty, inUnit, inName) = parsed;
+        int matchIdx = -1;
+        for (int i = 0; i < updated.length; i++) {
+          final ex = _parseItem(updated[i]);
+          if (ex != null) {
+            final (_, exUnit, exName) = ex;
+            if (exName == inName && exUnit == inUnit) { matchIdx = i; break; }
+          }
+        }
+        if (matchIdx >= 0) {
+          final (exQty, exUnit, exName) = _parseItem(updated[matchIdx])!;
+          updated[matchIdx] = _formatItem(exQty + inQty, exUnit, exName);
+          summed++;
+        } else {
+          updated.add(incoming);
+          added++;
+        }
+      } else {
+        final plain = incoming.startsWith('OK_') ? incoming.substring(3) : incoming;
+        final alreadyPresent = updated.any((e) {
+          final t = e.startsWith('OK_') ? e.substring(3) : e;
+          return t.toLowerCase() == plain.toLowerCase();
+        });
+        if (!alreadyPresent) { updated.add(incoming); added++; }
+      }
     }
-    provider.updateShoppingList([...current, ...toAdd]);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${toAdd.length} articol${toAdd.length == 1 ? 'o aggiunto' : 'i aggiunti'} alla tua lista.')),
-    );
+
+    provider.updateShoppingList(updated);
+    final parts = <String>[];
+    if (added > 0) parts.add('$added aggiunt${added == 1 ? 'o' : 'i'}');
+    if (summed > 0) parts.add('$summed sommati');
+    final msg = parts.isEmpty ? 'Nessuna modifica.' : parts.join(', ');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   /// Crea o ricrea il TabController quando cambia il numero di giorni o la settimana selezionata.
