@@ -65,12 +65,20 @@
                 <data android:scheme="kybo" android:host="suggestions" />
             </intent-filter>
 
-            <!-- Deep Links: lista della spesa condivisa -->
+            <!-- Deep Links: lista della spesa condivisa (schema kybo://) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kybo" android:host="list" />
+            </intent-filter>
+
+            <!-- App Links: lista della spesa condivisa (https://kybo.app/list) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="kybo.app" android:pathPrefix="/list" />
             </intent-filter>
         </activity>
 
