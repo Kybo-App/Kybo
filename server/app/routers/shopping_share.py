@@ -12,6 +12,7 @@ import firebase_admin
 import secrets
 import re
 from datetime import datetime, timezone, timedelta
+from app.core.config import settings
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -59,7 +60,7 @@ async def create_share(request: Request, req: ShareListRequest):
 
     return {
         "share_id": share_id,
-        "url": f"https://kybo.it/list?id={share_id}",
+        "url": f"https://kybo.it/list?id={share_id}" + ("&dev=1" if settings.ENV != "PROD" else ""),
         "expires_in_days": SHARE_TTL_DAYS,
     }
 

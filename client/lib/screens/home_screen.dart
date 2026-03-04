@@ -96,10 +96,11 @@ class _MainScreenContentState extends State<MainScreenContent>
     super.initState();
     _initialPermissionCheck();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _checkJailbreak();
-      _initAppData();
+      await _initAppData();
       _checkTutorial();
+      _handleInitialDeepLink();
     });
 
     _deepLinkNavSubscription = DeepLinkService().navigationStream.listen(_handleNavTarget);
@@ -110,6 +111,14 @@ class _MainScreenContentState extends State<MainScreenContent>
     _deepLinkNavSubscription?.cancel();
     _tabController?.dispose();
     super.dispose();
+  }
+
+  /// Gestisce il deep link iniziale (cold start) dopo che i dati sono caricati.
+  void _handleInitialDeepLink() {
+    final uri = DeepLinkService().lastUri;
+    if (uri == null) return;
+    final target = DeepLinkService.getNavigationTarget(uri);
+    if (target != null) _handleNavTarget(target);
   }
 
   /// Naviga alla schermata corretta quando arriva un deep link da Siri / Assistant.
@@ -174,8 +183,33 @@ class _MainScreenContentState extends State<MainScreenContent>
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Chiudi'),
           ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _mergeSharedItems(items);
+            },
+            child: const Text('Aggiungi alla lista'),
+          ),
         ],
       ),
+    );
+  }
+
+  void _mergeSharedItems(List<String> incomingItems) {
+    if (!mounted) return;
+    final provider = context.read<DietProvider>();
+    final current = provider.shoppingList;
+    final currentNames = current.map((e) => e.startsWith('OK_') ? e.substring(3) : e).toSet();
+    final toAdd = incomingItems.where((item) => !currentNames.contains(item)).toList();
+    if (toAdd.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tutti gli articoli sono già nella tua lista.')),
+      );
+      return;
+    }
+    provider.updateShoppingList([...current, ...toAdd]);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${toAdd.length} articol${toAdd.length == 1 ? 'o aggiunto' : 'i aggiunti'} alla tua lista.')),
     );
   }
 
