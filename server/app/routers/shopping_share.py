@@ -59,7 +59,7 @@ async def create_share(request: Request, req: ShareListRequest):
 
     return {
         "share_id": share_id,
-        "url": f"https://kybo.app/list?id={share_id}",
+        "url": f"https://kybo.it/list?id={share_id}",
         "expires_in_days": SHARE_TTL_DAYS,
     }
 
