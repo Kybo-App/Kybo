@@ -73,12 +73,12 @@
                 <data android:scheme="kybo" android:host="list" />
             </intent-filter>
 
-            <!-- App Links: lista della spesa condivisa (https://kybo.app/list) -->
+            <!-- App Links: lista della spesa condivisa (https://kybo.it/list) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="kybo.app" android:pathPrefix="/list" />
+                <data android:scheme="https" android:host="kybo.it" android:pathPrefix="/list" />
             </intent-filter>
         </activity>
 
