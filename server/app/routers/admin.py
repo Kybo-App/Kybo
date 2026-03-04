@@ -187,7 +187,7 @@ async def log_access(request: Request, body: LogAccessRequest, requester: dict =
 
 
 @router.get("/user-history/{target_uid}")
-@limiter.limit("120/minute")
+@limiter.limit("20/minute")
 async def get_secure_user_history(request: Request, target_uid: str, requester: dict = Depends(verify_professional)):
     """Ottiene lo storico diete di un utente."""
     requester_id = requester['uid']

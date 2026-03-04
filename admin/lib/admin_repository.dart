@@ -622,13 +622,12 @@ class AdminRepository {
     int limit = 12,
   }) async {
     final token = await _getToken();
-    var url = '$_baseUrl/admin/reports/list?limit=$limit';
-    if (nutritionistId != null) {
-      url += '&nutritionist_id=$nutritionistId';
-    }
+    final queryParams = <String, String>{'limit': '$limit'};
+    if (nutritionistId != null) queryParams['nutritionist_id'] = nutritionistId;
+    final uri = Uri.parse('$_baseUrl/admin/reports/list').replace(queryParameters: queryParams);
 
     final response = await http.get(
-      Uri.parse(url),
+      uri,
       headers: {'Authorization': 'Bearer $token'},
     );
 
