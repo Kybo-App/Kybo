@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "XXXXXXXXXX.it.kybo.app"
+        ],
+        "components": [
+          {
+            "/": "/list*",
+            "comment": "Lista della spesa condivisa"
+          }
+        ]
+      }
+    ]
+  }
+}
