@@ -19,6 +19,9 @@ class Settings(BaseSettings):
         "http://localhost:8080",
         "http://localhost:4000",
         "http://localhost:5000",
+        "https://kybo.it",
+        "https://www.kybo.it",
+        "https://kybo.app",
     ]
 
     _prod_origins: list[str] = [
