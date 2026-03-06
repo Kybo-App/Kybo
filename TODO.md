@@ -205,7 +205,7 @@
 
 ### Landing - Contenuti
 - [x] Sezione testimonianze / recensioni utenti → landing/src/components/sections/TestimonialsSection.tsx
-- [x] Video demo dell'app (embedded YouTube/Vimeo) → VideoSection.tsx con placeholder, imposta VIDEO_ID quando hai il video
+- [ ] Video demo dell'app — da decidere se rimuovere VideoSection.tsx o aggiungere VIDEO_ID YouTube/Vimeo reale
 - [x] Blog / articoli su nutrizione (SEO content marketing) → landing/src/app/blog/page.tsx
 - [x] Sezione FAQ espandibile → landing/src/app/faq/page.tsx
 - [x] Pagina "Chi Siamo" con storia e mission
@@ -221,6 +221,17 @@
 - [x] Form contatto funzionante → contact/page.tsx + POST /contact/submit (Firestore)
 - [x] Newsletter signup con integrazione email marketing → NewsletterSection.tsx + POST /newsletter/subscribe
 - [x] Popup/banner "prova gratuita" con timer → TrialPopup.tsx (appare dopo 8 sec)
-- [x] Chat widget per supporto live → CrispChat.tsx, imposta CRISP_WEBSITE_ID dopo aver creato account su crisp.chat
-- [x] Link diretto a App Store e Google Play → CTASection.tsx (placeholder, aggiornare con URL reali al lancio)
+- [ ] Chat widget supporto live → CrispChat.tsx ha il componente, manca CRISP_WEBSITE_ID (creare account su crisp.chat)
+- [ ] Link App Store reale → CTASection.tsx ha placeholder, aggiornare quando l'app iOS è su App Store
+- [ ] Link Google Play reale → CTASection.tsx ha placeholder, aggiornare quando l'app è su Play Store
 - [x] QR code per download diretto dell'app → CTASection.tsx (SVG inline)
+
+### Client - Tecnico
+- [ ] `client/nul` → aggiungere al .gitignore (file spurio che appare sempre come untracked)
+- [ ] iOS Universal Links → manca `apple-app-site-association` in public/.well-known/ (solo Android App Links fatto)
+
+### Al lancio / quando pronti
+- [ ] Impostare CRISP_WEBSITE_ID in CrispChat.tsx dopo aver creato account Crisp
+- [ ] Aggiornare URL App Store in CTASection.tsx
+- [ ] Aggiornare URL Google Play in CTASection.tsx
+- [ ] Decidere se mantenere o rimuovere VideoSection dalla landing

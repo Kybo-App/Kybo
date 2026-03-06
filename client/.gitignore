@@ -58,3 +58,6 @@ env_dev_base64.txt
 env_prod_base64.txt
 # Android build reports and artifacts
 android/build/
+
+# Windows spurious file
+nul
