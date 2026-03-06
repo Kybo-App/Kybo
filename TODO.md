@@ -221,17 +221,17 @@
 - [x] Form contatto funzionante → contact/page.tsx + POST /contact/submit (Firestore)
 - [x] Newsletter signup con integrazione email marketing → NewsletterSection.tsx + POST /newsletter/subscribe
 - [x] Popup/banner "prova gratuita" con timer → TrialPopup.tsx (appare dopo 8 sec)
-- [ ] Chat widget supporto live → CrispChat.tsx ha il componente, manca CRISP_WEBSITE_ID (creare account su crisp.chat)
+- [ ] Chat widget supporto live → rimosso per ora, da valutare in futuro
 - [ ] Link App Store reale → CTASection.tsx ha placeholder, aggiornare quando l'app iOS è su App Store
 - [ ] Link Google Play reale → CTASection.tsx ha placeholder, aggiornare quando l'app è su Play Store
 - [x] QR code per download diretto dell'app → CTASection.tsx (SVG inline)
 
 ### Client - Tecnico
-- [ ] `client/nul` → aggiungere al .gitignore (file spurio che appare sempre come untracked)
-- [ ] iOS Universal Links → manca `apple-app-site-association` in public/.well-known/ (solo Android App Links fatto)
+- [x] `client/nul` → aggiunto al .gitignore
+- [x] iOS Universal Links → `apple-app-site-association` creato + `Runner.entitlements` + pbxproj aggiornato
+  - ⚠️ TODO: sostituire `XXXXXXXXXX` in `landing/public/.well-known/apple-app-site-association` con il vero Apple Team ID
 
 ### Al lancio / quando pronti
-- [ ] Impostare CRISP_WEBSITE_ID in CrispChat.tsx dopo aver creato account Crisp
 - [ ] Aggiornare URL App Store in CTASection.tsx
 - [ ] Aggiornare URL Google Play in CTASection.tsx
 - [ ] Decidere se mantenere o rimuovere VideoSection dalla landing
