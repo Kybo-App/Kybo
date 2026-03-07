@@ -148,7 +148,7 @@ export default function CaseStudyPage() {
                 <h2 className={styles.sectionTitle}>Kybo come unico hub per tutto</h2>
                 <p className={styles.sectionText}>
                   Con Kybo, la Dott.ssa Rossi ha centralizzato diete, comunicazione e
-                  monitoraggio in un'unica piattaforma. Il parser AI legge i suoi PDF e
+                  monitoraggio in un&apos;unica piattaforma. Il parser AI legge i suoi PDF e
                   li rende interattivi per i clienti in pochi secondi.
                 </p>
                 <ul className={styles.solutionList}>

@@ -139,7 +139,7 @@ class MealCard extends StatelessWidget {
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
                                         color: currentNote != null
-                                            ? Colors.purple.withValues(alpha: 0.1)
+                                            ? KyboColors.roleAdmin.withValues(alpha: 0.1)
                                             : KyboColors.surface(context),
                                         shape: BoxShape.circle,
                                       ),
@@ -148,7 +148,7 @@ class MealCard extends StatelessWidget {
                                             ? Icons.edit_note
                                             : Icons.note_add_outlined,
                                         color: currentNote != null
-                                            ? Colors.purple
+                                            ? KyboColors.roleAdmin
                                             : KyboColors.textMuted(context),
                                         size: 18,
                                       ),

@@ -425,7 +425,7 @@ class _DietViewState extends State<DietView> {
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
           title: Row(
             children: [
-              Icon(Icons.edit_note, color: Colors.purple),
+              Icon(Icons.edit_note, color: KyboColors.roleAdmin),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -464,12 +464,12 @@ class _DietViewState extends State<DietView> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Colors.purple.withValues(alpha: 0.2)
+                            ? KyboColors.roleAdmin.withValues(alpha: 0.2)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
-                              ? Colors.purple
+                              ? KyboColors.roleAdmin
                               : KyboColors.border(context),
                         ),
                       ),
@@ -509,7 +509,7 @@ class _DietViewState extends State<DietView> {
                   }
                 }
               },
-              backgroundColor: Colors.purple,
+              backgroundColor: KyboColors.roleAdmin,
               textColor: Colors.white,
               height: 44,
             ),

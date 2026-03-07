@@ -86,7 +86,7 @@ function SharedListContent() {
         setError(err.message);
         setLoading(false);
       });
-  }, [id]);
+  }, [id, apiBase]);
 
   function toggleItem(idx: number) {
     setChecked((prev) => {

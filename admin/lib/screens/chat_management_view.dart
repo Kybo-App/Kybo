@@ -637,6 +637,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
 
   Future<void> _sendMessage() async {
     final provider = context.read<AdminChatProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     final chatId = provider.selectedChatId;
     final message = _messageController.text.trim();
 
@@ -678,7 +679,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Errore invio: $e'), backgroundColor: KyboColors.error),
       );
     } finally {
@@ -1029,7 +1030,7 @@ class _MessageBubble extends StatelessWidget {
             height: 150,
             width: 200,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
             loadingBuilder: (_, child, prog) {
               if (prog == null) return child;
               return Container(
@@ -1251,7 +1252,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                           onChanged: !_emailConfigured
                               ? null
                               : (v) => setState(() => _enabled = v),
-                          activeColor: KyboColors.primary,
+                          activeThumbColor: KyboColors.primary,
                         ),
                       ],
                     ),

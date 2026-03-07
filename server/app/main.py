@@ -259,7 +259,7 @@ async def health_check_detailed():
     }
 
     try:
-        db = firestore.client()
+        db = firebase_admin.firestore.client()
         doc = db.collection("config").document("global").get()
         if doc.exists:
             checks["firebase"] = {"status": "ok", "message": "Connected"}

@@ -69,7 +69,7 @@ export default function HorizontalGallery() {
     <div ref={outerRef} id="gallery" className={styles.outer}>
       <div className={styles.sticky}>
         <div className={styles.header}>
-          <h2 className={styles.title}>Esplora l'app</h2>
+          <h2 className={styles.title}>Esplora l&apos;app</h2>
           <p className={styles.subtitle}>Scorri per vedere tutte le funzionalità</p>
         </div>
 
