@@ -60,7 +60,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
   bool get _isPantryMode => widget.pantryItems != null && widget.pantryItems!.isNotEmpty;
 
   String _selectedMealType = 'Tutti';
-  int _count = 6;
+  final int _count = 6;
   List<SuggestedDish> _suggestions = [];
   String _contextUsed = '';
   bool _loading = false;

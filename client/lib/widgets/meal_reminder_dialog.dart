@@ -22,8 +22,8 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
     'Spuntino': '16:00',
   };
 
-  Map<String, bool> _enabled = {};
-  Map<String, TimeOfDay> _times = {};
+  final Map<String, bool> _enabled = {};
+  final Map<String, TimeOfDay> _times = {};
   bool _isLoading = true;
   List<String> _availableMeals = [];
 
@@ -198,7 +198,7 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
                     visualDensity: VisualDensity.compact,
                     leading: Switch(
                       value: isEnabled,
-                      activeColor: KyboColors.primary,
+                      activeThumbColor: KyboColors.primary,
                       onChanged: (val) {
                         setState(() => _enabled[meal] = val);
                       },
@@ -240,13 +240,13 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isEnabled ? KyboColors.primary : Colors.grey.withValues(alpha: 0.1),
+                          color: isEnabled ? KyboColors.primary : KyboColors.textMutedLight.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
                           style: TextStyle(
-                            color: isEnabled ? Colors.white : Colors.grey,
+                            color: isEnabled ? Colors.white : KyboColors.textMutedLight,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),

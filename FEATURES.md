@@ -87,6 +87,13 @@
 | `/gdpr/admin/retention-config` | POST | 🔴 | Aggiorna retention policy (6–120 mesi, dry-run toggle) |
 | `/gdpr/admin/purge-inactive` | POST | 🔴 | Purge Art. 17 GDPR: elimina utenti inattivi (dry-run o reale) |
 
+### Lista della Spesa Condivisa (`/shopping-list`)
+
+| Endpoint | Metodo | Ruolo | Descrizione |
+|----------|--------|-------|-------------|
+| `/shopping-list/share` | POST | 🟢 | Crea snapshot condiviso (max 200 items, TTL 7 giorni) → ritorna URL `kybo.it/list?id=XXX` |
+| `/shopping-list/share/{id}` | GET | 🌐 | Legge snapshot condiviso (pubblico, no auth, controlla scadenza) |
+
 ### Comunicazione (`/admin/communication`)
 
 | Endpoint | Metodo | Ruolo | Descrizione |
@@ -288,6 +295,8 @@
 | Inserimento codice invito | 🌐 | Dialog per codice nutrizionista (cap 64 char) |
 | Login email/password | 🌐 | Firebase Auth |
 | Deep link al login | 🌐 | Apertura da link invito con codice pre-compilato |
+| Android App Links | 🌐 | `kybo.it/list` apre direttamente l'app (HTTPS intent-filter, `autoVerify`, `assetlinks.json`) |
+| iOS Universal Links | 🌐 | `kybo.it/list` apre direttamente l'app (`apple-app-site-association`, `Runner.entitlements`) |
 | Splash screen | 🌐 | Check auth state → redirect automatico |
 | Tutorial interattivo | 🟢 | Showcase multi-step al primo accesso (resettabile) |
 | Jailbreak/root detection | 🟢 | Avviso su dispositivi compromessi |
@@ -331,6 +340,7 @@
 | Checkmark items | 🟢 | Marca items come acquistati |
 | Sposta a/da dispensa | 🟢 | Trasferimento diretto alla dispensa |
 | Condivisione lista | 🟢 | Share via WhatsApp, email, ecc. (Share Plus) |
+| Condivisione via link URL | 🟢 | Genera snapshot condiviso su server (POST `/shopping-list/share`) → URL `kybo.it/list?id=XXX` accessibile senza app |
 | Filtro per pasto/giorno | 🟢 | Genera lista solo per selezione specifica |
 
 ### Chat con Nutrizionista
@@ -427,9 +437,11 @@
 | Prezzi | `/pricing` | Piani (free/pro/enterprise) con toggle mensile/annuale |
 | FAQ | `/faq` | Domande frequenti con accordion collapsible |
 | Contatti | `/contact` | Form contatti (email, oggetto, messaggio) |
-| Supporto | `/help` | Centro aiuto e documentazione |
-| Privacy Policy | `/privacy` | Informativa GDPR e cookie policy |
-| Termini di Servizio | `/terms` | Condizioni d'uso e disclaimer |
+| Lista Condivisa | `/list` | Visualizza lista della spesa condivisa via link (no auth) |
+| Lavora con Noi | `/careers` | Posizioni aperte e candidatura spontanea |
+| Supporto | `/help` | Centro assistenza (placeholder — contenuto in costruzione) |
+| Privacy Policy | `/privacy` | Informativa GDPR e cookie policy (placeholder — testo legale da completare) |
+| Termini di Servizio | `/terms` | Condizioni d'uso e disclaimer (placeholder — testo legale da completare) |
 | Cookie Policy | `/cookies` | Dettaglio cookie utilizzati e consenso |
 | Versione EN | `/en` | Traduzione completa in inglese delle sezioni principali |
 
@@ -480,5 +492,5 @@
 | Admin | Flutter Web · Provider · fl_chart |
 | Client | Flutter Mobile (iOS/Android) · Provider |
 | Landing | Next.js 14 (App Router) · GSAP · Three.js · TypeScript |
-| Deploy | Render (server Docker) · Render Static (landing) |
+| Deploy | Render (server Docker) · Firebase Hosting (landing) |
 | CI/CD | GitHub Actions |

@@ -266,7 +266,9 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (days.isEmpty) return;
     if (_tabController != null &&
         days.length == _lastDaysCount &&
-        selectedWeek == _lastSelectedWeek) return;
+        selectedWeek == _lastSelectedWeek) {
+      return;
+    }
 
     const italianWeekdays = [
       'lunedì', 'martedì', 'mercoledì', 'giovedì',
@@ -1903,15 +1905,15 @@ class _MainScreenContentState extends State<MainScreenContent>
                             onTap: () async {
                               Navigator.pop(drawerCtx);
                               await context.read<DietProvider>().clearData();
+                              if (!context.mounted) return;
                               // [SECURITY] Pulisce stato chat per evitare che
                               // dati del precedente utente restino in memoria.
                               context.read<ChatProvider>().clearChat();
                               await _auth.signOut();
-                              if (mounted) {
-                                Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                );
-                              }
+                              if (!context.mounted) return;
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              );
                             },
                           ),
                         ],

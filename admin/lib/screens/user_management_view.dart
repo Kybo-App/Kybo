@@ -1272,7 +1272,8 @@ class _UserCardState extends State<_UserCard> {
             isDietExpired = true;
           }
         }
-      } catch (e) {
+      } catch (_) {
+        // Diet date parsing failed — non-critical, isDietExpired stays false
       }
     }
 
@@ -2357,7 +2358,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: sorted.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, index) => const SizedBox(height: 12),
                   itemBuilder: (ctx, i) {
                     final note = sorted[i] as Map<String, dynamic>;
                     final catInfo = _getCategoryInfo(note['category'] ?? 'general');

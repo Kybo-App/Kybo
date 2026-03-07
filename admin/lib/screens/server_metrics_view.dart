@@ -397,9 +397,13 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
           final ratio = data?['ratio'] as String? ?? 'N/A';
 
           Color barColor;
-          if (pct >= 0.8) barColor = KyboColors.success;
-          else if (pct >= 0.5) barColor = KyboColors.warning;
-          else barColor = total == 0 ? KyboColors.border : KyboColors.error;
+          if (pct >= 0.8) {
+            barColor = KyboColors.success;
+          } else if (pct >= 0.5) {
+            barColor = KyboColors.warning;
+          } else {
+            barColor = total == 0 ? KyboColors.border : KyboColors.error;
+          }
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 14),

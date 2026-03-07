@@ -7,14 +7,12 @@ Prima di inviare il testo a Gemini, applica sanitizzazione GDPR per rimuovere PI
 import json
 import re
 import io
-import logging
 import pdfplumber
 import hashlib
 from google import genai
-
-logger = logging.getLogger(__name__)
 from google.genai import types
 from app.core.config import settings
+from app.core.logging import logger
 from app.services.app_config_service import get_app_config
 from app.core.metrics import (
     diet_gemini_calls_total,

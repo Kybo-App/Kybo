@@ -196,7 +196,7 @@
 
 ### Client - Shopping List (extra)
 - [x] Preferenze supermercato (salva il tuo negozio preferito) → settings_screen.dart
-- [x] Lista spesa condivisa via link (kybo.app/list?id=...) → shopping_share.py + landing/list/page.tsx
+- [x] Lista spesa condivisa via link (kybo.it/list?id=...) → shopping_share.py + landing/list/page.tsx
 
 ### Client - Ricette & Meal Prep
 - [x] Suggerimenti ricette basate sugli ingredienti in dispensa
@@ -205,7 +205,7 @@
 
 ### Landing - Contenuti
 - [x] Sezione testimonianze / recensioni utenti → landing/src/components/sections/TestimonialsSection.tsx
-- [ ] Video demo dell'app — da decidere se rimuovere VideoSection.tsx o aggiungere VIDEO_ID YouTube/Vimeo reale
+- [x] Video demo dell'app — VideoSection.tsx rimossa (da reintrodurre quando disponibile video reale)
 - [x] Blog / articoli su nutrizione (SEO content marketing) → landing/src/app/blog/page.tsx
 - [x] Sezione FAQ espandibile → landing/src/app/faq/page.tsx
 - [x] Pagina "Chi Siamo" con storia e mission
@@ -234,4 +234,4 @@
 ### Al lancio / quando pronti
 - [ ] Aggiornare URL App Store in CTASection.tsx
 - [ ] Aggiornare URL Google Play in CTASection.tsx
-- [ ] Decidere se mantenere o rimuovere VideoSection dalla landing
+- [x] VideoSection rimossa dalla landing

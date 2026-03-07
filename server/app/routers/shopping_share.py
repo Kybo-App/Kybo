@@ -66,7 +66,8 @@ async def create_share(request: Request, req: ShareListRequest):
 
 
 @router.get("/share/{share_id}")
-async def get_share(share_id: str):
+@limiter.limit("60/minute")
+async def get_share(request: Request, share_id: str):
     """Recupera uno snapshot condiviso (pubblico, nessuna autenticazione)."""
     if not SHARE_ID_RE.match(share_id):
         raise HTTPException(status_code=404, detail="Lista non trovata.")
