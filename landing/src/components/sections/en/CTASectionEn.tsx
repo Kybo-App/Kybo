@@ -82,10 +82,10 @@ export default function CTASectionEn() {
               <Link href="/" style={{ color: 'inherit', opacity: 0.6 }}>🇮🇹 Versione Italiana</Link>
             </p>
             <div className={styles.socials}>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
+              <a href="https://www.instagram.com/kybo.nutrition/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">🐦</a>
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">📘</a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">💼</a>
+              <a href="https://www.linkedin.com/company/kybonutrition" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">💼</a>
             </div>
           </div>
         </div>
