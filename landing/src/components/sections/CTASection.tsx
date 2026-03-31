@@ -156,7 +156,7 @@ export default function CTASection() {
           <div className={styles.footerBottom}>
             <p className={styles.copyright}>© 2025 Kybo. Tutti i diritti riservati.</p>
             <div className={styles.socials}>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+              <a href="https://www.instagram.com/kybo.nutrition/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                 📷
               </a>
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
@@ -165,7 +165,7 @@ export default function CTASection() {
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                 📘
               </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+              <a href="https://www.linkedin.com/company/kybonutrition" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
                 💼
               </a>
             </div>
