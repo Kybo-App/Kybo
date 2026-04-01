@@ -193,6 +193,28 @@
 | Indicatore 2FA attivo | 🔴 | Badge nella lista utenti |
 | Verifica limite clienti | 🟡 | Blocca assegnazione se nutrizionista ha raggiunto il limite |
 
+### Gestione Workout & Allenamento (Personal Trainer)
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Interfaccia modulare | 🟡 | I PT vedono l'assegnazione schede, i Nutrizionisti vedono le diete |
+| Carica scheda | 🟡 | Creazione e assegnazione di workout con esercizi, serie, ripetizioni |
+
+### Gestione Premi & Gamification (Admin/Coach)
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Catalogo Premi (CRUD) | 🟡 | Crea ricompense sbloccabili con XP dagli utenti (es. sconti, magliette) |
+| Log Riscatti | 🟡 | Visualizza quali clienti hanno riscattato quali premi |
+
+### Marketplace & Matchmaking
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Bacheca Richieste | 🟡 | Visualizza richieste inviate da utenti `independent` in cerca di un professionista |
+| Invia Offerta | 🟡 | Invia una proposta per farsi assegnare un cliente dalla bacheca |
+
+
 ### Analytics
 
 | Feature | Ruolo | Descrizione |
@@ -383,6 +405,28 @@
 | Livelli utente (1–10) | 🟢 | Con emoji e progress bar verso livello successivo |
 | Notifiche unlock | 🟢 | Dialog animato al raggiungimento badge/livello |
 | Sfide settimanali | 🟢 | Es. "prova 3 nuove ricette questa settimana" |
+
+### Negozio Premi & Rewards (Shop)
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Vetrina XP | 🟢 | Mostra saldo attuale punti XP guadagnati tramite la dieta/allenamento |
+| Acquista premio | 🟢 | Spendi punti XP per sbloccare ricompense reali/virtuali impostate dall'Admin |
+| Inventario Premi | 🟢 | Lista dei premi già riscattati |
+
+### Schede Allenamento (Workout)
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Visualizza Scheda | 🟢 | Consulta la scheda di allenamento assegnata dal PT (seri, ripetizioni, note) |
+| Check Workout | 🟢 | Completa l'allenamento per guadagnare bonus punti XP |
+
+### Trova il tuo Coach (Matchmaking)
+
+| Feature | Ruolo | Descrizione |
+|---------|-------|-------------|
+| Form Ricerca | 🟢 | Compila obiettivi, budget e location per richiedere un Nutrizionista o PT |
+| Ricezione Proposte | 🟢 | Accetta un'offerta ricevuta dal marketplace per venire assegnati |
 
 ### Bilancia Smart
 
