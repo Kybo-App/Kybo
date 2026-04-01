@@ -21,7 +21,8 @@
 
 ### Cosa è Kybo
 
-Kybo è una piattaforma **B2B SaaS verticale** per la gestione dello studio nutrizionale.
+Kybo è una piattaforma **B2B SaaS e Marketplace** per la gestione dello studio nutrizionale e del fitness. Inizialmente focalizzata sui biologi nutrizionisti, la roadmap include l'espansione verso i **Personal Trainer (PT)** e un sistema di **Matchmaking** per connettere utenti indipendenti ai professionisti.
+
 Comprende quattro componenti:
 
 | Componente | Utente | Funzione principale |
@@ -171,12 +172,13 @@ per i Programmi per Elaboratore). Costo: ~€70. Ti qualifica immediatamente.
 Offri **14 giorni di trial gratuito** senza carta di credito richiesta.
 Poi paywall duro. Questo è il modello di tutti i SaaS B2B di successo.
 
-### Revenue aggiuntiva (fase successiva)
+### Revenue aggiuntiva (fase successiva: Matchmaking e Lead Gen)
 
-- Marketplace di template dieta tra nutrizionisti (% sulla vendita)
-- Modulo per centri fitness / palestre (nutrizionista + trainer insieme)
-- Export dati aggregati anonimizzati per ricerca (con consenso esplicito, GDPR-compliant)
-- Certificazione Kybo per professionisti (badge di qualità nel profilo)
+La vera scalabilità del modello di business oltre il SaaS puro si basa su due pilastri:
+1. **Matchmaking (Il motore B2C):** Agli utenti indipendenti (che scaricano l'app gratuitamente) Kybo offre la possibilità di "Trovare il tuo professionista". Inserendo Zona, Budget, e Obiettivo, l'utente viene matchato con nutrizionisti e Personal Trainer iscritti. Kybo passa da "costo gestionale" a "motore di guadagno" per il professionista.
+2. **Verticale Personal Trainer (PT):** Inclusione delle schede di allenamento. L'admin panel gestirà l'interfaccia modularmente in base alla qualifica (Solo Nutrizionista, Solo PT, o Ibrido).
+3. **Marketplace Interno:** Vendita di template dieta/allenamento tra professionisti (Kybo trattiene % sulla vendita).
+4. **Licenze B2B2B:** Modulo per centri fitness e palestre (gestione unificata nutrizionista + trainer + cliente).
 
 ---
 

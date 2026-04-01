@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Kybo is a diet management platform for nutritionists and clients with four components:
-- **client/** - Flutter mobile app (iOS/Android) for viewing diets, tracking meals, chatting
-- **admin/** - Flutter web app for nutritionists/admins to manage users, upload diets, view analytics
+Kybo is a wellness and nutrition management platform for nutritionists, personal trainers, and clients with four components:
+- **client/** - Flutter mobile app (iOS/Android) for viewing diets/workouts, tracking meals, redeeming rewards, chatting
+- **admin/** - Flutter web app for nutritionists/PTs/admins to manage users, upload diets/workouts, view analytics
 - **server/** - Python FastAPI backend with Firebase + Google Gemini AI integration
 - **landing/** - Next.js marketing site with GSAP animations
 
@@ -50,10 +50,10 @@ npm run lint                          # Run ESLint
 **Auth dependencies** (in `server/app/core/dependencies.py`):
 - `verify_token` - any authenticated user
 - `verify_admin` - admin role only
-- `verify_professional` - admin OR nutritionist roles
+- `verify_professional` - admin, nutritionist, OR personal_trainer roles
 - `get_current_uid` - returns current user's UID
 
-**User roles**: `client` | `nutritionist` | `admin` | `independent`
+**User roles**: `client` | `nutritionist` | `personal_trainer` | `admin` | `independent`
 
 **API Base URLs**:
 - Dev: `https://kybo-test.onrender.com`
@@ -73,9 +73,13 @@ Both apps use pill-shaped UI components from `lib/widgets/design_system.dart`:
 
 ### Firestore Collections
 ```
-users/{uid}           → role, email, parent_id (nutritionist), custom_parser_prompt
+users/{uid}           → role, email, parent_id, tags, is_nutritionist, is_personal_trainer
   └── diets/current   → Active diet (encrypted)
   └── diets/{id}      → Historical diets (encrypted)
+  └── workouts/{id}   → Assigned workout plans
+  └── claimed_rewards/→ History of redeemed prizes
+rewards_catalog/{id}  → Custom gamification prizes set by admin
+matchmaking_requests/ → Requests from independent users filtering by tags
 chats/{chatId}        → participants, chatType, unreadCount
   └── messages/{id}   → message, senderId, timestamp, attachmentUrl?
 diet_history/{id}     → userId, uploadedBy, parsedData
