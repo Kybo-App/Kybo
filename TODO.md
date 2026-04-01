@@ -235,3 +235,12 @@
 - [ ] Aggiornare URL App Store in CTASection.tsx
 - [ ] Aggiornare URL Google Play in CTASection.tsx
 - [x] VideoSection rimossa dalla landing
+
+
+New TODOs:
+
+- [ ] Aggiungere le schede di allenamento e tutta l'unterfaccia necessaria e la gestione di eessere un personal trainer , sia nutrizionista che personal trainer  , e così ti da le pagine solo necessarie al tuo account 
+- [ ] preparare un sistema di reward per l'app con reward inseribili dall'admin panel , default vuoto 
+- [ ] agli utenti indipendenti dare la possibilità di volere un nutrizionista/personal trainer e kybo ti mette in contatto con lui in base a dove vivi e al budget che hai a disposizione e all'obbiettivo che hai 
+- [ ]  
+ 

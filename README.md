@@ -1,6 +1,6 @@
 # Kybo
 
-**Kybo** is an end-to-end nutrition management platform that transforms PDF diet plans into interactive, trackable meal schedules. It connects clients, nutritionists, and administrators through a unified ecosystem of mobile app, admin dashboard, AI-powered backend, and landing page.
+**Kybo** is a comprehensive wellness and nutrition management platform that integrates diet plans, workout schedules, and a professional marketplace. It connects clients, nutritionists, personal trainers, and administrators through a unified ecosystem merging a mobile app, an admin dashboard, AI-powered backends, and a gamified reward system.
 
 ---
 
@@ -90,7 +90,7 @@
 
 **User Management**
 - Create, edit, and delete users with role assignment
-- Roles: Admin, Nutritionist, Independent, Client
+- Roles: Admin, Nutritionist, Personal Trainer, Independent, Client
 - Assign/unassign clients to nutritionists
 - Force password change on account creation
 - Grouped view: clients organized under their nutritionist
@@ -101,6 +101,22 @@
 - Browse diet history with timestamps and structured preview
 - Delete specific diet uploads
 - Custom AI parser configuration per nutritionist (upload .txt prompt)
+
+**Workout Management**
+- Assign workout plans and exercise routines to clients
+- Role-based modular UI (Nutritionists see diets, Personal Trainers see workouts)
+- Build workouts using an integrated exercise library
+- Track client workout completion and performance
+
+**Rewards & Gamification Engine**
+- Manage a dynamic rewards catalog (real or virtual prizes)
+- Set custom items purchasable by clients using earned XP
+- Track claimed rewards and user progress
+
+**Marketplace & Matchmaking**
+- Review matchmaking requests from independent users seeking guidance
+- Filter prospective clients based on goals, budget, and location tags
+- Send consultation offers to convert independent users into managed clients
 
 **Chat System**
 - Two chat types: admin-nutritionist support, nutritionist-client communication
@@ -191,7 +207,10 @@
 7. Consumes meals; pantry quantities update automatically
 8. Swaps foods using nutritionist-approved substitutions
 9. Sets meal reminder alarms for each meal type
-10. Toggles "Tranquil Mode" to hide calories when needed
+10. Views and completes daily workout plans assigned by Personal Trainers
+11. Earns XP via meals and workouts, unlocking custom rewards from the Shop
+12. Uses the Matchmaking feature to find a Nutritionist or PT based on goals and budget
+13. Toggles "Tranquil Mode" to hide calories when needed
 
 ### Client (Assigned to Nutritionist)
 1. Receives account from nutritionist with temporary password
@@ -209,6 +228,12 @@
 6. Views client diet history and progress
 7. Receives admin support via admin-nutritionist chat
 
+### Personal Trainer
+1. Logs into admin webapp with adapted UI for workouts
+2. Creates and assigns workout plans to clients
+3. Manages incoming client matchmaking requests
+4. Configures custom XP rewards for their clients to redeem
+
 ### Administrator
 1. Full user management: creates admins, nutritionists, independents
 2. Assigns/unassigns clients between nutritionists
@@ -225,13 +250,16 @@
 
 ```
 /users/{uid}
-  - email, firstName, lastName, role
-  - parent_id (nutritionist UID, if client)
+  - email, firstName, lastName, role, tags, is_nutritionist, is_personal_trainer
+  - parent_id (nutritionist/PT UID, if client)
   - requires_password_change
   - platform, createdAt
-  - custom_parser_prompt (nutritionists)
+  - custom_parser_prompt
+  - xp_total, xp_today
   └── /diets/current          # Active diet plan (encrypted)
   └── /diets/{auto-id}        # Historical versions (encrypted)
+  └── /workouts/{auto-id}     # Assigned workout plans
+  └── /claimed_rewards/       # Redeemed rewards history
 
 /chats/{chatId}
   - participants: {clientId, nutritionistId}
@@ -256,7 +284,12 @@
 
 /gemini_cache/{contentHash}
   - result, cached_at (30-day TTL)
-```
+
+/rewards_catalog/{itemId}
+  - title, description, cost_xp, is_active, quantity_available
+
+/matchmaking_requests/{reqId}
+  - user_id, goal, budget, location, status
 
 ---
 
