@@ -54,6 +54,27 @@ def get_diet_queue():
         return None
 
 
+def is_worker_alive() -> bool:
+    """
+    Verifica se almeno un worker RQ è attivo e registrato sulla coda.
+    Se nessun worker è vivo, accodare un job non ha senso perché non verrà
+    mai processato — meglio usare il fallback sincrono.
+    """
+    if _rq_redis is None:
+        return False
+
+    try:
+        from rq import Worker
+        workers = Worker.all(connection=_rq_redis)
+        alive = any(w.state != 'suspended' for w in workers)
+        if not alive:
+            logger.warning("rq_no_active_workers", total_workers=len(workers))
+        return alive
+    except Exception as e:
+        logger.warning("rq_worker_check_failed", error=str(e))
+        return False
+
+
 def get_job_status(job_id: str) -> Optional[dict]:
     """
     Recupera lo stato di un job RQ.
