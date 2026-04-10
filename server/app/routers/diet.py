@@ -29,7 +29,7 @@ from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
 from app.services.normalization import normalize_meal_name, normalize_quantity
-from app.services.queue_service import get_diet_queue, get_job_status
+from app.services.queue_service import get_diet_queue, get_job_status, is_worker_alive
 from app.models.schemas import DietResponse, DietConfig, Dish, Ingredient, SubstitutionGroup, SubstitutionOption
 
 router = APIRouter(tags=["diet"])
@@ -194,7 +194,7 @@ async def upload_diet(
         raise HTTPException(status_code=400, detail="Il file non è un PDF valido.")
 
     queue = get_diet_queue()
-    if queue is not None:
+    if queue is not None and is_worker_alive():
         try:
             from app.tasks.diet_tasks import process_diet_upload
             from app.core.config import settings
@@ -337,7 +337,7 @@ async def upload_diet_admin(
         logger.warning("admin_upload_prompt_fetch_error", error=sanitize_error_message(e))
 
     queue = get_diet_queue()
-    if queue is not None:
+    if queue is not None and is_worker_alive():
         try:
             from app.tasks.diet_tasks import process_diet_upload
             from app.core.config import settings
