@@ -2,8 +2,11 @@
 // SuggestedDish.fromJson — deserializza un suggerimento dalla risposta API.
 // _fetchSuggestions — chiama /meal-suggestions con filtri tipo pasto e items dispensa.
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/pantry_item.dart';
 import '../services/api_client.dart';
+import '../services/badge_service.dart';
+import '../services/challenge_service.dart';
 import '../services/shortcuts_service.dart';
 import '../widgets/design_system.dart';
 
@@ -104,6 +107,12 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
         _contextUsed = data['context_used'] ?? '';
         _loading = false;
       });
+
+      // Trigger badge e sfida
+      if (_suggestions.isNotEmpty && mounted) {
+        context.read<BadgeService>().onAiSuggestionsUsed();
+        context.read<ChallengeService>().checkAutoComplete('use_ai');
+      }
     } on ApiException catch (e) {
       debugPrint('⚠️ Errore API suggerimenti: ${e.statusCode} - ${e.message}');
       setState(() {

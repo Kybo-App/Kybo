@@ -45,6 +45,8 @@ from app.routers.communication import router as communication_router
 from app.routers.suggestions import router as suggestions_router
 from app.routers.newsletter import router as newsletter_router, contact_router
 from app.routers.shopping_share import router as shopping_share_router
+from app.routers.rewards import router as rewards_router
+from app.routers.workouts import router as workouts_router
 from app.core.cache import redis_cache
 from app.workers.unread_notifier import unread_notification_worker
 from app.workers.monthly_report_mailer import monthly_report_mailer_worker
@@ -133,6 +135,8 @@ app.include_router(suggestions_router)
 app.include_router(newsletter_router)
 app.include_router(contact_router)
 app.include_router(shopping_share_router)
+app.include_router(rewards_router)
+app.include_router(workouts_router)
 
 
 async def maintenance_worker():

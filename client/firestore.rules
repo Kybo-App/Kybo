@@ -35,10 +35,10 @@ service cloud.firestore {
                        request.resource.data.uid == userId &&
                        request.resource.data.role in ['independent', 'user'];
 
-      // UPDATE: Invariato
+      // UPDATE: Invariato (più campi aggiunti per XP)
       allow update: if (isOwner(userId) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['first_name', 'last_name', 'last_login', 'is_active', 'unlocked_badges'])) ||
+                        .hasOnly(['first_name', 'last_name', 'last_login', 'is_active', 'unlocked_badges', 'xp_total', 'xp_today', 'xp_today_date'])) ||
                        hasRole('admin') ||
                        (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
 
@@ -94,6 +94,12 @@ service cloud.firestore {
       }
 
       match /meal_notes/{docId} {
+        allow read: if isOwner(userId) ||
+                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+        allow write: if isOwner(userId);
+      }
+
+      match /xp_history/{docId} {
         allow read: if isOwner(userId) ||
                    (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
         allow write: if isOwner(userId);

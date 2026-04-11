@@ -24,6 +24,8 @@ dependencies:
   retry: ^3.1.2
   # [NEW] Charts for statistics
   fl_chart: ^0.68.0
+  # [NEW] Confetti for badge celebrations
+  confetti: ^0.7.0
 
   # Firebase (Versioni aggiornate per risolvere errore Pigeon)
   firebase_core: ^3.6.0

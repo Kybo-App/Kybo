@@ -50,11 +50,19 @@
       ]
     },
     {
-      "collectionGroup": "diet_history",
+      "collectionGroup": "claimed_rewards",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "claimed_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "workout_plans",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "uploadedBy", "order": "ASCENDING" },
-        { "fieldPath": "uploadedAt", "order": "ASCENDING" }
+        { "fieldPath": "created_by", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
       ]
     }
   ],

@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/diet_provider.dart';
 import '../services/notification_service.dart';
+import '../services/xp_service.dart';
+import '../services/challenge_service.dart';
+import '../utils/time_helper.dart';
 import '../widgets/design_system.dart';
 
 class MealReminderDialog extends StatefulWidget {
@@ -108,11 +111,19 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
     }
 
     await prefs.setString('meal_alarms', jsonEncode(toSave));
+    await TimeHelper().reloadAlarms();
 
     if (mounted) {
       await context.read<DietProvider>().scheduleMealNotifications();
+    }
+    if (mounted) {
+      await context.read<XpService>().loadXp();
+    }
+    if (mounted) {
+      await context.read<ChallengeService>().loadOrGenerateDailyChallenges();
+    }
 
-      if (mounted) {
+    if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -127,7 +138,6 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
           ),
         );
       }
-    }
   }
 
   @override

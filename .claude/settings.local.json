@@ -39,7 +39,15 @@
       "Bash(cmd //c \"gh run list --workflow=build_ios.yaml --limit=5 2>&1\")",
       "Bash(GOOGLE_API_KEY=test GOOGLE_APPLICATION_CREDENTIALS=\"\" python -c \"from app.main import app; print\\(''✅ Import check passed''\\)\")",
       "Bash(/c/Users/leooo/Documents/GitHub/Kybo/client/.gitignore:*)",
-      "Bash(git rm DEPLOY_NOTES.md MANUAL_TASKS.md)"
+      "Bash(git rm DEPLOY_NOTES.md MANUAL_TASKS.md)",
+      "Bash(for f in app/routers/*.py app/services/*.py app/tasks/*.py)",
+      "Bash(do python -m py_compile \"$f\")",
+      "Bash(echo \"OK: $f\")",
+      "Bash(echo \"FAIL: $f\")",
+      "Bash(GOOGLE_API_KEY=test GOOGLE_APPLICATION_CREDENTIALS=\"\" python -c \":*)",
+      "Bash(npm install --save-dev eslint eslint-config-next --legacy-peer-deps)",
+      "Bash(npm install --save-dev eslint@8 --legacy-peer-deps)",
+      "Bash(npm install --save-dev eslint@8 eslint-config-next@14.2.35 --legacy-peer-deps)"
     ]
   }
 }

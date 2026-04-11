@@ -105,10 +105,10 @@ async def verify_admin(token: dict = Depends(verify_token)):
     raise HTTPException(status_code=403, detail="Admin privileges required")
 
 async def verify_professional(token: dict = Depends(verify_token)):
-    """Verifica che l'utente sia admin o nutrizionista."""
+    """Verifica che l'utente sia admin, nutrizionista o personal trainer."""
     role = token.get('role')
     uid = token.get('uid')
-    if role in ['admin', 'nutritionist']:
+    if role in ['admin', 'nutritionist', 'personal_trainer']:
         return {'uid': uid, 'role': role}
     raise HTTPException(status_code=403, detail="Professional privileges required")
 

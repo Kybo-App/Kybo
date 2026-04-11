@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/scale_service.dart';
+import '../services/badge_service.dart';
 
 class ScaleConnectScreen extends StatefulWidget {
   const ScaleConnectScreen({super.key});
@@ -269,6 +270,8 @@ class _BleTab extends StatelessWidget {
                         backgroundColor: Colors.red,
                       ),
                     );
+                  } else if (context.mounted) {
+                    context.read<BadgeService>().onScaleConnected();
                   }
                 },
                 child: const Text('Connetti'),

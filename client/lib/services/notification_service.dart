@@ -185,11 +185,15 @@ class NotificationService {
 
         final time = alarmSettings[mealType]!;
 
+        // Se l'orario è dopo mezzanotte (es. 01:00 AM) ma fa parte della dieta del
+        // "giorno" logico corrente, scheduliamo la notifica tecnicamente al giorno dopo.
+        int targetDay = time.hour < 5 ? scheduledDate.day + 1 : scheduledDate.day;
+
         DateTime finalTime = tz.TZDateTime(
           tz.local,
           scheduledDate.year,
           scheduledDate.month,
-          scheduledDate.day,
+          targetDay,
           time.hour,
           time.minute,
         );

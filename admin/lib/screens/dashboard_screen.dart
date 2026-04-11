@@ -19,6 +19,8 @@ import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
 import 'reports_view.dart';
 import 'server_metrics_view.dart';
+import 'rewards_catalog_view.dart';
+import 'workout_management_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -49,6 +51,8 @@ class _DashboardContentState extends State<_DashboardContent> {
   String _userName = "";
   String _userRole = "Utente";
   bool _isAdmin = false;
+  bool _isNutritionist = false;
+  bool _isPT = false;
   bool _isLoading = true;
 
   final FocusNode _keyboardFocusNode = FocusNode();
@@ -80,6 +84,8 @@ class _DashboardContentState extends State<_DashboardContent> {
                   .trim();
           _userRole = data['role'] ?? 'user';
           _isAdmin = _userRole == 'admin';
+          _isNutritionist = _userRole == 'nutritionist' || _isAdmin;
+          _isPT = _userRole == 'personal_trainer' || _isAdmin;
           _isLoading = false;
         });
       } else {
@@ -258,16 +264,18 @@ class _DashboardContentState extends State<_DashboardContent> {
         badgeCount: notifProvider.unreadChats,
       ),
 
-      _NavItem(
-        icon: Icons.analytics_rounded,
-        label: l10n.navAnalytics,
-        view: AnalyticsView(key: ValueKey('analytics_$themeKey')),
-      ),
-      _NavItem(
-        icon: Icons.assessment_rounded,
-        label: l10n.navReports,
-        view: ReportsView(key: ValueKey('reports_$themeKey')),
-      ),
+      if (_isAdmin || _isNutritionist)
+        _NavItem(
+          icon: Icons.analytics_rounded,
+          label: l10n.navAnalytics,
+          view: AnalyticsView(key: ValueKey('analytics_$themeKey')),
+        ),
+      if (_isAdmin || _isNutritionist)
+        _NavItem(
+          icon: Icons.assessment_rounded,
+          label: l10n.navReports,
+          view: ReportsView(key: ValueKey('reports_$themeKey')),
+        ),
       if (_isAdmin)
         _NavItem(
           icon: Icons.settings_rounded,
@@ -291,6 +299,18 @@ class _DashboardContentState extends State<_DashboardContent> {
           icon: Icons.monitor_heart_rounded,
           label: 'Server',
           view: ServerMetricsView(key: ValueKey('server_$themeKey')),
+        ),
+      if (_isAdmin)
+        _NavItem(
+          icon: Icons.card_giftcard_rounded,
+          label: l10n.navRewards,
+          view: RewardsCatalogView(key: ValueKey('rewards_$themeKey')),
+        ),
+      if (_isPT || _isAdmin)
+        _NavItem(
+          icon: Icons.fitness_center_rounded,
+          label: 'Workout',
+          view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
         ),
     ];
 

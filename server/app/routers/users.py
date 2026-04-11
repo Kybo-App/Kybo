@@ -44,7 +44,7 @@ class CreateUserRequest(BaseModel):
     @field_validator('role')
     @classmethod
     def validate_role(cls, v):
-        allowed_roles = ['user', 'independent', 'nutritionist', 'admin']
+        allowed_roles = ['user', 'independent', 'nutritionist', 'personal_trainer', 'admin']
         if v not in allowed_roles:
             raise ValueError(f'Ruolo non valido. Ruoli permessi: {allowed_roles}')
         return v

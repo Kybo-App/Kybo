@@ -22,7 +22,10 @@ import '../models/diet_models.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
+import '../services/xp_service.dart';
+import '../services/challenge_service.dart';
 import '../services/pricing_service.dart';
+import '../utils/time_helper.dart';
 
 class DietProvider extends ChangeNotifier {
   final DietRepository _repository;
@@ -31,6 +34,8 @@ class DietProvider extends ChangeNotifier {
   final AuthService _auth = AuthService();
   final TrackingService _trackingService = TrackingService();
   final BadgeService _badgeService;
+  final XpService _xpService;
+  final ChallengeService _challengeService;
 
   DietPlan? _dietPlan;
   int _selectedWeek = 0;
@@ -343,8 +348,8 @@ class DietProvider extends ChangeNotifier {
     final days = getDays();
     if (days.isEmpty) return -1;
 
-    final now = DateTime.now();
-    int weekdayIndex = now.weekday - 1;
+    final today = TimeHelper().getLogicalToday();
+    int weekdayIndex = today.weekday - 1;
 
     if (weekdayIndex >= 0 && weekdayIndex < days.length) {
       return weekdayIndex;
@@ -362,7 +367,7 @@ class DietProvider extends ChangeNotifier {
     return days.isNotEmpty ? days.first : '';
   }
 
-  DietProvider(this._repository, this._badgeService);
+  DietProvider(this._repository, this._badgeService, this._xpService, this._challengeService);
 
   Future<bool> loadFromCache() async {
     bool hasData = false;
@@ -506,8 +511,7 @@ class DietProvider extends ChangeNotifier {
   Future<void> _checkDailyReset() async {
     if (_dietPlan == null) return;
 
-    final today = DateTime.now();
-    final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final todayStr = TimeHelper().getLogicalTodayString();
 
     final lastResetDate = await _storage.loadLastConsumedResetDate();
 
@@ -686,6 +690,12 @@ class DietProvider extends ChangeNotifier {
 
     await _storage.saveDiet(_dietPlan!.toJson());
 
+    // Award XP per pasto consumato
+    await _xpService.addXp(XpRewards.mealConsumed, 'meal_consumed');
+
+    // Auto-complete sfide relative ai pasti
+    await _challengeService.checkAutoComplete('complete_1_meal');
+
     await _recalcAvailability();
     await _updateDailyStats();
   }
@@ -746,6 +756,15 @@ class DietProvider extends ChangeNotifier {
       await _trackingService.saveDailyStats(stats);
 
       await _badgeService.checkDailyGoals(planned, consumed);
+
+      // XP bonus e sfide per giornata completa
+      if (planned > 0 && consumed == planned) {
+        await _xpService.addXp(XpRewards.allMealsComplete, 'all_meals_complete');
+        await _challengeService.checkAutoComplete('complete_all_meals');
+      }
+      if (consumed >= 2) {
+        await _challengeService.checkAutoComplete('complete_2_meals');
+      }
     } catch (e) {
       debugPrint("⚠️ Errore aggiornamento stats: $e");
     }
@@ -863,6 +882,10 @@ class DietProvider extends ChangeNotifier {
     }
     _storage.savePantry(_pantryItems);
     _recalcAvailability();
+    
+    // Trigger badge se la dispensa cresce
+    _badgeService.onPantryItemAdded(_pantryItems.length);
+    
     notifyListeners();
   }
 
