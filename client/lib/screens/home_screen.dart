@@ -18,7 +18,10 @@ import '../providers/chat_provider.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/badge_service.dart';
+import '../services/xp_service.dart';
+import '../services/challenge_service.dart';
 import '../widgets/design_system.dart';
+import '../widgets/streak_badge_widget.dart';
 import '../core/error_handler.dart';
 import 'diet_view.dart';
 import 'pantry_view.dart';
@@ -30,6 +33,8 @@ import 'settings_screen.dart';
 import 'statistics_screen.dart';
 import 'badges_screen.dart';
 import 'meal_suggestions_screen.dart';
+import 'rewards_screen.dart';
+import 'workout_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -364,6 +369,8 @@ class _MainScreenContentState extends State<MainScreenContent>
 
     if (mounted) {
       context.read<BadgeService>().checkLoginStreak();
+      context.read<XpService>().loadXp();
+      context.read<ChallengeService>().loadOrGenerateDailyChallenges();
     }
 
     ShortcutsService().donateShortcut(ShortcutsService.dietActivity);
@@ -1120,6 +1127,26 @@ class _MainScreenContentState extends State<MainScreenContent>
             ),
             _buildSidebarMenuItem(
               context: context,
+              icon: Icons.card_giftcard_rounded,
+              label: 'Shop Premi',
+              iconColor: KyboColors.warning,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RewardsScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
+              icon: Icons.fitness_center_rounded,
+              label: 'Allenamento',
+              iconColor: KyboColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+              ),
+            ),
+            _buildSidebarMenuItem(
+              context: context,
               icon: Icons.settings_rounded,
               label: 'Impostazioni',
               iconColor: KyboColors.textMuted(context),
@@ -1477,6 +1504,10 @@ class _MainScreenContentState extends State<MainScreenContent>
           children: [
             _buildWeekSelector(context, provider),
             _buildNextMealBanner(provider),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: const StreakBadgeWidget(),
+            ),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -1890,6 +1921,46 @@ class _MainScreenContentState extends State<MainScreenContent>
                               );
                             },
                           ),
+                          ),
+
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.warning.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.card_giftcard_rounded, color: KyboColors.warning, size: 20),
+                            ),
+                            title: "Shop Premi",
+                            subtitle: "Riscatta i tuoi XP",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const RewardsScreen()),
+                              );
+                            },
+                          ),
+
+                          PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.accent.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.fitness_center_rounded, color: KyboColors.accent, size: 20),
+                            ),
+                            title: "Allenamento",
+                            subtitle: "La tua scheda e i tuoi esercizi",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                drawerCtx,
+                                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+                              );
+                            },
                           ),
 
                           PillListTile(

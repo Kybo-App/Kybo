@@ -931,4 +931,238 @@ class AdminRepository {
       throw Exception("Errore salvataggio config (${response.statusCode}): ${_safeBody(response)}");
     }
   }
+
+  // --- REWARDS CATALOG ---
+
+  /// Gets the full rewards catalog (admin view, includes inactive)
+  Future<Map<String, dynamic>> getRewardsCatalog() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/rewards/catalog'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Catalogo Premi (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Creates a new reward
+  Future<void> createReward({
+    required String name,
+    required int xpCost,
+    String description = '',
+    String? imageUrl,
+    int? stock,
+    bool isActive = true,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/rewards/catalog'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'xp_cost': xpCost,
+        if (imageUrl != null) 'image_url': imageUrl,
+        if (stock != null) 'stock': stock,
+        'is_active': isActive,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Creazione Premio (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Updates an existing reward
+  Future<void> updateReward(
+    String rewardId, {
+    String? name,
+    String? description,
+    int? xpCost,
+    String? imageUrl,
+    int? stock,
+    bool? isActive,
+  }) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('$_baseUrl/admin/rewards/catalog/$rewardId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+        if (xpCost != null) 'xp_cost': xpCost,
+        if (imageUrl != null) 'image_url': imageUrl,
+        if (stock != null) 'stock': stock,
+        if (isActive != null) 'is_active': isActive,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Aggiornamento Premio (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Deletes a reward
+  Future<void> deleteReward(String rewardId) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/admin/rewards/catalog/$rewardId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Eliminazione Premio (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Gets all reward claims (admin view)
+  Future<Map<String, dynamic>> getRewardsClaims({String? status}) async {
+    final token = await _getToken();
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    final uri = Uri.parse('$_baseUrl/admin/rewards/claims').replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Lista Riscatti (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Fulfills a reward claim
+  Future<void> fulfillRewardClaim(String userUid, String claimId) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/admin/rewards/claims/$userUid/$claimId/fulfill'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Evasione Premio (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  // --- WORKOUT PLANS ---
+
+  /// Gets all workout plans created by the current professional
+  Future<Map<String, dynamic>> getWorkoutPlans() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/workouts/plans'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } else {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Schede Allenamento (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Creates a new workout plan
+  Future<void> createWorkoutPlan({
+    required String name,
+    String description = '',
+    List<Map<String, dynamic>> days = const [],
+    String? targetUid,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/workouts/plans'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'name': name,
+        'description': description,
+        'days': days,
+        if (targetUid != null) 'target_uid': targetUid,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Creazione Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Updates an existing workout plan
+  Future<void> updateWorkoutPlan(
+    String planId, {
+    String? name,
+    String? description,
+    List<Map<String, dynamic>>? days,
+    bool? isActive,
+  }) async {
+    final token = await _getToken();
+    final response = await http.put(
+      Uri.parse('$_baseUrl/workouts/plans/$planId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+        if (days != null) 'days': days,
+        if (isActive != null) 'is_active': isActive,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Aggiornamento Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Deletes a workout plan
+  Future<void> deleteWorkoutPlan(String planId) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/workouts/plans/$planId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Eliminazione Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Assigns a workout plan to a user
+  Future<void> assignWorkoutPlan(String planId, String targetUid) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/workouts/plans/$planId/assign/$targetUid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Assegnazione Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
 }

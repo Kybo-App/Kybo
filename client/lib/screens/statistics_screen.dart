@@ -7,6 +7,8 @@ import '../services/health_service.dart';
 import '../models/tracking_models.dart';
 import '../services/badge_service.dart';
 import '../services/scale_service.dart';
+import '../services/xp_service.dart';
+import '../services/challenge_service.dart';
 import 'scale_connect_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -35,6 +37,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   void initState() {
     super.initState();
     _loadData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<BadgeService>().onStatsViewed();
+        context.read<ChallengeService>().checkAutoComplete('visit_stats');
+      }
+    });
   }
 
   @override
@@ -783,6 +792,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     if (mounted) {
       context.read<BadgeService>().onWeightLogged();
+      context.read<XpService>().addXp(XpRewards.weightLogged, 'weight_logged');
+      context.read<ChallengeService>().checkAutoComplete('log_weight');
+
+      // Trova un obiettivo di peso se esiste
+      final weightGoal = _goals.where((g) => g.unit.toLowerCase() == 'kg').firstOrNull;
+      if (weightGoal != null) {
+        // Supponiamo che il targetValue sia il peso desiderato e che il currentValue fosse il peso di partenza... 
+        // In realtà user.goals forse non traccia il peso di partenza. Per semplicità simuliamo con il target
+        // usando checkWeightGoalProgress (che usa le vere logiche di differenza se passiamo startWeight).
+        // Se non abbiamo un vero startWeight, qui lo bypassiamo o passiamo un valore noto.
+        // Ad esempio, usiamo il primo peso della storia come startWeight
+        if (_weightHistory.isNotEmpty) {
+           final startWeight = _weightHistory.last.weightKg; // history è ordinata decrescente, last è il più vecchio
+           context.read<BadgeService>().checkWeightGoalProgress(weight, startWeight, weightGoal.targetValue);
+        }
+      }
     }
 
     _weightController.clear();

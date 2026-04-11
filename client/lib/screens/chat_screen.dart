@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/chat_provider.dart';
 import '../models/chat_message.dart';
+import '../services/badge_service.dart';
 import '../widgets/design_system.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -93,6 +94,11 @@ class _ChatScreenState extends State<ChatScreen> {
       _messageController.clear();
       _removeFile();
       _scrollToBottom();
+
+      // Trigger badge primo messaggio
+      if (mounted) {
+        context.read<BadgeService>().onChatMessageSent();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

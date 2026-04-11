@@ -3,6 +3,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../services/badge_service.dart';
+import '../services/challenge_service.dart';
 import '../widgets/design_system.dart';
 
 class CookingTimerScreen extends StatefulWidget {
@@ -75,6 +78,9 @@ class _CookingTimerScreenState extends State<CookingTimerScreen>
     }
     setState(() => _running = !_running);
     if (_running) {
+      // Badge e sfida trigger
+      context.read<BadgeService>().onCookingTimerUsed();
+      context.read<ChallengeService>().checkAutoComplete('use_timer');
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (_remainingSeconds <= 0) {
           _timer?.cancel();

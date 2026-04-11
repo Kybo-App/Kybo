@@ -24,6 +24,7 @@ class AppLocalizations {
   String get navSettings => isItalian ? 'Impostazioni' : 'Settings';
   String get navGdpr => 'GDPR';
   String get navAuditLog => isItalian ? 'Audit Log' : 'Audit Log';
+  String get navRewards => isItalian ? 'Premi' : 'Rewards';
 
   String get confirm => isItalian ? 'Conferma' : 'Confirm';
   String get cancel => isItalian ? 'Annulla' : 'Cancel';

@@ -317,7 +317,7 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
           .get();
       final role = doc.data()?['role'];
 
-      if (role == 'admin' || role == 'nutritionist') {
+      if (role == 'admin' || role == 'nutritionist' || role == 'personal_trainer') {
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const DashboardScreen()),

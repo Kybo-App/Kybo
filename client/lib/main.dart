@@ -12,11 +12,15 @@ import 'repositories/diet_repository.dart';
 import 'providers/diet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/workout_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
 import 'services/badge_service.dart';
+import 'services/xp_service.dart';
+import 'services/challenge_service.dart';
 import 'services/scale_service.dart';
+import 'utils/time_helper.dart';
 import 'widgets/design_system.dart';
 
 void main() {
@@ -43,17 +47,29 @@ void main() {
         debugPrint("Firebase Init Error: $e");
       }
 
+      await TimeHelper().init();
+
       runApp(
         MultiProvider(
           providers: [
             Provider(create: (_) => DietRepository()),
+            ChangeNotifierProvider<XpService>(
+              create: (_) => XpService(),
+            ),
             ChangeNotifierProvider<BadgeService>(
               create: (_) => BadgeService(),
+            ),
+            ChangeNotifierProvider<ChallengeService>(
+              create: (context) => ChallengeService(
+                context.read<XpService>(),
+              ),
             ),
             ChangeNotifierProvider<DietProvider>(
               create: (context) => DietProvider(
                 context.read<DietRepository>(),
                 context.read<BadgeService>(),
+                context.read<XpService>(),
+                context.read<ChallengeService>(),
               ),
             ),
             ChangeNotifierProvider<ScaleService>(
@@ -64,6 +80,9 @@ void main() {
             ),
             ChangeNotifierProvider<ChatProvider>(
               create: (_) => ChatProvider()..initializeChat(),
+            ),
+            ChangeNotifierProvider<WorkoutProvider>(
+              create: (_) => WorkoutProvider(),
             ),
           ],
           child: const DietApp(),
