@@ -4,6 +4,7 @@ Router per la gestione schede allenamento (Personal Trainer).
 - Visualizzazione schede (utente assegnato)
 - Assegnazione schede a utenti specifici
 """
+import datetime
 from typing import Optional, List
 
 import firebase_admin
@@ -96,7 +97,7 @@ async def create_workout_plan(
                 raise HTTPException(status_code=404, detail="Utente non trovato")
             target_data = target_doc.to_dict()
             if requester['role'] != 'admin':
-                if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid']:
+                if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid'] and target_data.get('pt_id') != requester['uid']:
                     raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
         plan_data = {
@@ -247,7 +248,7 @@ async def assign_workout_plan(
 
         if requester['role'] != 'admin':
             target_data = target_doc.to_dict()
-            if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid']:
+            if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid'] and target_data.get('pt_id') != requester['uid']:
                 raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
         # Salva come scheda corrente dell'utente
@@ -299,3 +300,67 @@ async def get_my_workout(
     except Exception as e:
         logger.error("get_my_workout_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante il caricamento della scheda.")
+
+
+_WORKOUT_XP = 30  # XP assegnati per ogni allenamento completato
+
+
+@router.post("/workouts/complete-day")
+@limiter.limit("5/day")
+async def complete_workout_day(
+    request: Request,
+    uid: str = Depends(get_current_uid),
+):
+    """Segna l'allenamento del giorno come completato e assegna XP.
+    Può essere chiamato una sola volta per giorno solare."""
+    try:
+        db = firebase_admin.firestore.client()
+        today = datetime.date.today().isoformat()  # es. "2026-04-16"
+
+        # Verifica che l'utente abbia una scheda assegnata
+        plan_doc = db.collection('users').document(uid).collection(
+            'workout'
+        ).document('current').get()
+        if not plan_doc.exists:
+            raise HTTPException(status_code=404, detail="Nessuna scheda allenamento assegnata.")
+
+        # Controlla se già completato oggi
+        completion_ref = db.collection('users').document(uid).collection(
+            'workout_completions'
+        ).document(today)
+        if completion_ref.get().exists:
+            raise HTTPException(status_code=409, detail="Allenamento già completato oggi!")
+
+        # Registra completamento e aggiungi XP in batch
+        batch = db.batch()
+
+        # Salva il completamento
+        batch.set(completion_ref, {
+            'completed_at': firestore.SERVER_TIMESTAMP,
+            'xp_awarded': _WORKOUT_XP,
+        })
+
+        # Incrementa total_xp nel documento utente
+        user_ref = db.collection('users').document(uid)
+        batch.update(user_ref, {'total_xp': firestore.Increment(_WORKOUT_XP)})
+
+        # Aggiungi voce allo storico XP
+        xp_history_ref = db.collection('users').document(uid).collection(
+            'xp_history'
+        ).document()
+        batch.set(xp_history_ref, {
+            'amount': _WORKOUT_XP,
+            'reason': 'workout_completed',
+            'created_at': firestore.SERVER_TIMESTAMP,
+        })
+
+        batch.commit()
+
+        logger.info("workout_completed", uid=uid, date=today, xp=_WORKOUT_XP)
+        return {"message": "Ottimo lavoro!", "xp_awarded": _WORKOUT_XP}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("complete_workout_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante il completamento.")

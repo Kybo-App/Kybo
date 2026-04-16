@@ -211,18 +211,75 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           ),
           const SizedBox(height: 16),
 
-          // Exercises
+          // Exercises + Complete button
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: plan.days
-                  .map((day) => _buildDayContent(context, day))
-                  .toList(),
+            child: Stack(
+              children: [
+                TabBarView(
+                  controller: _tabController,
+                  children: plan.days
+                      .map((day) => _buildDayContent(context, day))
+                      .toList(),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 24,
+                  right: 24,
+                  child: FilledButton.icon(
+                    onPressed: () => _completeWorkout(context),
+                    icon: const Icon(Icons.check_circle_outline_rounded),
+                    label: const Text(
+                      'Completa Allenamento Oggi',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: KyboColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: KyboBorderRadius.pill,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ],
     );
+  }
+
+  Future<void> _completeWorkout(BuildContext context) async {
+    try {
+      final xp = await context.read<WorkoutProvider>().completeDay();
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: const Text('💪 Ottimo lavoro!'),
+          content: Text(
+            'Hai completato l\'allenamento di oggi e guadagnato +$xp XP!',
+            style: TextStyle(color: KyboColors.textPrimary(context)),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fantastico!'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: KyboColors.error,
+        ),
+      );
+    }
   }
 
   Widget _buildDayContent(BuildContext context, WorkoutDay day) {
@@ -239,7 +296,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
       itemCount: day.exercises.length + (day.notes != null ? 1 : 0),
       itemBuilder: (context, index) {
         // Show notes at the top if present

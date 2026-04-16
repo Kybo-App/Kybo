@@ -1,4 +1,4 @@
-/// Modelli dati per le schede allenamento.
+// Modelli dati per le schede allenamento.
 
 class WorkoutExercise {
   final String name;
