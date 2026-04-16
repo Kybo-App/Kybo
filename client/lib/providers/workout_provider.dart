@@ -1,4 +1,4 @@
-/// Provider per gestire la scheda allenamento assegnata all'utente.
+// Provider per gestire la scheda allenamento assegnata all'utente.
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -53,5 +53,27 @@ class WorkoutProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Segna l'allenamento di oggi come completato. Ritorna gli XP guadagnati.
+  /// Lancia eccezione se già completato oggi (409) o nessuna scheda (404).
+  Future<int> completeDay() async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) throw Exception('Non autenticato');
+
+    final response = await http.post(
+      Uri.parse('${Env.apiUrl}/workouts/complete-day'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return (data['xp_awarded'] as num).toInt();
+    } else if (response.statusCode == 409) {
+      throw Exception('Hai già completato l\'allenamento oggi!');
+    } else {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(body['detail'] ?? 'Errore sconosciuto');
+    }
   }
 }

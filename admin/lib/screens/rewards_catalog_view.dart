@@ -515,7 +515,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                     child: Image.network(
                       reward['image_url'],
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.card_giftcard_rounded,
                         color: isActive
                             ? KyboColors.primary

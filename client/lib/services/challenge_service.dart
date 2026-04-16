@@ -2,7 +2,6 @@
 // Le sfide si resettano a mezzanotte locale.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../utils/time_helper.dart';
 import 'xp_service.dart';
