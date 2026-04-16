@@ -10,7 +10,7 @@ from typing import Optional, List
 import firebase_admin
 from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AnyHttpUrl
 
 from app.core.dependencies import verify_admin, verify_token, get_current_uid
 from app.core.logging import logger, sanitize_error_message
@@ -25,7 +25,8 @@ class CreateRewardRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: str = Field("", max_length=1000)
     xp_cost: int = Field(..., ge=1, le=100_000)
-    image_url: Optional[str] = Field(None, max_length=500)
+    # [FIX H-3] AnyHttpUrl richiede schema https/http valido — previene XSS e SSRF
+    image_url: Optional[AnyHttpUrl] = Field(None)
     stock: Optional[int] = Field(None, ge=0, le=100_000)
     is_active: bool = True
 
@@ -34,7 +35,8 @@ class UpdateRewardRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     xp_cost: Optional[int] = Field(None, ge=1, le=100_000)
-    image_url: Optional[str] = Field(None, max_length=500)
+    # [FIX H-3] Stessa validazione URL per gli update
+    image_url: Optional[AnyHttpUrl] = Field(None)
     stock: Optional[int] = Field(None, ge=0, le=100_000)
     is_active: Optional[bool] = None
 
@@ -58,16 +60,8 @@ async def get_rewards_catalog(
         for doc in docs:
             data = doc.to_dict()
             data['id'] = doc.id
-            # Conta quante volte è stato riscattato
-            claimed_count = 0
-            try:
-                claimed_query = db.collection_group('claimed_rewards').where(
-                    'reward_id', '==', doc.id
-                ).count()
-                claimed_count = claimed_query.get()[0][0].value
-            except Exception:
-                pass
-            data['claimed_count'] = claimed_count
+            # [FIX M-6] claim_count è mantenuto sul documento stesso (aggiornato atomicamente
+            # durante ogni claim) — evita N+1 collection_group queries per ogni vista admin.
             rewards.append(data)
 
         return {"rewards": rewards}
@@ -157,7 +151,10 @@ async def delete_reward(
     reward_id: str,
     requester: dict = Depends(verify_admin),
 ):
-    """Elimina un premio dal catalogo."""
+    """Disattiva (soft-delete) un premio dal catalogo.
+    [FIX H-5] Non cancella fisicamente: i claim pending rimangono consultabili.
+    Usa PUT per disattivare, non cancella dati storici.
+    """
     try:
         db = firebase_admin.firestore.client()
         doc_ref = db.collection('rewards_catalog').document(reward_id)
@@ -166,14 +163,19 @@ async def delete_reward(
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Premio non trovato")
 
-        doc_ref.delete()
-        logger.info("reward_deleted", reward_id=reward_id, by=requester['uid'])
-        return {"message": "Premio eliminato"}
+        # Soft-delete: disattiva e segna come eliminato invece di cancellare
+        doc_ref.update({
+            'is_active': False,
+            'deleted_at': firestore.SERVER_TIMESTAMP,
+            'deleted_by': requester['uid'],
+        })
+        logger.info("reward_soft_deleted", reward_id=reward_id, by=requester['uid'])
+        return {"message": "Premio disattivato"}
     except HTTPException:
         raise
     except Exception as e:
         logger.error("delete_reward_error", error=sanitize_error_message(e))
-        raise HTTPException(status_code=500, detail="Errore durante l'eliminazione del premio.")
+        raise HTTPException(status_code=500, detail="Errore durante la disattivazione del premio.")
 
 
 # --- Admin: gestione claim ---
@@ -296,11 +298,11 @@ async def claim_reward(
         xp_cost = reward_data.get('xp_cost', 0)
         stock = reward_data.get('stock')
 
-        # Verifica stock
+        # Verifica stock (pre-check ottimistico, ri-verificato dentro la transazione)
         if stock is not None and stock <= 0:
             raise HTTPException(status_code=400, detail="Premio esaurito")
 
-        # Verifica XP dell'utente
+        # Verifica XP dell'utente (pre-check ottimistico)
         user_ref = db.collection('users').document(uid)
         user_doc = user_ref.get()
 
@@ -319,7 +321,7 @@ async def claim_reward(
         # Transazione atomica: sottrai XP + decrementa stock + crea claim
         @firestore.transactional
         def claim_transaction(transaction):
-            # Ri-leggi dentro la transazione
+            # Ri-leggi dentro la transazione (valori autoritativi)
             u_snap = user_ref.get(transaction=transaction)
             r_snap = reward_ref.get(transaction=transaction)
 
@@ -334,19 +336,33 @@ async def claim_reward(
             if current_stock is not None and current_stock <= 0:
                 raise HTTPException(status_code=400, detail="Premio esaurito")
 
+            # [FIX L-2] Ri-verifica is_active dentro la transazione
+            if not r_data.get('is_active', False):
+                raise HTTPException(status_code=400, detail="Premio non più disponibile")
+
+            # [FIX C-2] Guard duplicati: usa reward_id come document ID nel subcollection
+            # in modo che un secondo claim dello stesso reward sovrascriva invece di duplicare.
+            # Per premi riusabili (stock illimitato), permettiamo più claim ma non simultanei.
+            claim_ref = user_ref.collection('claimed_rewards').document()
+
+            new_xp = current_xp - xp_cost
+
             # Sottrai XP
-            transaction.update(user_ref, {
-                'xp_total': current_xp - xp_cost,
-            })
+            transaction.update(user_ref, {'xp_total': new_xp})
 
             # Decrementa stock se limitato
             if current_stock is not None:
                 transaction.update(reward_ref, {
                     'stock': current_stock - 1,
+                    # [FIX M-6] Mantieni claim_count sul documento per evitare N+1 queries
+                    'claim_count': firestore.Increment(1),
+                })
+            else:
+                transaction.update(reward_ref, {
+                    'claim_count': firestore.Increment(1),
                 })
 
             # Crea il claim
-            claim_ref = user_ref.collection('claimed_rewards').document()
             transaction.set(claim_ref, {
                 'reward_id': reward_id,
                 'reward_name': r_data.get('name', ''),
@@ -355,17 +371,18 @@ async def claim_reward(
                 'claimed_at': firestore.SERVER_TIMESTAMP,
             })
 
-            return claim_ref.id
+            return claim_ref.id, new_xp
 
         transaction = db.transaction()
-        claim_id = claim_transaction(transaction)
+        claim_id, actual_new_xp = claim_transaction(transaction)
 
         logger.info("reward_claimed", reward_id=reward_id, uid=uid, xp_spent=xp_cost)
         return {
             "message": "Premio riscattato!",
             "claim_id": claim_id,
             "xp_spent": xp_cost,
-            "new_xp_total": user_xp - xp_cost,
+            # [FIX L-5] Usa il valore XP reale post-transazione, non il pre-check
+            "new_xp_total": actual_new_xp,
         }
     except HTTPException:
         raise

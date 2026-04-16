@@ -13,6 +13,7 @@ import 'providers/diet_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/workout_provider.dart';
+import 'providers/matchmaking_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
 import 'services/notification_service.dart';
@@ -83,6 +84,9 @@ void main() {
             ),
             ChangeNotifierProvider<WorkoutProvider>(
               create: (_) => WorkoutProvider(),
+            ),
+            ChangeNotifierProvider<MatchmakingProvider>(
+              create: (_) => MatchmakingProvider(),
             ),
           ],
           child: const DietApp(),

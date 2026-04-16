@@ -230,12 +230,12 @@ async def get_client_notes(
     try:
         db = firebase_admin.firestore.client()
 
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             user_doc = db.collection('users').document(client_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="Utente non trovato")
             user_data = user_doc.to_dict()
-            if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id:
+            if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id and user_data.get('nutritionist_id') != requester_id and user_data.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
         notes_ref = db.collection('users').document(client_uid) \
@@ -278,12 +278,12 @@ async def create_client_note(
     try:
         db = firebase_admin.firestore.client()
 
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             user_doc = db.collection('users').document(client_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="Utente non trovato")
             user_data = user_doc.to_dict()
-            if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id:
+            if user_data.get('parent_id') != requester_id and user_data.get('created_by') != requester_id and user_data.get('nutritionist_id') != requester_id and user_data.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
         note_data = {
@@ -327,12 +327,12 @@ async def update_client_note(
         # [SECURITY] Verifica che il client_uid sia ancora accessibile al richiedente.
         # Senza questo check un ex-nutrizionista conosce note_id e client_uid e può
         # modificare note che aveva scritto su un cliente ora assegnato ad altri.
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             client_doc = db.collection('users').document(client_uid).get()
             if not client_doc.exists:
                 raise HTTPException(status_code=404, detail="Cliente non trovato")
             cd = client_doc.to_dict()
-            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id:
+            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id and cd.get('nutritionist_id') != requester_id and cd.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
         note_ref = db.collection('users').document(client_uid) \
@@ -381,12 +381,12 @@ async def delete_client_note(
 
         # [SECURITY] Stesso check ownership di update: un ex-nutrizionista non può
         # cancellare note su clienti che non gli appartengono più.
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             client_doc = db.collection('users').document(client_uid).get()
             if not client_doc.exists:
                 raise HTTPException(status_code=404, detail="Cliente non trovato")
             cd = client_doc.to_dict()
-            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id:
+            if cd.get('parent_id') != requester_id and cd.get('created_by') != requester_id and cd.get('nutritionist_id') != requester_id and cd.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
         note_ref = db.collection('users').document(client_uid) \

@@ -108,6 +108,8 @@ class AdminRepository {
     }
   }
 
+
+
   Future<Map<String, dynamic>> getAppConfig() async {
     final token = await _getToken();
     final response = await http.get(
@@ -1163,6 +1165,44 @@ class AdminRepository {
     if (response.statusCode != 200) {
       await _checkUnauthorized(response);
       throw Exception("Errore Assegnazione Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  // --- MATCHMAKING ---
+
+  Future<List<dynamic>> getMatchmakingBoard() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/matchmaking/board'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    await _checkUnauthorized(response);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data['board'] as List<dynamic>? ?? [];
+    } else {
+      throw Exception(_safeBody(response));
+    }
+  }
+
+  Future<void> makeMatchmakingOffer(String reqId, String notes, String? priceInfo) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/matchmaking/requests/$reqId/offers'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'notes': notes,
+        if (priceInfo != null) 'price_info': priceInfo,
+      }),
+    );
+    await _checkUnauthorized(response);
+
+    if (response.statusCode != 200) {
+      throw Exception(_safeBody(response));
     }
   }
 }

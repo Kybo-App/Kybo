@@ -1,11 +1,14 @@
 # [SECURITY] Patched Versions — pinned to exact versions (supply chain protection)
-fastapi==0.109.1
-uvicorn[standard]==0.27.0
+fastapi==0.115.8
+# [SECURITY] CVE-2024-47874 (DoS via multipart) fixed in 0.40.0+ — explicit pin to override transitive resolution
+starlette==0.41.3
+# [SECURITY] GHSA-7669-jjrm-h66r (DoS via malformed headers) fixed in 0.30.0+
+uvicorn[standard]==0.34.0
 # [SECURITY] GHSA-2jv5-9r88-3w3p + GHSA-r2mh-k6mg-3cf8 — fixed in 0.0.9+
-python-multipart==0.0.12
-pdfplumber==0.10.3
+python-multipart==0.0.22
+pdfplumber==0.11.5
 # [SECURITY] Patched Buffer Overflow Vulnerability
-Pillow==10.3.0
+Pillow==12.1.1
 pytesseract==0.3.10
 # [SECURITY] Pinned version to prevent supply chain attacks
 google-genai==1.0.0
@@ -16,11 +19,11 @@ firebase-admin==6.4.0
 email-validator==2.1.0
 aiosmtplib==3.0.1
 # [SECURITY] CVE-2024-56201 + CVE-2024-56326 (sandbox escape) — fixed in 3.1.5
-jinja2==3.1.5
+jinja2==3.1.6
 fpdf2==2.7.9
 slowapi==0.1.9
 structlog==24.1.0
-sentry-sdk[fastapi]==1.40.0
+sentry-sdk[fastapi]==1.45.1
 # Redis cache layer (opzionale - graceful fallback se non configurato)
 redis[asyncio]==5.0.1
 hiredis==2.3.2

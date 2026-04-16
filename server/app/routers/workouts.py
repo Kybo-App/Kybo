@@ -12,7 +12,7 @@ from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import verify_professional, verify_token, get_current_uid
+from app.core.dependencies import verify_professional, get_current_uid
 from app.core.logging import logger, sanitize_error_message
 from app.core.limiter import limiter
 
@@ -97,7 +97,9 @@ async def create_workout_plan(
                 raise HTTPException(status_code=404, detail="Utente non trovato")
             target_data = target_doc.to_dict()
             if requester['role'] != 'admin':
-                if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid'] and target_data.get('pt_id') != requester['uid']:
+                if (target_data.get('parent_id') != requester['uid']
+                        and target_data.get('created_by') != requester['uid']
+                        and target_data.get('pt_id') != requester['uid']):
                     raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
         plan_data = {
@@ -168,16 +170,19 @@ async def update_workout_plan(
 
         doc_ref.update(update_data)
 
-        # Aggiorna anche la scheda assegnata se presente
+        # [FIX M-8] Aggiorna workout/current SOLO se è ancora questo il piano attivo
         target_uid = plan_data.get('target_uid')
         if target_uid and body.days is not None:
-            db.collection('users').document(target_uid).collection(
+            current_ref = db.collection('users').document(target_uid).collection(
                 'workout'
-            ).document('current').update({
-                'days': [day.dict() for day in body.days],
-                'plan_name': body.name or plan_data.get('name', ''),
-                'updated_at': firestore.SERVER_TIMESTAMP,
-            })
+            ).document('current')
+            current_doc = current_ref.get()
+            if current_doc.exists and current_doc.to_dict().get('plan_id') == plan_id:
+                current_ref.update({
+                    'days': [day.dict() for day in body.days],
+                    'plan_name': body.name or plan_data.get('name', ''),
+                    'updated_at': firestore.SERVER_TIMESTAMP,
+                })
 
         logger.info("workout_plan_updated", plan_id=plan_id, by=requester['uid'])
         return {"message": "Scheda aggiornata"}
@@ -209,6 +214,16 @@ async def delete_workout_plan(
             raise HTTPException(status_code=403, detail="Non puoi eliminare questa scheda")
 
         doc_ref.delete()
+
+        # [FIX L-6] Rimuovi workout/current se corrisponde a questo piano
+        target_uid = plan_data.get('target_uid')
+        if target_uid:
+            current_ref = db.collection('users').document(target_uid).collection(
+                'workout'
+            ).document('current')
+            current_doc = current_ref.get()
+            if current_doc.exists and current_doc.to_dict().get('plan_id') == plan_id:
+                current_ref.delete()
 
         logger.info("workout_plan_deleted", plan_id=plan_id, by=requester['uid'])
         return {"message": "Scheda eliminata"}
@@ -248,7 +263,9 @@ async def assign_workout_plan(
 
         if requester['role'] != 'admin':
             target_data = target_doc.to_dict()
-            if target_data.get('parent_id') != requester['uid'] and target_data.get('created_by') != requester['uid'] and target_data.get('pt_id') != requester['uid']:
+            if (target_data.get('parent_id') != requester['uid']
+                    and target_data.get('created_by') != requester['uid']
+                    and target_data.get('pt_id') != requester['uid']):
                 raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
         # Salva come scheda corrente dell'utente
@@ -312,10 +329,14 @@ async def complete_workout_day(
     uid: str = Depends(get_current_uid),
 ):
     """Segna l'allenamento del giorno come completato e assegna XP.
-    Può essere chiamato una sola volta per giorno solare."""
+    Può essere chiamato una sola volta per giorno solare (UTC).
+    Usa una transazione Firestore per prevenire doppi crediti concorrenti.
+    """
     try:
         db = firebase_admin.firestore.client()
-        today = datetime.date.today().isoformat()  # es. "2026-04-16"
+
+        # [FIX M-2] Usa sempre UTC per evitare ambiguità di timezone
+        today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
 
         # Verifica che l'utente abbia una scheda assegnata
         plan_doc = db.collection('users').document(uid).collection(
@@ -324,37 +345,38 @@ async def complete_workout_day(
         if not plan_doc.exists:
             raise HTTPException(status_code=404, detail="Nessuna scheda allenamento assegnata.")
 
-        # Controlla se già completato oggi
-        completion_ref = db.collection('users').document(uid).collection(
-            'workout_completions'
-        ).document(today)
-        if completion_ref.get().exists:
-            raise HTTPException(status_code=409, detail="Allenamento già completato oggi!")
-
-        # Registra completamento e aggiungi XP in batch
-        batch = db.batch()
-
-        # Salva il completamento
-        batch.set(completion_ref, {
-            'completed_at': firestore.SERVER_TIMESTAMP,
-            'xp_awarded': _WORKOUT_XP,
-        })
-
-        # Incrementa total_xp nel documento utente
         user_ref = db.collection('users').document(uid)
-        batch.update(user_ref, {'total_xp': firestore.Increment(_WORKOUT_XP)})
+        completion_ref = user_ref.collection('workout_completions').document(today)
 
-        # Aggiungi voce allo storico XP
-        xp_history_ref = db.collection('users').document(uid).collection(
-            'xp_history'
-        ).document()
-        batch.set(xp_history_ref, {
-            'amount': _WORKOUT_XP,
-            'reason': 'workout_completed',
-            'created_at': firestore.SERVER_TIMESTAMP,
-        })
+        # [FIX C-1] Usa transazione atomica invece di batch+pre-check separato.
+        # Senza transazione, due richieste concorrenti possono entrambe passare
+        # il check "non esiste" e assegnare XP doppi.
+        @firestore.transactional
+        def _complete_txn(transaction):
+            snap = completion_ref.get(transaction=transaction)
+            if snap.exists:
+                return False  # già completato oggi
 
-        batch.commit()
+            xp_history_ref = user_ref.collection('xp_history').document()
+
+            transaction.set(completion_ref, {
+                'completed_at': firestore.SERVER_TIMESTAMP,
+                'xp_awarded': _WORKOUT_XP,
+            })
+            # [FIX C-3] Usa xp_total — campo canonico usato dal client (XpService.dart)
+            transaction.update(user_ref, {'xp_total': firestore.Increment(_WORKOUT_XP)})
+            transaction.set(xp_history_ref, {
+                'amount': _WORKOUT_XP,
+                'reason': 'workout_completed',
+                'created_at': firestore.SERVER_TIMESTAMP,
+            })
+            return True
+
+        txn = db.transaction()
+        completed = _complete_txn(txn)
+
+        if not completed:
+            raise HTTPException(status_code=409, detail="Allenamento già completato oggi!")
 
         logger.info("workout_completed", uid=uid, date=today, xp=_WORKOUT_XP)
         return {"message": "Ottimo lavoro!", "xp_awarded": _WORKOUT_XP}

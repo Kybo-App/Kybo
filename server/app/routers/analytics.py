@@ -52,7 +52,12 @@ async def get_overview(request: Request, requester: dict = Depends(verify_profes
         if role == 'admin':
             users_query = db.collection('users').limit(_MAX_USERS)
         else:
-            users_query = db.collection('users').where('parent_id', '==', uid).limit(_MAX_USERS)
+            from google.cloud.firestore_v1.base_query import FieldFilter, Or
+            f1 = FieldFilter("parent_id", "==", uid)
+            f2 = FieldFilter("nutritionist_id", "==", uid)
+            f3 = FieldFilter("pt_id", "==", uid)
+            f4 = FieldFilter("created_by", "==", uid)
+            users_query = db.collection('users').where(filter=Or(filters=[f1, f2, f3, f4])).limit(_MAX_USERS)
 
         users_docs = list(users_query.stream())
         total_users = len(users_docs)
@@ -211,7 +216,12 @@ async def get_nutritionist_activity(request: Request, requester: dict = Depends(
             nut_data = nut.to_dict()
             nut_id = nut.id
 
-            clients_query = db.collection('users').where('parent_id', '==', nut_id).limit(_MAX_USERS)
+            from google.cloud.firestore_v1.base_query import FieldFilter, Or
+            f1 = FieldFilter("parent_id", "==", nut_id)
+            f2 = FieldFilter("nutritionist_id", "==", nut_id)
+            f3 = FieldFilter("pt_id", "==", nut_id)
+            f4 = FieldFilter("created_by", "==", nut_id)
+            clients_query = db.collection('users').where(filter=Or(filters=[f1, f2, f3, f4])).limit(_MAX_USERS)
             clients = list(clients_query.stream())
             client_count = len(clients)
 
@@ -270,7 +280,12 @@ async def get_inactive_users(
         if role == 'admin':
             users_query = db.collection('users').limit(_MAX_INACTIVE)
         else:
-            users_query = db.collection('users').where('parent_id', '==', uid).limit(_MAX_INACTIVE)
+            from google.cloud.firestore_v1.base_query import FieldFilter, Or
+            f1 = FieldFilter("parent_id", "==", uid)
+            f2 = FieldFilter("nutritionist_id", "==", uid)
+            f3 = FieldFilter("pt_id", "==", uid)
+            f4 = FieldFilter("created_by", "==", uid)
+            users_query = db.collection('users').where(filter=Or(filters=[f1, f2, f3, f4])).limit(_MAX_INACTIVE)
 
         users_docs = list(users_query.stream())
 
@@ -345,11 +360,12 @@ async def get_meal_completion(
         role = requester['role']
         uid = requester['uid']
 
-        if role == 'nutritionist':
+        if role != 'admin':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="Utente non trovato")
-            if user_doc.to_dict().get('parent_id') != uid:
+            ud = user_doc.to_dict()
+            if ud.get('parent_id') != uid and ud.get('created_by') != uid and ud.get('nutritionist_id') != uid and ud.get('pt_id') != uid:
                 raise HTTPException(status_code=403, detail="Accesso negato")
 
         diet_docs = list(

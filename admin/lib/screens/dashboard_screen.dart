@@ -21,6 +21,7 @@ import 'reports_view.dart';
 import 'server_metrics_view.dart';
 import 'rewards_catalog_view.dart';
 import 'workout_management_view.dart';
+import 'matchmaking_board_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -311,6 +312,12 @@ class _DashboardContentState extends State<_DashboardContent> {
           icon: Icons.fitness_center_rounded,
           label: 'Workout',
           view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
+        ),
+      if (_isAdmin || _isPT || _isNutritionist)
+        _NavItem(
+          icon: Icons.handshake_rounded,
+          label: 'Bacheca Annunci',
+          view: MatchmakingBoardView(key: ValueKey('matchmaking_$themeKey')),
         ),
     ];
 

@@ -294,6 +294,9 @@ async def upload_diet_admin(
     requester_id = requester['uid']
     requester_role = requester['role']
 
+    if requester_role not in ['admin', 'nutritionist', 'coach']:
+        raise HTTPException(status_code=403, detail="Solo nutrizionisti e coach possono caricare diete")
+
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF allowed")
 
@@ -308,12 +311,12 @@ async def upload_diet_admin(
 
     db = firebase_admin.firestore.client()
 
-    if requester_role == 'nutritionist':
+    if requester_role in ('nutritionist', 'coach'):
         target_doc = db.collection('users').document(target_uid).get()
         if not target_doc.exists:
             raise HTTPException(status_code=404, detail="User not found")
         data = target_doc.to_dict()
-        if data.get('parent_id') != requester_id and data.get('created_by') != requester_id:
+        if data.get('parent_id') != requester_id and data.get('created_by') != requester_id and data.get('nutritionist_id') != requester_id:
             raise HTTPException(status_code=403, detail="Non puoi caricare diete per questo utente")
 
     custom_prompt = None

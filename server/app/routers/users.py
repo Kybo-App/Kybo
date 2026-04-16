@@ -26,6 +26,8 @@ class CreateUserRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     parent_id: Optional[str] = Field(None, max_length=128)
+    nutritionist_id: Optional[str] = Field(None, max_length=128)
+    pt_id: Optional[str] = Field(None, max_length=128)
     max_clients: Optional[int] = Field(None, ge=1, le=10_000)
 
     @field_validator('password')
@@ -44,7 +46,7 @@ class CreateUserRequest(BaseModel):
     @field_validator('role')
     @classmethod
     def validate_role(cls, v):
-        allowed_roles = ['user', 'independent', 'nutritionist', 'personal_trainer', 'admin']
+        allowed_roles = ['user', 'independent', 'nutritionist', 'personal_trainer', 'coach', 'admin']
         if v not in allowed_roles:
             raise ValueError(f'Ruolo non valido. Ruoli permessi: {allowed_roles}')
         return v
@@ -57,6 +59,8 @@ class UpdateUserRequest(BaseModel):
     bio: Optional[str] = Field(None, max_length=2_000)
     specializations: Optional[str] = Field(None, max_length=500)
     phone: Optional[str] = Field(None, max_length=20)
+    nutritionist_id: Optional[str] = Field(None, max_length=128)
+    pt_id: Optional[str] = Field(None, max_length=128)
     max_clients: Optional[int] = Field(None, ge=1, le=10_000)
 
 
@@ -100,8 +104,12 @@ async def admin_create_user(
 ):
     """Crea un nuovo utente."""
     try:
-        if requester['role'] == 'nutritionist':
+        if requester['role'] != 'admin':
             body.role = 'user'
+            if requester['role'] in ('nutritionist', 'coach'):
+                body.nutritionist_id = requester['uid']
+            if requester['role'] in ('personal_trainer', 'coach'):
+                body.pt_id = requester['uid']
             body.parent_id = requester['uid']
 
         db = firebase_admin.firestore.client()
@@ -128,6 +136,8 @@ async def admin_create_user(
             'first_name': body.first_name,
             'last_name': body.last_name,
             'parent_id': body.parent_id,
+            'nutritionist_id': body.nutritionist_id,
+            'pt_id': body.pt_id,
             'is_active': True,
             'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'created_by': requester['uid'],
@@ -179,6 +189,10 @@ async def admin_update_user(
             fs_update['specializations'] = body.specializations
         if body.phone is not None:
             fs_update['phone'] = body.phone
+        if body.nutritionist_id is not None:
+            fs_update['nutritionist_id'] = body.nutritionist_id if body.nutritionist_id else firestore.DELETE_FIELD
+        if body.pt_id is not None:
+            fs_update['pt_id'] = body.pt_id if body.pt_id else firestore.DELETE_FIELD
         if body.max_clients is not None:
             fs_update['max_clients'] = body.max_clients
 
