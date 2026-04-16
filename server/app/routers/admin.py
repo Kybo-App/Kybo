@@ -196,12 +196,12 @@ async def get_secure_user_history(request: Request, target_uid: str, requester: 
     try:
         db = firebase_admin.firestore.client()
 
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="User not found")
             data = user_doc.to_dict()
-            if data.get('parent_id') != requester_id and data.get('created_by') != requester_id:
+            if data.get('parent_id') != requester_id and data.get('created_by') != requester_id and data.get('nutritionist_id') != requester_id and data.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
         db.collection('access_logs').add({
@@ -269,8 +269,13 @@ async def list_users_secure(request: Request, requester: dict = Depends(verify_p
         )
 
         users_ref = db.collection('users')
-        if requester_role == 'nutritionist':
-            docs = users_ref.where('parent_id', '==', requester_id).stream()
+        if requester_role != 'admin':
+            from google.cloud.firestore_v1.base_query import FieldFilter, Or
+            f1 = FieldFilter("parent_id", "==", requester_id)
+            f2 = FieldFilter("nutritionist_id", "==", requester_id)
+            f3 = FieldFilter("pt_id", "==", requester_id)
+            f4 = FieldFilter("created_by", "==", requester_id)
+            docs = users_ref.where(filter=Or(filters=[f1, f2, f3, f4])).stream()
         else:
             docs = users_ref.stream()
 
@@ -296,11 +301,12 @@ async def get_user_details_secure(request: Request, target_uid: str, requester: 
     try:
         db = firebase_admin.firestore.client()
 
-        if requester_role == 'nutritionist':
+        if requester_role != 'admin':
             user_doc = db.collection('users').document(target_uid).get()
             if not user_doc.exists:
                 raise HTTPException(status_code=404, detail="User not found")
-            if user_doc.to_dict().get('parent_id') != requester_id:
+            ud = user_doc.to_dict()
+            if ud.get('parent_id') != requester_id and ud.get('created_by') != requester_id and ud.get('nutritionist_id') != requester_id and ud.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
         asyncio.create_task(

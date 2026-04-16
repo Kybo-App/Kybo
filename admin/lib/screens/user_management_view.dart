@@ -221,7 +221,8 @@ class _UserManagementViewState extends State<UserManagementView> {
     final firstCtrl = TextEditingController(text: currentFirst);
     final lastCtrl = TextEditingController(text: currentLast);
     
-    final isNutritionist = userData['role'] == 'nutritionist';
+    final role = (userData['role'] ?? '').toString();
+    final isNutritionistOrCoach = role == 'nutritionist' || role == 'coach' || role == 'personal_trainer';
     final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
     final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
     final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
@@ -252,7 +253,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 controller: emailCtrl,
                 decoration: const InputDecoration(labelText: "Email"),
               ),
-              if (isNutritionist) ...[
+              if (isNutritionistOrCoach) ...[
                 const SizedBox(height: 16),
                 const Divider(),
                 const Text("Profilo Professionale", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -295,7 +296,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               setState(() => _isLoading = true);
               try {
                 int? maxClients;
-                if (isNutritionist && _currentUserRole == 'admin') {
+                if (isNutritionistOrCoach && _currentUserRole == 'admin') {
                     maxClients = int.tryParse(limitCtrl.text);
                 }
 
@@ -304,9 +305,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                   email: emailCtrl.text,
                   firstName: firstCtrl.text,
                   lastName: lastCtrl.text,
-                  bio: isNutritionist ? bioCtrl.text : null,
-                  specializations: isNutritionist ? specCtrl.text : null,
-                  phone: isNutritionist ? phoneCtrl.text : null,
+                  bio: isNutritionistOrCoach ? bioCtrl.text : null,
+                  specializations: isNutritionistOrCoach ? specCtrl.text : null,
+                  phone: isNutritionistOrCoach ? phoneCtrl.text : null,
                   maxClients: maxClients,
                 );
                 if (mounted) {
@@ -524,6 +525,14 @@ class _UserManagementViewState extends State<UserManagementView> {
           child: Text("Nutrizionista"),
         ),
         const DropdownMenuItem(
+          value: 'personal_trainer',
+          child: Text("Personal Trainer"),
+        ),
+        const DropdownMenuItem(
+          value: 'coach',
+          child: Text("Coach (Nutri+PT)"),
+        ),
+        const DropdownMenuItem(
           value: 'independent',
           child: Text("Indipendente"),
         ),
@@ -581,7 +590,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     items: allowedRoles,
                     onChanged: (v) => setDialogState(() => role = v!),
                   ),
-                  if (role == 'nutritionist') ...[
+                  if (role == 'nutritionist' || role == 'personal_trainer' || role == 'coach') ...[
                      const SizedBox(height: 8),
                      TextField(
                       controller: limitCtrl,
@@ -644,6 +653,10 @@ class _UserManagementViewState extends State<UserManagementView> {
         return Colors.purple;
       case 'nutritionist':
         return Colors.blue;
+      case 'personal_trainer':
+        return Colors.teal;
+      case 'coach':
+        return Colors.indigo;
       case 'independent':
         return Colors.orange;
       default:
@@ -727,6 +740,14 @@ class _UserManagementViewState extends State<UserManagementView> {
                         DropdownMenuItem(
                           value: 'nutritionist',
                           child: Text("Nutrizionisti"),
+                        ),
+                        DropdownMenuItem(
+                          value: 'personal_trainer',
+                          child: Text("PT"),
+                        ),
+                        DropdownMenuItem(
+                          value: 'coach',
+                          child: Text("Coach (Entrambi)"),
                         ),
                         DropdownMenuItem(
                           value: 'independent',
@@ -819,13 +840,14 @@ class _UserManagementViewState extends State<UserManagementView> {
               }
 
               var allUsers = snapshot.data!;
-              final nutNameMap = <String, String>{};
+              final expertNameMap = <String, String>{};
               for (var u in allUsers) {
-                if (u['role'] == 'nutritionist') {
-                  nutNameMap[u['uid']] =
+                final r = u['role']?.toString() ?? '';
+                if (r == 'nutritionist' || r == 'personal_trainer' || r == 'coach') {
+                  expertNameMap[u['uid']] =
                       "${u['first_name'] ?? ''} ${u['last_name'] ?? ''}".trim();
-                  if (nutNameMap[u['uid']]!.isEmpty) {
-                    nutNameMap[u['uid']] = u['email'] ?? 'Unknown';
+                  if (expertNameMap[u['uid']]!.isEmpty) {
+                    expertNameMap[u['uid']] = u['email'] ?? 'Unknown';
                   }
                 }
               }
@@ -858,7 +880,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               }
 
               if (_currentUserRole == 'admin') {
-                return _buildAdminGroupedLayout(filteredUsers, nutNameMap);
+                return _buildAdminGroupedLayout(filteredUsers, expertNameMap);
               } else {
                 return _buildUserGrid(filteredUsers);
               }
@@ -899,35 +921,51 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Widget _buildAdminGroupedLayout(
     List<dynamic> users,
-    Map<String, String> nutNameMap,
+    Map<String, String> expertNameMap,
   ) {
     final admins = <dynamic>[];
     final independents = <dynamic>[];
-    final nutritionistGroups = <String, List<dynamic>>{};
-    final nutritionistDocs = <String, dynamic>{};
+    final expertGroups = <String, List<dynamic>>{};
+    final expertDocs = <String, dynamic>{};
 
     for (var user in users) {
       final role = (user['role'] ?? 'user').toString().toLowerCase();
-      final parentId =
-          user['parent_id'] as String? ?? user['created_by'] as String?;
+      final parentId = user['parent_id'] as String?;
+      final nutId = user['nutritionist_id'] as String?;
+      final ptId = user['pt_id'] as String?;
+      final createdBy = user['created_by'] as String?;
+      
+      final supervisorIds = {
+         if (parentId != null) parentId,
+         if (nutId != null) nutId,
+         if (ptId != null) ptId,
+         if (createdBy != null) createdBy,
+      };
+      
       final uid = user['uid'] as String;
 
       if (role == 'admin') {
         admins.add(user);
       } else if (role == 'independent') {
         independents.add(user);
-      } else if (role == 'nutritionist') {
-        nutritionistDocs[uid] = user;
-        if (!nutritionistGroups.containsKey(uid)) nutritionistGroups[uid] = [];
+      } else if (role == 'nutritionist' || role == 'personal_trainer' || role == 'coach') {
+        expertDocs[uid] = user;
+        if (!expertGroups.containsKey(uid)) expertGroups[uid] = [];
       } else if (role == 'user') {
-        if (parentId != null &&
-            (nutNameMap.containsKey(parentId) ||
-                nutritionistDocs.containsKey(parentId))) {
-          if (!nutritionistGroups.containsKey(parentId)) {
-            nutritionistGroups[parentId] = [];
+        bool assigned = false;
+        for (var sid in supervisorIds) {
+          if (expertNameMap.containsKey(sid) || expertDocs.containsKey(sid)) {
+            if (!expertGroups.containsKey(sid)) {
+              expertGroups[sid] = [];
+            }
+            // avoid duplicating the user in the same group
+            if (!expertGroups[sid]!.any((u) => u['uid'] == uid)) {
+                expertGroups[sid]!.add(user);
+            }
+            assigned = true;
           }
-          nutritionistGroups[parentId]!.add(user);
-        } else {
+        }
+        if (!assigned) {
           independents.add(user);
         }
       }
@@ -935,11 +973,12 @@ class _UserManagementViewState extends State<UserManagementView> {
 
     return ListView(
       children: [
-        ...nutritionistGroups.entries.map((entry) {
-          final nutId = entry.key;
+        ...expertGroups.entries.map((entry) {
+          final expertId = entry.key;
           final clients = entry.value;
-          final nutName = nutNameMap[nutId] ?? "Nutritionist ID: $nutId";
-          final nutDoc = nutritionistDocs[nutId];
+          final expertName = expertNameMap[expertId] ?? "Expert ID: $expertId";
+          final expertDoc = expertDocs[expertId];
+          final eRole = expertDoc?['role'] ?? 'nutritionist';
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
@@ -948,24 +987,24 @@ class _UserManagementViewState extends State<UserManagementView> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: KyboColors.roleNutritionist.withValues(alpha: 0.15),
+                  color: _getRoleColor(eRole).withValues(alpha: 0.15),
                   borderRadius: KyboBorderRadius.medium,
                 ),
                 child: Icon(
-                  Icons.health_and_safety,
-                  color: KyboColors.roleNutritionist,
+                  eRole == 'personal_trainer' ? Icons.fitness_center : Icons.health_and_safety,
+                  color: _getRoleColor(eRole),
                 ),
               ),
-              title: nutName,
+              title: expertName,
               subtitle: "${clients.length} Clienti",
               children: [
-                if (nutDoc != null)
+                if (expertDoc != null)
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: SizedBox(
                       height: 240,
                       child: _UserCard(
-                        user: nutDoc,
+                        user: expertDoc,
                         onDelete: _deleteUser,
                         onUploadDiet: _uploadDiet,
                         onUploadParser: _uploadParser,
@@ -1008,7 +1047,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           ),
                           onEdit: _editUser,
                           onAssign: (uid) =>
-                              _showManageAssignmentDialog(uid, nutNameMap),
+                              _showManageAssignmentDialog(uid, expertNameMap),
                           onNotes: _showClientNotes,
                           currentUserRole: _currentUserRole,
                           currentUserId: _currentUserId,
@@ -1069,7 +1108,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           independents[idx]['first_name'] ?? 'User',
                         ),
                         onEdit: _editUser,
-                        onAssign: (uid) => _assignUser(uid, nutNameMap),
+                        onAssign: (uid) => _assignUser(uid, expertNameMap),
                         onNotes: _showClientNotes,
                         currentUserRole: _currentUserRole,
                         currentUserId: _currentUserId,

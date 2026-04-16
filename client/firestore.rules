@@ -5,6 +5,12 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function hasRole(roleName) { return isSignedIn() && request.auth.token.role == roleName; }
+    function isNutritionist() { return isSignedIn() && request.auth.token.role in ['nutritionist', 'coach']; }
+    function isPT() { return isSignedIn() && request.auth.token.role in ['personal_trainer', 'coach']; }
+    
+    function isAssignedNutri(userData) { return isNutritionist() && (userData.parent_id == request.auth.uid || userData.nutritionist_id == request.auth.uid || userData.created_by == request.auth.uid); }
+    function isAssignedPT(userData) { return isPT() && (userData.parent_id == request.auth.uid || userData.pt_id == request.auth.uid || userData.created_by == request.auth.uid); }
+    function isAssignedProfessional(userData) { return isAssignedNutri(userData) || isAssignedPT(userData); }
 
     // Helper per controllare quali campi vengono modificati
     function affectsOnly(fields) {
@@ -26,7 +32,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) ||
                   hasRole('admin') ||
-                  (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid)) ||
+                  isAssignedProfessional(resource.data) ||
                   (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.parent_id == userId);
 
       // [SECURITY FIX] Create: Solo il proprio profilo con validazione campi
@@ -40,34 +46,34 @@ service cloud.firestore {
                         request.resource.data.diff(resource.data).affectedKeys()
                         .hasOnly(['first_name', 'last_name', 'last_login', 'is_active', 'unlocked_badges', 'xp_total', 'xp_today', 'xp_today_date'])) ||
                        hasRole('admin') ||
-                       (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
+                       isAssignedProfessional(resource.data);
 
       // DELETE: Invariato
       allow delete: if hasRole('admin') ||
-                       (hasRole('nutritionist') && (resource.data.parent_id == request.auth.uid || resource.data.created_by == request.auth.uid));
+                       isAssignedProfessional(resource.data);
 
       // [MODIFICATO] DIETS: Ora l'utente PUÒ scrivere (Create/Update) le sue diete
       match /diets/{dietId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
 
         // QUI ERA IL BLOCCO: Aggiunto "isOwner(userId)" per permettere il salvataggio app
         allow write: if isOwner(userId) ||
                      hasRole('admin') ||
-                     (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                     isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
       }
 
       // Manteniamo history per retrocompatibilità o se usato altrove
       match /history/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
 
         allow create: if isOwner(userId) ||
                       hasRole('admin') ||
-                      (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                      isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
 
         allow update, delete: if hasRole('admin') ||
-                              (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                              isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
       }
 
       match /parser_history/{docId} {
@@ -77,52 +83,50 @@ service cloud.firestore {
       // --- TRACKING COLLECTIONS ---
       match /weight_history/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedProfessional(get(/databases/$(database)/documents/users/$(userId)).data);
         allow write: if isOwner(userId);
       }
 
       match /daily_stats/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedProfessional(get(/databases/$(database)/documents/users/$(userId)).data);
         allow write: if isOwner(userId);
       }
 
       match /goals/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedProfessional(get(/databases/$(database)/documents/users/$(userId)).data);
         allow write: if isOwner(userId);
       }
 
       match /meal_notes/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedNutri(get(/databases/$(database)/documents/users/$(userId)).data);
         allow write: if isOwner(userId);
       }
 
       match /xp_history/{docId} {
         allow read: if isOwner(userId) ||
-                   (hasRole('nutritionist') && get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                   isAssignedProfessional(get(/databases/$(database)/documents/users/$(userId)).data);
         allow write: if isOwner(userId);
       }
 
-      // [SECURITY] Note interne visibili/modificabili solo da admin o dal nutrizionista
-      // corrente (parent_id). I client non possono accedere alle proprie note interne.
+      // [SECURITY] Note interne visibili/modificabili solo da admin o dal professionista
+      // corrente (parent_id/pt_id). I client non possono accedere alle proprie note interne.
       match /internal_notes/{noteId} {
         allow read, write: if hasRole('admin') ||
-                           (hasRole('nutritionist') &&
-                            get(/databases/$(database)/documents/users/$(userId)).data.parent_id == request.auth.uid);
+                           isAssignedProfessional(get(/databases/$(database)/documents/users/$(userId)).data);
       }
     }
 
     match /diet_history/{docId} {
       // [SECURITY FIX] Il nutrizionista può leggere solo se è ANCORA assegnato al client
-      // (parent_id attuale). Un ex-nutrizionista non vede più lo storico.
+      // (parent_id/nutritionist_id attuale). Un ex-nutrizionista non vede più lo storico.
       allow read: if isOwner(resource.data.userId) ||
                   hasRole('admin') ||
-                  (hasRole('nutritionist') &&
-                   resource.data.uploadedBy == request.auth.uid &&
-                   get(/databases/$(database)/documents/users/$(resource.data.userId)).data.parent_id == request.auth.uid);
-      allow create: if hasRole('nutritionist') || hasRole('admin');
+                  (resource.data.uploadedBy == request.auth.uid &&
+                   isAssignedNutri(get(/databases/$(database)/documents/users/$(resource.data.userId)).data));
+      allow create: if isNutritionist() || hasRole('admin');
       allow delete: if hasRole('admin');
     }
 

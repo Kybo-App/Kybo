@@ -35,6 +35,7 @@ import 'badges_screen.dart';
 import 'meal_suggestions_screen.dart';
 import 'rewards_screen.dart';
 import 'workout_screen.dart';
+import 'matchmaking_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -1686,14 +1687,37 @@ class _MainScreenContentState extends State<MainScreenContent>
                     stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
                     builder: (context, snapshot) {
                       bool hasNutritionist = false;
+                      bool hasPT = false;
                       if (snapshot.hasData && snapshot.data!.exists) {
                         final data = snapshot.data!.data() as Map<String, dynamic>?;
                         hasNutritionist = ((data?['parent_id'] != null && (data?['parent_id'].toString().isNotEmpty ?? false)) ||
-                                         (data?['created_by'] != null && (data?['created_by'].toString().isNotEmpty ?? false)));
+                                         (data?['created_by'] != null && (data?['created_by'].toString().isNotEmpty ?? false)) ||
+                                         (data?['nutritionist_id'] != null && (data?['nutritionist_id'].toString().isNotEmpty ?? false)));
+                        hasPT = (data?['pt_id'] != null && (data?['pt_id'].toString().isNotEmpty ?? false));
                       }
 
                       return Column(
                         children: [
+                          if (!hasNutritionist || !hasPT)
+                            PillListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.handshake, color: Colors.indigo, size: 20),
+                              ),
+                              title: "Trova il tuo Coach",
+                              subtitle: "Cerca Nutrizionista o PT",
+                              onTap: () {
+                                Navigator.pop(drawerCtx);
+                                Navigator.push(
+                                  drawerCtx,
+                                  MaterialPageRoute(builder: (_) => const MatchmakingScreen()),
+                                );
+                              },
+                            ),
                           if (hasNutritionist) ...[
                             Showcase(
                               key: _drawerChatKey,
