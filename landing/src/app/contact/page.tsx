@@ -22,7 +22,7 @@ export default function ContactPage() {
     setError('');
 
     try {
-      const res = await fetch('https://kybo.onrender.com/contact/submit', {
+      const res = await fetch('https://kybo-prod.onrender.com/contact/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
