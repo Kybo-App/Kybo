@@ -84,10 +84,11 @@ jobs:
             --output bandit-report.json || true
 
           # Mostra output leggibile in console
+          # [FIX] bandit 1.9 non accetta 'text' — valori validi: screen|txt|json|...
           bandit \
             -r server/app/ \
             -ll \
-            --format text
+            --format screen
 
       - name: Upload Bandit report
         if: always()
