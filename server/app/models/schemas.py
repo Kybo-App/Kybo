@@ -2,7 +2,7 @@
 Schemi Pydantic per le risposte dell'API dieta.
 Dish.instance_id è un UUID generato automaticamente per identificare univocamente ogni piatto nel client.
 """
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 import uuid
 from pydantic import BaseModel, Field
 

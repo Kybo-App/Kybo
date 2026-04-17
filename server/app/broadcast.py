@@ -3,7 +3,6 @@ Invio notifiche broadcast via Firebase Cloud Messaging.
 Invia un messaggio al topic 'all_users', al quale l'app Flutter deve iscriversi all'avvio.
 """
 import logging
-import firebase_admin
 from firebase_admin import messaging
 
 logger = logging.getLogger(__name__)
