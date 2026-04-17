@@ -300,7 +300,7 @@ function ApiSection() {
 
   const codeExample = `// Esempio: carica una dieta per un paziente
 const response = await fetch(
-  'https://kybo.onrender.com/diet/upload',
+  'https://kybo-prod.onrender.com/diet/upload',
   {
     method: 'POST',
     headers: {
@@ -352,7 +352,7 @@ const result = await response.json();
                 📩 Contatta Sales
               </a>
               <a
-                href="https://kybo.onrender.com/docs"
+                href="https://kybo-prod.onrender.com/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${styles.apiCtaBtn} ${styles.apiCtaSecondary}`}
