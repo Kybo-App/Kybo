@@ -34,7 +34,8 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: type,
+                  // Flutter 3.27+: 'value' è deprecato in favore di 'initialValue'
+                  initialValue: type,
                   decoration: const InputDecoration(labelText: "Cosa cerchi?"),
                   items: const [
                     DropdownMenuItem(value: 'nutritionist', child: Text("Nutrizionista")),
@@ -116,6 +117,45 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
     }
   }
 
+  Future<void> _confirmCancelRequest(String reqId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cancellare la richiesta?"),
+        content: const Text(
+          "Le offerte ricevute verranno automaticamente rifiutate. "
+          "Potrai crearne una nuova in qualsiasi momento.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Annulla"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Cancella richiesta"),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await context.read<MatchmakingProvider>().cancelRequest(reqId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Richiesta cancellata.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore: $e")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -182,11 +222,12 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                         children: [
                           Icon(isPT ? Icons.fitness_center : Icons.restaurant, color: isPT ? Colors.teal : Colors.blue),
                           const SizedBox(width: 8),
-                          Text(
-                            isPT ? "Ricerca Personal Trainer" : "Ricerca Nutrizionista",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          Expanded(
+                            child: Text(
+                              isPT ? "Ricerca Personal Trainer" : "Ricerca Nutrizionista",
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
                           ),
-                          const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -201,47 +242,116 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          )
+                          ),
+                          // Cancella richiesta (solo se aperta)
+                          if (isOpen)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              tooltip: "Cancella richiesta",
+                              onPressed: () => _confirmCancelRequest(req['id']),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 12),
                       const Text("Il tuo Obiettivo:", style: TextStyle(color: Colors.grey, fontSize: 12)),
                       Text(req['goal'] ?? '', style: const TextStyle(fontSize: 16)),
-                      
+
                       if (offers.isNotEmpty) ...[
                         const Divider(height: 32),
                         const Text("Offerte Ricevute", style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         ...offers.map((offer) {
-                          final isAccepted = req['accepted_offer_id'] == offer['id'];
+                          // Usa offer['status'] come fonte di verità: il server
+                          // ora può restituire pending/accepted/rejected/withdrawn.
+                          final offerStatus = offer['status'] as String? ?? 'pending';
+                          final isAccepted = offerStatus == 'accepted';
+                          final isInactive = offerStatus == 'rejected' || offerStatus == 'withdrawn';
+
+                          Color borderColor;
+                          Color bgColor;
+                          if (isAccepted) {
+                            borderColor = KyboColors.primary;
+                            bgColor = KyboColors.primary.withValues(alpha: 0.1);
+                          } else if (isInactive) {
+                            borderColor = Colors.grey.shade300;
+                            bgColor = Colors.grey.withValues(alpha: 0.06);
+                          } else {
+                            borderColor = Colors.grey.shade300;
+                            bgColor = KyboColors.surface(context);
+                          }
+
+                          String? statusLabel;
+                          if (offerStatus == 'rejected') statusLabel = 'Rifiutata';
+                          if (offerStatus == 'withdrawn') statusLabel = 'Ritirata dal coach';
+                          if (offerStatus == 'accepted') statusLabel = 'Accettata';
+
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isAccepted ? KyboColors.primary.withValues(alpha: 0.1) : KyboColors.surface(context),
+                              color: bgColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: isAccepted ? KyboColors.primary : Colors.grey.shade300),
+                              border: Border.all(color: borderColor),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.person, size: 16),
+                                    Icon(
+                                      Icons.person,
+                                      size: 16,
+                                      color: isInactive ? Colors.grey : null,
+                                    ),
                                     const SizedBox(width: 8),
-                                    Text(offer['professional_name'] ?? 'Professionista', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    const Spacer(),
-                                    if (isAccepted)
-                                      const Icon(Icons.check_circle, color: KyboColors.primary, size: 20),
+                                    Expanded(
+                                      child: Text(
+                                        offer['professional_name'] ?? 'Professionista',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isInactive ? Colors.grey : null,
+                                          decoration: isInactive ? TextDecoration.lineThrough : null,
+                                        ),
+                                      ),
+                                    ),
+                                    if (statusLabel != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isAccepted
+                                              ? KyboColors.primary.withValues(alpha: 0.15)
+                                              : Colors.grey.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          statusLabel,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isAccepted ? KyboColors.primary : Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(offer['notes'] ?? ''),
+                                Text(
+                                  offer['notes'] ?? '',
+                                  style: TextStyle(color: isInactive ? Colors.grey : null),
+                                ),
                                 if (offer['price_info'] != null && offer['price_info'].toString().isNotEmpty) ...[
                                   const SizedBox(height: 8),
-                                  Text("Prezzo: ${offer['price_info']}", style: const TextStyle(fontWeight: FontWeight.bold, color: KyboColors.accent)),
+                                  Text(
+                                    "Prezzo: ${offer['price_info']}",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isInactive ? Colors.grey : KyboColors.accent,
+                                    ),
+                                  ),
                                 ],
-                                if (isOpen) ...[
+                                // Il pulsante "Accetta" appare solo su offerte ancora pending
+                                // e se la richiesta è aperta.
+                                if (isOpen && offerStatus == 'pending') ...[
                                   const SizedBox(height: 16),
                                   Align(
                                     alignment: Alignment.centerRight,

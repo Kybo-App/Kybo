@@ -39,6 +39,53 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
     }
   }
 
+  Future<void> _withdrawOffer(String reqId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Ritirare l'offerta?"),
+        content: const Text(
+          "La tua offerta verrà marcata come ritirata. Potrai farne una nuova "
+          "finché la richiesta è aperta.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Annulla"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Ritira offerta"),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final repo = context.read<AdminRepository>();
+      final existed = await repo.withdrawMatchmakingOffer(reqId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(existed
+                ? "Offerta ritirata."
+                : "Non risulta una tua offerta su questa richiesta."),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Errore: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _showOfferDialog(String reqId, String roleType) {
     final notesCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
@@ -201,13 +248,24 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                         Text(req['notes'], style: const TextStyle(fontSize: 14)),
                       ],
                       const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: FilledButton.icon(
-                          onPressed: () => _showOfferDialog(req['id'], req['coach_type']),
-                          icon: const Icon(Icons.handshake),
-                          label: const Text("Fai una Proposta"),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _withdrawOffer(req['id']),
+                            icon: const Icon(Icons.undo_rounded, size: 16),
+                            label: const Text("Ritira offerta"),
+                            style: TextButton.styleFrom(
+                              foregroundColor: KyboColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            onPressed: () => _showOfferDialog(req['id'], req['coach_type']),
+                            icon: const Icon(Icons.handshake),
+                            label: const Text("Fai una Proposta"),
+                          ),
+                        ],
                       )
                     ],
                   ),

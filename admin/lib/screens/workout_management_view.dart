@@ -407,6 +407,112 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
     );
   }
 
+  Future<void> _assignPlan(Map<String, dynamic> plan) async {
+    final uidCtrl = TextEditingController(
+        text: (plan['target_uid'] as String?) ?? '');
+    bool isAssigning = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: KyboColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Row(
+            children: [
+              Icon(Icons.person_add_rounded, color: KyboColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Assegna scheda',
+                style: TextStyle(
+                  color: KyboColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '"${plan['name'] ?? 'Scheda'}" verrà assegnata all\'utente '
+                  'indicato. Se la scheda era già assegnata a qualcun altro, '
+                  'gli verrà rimossa dalla home.',
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                PillTextField(
+                  controller: uidCtrl,
+                  hintText: 'UID utente destinatario',
+                  prefixIcon: Icons.person_rounded,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Annulla',
+                  style: TextStyle(color: KyboColors.textSecondary)),
+            ),
+            PillButton(
+              label: 'Assegna',
+              icon: Icons.check_rounded,
+              backgroundColor: KyboColors.primary,
+              textColor: Colors.white,
+              height: 40,
+              isLoading: isAssigning,
+              onPressed: isAssigning
+                  ? null
+                  : () async {
+                      final uid = uidCtrl.text.trim();
+                      if (uid.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('UID obbligatorio')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => isAssigning = true);
+                      try {
+                        await _repo.assignWorkoutPlan(plan['id'], uid);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Scheda assegnata ✓'),
+                              backgroundColor: KyboColors.success,
+                            ),
+                          );
+                        }
+                        _loadPlans();
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Errore: $e'),
+                              backgroundColor: KyboColors.error,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) {
+                          setDialogState(() => isAssigning = false);
+                        }
+                      }
+                    },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _deletePlan(String id, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -631,6 +737,13 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              PillIconButton(
+                icon: Icons.person_add_rounded,
+                color: KyboColors.success,
+                tooltip: 'Assegna a utente',
+                onPressed: () => _assignPlan(plan),
+              ),
+              const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.edit_rounded,
                 color: KyboColors.primary,
