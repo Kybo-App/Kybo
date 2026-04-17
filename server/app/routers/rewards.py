@@ -52,9 +52,10 @@ async def get_rewards_catalog(
     """Lista completa catalogo premi (admin vede anche i disattivati)."""
     try:
         db = firebase_admin.firestore.client()
+        # [FIX R-7] .limit(500) per evitare reads illimitate se il catalogo cresce.
         docs = db.collection('rewards_catalog').order_by(
             'created_at', direction=firestore.Query.DESCENDING
-        ).stream()
+        ).limit(500).stream()
 
         rewards = []
         for doc in docs:
@@ -233,16 +234,28 @@ async def fulfill_claim(
         doc_ref = db.collection('users').document(user_uid).collection(
             'claimed_rewards'
         ).document(claim_id)
-        doc = doc_ref.get()
 
-        if not doc.exists:
-            raise HTTPException(status_code=404, detail="Riscatto non trovato")
+        # [FIX R-8] Ri-verifica status dentro transazione per evitare di
+        # sovrascrivere fulfilled_at/fulfilled_by di un claim già evaso
+        # (idempotency + preservazione dati storici).
+        @firestore.transactional
+        def _fulfill_txn(transaction):
+            snap = doc_ref.get(transaction=transaction)
+            if not snap.exists:
+                raise HTTPException(status_code=404, detail="Riscatto non trovato")
+            current_status = snap.to_dict().get('status')
+            if current_status != 'pending':
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Riscatto non evadibile (status: {current_status}).",
+                )
+            transaction.update(doc_ref, {
+                'status': 'fulfilled',
+                'fulfilled_at': firestore.SERVER_TIMESTAMP,
+                'fulfilled_by': requester['uid'],
+            })
 
-        doc_ref.update({
-            'status': 'fulfilled',
-            'fulfilled_at': firestore.SERVER_TIMESTAMP,
-            'fulfilled_by': requester['uid'],
-        })
+        _fulfill_txn(db.transaction())
 
         logger.info("claim_fulfilled", claim_id=claim_id, user_uid=user_uid, by=requester['uid'])
         return {"message": "Premio evaso"}
@@ -264,9 +277,10 @@ async def get_public_catalog(
     """Catalogo premi visibile agli utenti (solo attivi)."""
     try:
         db = firebase_admin.firestore.client()
+        # [FIX R-7] .limit(200) per evitare reads illimitate lato client.
         docs = db.collection('rewards_catalog').where(
             'is_active', '==', True
-        ).order_by('xp_cost').stream()
+        ).order_by('xp_cost').limit(200).stream()
 
         rewards = []
         for doc in docs:
