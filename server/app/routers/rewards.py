@@ -340,9 +340,11 @@ async def claim_reward(
             if not r_data.get('is_active', False):
                 raise HTTPException(status_code=400, detail="Premio non più disponibile")
 
-            # [FIX C-2] Guard duplicati: usa reward_id come document ID nel subcollection
-            # in modo che un secondo claim dello stesso reward sovrascriva invece di duplicare.
-            # Per premi riusabili (stock illimitato), permettiamo più claim ma non simultanei.
+            # Ogni claim è un record storico indipendente (document ID random).
+            # I premi sono riscattabili più volte se l'utente ha XP sufficienti e
+            # lo stock lo permette — non c'è dedup per (user, reward) a design.
+            # La protezione da race-condition è garantita dalla transazione atomica
+            # su xp_total e stock; i rate limit (10/hour) attenuano i click multipli.
             claim_ref = user_ref.collection('claimed_rewards').document()
 
             new_xp = current_xp - xp_cost
