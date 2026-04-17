@@ -102,30 +102,42 @@ async def create_workout_plan(
                         and target_data.get('pt_id') != requester['uid']):
                     raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
+        # [FIX W-1] Atomicità: plan_doc + workout/current assegnato devono
+        # essere scritti insieme. Senza batch, un fallimento tra le due
+        # scritture lasciava il piano esistente ma non assegnato, oppure
+        # la current di un utente agganciata a un piano inesistente.
+        plan_ref = db.collection('workout_plans').document()
+        plan_id = plan_ref.id
+
+        # [FIX W-3] body.dict() → body.model_dump() per Pydantic v2
+        days_dump = [day.model_dump() for day in body.days]
+
         plan_data = {
             'name': body.name,
             'description': body.description or '',
-            'days': [day.dict() for day in body.days],
+            'days': days_dump,
             'created_by': requester['uid'],
             'created_at': firestore.SERVER_TIMESTAMP,
             'is_active': True,
             'target_uid': body.target_uid,
         }
 
-        doc_ref = db.collection('workout_plans').add(plan_data)
-        plan_id = doc_ref[1].id
+        batch = db.batch()
+        batch.set(plan_ref, plan_data)
 
-        # Se assegnato a un utente, salva anche come scheda corrente
         if body.target_uid:
-            db.collection('users').document(body.target_uid).collection(
+            current_ref = db.collection('users').document(body.target_uid).collection(
                 'workout'
-            ).document('current').set({
+            ).document('current')
+            batch.set(current_ref, {
                 'plan_id': plan_id,
                 'plan_name': body.name,
                 'assigned_at': firestore.SERVER_TIMESTAMP,
                 'assigned_by': requester['uid'],
-                'days': [day.dict() for day in body.days],
+                'days': days_dump,
             })
+
+        batch.commit()
 
         logger.info("workout_plan_created", plan_id=plan_id, by=requester['uid'],
                      target=body.target_uid)
@@ -164,7 +176,7 @@ async def update_workout_plan(
         if body.description is not None:
             update_data['description'] = body.description
         if body.days is not None:
-            update_data['days'] = [day.dict() for day in body.days]
+            update_data['days'] = [day.model_dump() for day in body.days]
         if body.is_active is not None:
             update_data['is_active'] = body.is_active
 
@@ -179,7 +191,7 @@ async def update_workout_plan(
             current_doc = current_ref.get()
             if current_doc.exists and current_doc.to_dict().get('plan_id') == plan_id:
                 current_ref.update({
-                    'days': [day.dict() for day in body.days],
+                    'days': [day.model_dump() for day in body.days],
                     'plan_name': body.name or plan_data.get('name', ''),
                     'updated_at': firestore.SERVER_TIMESTAMP,
                 })
@@ -268,10 +280,28 @@ async def assign_workout_plan(
                     and target_data.get('pt_id') != requester['uid']):
                 raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
 
-        # Salva come scheda corrente dell'utente
-        db.collection('users').document(target_uid).collection(
+        # [FIX W-2] Se il piano era già assegnato a un altro utente, puliamo
+        # la sua workout/current se ancora punta a questo plan_id. Senza
+        # questo cleanup, il vecchio target continuerebbe a vedere la
+        # scheda in "my-plan" anche dopo la riassegnazione, e le successive
+        # modifiche/cancellazioni del piano (che guardano solo target_uid)
+        # non toccherebbero più quel documento stale.
+        previous_target = plan_data.get('target_uid')
+        batch = db.batch()
+
+        if previous_target and previous_target != target_uid:
+            prev_current_ref = db.collection('users').document(previous_target).collection(
+                'workout'
+            ).document('current')
+            prev_current_doc = prev_current_ref.get()
+            if prev_current_doc.exists and prev_current_doc.to_dict().get('plan_id') == plan_id:
+                batch.delete(prev_current_ref)
+
+        # Salva come scheda corrente del nuovo utente
+        new_current_ref = db.collection('users').document(target_uid).collection(
             'workout'
-        ).document('current').set({
+        ).document('current')
+        batch.set(new_current_ref, {
             'plan_id': plan_id,
             'plan_name': plan_data.get('name', ''),
             'assigned_at': firestore.SERVER_TIMESTAMP,
@@ -279,13 +309,19 @@ async def assign_workout_plan(
             'days': plan_data.get('days', []),
         })
 
-        # Aggiorna il piano con il target_uid
-        plan_ref.update({
+        # Aggiorna il piano con il nuovo target_uid
+        batch.update(plan_ref, {
             'target_uid': target_uid,
             'updated_at': firestore.SERVER_TIMESTAMP,
         })
 
-        logger.info("workout_assigned", plan_id=plan_id, target=target_uid, by=requester['uid'])
+        batch.commit()
+
+        logger.info(
+            "workout_assigned",
+            plan_id=plan_id, target=target_uid, by=requester['uid'],
+            previous_target=previous_target,
+        )
         return {"message": "Scheda assegnata"}
     except HTTPException:
         raise
