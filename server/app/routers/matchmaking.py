@@ -283,26 +283,67 @@ async def accept_offer(
                 detail="Il professionista non ha il ruolo richiesto."
             )
 
-        # Aggiorna assegnazioni utente
+        # [FIX M-1] Transazione atomica: update user + close request + reject
+        # orfane. Senza transazione, se una delle scritture fallisce resta
+        # stato incoerente (es. pt_id settato ma request ancora 'open').
+        # [FIX M-2] Le offerte diverse da quella accettata vengono marcate
+        # 'rejected' nella stessa transazione così i PT che le hanno fatte
+        # non le vedono più come pending.
         user_ref = db.collection('users').document(requester['uid'])
-        update_data = {}
-        if coach_type == 'personal_trainer':
-            update_data['pt_id'] = professional_id
-        else:
-            update_data['nutritionist_id'] = professional_id
 
-        if update_data:
-            user_ref.update(update_data)
+        field_name = 'pt_id' if coach_type == 'personal_trainer' else 'nutritionist_id'
 
-        # Chiudi la richiesta
-        req_ref.update({
-            'status': 'closed',
-            'accepted_offer_id': body.offer_id,
-            'matched_professional': professional_id,
-            'updated_at': firestore.SERVER_TIMESTAMP
-        })
+        # Pre-leggi le altre offerte FUORI transazione (Firestore non permette
+        # query multi-doc dentro una transazione; leggiamo i doc_id e li
+        # aggiorniamo singolarmente nella transazione).
+        other_offer_ids = []
+        for od in req_ref.collection('offers').stream():
+            if od.id != body.offer_id and od.to_dict().get('status') == 'pending':
+                other_offer_ids.append(od.id)
 
-        logger.info("matchmaking_accepted", user=requester['uid'], prof=professional_id, type=coach_type)
+        accepted_offer_ref = req_ref.collection('offers').document(body.offer_id)
+
+        @firestore.transactional
+        def _accept_txn(transaction):
+            # Ri-leggi request dentro la transazione per rilevare race
+            # (es. altro tab che ha già accettato un'altra offerta).
+            req_snap = req_ref.get(transaction=transaction)
+            if not req_snap.exists:
+                raise HTTPException(status_code=404, detail="Richiesta non trovata.")
+            if req_snap.to_dict().get('status') != 'open':
+                raise HTTPException(status_code=409, detail="Richiesta già chiusa.")
+
+            # 1) assegna coach all'utente
+            transaction.update(user_ref, {field_name: professional_id})
+
+            # 2) chiudi la richiesta
+            transaction.update(req_ref, {
+                'status': 'closed',
+                'accepted_offer_id': body.offer_id,
+                'matched_professional': professional_id,
+                'updated_at': firestore.SERVER_TIMESTAMP,
+            })
+
+            # 3) marca l'offerta accettata
+            transaction.update(accepted_offer_ref, {
+                'status': 'accepted',
+                'updated_at': firestore.SERVER_TIMESTAMP,
+            })
+
+            # 4) rifiuta le altre offerte pending (FIX M-2)
+            for oid in other_offer_ids:
+                transaction.update(
+                    req_ref.collection('offers').document(oid),
+                    {'status': 'rejected', 'updated_at': firestore.SERVER_TIMESTAMP},
+                )
+
+        _accept_txn(db.transaction())
+
+        logger.info(
+            "matchmaking_accepted",
+            user=requester['uid'], prof=professional_id, type=coach_type,
+            rejected_count=len(other_offer_ids),
+        )
         return {"message": "Offerta accettata! Il coach è ora assegnato al tuo profilo."}
 
     except HTTPException:
