@@ -110,10 +110,16 @@ async def get_meal_suggestions(
         _MAX_PANTRY = 100
         pantry_list = [item.strip() for item in pantry_items.split(",") if item.strip()][:_MAX_PANTRY]
 
+    # [SECURITY] MD5 è usato solo come cache key (non per autenticazione né integrità).
+    # usedforsecurity=False silenzia bandit B324 e segnala l'intento esplicitamente.
     context_hash = hashlib.md5(
-        json.dumps(user_data, sort_keys=True, default=str).encode()
+        json.dumps(user_data, sort_keys=True, default=str).encode(),
+        usedforsecurity=False,
     ).hexdigest()[:8]
-    pantry_key = hashlib.md5(",".join(sorted(pantry_list)).encode()).hexdigest()[:6] if pantry_list else "nopantry"
+    pantry_key = hashlib.md5(
+        ",".join(sorted(pantry_list)).encode(),
+        usedforsecurity=False,
+    ).hexdigest()[:6] if pantry_list else "nopantry"
     cache_key = f"suggestions:{uid}:{meal_type or 'all'}:{count}:{pantry_key}:{context_hash}"
 
     cached = _get_from_memory_cache(cache_key)

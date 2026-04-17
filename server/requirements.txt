@@ -1,14 +1,17 @@
 # [SECURITY] Patched Versions — pinned to exact versions (supply chain protection)
-fastapi==0.115.8
-# [SECURITY] CVE-2024-47874 (DoS via multipart) fixed in 0.40.0+ — explicit pin to override transitive resolution
-starlette==0.41.3
+# [SECURITY] fastapi bumped to 0.120.0 to allow starlette >= 0.49 (CVE fixes)
+fastapi==0.120.0
+# [SECURITY] CVE-2024-47874 + CVE-2025-54121 + CVE-2025-62727 — fixed in 0.49.1
+starlette==0.49.1
 # [SECURITY] GHSA-7669-jjrm-h66r (DoS via malformed headers) fixed in 0.30.0+
 uvicorn[standard]==0.34.0
-# [SECURITY] GHSA-2jv5-9r88-3w3p + GHSA-r2mh-k6mg-3cf8 — fixed in 0.0.9+
-python-multipart==0.0.22
+# [SECURITY] CVE-2026-40347 — fixed in 0.0.26
+python-multipart==0.0.26
 pdfplumber==0.11.5
-# [SECURITY] Patched Buffer Overflow Vulnerability
-Pillow==12.1.1
+# [SECURITY] pdfminer.six — CVE-2025-64512 + CVE-2025-70559 — fixed in 20251230
+pdfminer.six==20251230
+# [SECURITY] CVE-2026-40192 — fixed in 12.2.0
+Pillow==12.2.0
 pytesseract==0.3.10
 # [SECURITY] Pinned version to prevent supply chain attacks
 google-genai==1.0.0
