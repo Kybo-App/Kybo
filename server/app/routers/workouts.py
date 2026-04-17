@@ -61,16 +61,23 @@ async def get_workout_plans(
     """Lista tutte le schede create dal professionista."""
     try:
         db = firebase_admin.firestore.client()
+        # [FIX W-4] .limit(100) evita query illimitata quando un PT accumula
+        # centinaia di schede nel tempo. Se serve vedere l'archivio completo
+        # aggiungere in futuro paginazione con cursor (startAfter).
         docs = db.collection('workout_plans').where(
             'created_by', '==', requester['uid']
         ).order_by(
             'created_at', direction=firestore.Query.DESCENDING
-        ).stream()
+        ).limit(100).stream()
 
         plans = []
         for doc in docs:
             data = doc.to_dict()
             data['id'] = doc.id
+            # Serializza timestamps per il client
+            for ts_field in ('created_at', 'updated_at', 'deleted_at'):
+                if data.get(ts_field):
+                    data[ts_field] = data[ts_field].isoformat()
             plans.append(data)
 
         return {"plans": plans}
@@ -225,17 +232,28 @@ async def delete_workout_plan(
         if plan_data.get('created_by') != requester['uid'] and requester['role'] != 'admin':
             raise HTTPException(status_code=403, detail="Non puoi eliminare questa scheda")
 
-        doc_ref.delete()
+        # [FIX W-5] Soft-delete: mantieni storico (utenti che hanno completato
+        # allenamenti di questo piano devono poter consultare i dati anche
+        # dopo la cancellazione). Rimuoviamo solo l'assegnazione attiva.
+        target_uid = plan_data.get('target_uid')
+        batch = db.batch()
+
+        batch.update(doc_ref, {
+            'is_active': False,
+            'deleted_at': firestore.SERVER_TIMESTAMP,
+            'deleted_by': requester['uid'],
+        })
 
         # [FIX L-6] Rimuovi workout/current se corrisponde a questo piano
-        target_uid = plan_data.get('target_uid')
         if target_uid:
             current_ref = db.collection('users').document(target_uid).collection(
                 'workout'
             ).document('current')
             current_doc = current_ref.get()
             if current_doc.exists and current_doc.to_dict().get('plan_id') == plan_id:
-                current_ref.delete()
+                batch.delete(current_ref)
+
+        batch.commit()
 
         logger.info("workout_plan_deleted", plan_id=plan_id, by=requester['uid'])
         return {"message": "Scheda eliminata"}
@@ -349,6 +367,10 @@ async def get_my_workout(
             return {"plan": None}
 
         data = doc.to_dict()
+        # [FIX W-6] Serializza Timestamp Firestore per il client Flutter
+        for ts_field in ('assigned_at', 'updated_at'):
+            if data.get(ts_field):
+                data[ts_field] = data[ts_field].isoformat()
         return {"plan": data}
     except Exception as e:
         logger.error("get_my_workout_error", error=sanitize_error_message(e))

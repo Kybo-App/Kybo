@@ -5,7 +5,7 @@ Router per il sistema Reward (Shop Premi).
 - Riscatto premio con spesa XP (utente autenticato)
 - Storico premi riscattati
 """
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 import firebase_admin
 from firebase_admin import firestore
@@ -84,7 +84,8 @@ async def create_reward(
             'name': body.name,
             'description': body.description,
             'xp_cost': body.xp_cost,
-            'image_url': body.image_url,
+            # AnyHttpUrl → str (Firestore non serializza Pydantic Url types)
+            'image_url': str(body.image_url) if body.image_url else None,
             'stock': body.stock,
             'is_active': body.is_active,
             'created_at': firestore.SERVER_TIMESTAMP,
@@ -125,11 +126,18 @@ async def update_reward(
         if body.xp_cost is not None:
             update_data['xp_cost'] = body.xp_cost
         if body.image_url is not None:
-            update_data['image_url'] = body.image_url
+            # Pydantic AnyHttpUrl non è serializzabile direttamente da Firestore
+            update_data['image_url'] = str(body.image_url)
         if body.stock is not None:
             update_data['stock'] = body.stock
         if body.is_active is not None:
             update_data['is_active'] = body.is_active
+            # [FIX R-6] Se riattiviamo un reward soft-deleted, ripuliamo i
+            # marcatori di cancellazione altrimenti filtri tipo
+            # "deleted_at == null" darebbero risultati incoerenti.
+            if body.is_active is True:
+                update_data['deleted_at'] = firestore.DELETE_FIELD
+                update_data['deleted_by'] = firestore.DELETE_FIELD
 
         if update_data:
             update_data['updated_at'] = firestore.SERVER_TIMESTAMP
@@ -184,7 +192,8 @@ async def delete_reward(
 @limiter.limit("60/minute")
 async def get_all_claims(
     request: Request,
-    status: Optional[str] = None,
+    # [FIX R-5] Validazione strict del parametro status
+    status: Optional[Literal['pending', 'fulfilled']] = None,
     requester: dict = Depends(verify_admin),
 ):
     """Lista tutti i premi riscattati (con filtro opzionale per status)."""

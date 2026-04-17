@@ -148,22 +148,30 @@ async def make_offer(
         if role != req_data.get('coach_type'):
             raise HTTPException(status_code=403, detail="Non puoi fare offerte per questo ruolo.")
 
-        # Evita offerte duplicate dello stesso professionista
-        existing = req_ref.collection('offers') \
-            .where('professional_id', '==', requester['uid']).limit(1).stream()
-        if len(list(existing)) > 0:
-            raise HTTPException(status_code=400, detail="Hai già fatto un'offerta per questa richiesta.")
+        # [FIX M-3] Usa uid come doc-id dell'offerta per dedup strutturale +
+        # transazione per rendere atomico il controllo "esiste già".
+        # Precedentemente la query .where + .add poteva essere eseguita
+        # 2 volte in concorrenza generando 2 offerte dello stesso PT.
+        offer_ref = req_ref.collection('offers').document(requester['uid'])
 
-        offer_data = {
-            'professional_id': requester['uid'],
-            'notes': body.notes or '',
-            'price_info': body.price_info or '',
-            'created_at': firestore.SERVER_TIMESTAMP,
-            'status': 'pending'
-        }
+        @firestore.transactional
+        def _make_offer_txn(transaction):
+            snap = offer_ref.get(transaction=transaction)
+            if snap.exists and snap.to_dict().get('status') != 'withdrawn':
+                raise HTTPException(
+                    status_code=400,
+                    detail="Hai già fatto un'offerta per questa richiesta.",
+                )
+            transaction.set(offer_ref, {
+                'professional_id': requester['uid'],
+                'notes': body.notes or '',
+                'price_info': body.price_info or '',
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'status': 'pending',
+            })
 
-        req_ref.collection('offers').add(offer_data)
-        return {"message": "Offerta inviata con successo!"}
+        _make_offer_txn(db.transaction())
+        return {"message": "Offerta inviata con successo!", "offer_id": offer_ref.id}
 
     except HTTPException:
         raise
@@ -350,4 +358,112 @@ async def accept_offer(
         raise
     except Exception as e:
         logger.error("matchmaking_accept_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore interno.")
+
+
+# [FIX M-4] Endpoint per cancellare una richiesta (solo se ancora open).
+@router.delete("/requests/{req_id}")
+@limiter.limit("20/hour")
+async def cancel_matchmaking_request(
+    request: Request,
+    req_id: str,
+    requester: dict = Depends(verify_token),
+):
+    """L'utente cancella la propria richiesta se non è stata ancora accettata."""
+    try:
+        db = firebase_admin.firestore.client()
+        req_ref = db.collection('matchmaking_requests').document(req_id)
+        req_doc = req_ref.get()
+
+        if not req_doc.exists:
+            raise HTTPException(status_code=404, detail="Richiesta non trovata.")
+
+        req_data = req_doc.to_dict()
+        if req_data.get('user_id') != requester['uid']:
+            raise HTTPException(status_code=403, detail="Non sei il proprietario della richiesta.")
+
+        if req_data.get('status') != 'open':
+            raise HTTPException(status_code=400, detail="Richiesta non più cancellabile (già chiusa).")
+
+        # Pre-leggi offerte pending per notificare i PT (segnandole 'rejected')
+        pending_offer_ids = []
+        for od in req_ref.collection('offers').stream():
+            if od.to_dict().get('status') == 'pending':
+                pending_offer_ids.append(od.id)
+
+        @firestore.transactional
+        def _cancel_txn(transaction):
+            snap = req_ref.get(transaction=transaction)
+            if not snap.exists or snap.to_dict().get('status') != 'open':
+                raise HTTPException(status_code=409, detail="Richiesta non più cancellabile.")
+
+            transaction.update(req_ref, {
+                'status': 'cancelled',
+                'cancelled_at': firestore.SERVER_TIMESTAMP,
+                'updated_at': firestore.SERVER_TIMESTAMP,
+            })
+            for oid in pending_offer_ids:
+                transaction.update(
+                    req_ref.collection('offers').document(oid),
+                    {'status': 'rejected', 'updated_at': firestore.SERVER_TIMESTAMP},
+                )
+
+        _cancel_txn(db.transaction())
+
+        logger.info(
+            "matchmaking_cancelled",
+            user=requester['uid'], req=req_id,
+            rejected_count=len(pending_offer_ids),
+        )
+        return {"message": "Richiesta cancellata."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("matchmaking_cancel_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore interno.")
+
+
+# [FIX M-4] Endpoint per il professionista che vuole ritirare la propria offerta.
+@router.delete("/requests/{req_id}/offers/mine")
+@limiter.limit("30/hour")
+async def withdraw_offer(
+    request: Request,
+    req_id: str,
+    requester: dict = Depends(verify_professional),
+):
+    """Il professionista ritira la propria offerta (se ancora pending)."""
+    try:
+        db = firebase_admin.firestore.client()
+        # L'id dell'offerta è l'uid del PT (vedi [FIX M-3] in make_offer)
+        offer_ref = (
+            db.collection('matchmaking_requests').document(req_id)
+            .collection('offers').document(requester['uid'])
+        )
+
+        @firestore.transactional
+        def _withdraw_txn(transaction):
+            snap = offer_ref.get(transaction=transaction)
+            if not snap.exists:
+                raise HTTPException(status_code=404, detail="Offerta non trovata.")
+            current_status = snap.to_dict().get('status')
+            if current_status != 'pending':
+                # accepted/rejected/withdrawn: nessuna azione
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Offerta non ritirabile (status: {current_status}).",
+                )
+            transaction.update(offer_ref, {
+                'status': 'withdrawn',
+                'updated_at': firestore.SERVER_TIMESTAMP,
+            })
+
+        _withdraw_txn(db.transaction())
+        logger.info("matchmaking_offer_withdrawn", prof=requester['uid'], req=req_id)
+        return {"message": "Offerta ritirata."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("matchmaking_withdraw_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore interno.")
