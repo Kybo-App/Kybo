@@ -57,7 +57,7 @@ npm run lint                          # Run ESLint
 
 **API Base URLs**:
 - Dev: `https://kybo-test.onrender.com`
-- Prod: `https://kybo.onrender.com`
+- Prod: `https://kybo-prod.onrender.com`
 - Client reads from `Env.apiUrl` (.env), Admin from `ApiService.baseUrl`
 
 ## Key Patterns

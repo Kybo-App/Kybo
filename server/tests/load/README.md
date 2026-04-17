@@ -101,7 +101,7 @@ http_req_failed...............: 0.00%   0 out of 30
 ## Note importanti
 
 - **Ambiente di test**: usare sempre `kybo-test.onrender.com` per i test di
-  carico. Non eseguire load test su `kybo.onrender.com` (produzione) senza
+  carico. Non eseguire load test su `kybo-prod.onrender.com` (produzione) senza
   coordinamento con il team — il traffico artificiale impatta gli utenti reali
   e puo' attivare i rate limiter.
 
