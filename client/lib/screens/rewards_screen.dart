@@ -471,19 +471,26 @@ class _RewardsScreenState extends State<RewardsScreen>
     return RefreshIndicator(
       onRefresh: _loadCatalog,
       color: KyboColors.primary,
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+      // [FIX M-3] AbsorbPointer durante il claim evita che il tap venga
+      // propagato a più card mentre la transazione è in volo (il flag
+      // _isClaiming sul singolo GestureDetector non previene i tap
+      // partiti nello stesso frame).
+      child: AbsorbPointer(
+        absorbing: _isClaiming,
+        child: GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.75,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: _catalog.length,
+          itemBuilder: (context, index) {
+            final reward = _catalog[index];
+            return _buildRewardCard(reward, xpService);
+          },
         ),
-        itemCount: _catalog.length,
-        itemBuilder: (context, index) {
-          final reward = _catalog[index];
-          return _buildRewardCard(reward, xpService);
-        },
       ),
     );
   }
@@ -752,6 +759,25 @@ class _RewardsScreenState extends State<RewardsScreen>
         break;
     }
 
+    // [FIX M-4] Il server serializza claimed_at/fulfilled_at come ISO8601
+    // string. Mostra la data più recente rilevante per lo stato.
+    String? dateLabel;
+    final claimedRaw = claim['claimed_at'];
+    final fulfilledRaw = claim['fulfilled_at'];
+    if (isFulfilled && fulfilledRaw is String) {
+      final dt = DateTime.tryParse(fulfilledRaw);
+      if (dt != null) {
+        dateLabel = 'Evaso il ${dt.day.toString().padLeft(2, '0')}/'
+            '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      }
+    } else if (claimedRaw is String) {
+      final dt = DateTime.tryParse(claimedRaw);
+      if (dt != null) {
+        dateLabel = 'Richiesto il ${dt.day.toString().padLeft(2, '0')}/'
+            '${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -804,6 +830,16 @@ class _RewardsScreenState extends State<RewardsScreen>
                     ),
                   ],
                 ),
+                if (dateLabel != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    dateLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: KyboColors.textSecondary(context).withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

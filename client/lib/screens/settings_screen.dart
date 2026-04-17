@@ -339,44 +339,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 300),
                 child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Opzione "Nessuna preferenza"
-                      RadioListTile<String?>(
-                        value: null,
-                        groupValue: _preferredSupermarket,
-                        onChanged: (v) {
-                          _saveSupermarketPref(v);
-                          Navigator.pop(ctx);
-                        },
-                        title: Text(
-                          'Nessuna preferenza',
-                          style: TextStyle(
-                            color: KyboColors.textSecondary(context),
-                            fontSize: 14,
+                  // [FIX M-5] Migrato da RadioListTile(groupValue/onChanged)
+                  // deprecati in Flutter 3.32 → RadioGroup ancestor pattern.
+                  child: RadioGroup<String?>(
+                    groupValue: _preferredSupermarket,
+                    onChanged: (v) {
+                      _saveSupermarketPref(v);
+                      Navigator.pop(ctx);
+                    },
+                    child: Column(
+                      children: [
+                        // Opzione "Nessuna preferenza"
+                        RadioListTile<String?>(
+                          value: null,
+                          title: Text(
+                            'Nessuna preferenza',
+                            style: TextStyle(
+                              color: KyboColors.textSecondary(context),
+                              fontSize: 14,
+                            ),
                           ),
+                          activeColor: KyboColors.primary,
+                          contentPadding: EdgeInsets.zero,
                         ),
-                        activeColor: KyboColors.primary,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      ..._supermarkets.map((name) => RadioListTile<String?>(
-                        value: name,
-                        groupValue: _preferredSupermarket,
-                        onChanged: (v) {
-                          _saveSupermarketPref(v);
-                          Navigator.pop(ctx);
-                        },
-                        title: Text(
-                          name,
-                          style: TextStyle(
-                            color: KyboColors.textPrimary(context),
-                            fontSize: 14,
+                        ..._supermarkets.map((name) => RadioListTile<String?>(
+                          value: name,
+                          title: Text(
+                            name,
+                            style: TextStyle(
+                              color: KyboColors.textPrimary(context),
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        activeColor: KyboColors.primary,
-                        contentPadding: EdgeInsets.zero,
-                      )),
-                    ],
+                          activeColor: KyboColors.primary,
+                          contentPadding: EdgeInsets.zero,
+                        )),
+                      ],
+                    ),
                   ),
                 ),
               ),
