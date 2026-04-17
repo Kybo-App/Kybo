@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import credentials, firestore
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -27,11 +27,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import logger, sanitize_error_message
-from app.core.metrics import (
-    diet_memory_cache_size,
-    suggestions_memory_cache_size,
-    update_cache_size_gauges,
-)
+from app.core.metrics import update_cache_size_gauges
 
 from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
@@ -111,7 +107,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator  # noqa: E402  # import volutamente dopo app creation
 
 _instrumentator = Instrumentator(
     should_group_status_codes=True,

@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import firebase_admin
-from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 
 from app.core.dependencies import verify_professional

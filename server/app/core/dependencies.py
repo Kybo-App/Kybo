@@ -6,7 +6,6 @@ TTL di 25 minuti (i token Firebase scadono dopo 60 min).
 Struttura cache: { token_hash -> (decoded_token, expire_at) }
 """
 import os
-import re
 import time
 import asyncio
 from typing import Dict, Tuple

@@ -25,7 +25,6 @@ Utilizzo:
     await redis_cache.delete_pattern("uid:*")
 """
 import json
-import asyncio
 from typing import Any, Optional
 from app.core.logging import logger
 from app.core.config import settings
