@@ -5,9 +5,9 @@ import 'dart:convert';
 import 'package:kybo/core/env.dart';
 
 class MatchmakingProvider extends ChangeNotifier {
-  String get _baseUrl => Env.isProd
-      ? "https://kybo-prod.onrender.com"
-      : "https://kybo-test.onrender.com";
+  // Usa Env.apiUrl come tutti gli altri provider: rispetta l'override via .env
+  // e mantiene un'unica fonte di verità per l'URL API.
+  String get _baseUrl => Env.apiUrl;
 
   List<dynamic> _myRequests = [];
   bool _isLoading = false;
@@ -104,6 +104,32 @@ class MatchmakingProvider extends ChangeNotifier {
           'Content-Type': 'application/json'
         },
         body: jsonEncode({'offer_id': offerId}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(_safeBody(response));
+      }
+      await loadMyRequests();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      throw Exception(_error);
+    }
+  }
+
+  /// Cancella una richiesta ancora aperta. Le offerte pending vengono
+  /// rifiutate lato server nella stessa transazione.
+  Future<void> cancelRequest(String reqId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final token = await _getToken();
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/matchmaking/requests/$reqId'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode != 200) {

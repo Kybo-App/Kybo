@@ -1205,4 +1205,19 @@ class AdminRepository {
       throw Exception(_safeBody(response));
     }
   }
+
+  /// Il PT ritira la propria offerta per una richiesta.
+  /// Ritorna true se c'era un'offerta da ritirare, false se non esisteva (404).
+  Future<bool> withdrawMatchmakingOffer(String reqId) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/matchmaking/requests/$reqId/offers/mine'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    await _checkUnauthorized(response);
+
+    if (response.statusCode == 200) return true;
+    if (response.statusCode == 404) return false;
+    throw Exception("Errore Ritiro Offerta (${response.statusCode}): ${_safeBody(response)}");
+  }
 }
