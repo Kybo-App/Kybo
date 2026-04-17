@@ -9,9 +9,12 @@ starlette>=0.49.1,<0.50.0
 uvicorn[standard]==0.34.0
 # [SECURITY] CVE-2026-40347 — fixed in 0.0.26
 python-multipart==0.0.26
-pdfplumber==0.11.5
-# [SECURITY] pdfminer.six — CVE-2025-64512 + CVE-2025-70559 — fixed in 20251230
-pdfminer.six==20251230
+# [SECURITY] pdfplumber 0.11.5 pinnava pdfminer.six==20231228 (vulnerabile a
+# CVE-2025-64512 + CVE-2025-70559). Rilasso per trovare pdfplumber più recente
+# compatibile con pdfminer.six 20251230 (dove i CVE sono fixati).
+# TODO: ri-pinnare a versione esatta dopo primo CI green.
+pdfplumber>=0.11.5,<1.0.0
+pdfminer.six>=20251230
 # [SECURITY] CVE-2026-40192 — fixed in 12.2.0
 Pillow==12.2.0
 pytesseract==0.3.10
