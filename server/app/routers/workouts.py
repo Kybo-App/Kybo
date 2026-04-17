@@ -190,18 +190,22 @@ async def update_workout_plan(
         doc_ref.update(update_data)
 
         # [FIX M-8] Aggiorna workout/current SOLO se è ancora questo il piano attivo
+        # [FIX W-7] Propaga anche rinomine (body.name) non solo cambi di body.days,
+        # altrimenti il client vedeva il nome stale sul doc 'current'.
         target_uid = plan_data.get('target_uid')
-        if target_uid and body.days is not None:
+        needs_current_sync = target_uid and (body.days is not None or body.name is not None)
+        if needs_current_sync:
             current_ref = db.collection('users').document(target_uid).collection(
                 'workout'
             ).document('current')
             current_doc = current_ref.get()
             if current_doc.exists and current_doc.to_dict().get('plan_id') == plan_id:
-                current_ref.update({
-                    'days': [day.model_dump() for day in body.days],
-                    'plan_name': body.name or plan_data.get('name', ''),
-                    'updated_at': firestore.SERVER_TIMESTAMP,
-                })
+                current_update = {'updated_at': firestore.SERVER_TIMESTAMP}
+                if body.days is not None:
+                    current_update['days'] = [day.model_dump() for day in body.days]
+                if body.name is not None:
+                    current_update['plan_name'] = body.name
+                current_ref.update(current_update)
 
         logger.info("workout_plan_updated", plan_id=plan_id, by=requester['uid'])
         return {"message": "Scheda aggiornata"}
@@ -304,36 +308,54 @@ async def assign_workout_plan(
         # scheda in "my-plan" anche dopo la riassegnazione, e le successive
         # modifiche/cancellazioni del piano (che guardano solo target_uid)
         # non toccherebbero più quel documento stale.
-        previous_target = plan_data.get('target_uid')
-        batch = db.batch()
-
-        if previous_target and previous_target != target_uid:
-            prev_current_ref = db.collection('users').document(previous_target).collection(
+        # [FIX W-8] Wrap in transaction: ri-legge il piano sotto lock per
+        # prevenire race tra due riassegnazioni concorrenti (es. admin + PT
+        # che assegnano insieme) che lasciavano workout/current intermedi
+        # orfani. Il pre-check di permission sopra è ancora valido perché
+        # created_by non cambia mai.
+        previous_target_precheck = plan_data.get('target_uid')
+        prev_current_ref = None
+        if previous_target_precheck and previous_target_precheck != target_uid:
+            prev_current_ref = db.collection('users').document(previous_target_precheck).collection(
                 'workout'
             ).document('current')
-            prev_current_doc = prev_current_ref.get()
-            if prev_current_doc.exists and prev_current_doc.to_dict().get('plan_id') == plan_id:
-                batch.delete(prev_current_ref)
 
-        # Salva come scheda corrente del nuovo utente
         new_current_ref = db.collection('users').document(target_uid).collection(
             'workout'
         ).document('current')
-        batch.set(new_current_ref, {
-            'plan_id': plan_id,
-            'plan_name': plan_data.get('name', ''),
-            'assigned_at': firestore.SERVER_TIMESTAMP,
-            'assigned_by': requester['uid'],
-            'days': plan_data.get('days', []),
-        })
 
-        # Aggiorna il piano con il nuovo target_uid
-        batch.update(plan_ref, {
-            'target_uid': target_uid,
-            'updated_at': firestore.SERVER_TIMESTAMP,
-        })
+        @firestore.transactional
+        def _assign_txn(transaction):
+            # Ri-leggi piano per avere target_uid autoritativo
+            plan_snap = plan_ref.get(transaction=transaction)
+            if not plan_snap.exists:
+                raise HTTPException(status_code=404, detail="Scheda non trovata")
+            current_target = plan_snap.to_dict().get('target_uid')
 
-        batch.commit()
+            # Leggi prev_current dentro la txn se il precheck aveva rilevato un previous target
+            if prev_current_ref is not None and current_target == previous_target_precheck:
+                prev_snap = prev_current_ref.get(transaction=transaction)
+                if prev_snap.exists and prev_snap.to_dict().get('plan_id') == plan_id:
+                    transaction.delete(prev_current_ref)
+
+            # Salva come scheda corrente del nuovo utente
+            transaction.set(new_current_ref, {
+                'plan_id': plan_id,
+                'plan_name': plan_snap.to_dict().get('name', ''),
+                'assigned_at': firestore.SERVER_TIMESTAMP,
+                'assigned_by': requester['uid'],
+                'days': plan_snap.to_dict().get('days', []),
+            })
+
+            # Aggiorna il piano con il nuovo target_uid
+            transaction.update(plan_ref, {
+                'target_uid': target_uid,
+                'updated_at': firestore.SERVER_TIMESTAMP,
+            })
+
+            return current_target
+
+        previous_target = _assign_txn(db.transaction())
 
         logger.info(
             "workout_assigned",
