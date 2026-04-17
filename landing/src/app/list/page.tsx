@@ -53,7 +53,7 @@ function SharedListContent() {
   const params = useSearchParams();
   const id = params.get('id');
   const isDev = params.get('dev') === '1';
-  const apiBase = isDev ? 'https://kybo-test.onrender.com' : 'https://kybo.onrender.com';
+  const apiBase = isDev ? 'https://kybo-test.onrender.com' : 'https://kybo-prod.onrender.com';
 
   const [data, setData] = useState<SharedList | null>(null);
   const [loading, setLoading] = useState(true);
