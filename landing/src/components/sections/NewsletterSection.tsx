@@ -18,7 +18,7 @@ export default function NewsletterSection() {
     setSuccess(false);
 
     try {
-      const res = await fetch('https://kybo.onrender.com/newsletter/subscribe', {
+      const res = await fetch('https://kybo-prod.onrender.com/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
