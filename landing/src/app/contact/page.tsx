@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
+import { API_BASE } from '@/lib/api';
 import styles from './contact.module.css';
 
 export default function ContactPage() {
@@ -22,7 +23,7 @@ export default function ContactPage() {
     setError('');
 
     try {
-      const res = await fetch('https://kybo-prod.onrender.com/contact/submit', {
+      const res = await fetch(`${API_BASE}/contact/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

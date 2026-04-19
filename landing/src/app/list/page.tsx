@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/lib/api';
 import styles from './list.module.css';
 
 interface SharedList {
@@ -52,8 +53,6 @@ function groupByCategory(items: string[]): Record<string, string[]> {
 function SharedListContent() {
   const params = useSearchParams();
   const id = params.get('id');
-  const isDev = params.get('dev') === '1';
-  const apiBase = isDev ? 'https://kybo-test.onrender.com' : 'https://kybo-prod.onrender.com';
 
   const [data, setData] = useState<SharedList | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +71,7 @@ function SharedListContent() {
       return;
     }
 
-    fetch(`${apiBase}/shopping-list/share/${id}`)
+    fetch(`${API_BASE}/shopping-list/share/${id}`)
       .then(async (res) => {
         if (res.status === 410) throw new Error('Link scaduto. Chiedi un nuovo link a chi te lo ha inviato.');
         if (!res.ok) throw new Error('Lista non trovata o link scaduto.');
@@ -86,7 +85,7 @@ function SharedListContent() {
         setError(err.message);
         setLoading(false);
       });
-  }, [id, apiBase]);
+  }, [id]);
 
   function toggleItem(idx: number) {
     setChecked((prev) => {

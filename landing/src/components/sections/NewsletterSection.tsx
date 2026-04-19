@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { API_BASE } from '@/lib/api';
 import styles from './NewsletterSection.module.css';
 
 export default function NewsletterSection() {
@@ -18,7 +19,7 @@ export default function NewsletterSection() {
     setSuccess(false);
 
     try {
-      const res = await fetch('https://kybo-prod.onrender.com/newsletter/subscribe', {
+      const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
