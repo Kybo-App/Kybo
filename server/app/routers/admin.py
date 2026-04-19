@@ -255,18 +255,14 @@ def _log_access_bg(requester_id: str, action: str, reason: str, target_uid: str 
 @limiter.limit("60/minute")
 async def list_users_secure(request: Request, requester: dict = Depends(verify_professional)):
     """
-    Lista utenti con log di accesso.
-    Il log viene scritto in background (fire-and-forget) per non bloccare la risposta.
+    Lista utenti. Non viene loggata in audit log (azione troppo frequente per
+    avere valore forensico — il READ_USER_PROFILE granulare resta loggato).
     """
     requester_id = requester['uid']
     requester_role = requester['role']
 
     try:
         db = firebase_admin.firestore.client()
-
-        asyncio.create_task(
-            run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_DIRECTORY', 'User List View')
-        )
 
         users_ref = db.collection('users')
         if requester_role != 'admin':
