@@ -18,9 +18,7 @@ class AnalyticsView extends StatefulWidget {
 }
 
 class _AnalyticsViewState extends State<AnalyticsView> {
-  String get _baseUrl => Env.isProd
-      ? "https://kybo-prod.onrender.com"
-      : "https://kybo-test.onrender.com";
+  String get _baseUrl => Env.apiUrl;
 
   bool _isLoading = true;
   String? _error;

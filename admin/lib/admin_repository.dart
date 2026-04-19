@@ -11,9 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:kybo_admin/core/env.dart';
 
 class AdminRepository {
-  String get _baseUrl => Env.isProd
-      ? "https://kybo-prod.onrender.com"
-      : "https://kybo-test.onrender.com";
+  String get _baseUrl => Env.apiUrl;
 
   Future<String?> _getToken() async {
     return await FirebaseAuth.instance.currentUser?.getIdToken();

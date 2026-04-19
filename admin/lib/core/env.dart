@@ -14,6 +14,15 @@ class Env {
     }
   }
 
-  static String get apiUrl => dotenv.env['API_URL'] ?? 'http://127.0.0.1:8000';
   static bool get isProd => kReleaseMode || dotenv.env['IS_PROD'] == 'true';
+
+  static String get apiUrl {
+    final envUrl = dotenv.env['API_URL'];
+    if (envUrl != null && envUrl.isNotEmpty) {
+      return envUrl;
+    }
+    return isProd
+        ? 'https://kybo-prod.onrender.com'
+        : 'https://kybo-test.onrender.com';
+  }
 }
