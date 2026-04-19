@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/env.dart';
 import '../models/chat_message.dart';
 
@@ -32,9 +33,55 @@ class ChatProvider extends ChangeNotifier {
 
   StreamSubscription? _unreadSubscription;
 
+  static const _kCacheKey = 'chat_professional_cache';
+
+  Future<void> _loadFromCache() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('${_kCacheKey}_${user.uid}');
+      if (raw == null) return;
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      _nutritionistId = data['nutritionistId'] as String?;
+      _nutritionistName = data['nutritionistName'] as String?;
+      _clientName = data['clientName'] as String?;
+      _clientEmail = data['clientEmail'] as String?;
+      if (_nutritionistId != null && _nutritionistId!.isNotEmpty) {
+        _currentChatId = '${user.uid}_chat';
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Chat: cache load failed: $e');
+    }
+  }
+
+  Future<void> _saveToCache() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        '${_kCacheKey}_${user.uid}',
+        jsonEncode({
+          'nutritionistId': _nutritionistId,
+          'nutritionistName': _nutritionistName,
+          'clientName': _clientName,
+          'clientEmail': _clientEmail,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Chat: cache save failed: $e');
+    }
+  }
+
   Future<void> initializeChat() async {
     final user = _auth.currentUser;
     if (user == null || _initialized) return;
+
+    // Carica subito dalla cache locale così il nome del professionista
+    // è disponibile anche offline / prima che Firestore risponda.
+    await _loadFromCache();
 
     try {
       final userDoc =
@@ -79,6 +126,8 @@ class ChatProvider extends ChangeNotifier {
 
       _currentChatId = '${user.uid}_chat';
       _initialized = true;
+
+      await _saveToCache();
 
       await _ensureChatDocument();
 
@@ -314,12 +363,18 @@ class ChatProvider extends ChangeNotifier {
 
   void clearChat() {
     _unreadSubscription?.cancel();
+    final prevUid = _auth.currentUser?.uid;
     _currentChatId = null;
     _nutritionistId = null;
+    _nutritionistName = null;
     _clientName = null;
     _clientEmail = null;
     _unreadCount = 0;
     _initialized = false;
+    if (prevUid != null) {
+      SharedPreferences.getInstance()
+          .then((p) => p.remove('${_kCacheKey}_$prevUid'));
+    }
     notifyListeners();
   }
 
