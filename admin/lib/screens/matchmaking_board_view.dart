@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:kybo_admin/admin_repository.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -12,6 +11,11 @@ class MatchmakingBoardView extends StatefulWidget {
 }
 
 class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
+  // AdminRepository non è registrato come Provider a livello di AdminApp.
+  // Tutti gli altri view lo istanziano direttamente: facciamo lo stesso qui,
+  // altrimenti context.read<AdminRepository>() solleva ProviderNotFoundException.
+  final AdminRepository _repo = AdminRepository();
+
   bool _isLoading = false;
   List<dynamic> _requests = [];
   String _filterType = 'all';
@@ -25,8 +29,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   Future<void> _fetchBoard() async {
     setState(() => _isLoading = true);
     try {
-      final repo = context.read<AdminRepository>();
-      final board = await repo.getMatchmakingBoard();
+      final board = await _repo.getMatchmakingBoard();
       setState(() => _requests = board);
     } catch (e) {
       if (mounted) {
@@ -64,8 +67,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
 
     setState(() => _isLoading = true);
     try {
-      final repo = context.read<AdminRepository>();
-      final existed = await repo.withdrawMatchmakingOffer(reqId);
+      final existed = await _repo.withdrawMatchmakingOffer(reqId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -127,8 +129,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
               Navigator.pop(ctx);
               setState(() => _isLoading = true);
               try {
-                final repo = context.read<AdminRepository>();
-                await repo.makeMatchmakingOffer(
+                await _repo.makeMatchmakingOffer(
                   reqId,
                   notesCtrl.text,
                   priceCtrl.text.isEmpty ? null : priceCtrl.text,

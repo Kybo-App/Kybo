@@ -355,12 +355,21 @@ class _DashboardContentState extends State<_DashboardContent> {
         color: KyboColors.surface,
         boxShadow: KyboColors.softShadow,
       ),
+      // Nav items + user section possono superare la larghezza dello schermo
+      // su viewport strette: la nav prende lo spazio residuo e scrolla in
+      // orizzontale, così i pulsanti a destra (search/lingua/tema/utente/logout)
+      // restano sempre visibili e non vengono sovrascritti.
       child: Row(
         children: [
           _buildLogo(l10n),
-          const SizedBox(width: 48),
-          _buildNavigation(navItems),
-          const Spacer(),
+          const SizedBox(width: 32),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _buildNavigation(navItems),
+            ),
+          ),
+          const SizedBox(width: 16),
           _buildUserSection(navItems, l10n),
         ],
       ),

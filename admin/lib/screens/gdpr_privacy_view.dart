@@ -591,7 +591,10 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildUserTile(Map<String, dynamic> user, {required bool isInactive}) {
-    final email = user['email'] ?? 'N/A';
+    // Mostriamo l'UID (codice univoco) al posto dell'email: la sezione GDPR
+    // non deve esporre PII in chiaro agli operatori che la consultano.
+    final uid = (user['uid'] ?? '').toString();
+    final displayId = uid.isEmpty ? 'N/A' : uid;
     final daysInactive = user['days_inactive'] ?? 0;
     final deadline = user['retention_deadline'] != null
         ? DateTime.tryParse(user['retention_deadline'])
@@ -623,10 +626,12 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    email,
+                    displayId,
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       color: KyboColors.textPrimary,
+                      fontFamily: 'monospace',
+                      fontSize: 13,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
