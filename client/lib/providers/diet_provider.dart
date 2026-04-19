@@ -412,6 +412,37 @@ class DietProvider extends ChangeNotifier {
           .doc('current')
           .get();
 
+      // Last-write-wins: se la cache locale è più recente del doc `current`
+      // su Firestore, non sovrascriviamo la dieta locale — sarebbe un regresso
+      // (es. swap/sostituzioni fatte tra due flutter run prima che il throttle
+      // di runSmartSyncCheck permettesse il push). Invece pushiamo il locale
+      // verso il cloud così le due repliche tornano allineate.
+      final localUpdatedAt = await _storage.loadDietLocalUpdatedAt();
+      if (docSnapshot.exists && _dietPlan != null && localUpdatedAt != null) {
+        final cloudTs = docSnapshot.data()?['lastUpdated'];
+        DateTime? cloudUpdatedAt;
+        if (cloudTs is Timestamp) cloudUpdatedAt = cloudTs.toDate();
+        if (cloudUpdatedAt == null ||
+            localUpdatedAt.isAfter(cloudUpdatedAt)) {
+          debugPrint(
+              "⬆️ Local diet is newer than cloud — pushing up instead of pulling");
+          final jsonMap = _dietPlan!.toJson();
+          final swapsMap = <String, dynamic>{};
+          _activeSwaps.forEach((k, v) => swapsMap[k] = v.toMap());
+          await _firestore.saveCurrentDiet(
+            _sanitize(jsonMap['plan'] as Map<String, dynamic>),
+            _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
+            swapsMap,
+            weeks: jsonMap['weeks'] as List<dynamic>?,
+          );
+          _lastSyncedDiet = _deepCopy(jsonMap['plan'] as Map<String, dynamic>);
+          _lastSyncedSubstitutions =
+              _deepCopy(jsonMap['substitutions'] as Map<String, dynamic>);
+          _lastCloudSave = DateTime.now();
+          return;
+        }
+      }
+
       if (docSnapshot.exists) {
         final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
@@ -448,6 +479,14 @@ class DietProvider extends ChangeNotifier {
           }
 
           await _storage.saveDiet(_dietPlan!.toJson());
+          // Appena pullato dal cloud: allinea il local mtime al `lastUpdated`
+          // del doc remoto, altrimenti saveDiet avrebbe stampato `now()` e il
+          // prossimo syncFromFirebase penserebbe che il local è più recente
+          // e farebbe un push inutile.
+          final cloudTs = data['lastUpdated'];
+          if (cloudTs is Timestamp) {
+            await _storage.setDietLocalUpdatedAt(cloudTs.toDate());
+          }
 
           final jsonMap = _dietPlan!.toJson();
           _lastSyncedDiet = _deepCopy(jsonMap['plan']);
