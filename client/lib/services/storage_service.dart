@@ -25,6 +25,33 @@ class StorageService {
 
   Future<void> saveDiet(Map<String, dynamic> dietData) async {
     await _storage.write(key: 'diet_plan', value: jsonEncode(dietData));
+    // Stamp local mtime so sync can do last-write-wins against Firestore.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      'diet_local_updated_at_ms',
+      DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  /// Ultimo timestamp di modifica locale della dieta.
+  /// Usato da syncFromFirebase per evitare che una `diets/current` stale
+  /// in Firestore sovrascriva modifiche recenti salvate solo offline
+  /// (es. swap/sostituzioni fatte tra un flutter run e l'altro).
+  Future<DateTime?> loadDietLocalUpdatedAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt('diet_local_updated_at_ms');
+    if (ms == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  Future<void> setDietLocalUpdatedAt(DateTime ts) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('diet_local_updated_at_ms', ts.millisecondsSinceEpoch);
+  }
+
+  Future<void> clearDietLocalUpdatedAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('diet_local_updated_at_ms');
   }
 
   Future<List<PantryItem>> loadPantry() async {
