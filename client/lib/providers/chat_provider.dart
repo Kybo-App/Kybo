@@ -25,11 +25,14 @@ class ChatProvider extends ChangeNotifier {
 
   String? _nutritionistId;
   String? _nutritionistName;
+  String? _studioName;
   String? _clientName;
   String? _clientEmail;
   bool _initialized = false;
 
   String get nutritionistName => _nutritionistName ?? 'Nutrizionista';
+  String? get studioName => _studioName;
+  String? get nutritionistId => _nutritionistId;
 
   StreamSubscription? _unreadSubscription;
 
@@ -45,6 +48,7 @@ class ChatProvider extends ChangeNotifier {
       final data = jsonDecode(raw) as Map<String, dynamic>;
       _nutritionistId = data['nutritionistId'] as String?;
       _nutritionistName = data['nutritionistName'] as String?;
+      _studioName = data['studioName'] as String?;
       _clientName = data['clientName'] as String?;
       _clientEmail = data['clientEmail'] as String?;
       if (_nutritionistId != null && _nutritionistId!.isNotEmpty) {
@@ -66,6 +70,7 @@ class ChatProvider extends ChangeNotifier {
         jsonEncode({
           'nutritionistId': _nutritionistId,
           'nutritionistName': _nutritionistName,
+          'studioName': _studioName,
           'clientName': _clientName,
           'clientEmail': _clientEmail,
         }),
@@ -119,6 +124,8 @@ class ChatProvider extends ChangeNotifier {
           final lastName  = nd['last_name']  as String? ?? '';
           final fullName  = '$firstName $lastName'.trim();
           _nutritionistName = fullName.isNotEmpty ? fullName : nd['email'] as String?;
+          final studio = (nd['studio_name'] as String?)?.trim();
+          _studioName = (studio != null && studio.isNotEmpty) ? studio : null;
         }
       } catch (e) {
         debugPrint('Chat: Could not fetch nutritionist name: $e');
@@ -367,6 +374,7 @@ class ChatProvider extends ChangeNotifier {
     _currentChatId = null;
     _nutritionistId = null;
     _nutritionistName = null;
+    _studioName = null;
     _clientName = null;
     _clientEmail = null;
     _unreadCount = 0;

@@ -152,12 +152,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Nutrizionista',
+                        chatProvider.studioName ?? 'Nutrizionista',
                         style: TextStyle(
                           color: KyboColors.textSecondary(context),
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

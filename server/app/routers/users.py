@@ -62,6 +62,9 @@ class UpdateUserRequest(BaseModel):
     nutritionist_id: Optional[str] = Field(None, max_length=128)
     pt_id: Optional[str] = Field(None, max_length=128)
     max_clients: Optional[int] = Field(None, ge=1, le=10_000)
+    # Nome dello studio (es. "Studio Nutrizionistico Rossi") impostato
+    # dall'admin sul profilo del professionista e mostrato nell'app client.
+    studio_name: Optional[str] = Field(None, max_length=120)
 
 
 class AssignUserRequest(BaseModel):
@@ -195,6 +198,12 @@ async def admin_update_user(
             fs_update['pt_id'] = body.pt_id if body.pt_id else firestore.DELETE_FIELD
         if body.max_clients is not None:
             fs_update['max_clients'] = body.max_clients
+        if body.studio_name is not None:
+            # Stringa vuota = rimuove il campo; evita doc con "" attorno.
+            fs_update['studio_name'] = (
+                body.studio_name if body.studio_name.strip()
+                else firestore.DELETE_FIELD
+            )
 
         if fs_update:
             if 'max_clients' in fs_update:

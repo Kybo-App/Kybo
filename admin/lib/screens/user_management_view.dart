@@ -226,6 +226,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
     final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
     final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
+    final studioCtrl = TextEditingController(text: userData['studio_name'] ?? '');
     final limitCtrl = TextEditingController(
       text: (userData['max_clients'] ?? 50).toString(),
     );
@@ -276,6 +277,15 @@ class _UserManagementViewState extends State<UserManagementView> {
                 if (_currentUserRole == 'admin') ...[
                    const SizedBox(height: 8),
                    TextField(
+                    controller: studioCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Nome Studio (mostrato in app ai clienti)",
+                      hintText: "Es. Studio Nutrizionistico Rossi",
+                      prefixIcon: Icon(Icons.store_mall_directory),
+                    ),
+                  ),
+                   const SizedBox(height: 8),
+                   TextField(
                     controller: limitCtrl,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: "Limite Clienti (Admin Only)"),
@@ -309,6 +319,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                   specializations: isNutritionistOrCoach ? specCtrl.text : null,
                   phone: isNutritionistOrCoach ? phoneCtrl.text : null,
                   maxClients: maxClients,
+                  studioName: isNutritionistOrCoach && _currentUserRole == 'admin'
+                      ? studioCtrl.text
+                      : null,
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

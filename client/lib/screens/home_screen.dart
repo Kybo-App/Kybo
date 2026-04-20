@@ -391,7 +391,9 @@ class _MainScreenContentState extends State<MainScreenContent>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    bool seen = prefs.getBool('seen_tutorial_v11') ?? false;
+    // v12: refresh del tour dopo riorganizzazione menu + nuove funzioni
+    // (foto profilo, premi con URL esterno, studio del professionista).
+    bool seen = prefs.getBool('seen_tutorial_v12') ?? false;
 
     if (!seen) {
       _startShowcase();
@@ -424,7 +426,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (mounted) {
       ShowCaseWidget.of(context).startShowCase([_menuKey]);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('seen_tutorial_v11', true);
+      await prefs.setBool('seen_tutorial_v12', true);
     }
   }
 
@@ -437,28 +439,31 @@ class _MainScreenContentState extends State<MainScreenContent>
         _scaffoldKey.currentState?.openDrawer();
         await Future.delayed(const Duration(milliseconds: 450));
         if (!mounted) return;
+        // Ordine aggiornato: Impostazioni promosse, Cronologia in fondo (v12).
         final drawerKeys = _hasNutritionistForTutorial
             ? [
                 _drawerChatKey,
-                _drawerHistoryKey,
-                _drawerBadgesKey,
-                _drawerPdfKey,
                 _drawerSettingsKey,
+                _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
+                _drawerPdfKey,
+                _drawerHistoryKey,
               ]
             : [
                 _drawerUploadKey,
-                _drawerHistoryKey,
-                _drawerBadgesKey,
-                _drawerPdfKey,
                 _drawerSettingsKey,
+                _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
+                _drawerPdfKey,
+                _drawerHistoryKey,
               ];
         ShowCaseWidget.of(context).startShowCase(drawerKeys);
       });
-    } else if (key == _drawerSuggestionsKey) {
+    } else if (key == _drawerHistoryKey) {
+      // v12: Cronologia è ora l'ultima voce del menu — chiude il tour del drawer
+      // e passa alla fase successiva (vista Giorno / Tranquillina).
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (_scaffoldKey.currentState?.isDrawerOpen == true) {
           _scaffoldKey.currentState?.closeDrawer();
@@ -1614,6 +1619,12 @@ class _MainScreenContentState extends State<MainScreenContent>
               .snapshots()
           : const Stream.empty(),
       builder: (streamCtx, snapshot) {
+        final userData =
+            snapshot.data?.data() as Map<String, dynamic>?;
+        final photoUrl = userData?['photo_url'] as String?;
+        final firstName = userData?['first_name'] as String? ?? '';
+        final lastName = userData?['last_name'] as String? ?? '';
+        final displayName = '$firstName $lastName'.trim();
         return Drawer(
           backgroundColor: KyboColors.background(drawerCtx),
           child: ListView(
@@ -1634,39 +1645,73 @@ class _MainScreenContentState extends State<MainScreenContent>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+                    GestureDetector(
+                      onTap: user == null ? null : () => _pickAndUploadProfilePhoto(drawerCtx),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              image: (photoUrl != null && photoUrl.isNotEmpty)
+                                  ? DecorationImage(
+                                      image: NetworkImage(photoUrl),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: (photoUrl == null || photoUrl.isEmpty)
+                                ? Center(
+                                    child: Text(
+                                      initial,
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: KyboColors.primary,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: KyboColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      child: Center(
-                        child: Text(
-                          initial,
-                          style: const TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: KyboColors.primary,
-                          ),
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "Kybo",
-                      style: TextStyle(
+                    Text(
+                      displayName.isNotEmpty ? displayName : "Kybo",
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 24,
+                        fontSize: 22,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -1675,6 +1720,8 @@ class _MainScreenContentState extends State<MainScreenContent>
                         color: Colors.white70,
                         fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -1804,27 +1851,47 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ],
 
                           Showcase(
-                            key: _drawerHistoryKey,
-                            title: 'Cronologia',
-                            description: 'Rivedi tutte le diete precedenti\ncaricate nel tempo.',
+                            key: _drawerSettingsKey,
+                            title: 'Impostazioni',
+                            description: 'Notifiche, dark mode,\nbudget della spesa e altro.',
                             child: PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.success.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.settings, color: KyboColors.success, size: 20),
+                            ),
+                            title: "Impostazioni",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                              ).then((_) => _checkTutorial());
+                            },
+                          ),
+                          ),
+
+                          PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: KyboColors.accent.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.history, color: KyboColors.accent, size: 20),
+                              child: const Icon(Icons.fitness_center_rounded, color: KyboColors.accent, size: 20),
                             ),
-                            title: "Cronologia",
+                            title: "Allenamento",
+                            subtitle: "La tua scheda e i tuoi esercizi",
                             onTap: () {
                               Navigator.pop(drawerCtx);
                               Navigator.push(
                                 drawerCtx,
-                                MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
                               );
                             },
-                          ),
                           ),
 
                           Showcase(
@@ -1847,52 +1914,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 drawerCtx,
                                 MaterialPageRoute(builder: (_) => const BadgesScreen()),
                               );
-                            },
-                          ),
-                          ),
-
-                          Showcase(
-                            key: _drawerPdfKey,
-                            title: 'Esporta PDF',
-                            description: 'Scarica la dieta in PDF\nda condividere o stampare.',
-                            child: PillListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: KyboColors.primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.picture_as_pdf_rounded, color: KyboColors.primary, size: 20),
-                            ),
-                            title: "Esporta Dieta PDF",
-                            subtitle: "Scarica la tua dieta in PDF",
-                            onTap: () {
-                              Navigator.pop(drawerCtx);
-                              _exportDietPdf(drawerCtx);
-                            },
-                          ),
-                          ),
-
-                          Showcase(
-                            key: _drawerSettingsKey,
-                            title: 'Impostazioni',
-                            description: 'Notifiche, dark mode,\nbudget della spesa e altro.',
-                            child: PillListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: KyboColors.success.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.settings, color: KyboColors.success, size: 20),
-                            ),
-                            title: "Impostazioni",
-                            onTap: () {
-                              Navigator.pop(drawerCtx);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                              ).then((_) => _checkTutorial());
                             },
                           ),
                           ),
@@ -1967,24 +1988,50 @@ class _MainScreenContentState extends State<MainScreenContent>
                             },
                           ),
 
-                          PillListTile(
+                          Showcase(
+                            key: _drawerPdfKey,
+                            title: 'Esporta PDF',
+                            description: 'Scarica la dieta in PDF\nda condividere o stampare.',
+                            child: PillListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: KyboColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.picture_as_pdf_rounded, color: KyboColors.primary, size: 20),
+                            ),
+                            title: "Esporta Dieta PDF",
+                            subtitle: "Scarica la tua dieta in PDF",
+                            onTap: () {
+                              Navigator.pop(drawerCtx);
+                              _exportDietPdf(drawerCtx);
+                            },
+                          ),
+                          ),
+
+                          Showcase(
+                            key: _drawerHistoryKey,
+                            title: 'Cronologia',
+                            description: 'Rivedi tutte le diete precedenti\ncaricate nel tempo.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: KyboColors.accent.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.fitness_center_rounded, color: KyboColors.accent, size: 20),
+                              child: const Icon(Icons.history, color: KyboColors.accent, size: 20),
                             ),
-                            title: "Allenamento",
-                            subtitle: "La tua scheda e i tuoi esercizi",
+                            title: "Cronologia",
                             onTap: () {
                               Navigator.pop(drawerCtx);
                               Navigator.push(
                                 drawerCtx,
-                                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+                                MaterialPageRoute(builder: (_) => const HistoryScreen()),
                               );
                             },
+                          ),
                           ),
 
                           PillListTile(
@@ -2022,6 +2069,62 @@ class _MainScreenContentState extends State<MainScreenContent>
         );
       },
     );
+  }
+
+  Future<void> _pickAndUploadProfilePhoto(BuildContext ctx) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final token = await user.getIdToken();
+      if (token == null) return;
+
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('Caricamento foto...'), duration: Duration(seconds: 2)),
+        );
+      }
+
+      final uri = Uri.parse('${Env.apiUrl}/profile/upload-photo');
+      final req = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token';
+      if (file.bytes != null) {
+        req.files.add(http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name));
+      } else if (file.path != null) {
+        req.files.add(await http.MultipartFile.fromPath('file', file.path!, filename: file.name));
+      } else {
+        return;
+      }
+
+      final streamed = await req.send();
+      final resp = await http.Response.fromStream(streamed);
+      if (!ctx.mounted) return;
+      if (resp.statusCode == 200) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('Foto profilo aggiornata')),
+        );
+      } else {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('Errore caricamento: ${resp.statusCode}'),
+            backgroundColor: KyboColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), backgroundColor: KyboColors.error),
+        );
+      }
+    }
   }
 
   Future<void> _uploadDiet(BuildContext context) async {

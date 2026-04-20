@@ -84,6 +84,8 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         text: existing?['xp_cost']?.toString() ?? '');
     final imageCtrl =
         TextEditingController(text: existing?['image_url'] ?? '');
+    final redirectCtrl =
+        TextEditingController(text: existing?['redirect_url'] ?? '');
     final stockCtrl = TextEditingController(
         text: existing?['stock']?.toString() ?? '');
     bool isActive = existing?['is_active'] ?? true;
@@ -160,6 +162,19 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                       hintText: 'URL immagine (opzionale)',
                       prefixIcon: Icons.image_rounded,
                     ),
+                    const SizedBox(height: 12),
+                    PillTextField(
+                      controller: redirectCtrl,
+                      hintText: 'URL esterno riscatto (es. https://shop...)',
+                      prefixIcon: Icons.open_in_new_rounded,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 12),
+                      child: Text(
+                        "Link aperto al cliente dopo il riscatto (sconto, shop partner...).",
+                        style: TextStyle(fontSize: 11, color: KyboColors.textMuted),
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -226,6 +241,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                               ? int.tryParse(stockStr)
                               : null;
 
+                          final redirect = redirectCtrl.text.trim();
                           if (existing == null) {
                             await _repo.createReward(
                               name: name,
@@ -234,6 +250,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                               imageUrl: imageCtrl.text.trim().isNotEmpty
                                   ? imageCtrl.text.trim()
                                   : null,
+                              redirectUrl: redirect.isNotEmpty ? redirect : null,
                               stock: stock,
                               isActive: isActive,
                             );
@@ -244,6 +261,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                               description: descCtrl.text.trim(),
                               xpCost: xpCost,
                               imageUrl: imageCtrl.text.trim(),
+                              redirectUrl: redirect,
                               stock: stock,
                               isActive: isActive,
                             );

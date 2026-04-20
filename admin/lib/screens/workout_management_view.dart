@@ -17,12 +17,21 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
   final AdminRepository _repo = AdminRepository();
 
   List<Map<String, dynamic>> _plans = [];
+  List<Map<String, dynamic>> _clients = [];
   bool _isLoading = true;
+
+  // Nomi giorno preimpostati per velocizzare la creazione scheda: tipici split
+  // usati dai personal trainer (push/pull/legs, upper/lower, ecc.).
+  static const List<String> _dayPresets = [
+    'Push', 'Pull', 'Gambe', 'Upper Body', 'Lower Body',
+    'Full Body', 'Core', 'Cardio', 'Mobility', 'Riposo',
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadPlans();
+    _loadClients();
   }
 
   Future<void> _loadPlans() async {
@@ -45,6 +54,23 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadClients() async {
+    try {
+      final raw = await _repo.getSecureUsersList();
+      final clients = raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .where((u) {
+            final role = (u['role'] as String?) ?? '';
+            return role == 'user' || role == 'client' || role == 'independent';
+          })
+          .toList();
+      if (mounted) setState(() => _clients = clients);
+    } catch (_) {
+      // Fallback silenzioso: il PT potrà ancora digitare manualmente l'UID.
     }
   }
 
@@ -107,11 +133,22 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                     ),
                     const SizedBox(height: 12),
                     if (existing == null) ...[
-                      PillTextField(
-                        controller: targetUidCtrl,
-                        hintText: 'UID utente (opzionale, assegna subito)',
-                        prefixIcon: Icons.person_rounded,
-                      ),
+                      if (_clients.isNotEmpty)
+                        _ClientPicker(
+                          clients: _clients,
+                          selectedUid: targetUidCtrl.text.isNotEmpty
+                              ? targetUidCtrl.text
+                              : null,
+                          onSelected: (uid) {
+                            setDialogState(() => targetUidCtrl.text = uid ?? '');
+                          },
+                        )
+                      else
+                        PillTextField(
+                          controller: targetUidCtrl,
+                          hintText: 'UID utente (opzionale, assegna subito)',
+                          prefixIcon: Icons.person_rounded,
+                        ),
                       const SizedBox(height: 16),
                     ],
 
@@ -144,6 +181,27 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       ],
                     ),
                     const SizedBox(height: 8),
+
+                    if (days.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: _dayPresets.map((p) => ActionChip(
+                            label: Text(p, style: const TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              setDialogState(() {
+                                days.add({
+                                  'day_name': p,
+                                  'exercises': <Map<String, dynamic>>[],
+                                  'notes': '',
+                                });
+                              });
+                            },
+                          )).toList(),
+                        ),
+                      ),
 
                     ...days.asMap().entries.map((entry) {
                       final dayIdx = entry.key;
@@ -221,83 +279,110 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                   Map<String, dynamic>.from(exEntry.value);
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8),
-                                child: Row(
+                                child: Column(
                                   children: [
-                                    Container(
-                                      width: 24,
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        color: KyboColors.primary
-                                            .withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${exIdx + 1}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: KyboColors.primary,
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: KyboColors.primary
+                                                .withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              '${exIdx + 1}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: KyboColors.primary,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          flex: 4,
+                                          child: _miniField(
+                                            value: ex['name'] ?? '',
+                                            hint: 'Esercizio',
+                                            onChanged: (v) {
+                                              (day['exercises'] as List)[exIdx]
+                                                  ['name'] = v;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: _miniField(
+                                            value: '${ex['sets'] ?? 3}',
+                                            hint: 'Set',
+                                            onChanged: (v) {
+                                              (day['exercises'] as List)[exIdx]
+                                                  ['sets'] = int.tryParse(v) ?? 3;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: _miniField(
+                                            value: ex['reps'] ?? '10',
+                                            hint: 'Reps',
+                                            onChanged: (v) {
+                                              (day['exercises'] as List)[exIdx]
+                                                  ['reps'] = v;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: _miniField(
+                                            value: ex['weight_kg']?.toString() ?? '',
+                                            hint: 'Kg',
+                                            onChanged: (v) {
+                                              final parsed = double.tryParse(v.replaceAll(',', '.'));
+                                              (day['exercises'] as List)[exIdx]
+                                                  ['weight_kg'] = parsed;
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: _miniField(
+                                            value: '${ex['rest_seconds'] ?? 90}',
+                                            hint: 'Rest(s)',
+                                            onChanged: (v) {
+                                              (day['exercises'] as List)[exIdx]
+                                                      ['rest_seconds'] =
+                                                  int.tryParse(v) ?? 90;
+                                            },
+                                          ),
+                                        ),
+                                        PillIconButton(
+                                          icon: Icons.close_rounded,
+                                          color: KyboColors.error,
+                                          size: 28,
+                                          onPressed: () {
+                                            setDialogState(() {
+                                              (day['exercises'] as List)
+                                                  .removeAt(exIdx);
+                                            });
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 3,
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4, left: 32),
                                       child: _miniField(
-                                        value: ex['name'] ?? '',
-                                        hint: 'Esercizio',
+                                        value: ex['notes'] ?? '',
+                                        hint: 'Note / tecnica (opzionale)',
                                         onChanged: (v) {
                                           (day['exercises'] as List)[exIdx]
-                                              ['name'] = v;
+                                              ['notes'] = v;
                                         },
                                       ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: _miniField(
-                                        value: '${ex['sets'] ?? 3}',
-                                        hint: 'Set',
-                                        onChanged: (v) {
-                                          (day['exercises'] as List)[exIdx]
-                                              ['sets'] = int.tryParse(v) ?? 3;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: _miniField(
-                                        value: ex['reps'] ?? '10',
-                                        hint: 'Reps',
-                                        onChanged: (v) {
-                                          (day['exercises'] as List)[exIdx]
-                                              ['reps'] = v;
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: _miniField(
-                                        value: '${ex['rest_seconds'] ?? 90}',
-                                        hint: 'Rest(s)',
-                                        onChanged: (v) {
-                                          (day['exercises'] as List)[exIdx]
-                                                  ['rest_seconds'] =
-                                              int.tryParse(v) ?? 90;
-                                        },
-                                      ),
-                                    ),
-                                    PillIconButton(
-                                      icon: Icons.close_rounded,
-                                      color: KyboColors.error,
-                                      size: 28,
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          (day['exercises'] as List)
-                                              .removeAt(exIdx);
-                                        });
-                                      },
                                     ),
                                   ],
                                 ),
@@ -447,11 +532,20 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                PillTextField(
-                  controller: uidCtrl,
-                  hintText: 'UID utente destinatario',
-                  prefixIcon: Icons.person_rounded,
-                ),
+                if (_clients.isNotEmpty)
+                  _ClientPicker(
+                    clients: _clients,
+                    selectedUid: uidCtrl.text.isNotEmpty ? uidCtrl.text : null,
+                    onSelected: (uid) {
+                      setDialogState(() => uidCtrl.text = uid ?? '');
+                    },
+                  )
+                else
+                  PillTextField(
+                    controller: uidCtrl,
+                    hintText: 'UID utente destinatario',
+                    prefixIcon: Icons.person_rounded,
+                  ),
               ],
             ),
           ),
@@ -787,6 +881,62 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ClientPicker extends StatelessWidget {
+  final List<Map<String, dynamic>> clients;
+  final String? selectedUid;
+  final ValueChanged<String?> onSelected;
+
+  const _ClientPicker({
+    required this.clients,
+    required this.selectedUid,
+    required this.onSelected,
+  });
+
+  String _labelFor(Map<String, dynamic> u) {
+    final f = (u['first_name'] as String?) ?? '';
+    final l = (u['last_name'] as String?) ?? '';
+    final email = (u['email'] as String?) ?? '';
+    final full = '$f $l'.trim();
+    return full.isNotEmpty ? '$full • $email' : email;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: selectedUid?.isNotEmpty == true ? selectedUid : null,
+      isExpanded: true,
+      decoration: InputDecoration(
+        prefixIcon: Icon(Icons.person_rounded, color: KyboColors.textMuted),
+        hintText: 'Assegna subito a un cliente (opzionale)',
+        filled: true,
+        fillColor: KyboColors.background,
+        border: OutlineInputBorder(
+          borderRadius: KyboBorderRadius.pill,
+          borderSide: BorderSide(color: KyboColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: KyboBorderRadius.pill,
+          borderSide: BorderSide(color: KyboColors.border),
+        ),
+      ),
+      items: [
+        const DropdownMenuItem<String>(
+          value: '',
+          child: Text('— Nessuna assegnazione —'),
+        ),
+        ...clients.map((u) => DropdownMenuItem<String>(
+              value: u['uid'] as String?,
+              child: Text(
+                _labelFor(u),
+                overflow: TextOverflow.ellipsis,
+              ),
+            )),
+      ],
+      onChanged: (v) => onSelected(v == '' ? null : v),
     );
   }
 }
