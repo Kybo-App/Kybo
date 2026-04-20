@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/env.dart';
 import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_prod.dart' as prod;
@@ -28,6 +29,12 @@ void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      // Inizializza i dati di locale per package:intl. Senza questa chiamata
+      // DateFormat('dd MMM', 'it') (e simili) solleva un LocaleDataException
+      // e il widget che la usa mostra il banner rosso di errore (es. la
+      // sezione "Sfide" dentro Traguardi).
+      await initializeDateFormatting('it', null);
 
       await Env.init();
 
