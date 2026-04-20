@@ -65,6 +65,17 @@ class UpdateUserRequest(BaseModel):
     # Nome dello studio (es. "Studio Nutrizionistico Rossi") impostato
     # dall'admin sul profilo del professionista e mostrato nell'app client.
     studio_name: Optional[str] = Field(None, max_length=120)
+    role: Optional[str] = Field(None, max_length=32)
+
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, v):
+        if v is None:
+            return v
+        allowed_roles = ['user', 'independent', 'nutritionist', 'personal_trainer', 'coach', 'admin']
+        if v not in allowed_roles:
+            raise ValueError(f'Ruolo non valido. Ruoli permessi: {allowed_roles}')
+        return v
 
 
 class AssignUserRequest(BaseModel):
@@ -204,6 +215,19 @@ async def admin_update_user(
                 body.studio_name if body.studio_name.strip()
                 else firestore.DELETE_FIELD
             )
+        if body.role is not None:
+            fs_update['role'] = body.role
+            try:
+                auth.set_custom_user_claims(target_uid, {'role': body.role})
+            except Exception as e:
+                logger.warning("update_user_role_claims_failed", error=sanitize_error_message(e))
+            db.collection('access_logs').add({
+                'requester_id': requester['uid'],
+                'target_uid': target_uid,
+                'action': 'UPDATE_USER_ROLE',
+                'reason': f"Role changed to {body.role}",
+                'timestamp': firebase_admin.firestore.SERVER_TIMESTAMP
+            })
 
         if fs_update:
             if 'max_clients' in fs_update:

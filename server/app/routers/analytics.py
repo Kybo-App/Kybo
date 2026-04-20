@@ -36,6 +36,25 @@ def _serialize_timestamp(ts) -> Optional[str]:
     return str(ts)
 
 
+def _mask_email(email: Optional[str]) -> str:
+    """Maschera email per PII minimization (admin view).
+    es. 'leonardo.ricci@example.com' -> 'l***@example.com'
+    """
+    if not email or '@' not in email:
+        return '***'
+    local, domain = email.split('@', 1)
+    if not local:
+        return f'***@{domain}'
+    return f'{local[0]}***@{domain}'
+
+
+def _mask_name(first: str, last: str) -> str:
+    """Mostra solo iniziali per admin view (es. 'Leonardo Ricci' -> 'L. R.')."""
+    fi = first[0] + '.' if first else ''
+    li = last[0] + '.' if last else ''
+    return f'{fi} {li}'.strip() or '—'
+
+
 @router.get("/overview")
 @limiter.limit("60/minute")
 async def get_overview(request: Request, requester: dict = Depends(verify_professional)):
@@ -321,10 +340,21 @@ async def get_inactive_users(
                     last_login_str = "Non valido"
 
             if is_inactive:
+                first = data.get('first_name', '') or ''
+                last = data.get('last_name', '') or ''
+                email_raw = data.get('email', '') or ''
+                # [PRIVACY] Admin non deve vedere PII in chiaro dei clienti;
+                # nutri/PT vedono solo i propri (già filtrati sopra) in chiaro.
+                if role == 'admin':
+                    name_out = _mask_name(first, last)
+                    email_out = _mask_email(email_raw)
+                else:
+                    name_out = f"{first} {last}".strip()
+                    email_out = email_raw
                 inactive.append({
                     "uid": doc.id,
-                    "name": f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
-                    "email": data.get('email', ''),
+                    "name": name_out,
+                    "email": email_out,
                     "role": user_role,
                     "last_login": last_login_str,
                     "parent_id": data.get('parent_id'),

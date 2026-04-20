@@ -176,6 +176,7 @@ class AdminRepository {
     String? phone,
     int? maxClients,
     String? studioName,
+    String? role,
   }) async {
     final token = await _getToken();
     final response = await http.put(
@@ -193,6 +194,7 @@ class AdminRepository {
         if (phone != null) 'phone': phone,
         if (maxClients != null) 'max_clients': maxClients,
         if (studioName != null) 'studio_name': studioName,
+        if (role != null) 'role': role,
       }),
     );
     if (response.statusCode != 200) {
