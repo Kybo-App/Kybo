@@ -55,6 +55,7 @@ class MainScreen extends StatelessWidget {
     return ShowCaseWidget(
       autoPlay: false,
       blurValue: 1,
+      enableAutoScroll: true,
       onComplete: (index, key) =>
           _contentKey.currentState?._onShowcaseComplete(key),
       builder: (context) => MainScreenContent(key: _contentKey),
@@ -93,6 +94,9 @@ class _MainScreenContentState extends State<MainScreenContent>
   final GlobalKey _drawerSettingsKey = GlobalKey();
   final GlobalKey _drawerStatsKey = GlobalKey();
   final GlobalKey _drawerSuggestionsKey = GlobalKey();
+  final GlobalKey _drawerWorkoutKey = GlobalKey();
+  final GlobalKey _drawerRewardsKey = GlobalKey();
+  final GlobalKey _drawerMatchmakingKey = GlobalKey();
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -394,7 +398,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     final prefs = await SharedPreferences.getInstance();
     // v12: refresh del tour dopo riorganizzazione menu + nuove funzioni
     // (foto profilo, premi con URL esterno, studio del professionista).
-    bool seen = prefs.getBool('seen_tutorial_v12') ?? false;
+    bool seen = prefs.getBool('seen_tutorial_v13') ?? false;
 
     if (!seen) {
       _startShowcase();
@@ -427,7 +431,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     if (mounted) {
       ShowCaseWidget.of(context).startShowCase([_menuKey]);
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('seen_tutorial_v12', true);
+      await prefs.setBool('seen_tutorial_v13', true);
     }
   }
 
@@ -443,28 +447,47 @@ class _MainScreenContentState extends State<MainScreenContent>
         // Ordine aggiornato: Impostazioni promosse, Cronologia in fondo (v12).
         final drawerKeys = _hasNutritionistForTutorial
             ? [
+                _drawerAvatarKey,
                 _drawerChatKey,
                 _drawerSettingsKey,
+                _drawerWorkoutKey,
                 _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
+                _drawerRewardsKey,
                 _drawerPdfKey,
                 _drawerHistoryKey,
               ]
             : [
+                _drawerAvatarKey,
                 _drawerUploadKey,
                 _drawerSettingsKey,
+                _drawerWorkoutKey,
                 _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
+                _drawerRewardsKey,
                 _drawerPdfKey,
                 _drawerHistoryKey,
+                _drawerMatchmakingKey,
               ];
         ShowCaseWidget.of(context).startShowCase(drawerKeys);
       });
-    } else if (key == _drawerHistoryKey) {
-      // v12: Cronologia è ora l'ultima voce del menu — chiude il tour del drawer
-      // e passa alla fase successiva (vista Giorno / Tranquillina).
+    } else if (key == _drawerHistoryKey && _hasNutritionistForTutorial) {
+      // Utente con nutri: l'ultimo step del drawer è Cronologia.
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+          _scaffoldKey.currentState?.closeDrawer();
+        }
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (!mounted) return;
+        setState(() => _currentIndex = 1);
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) return;
+        ShowCaseWidget.of(context).startShowCase([_tranquilKey]);
+      });
+    } else if (key == _drawerMatchmakingKey && !_hasNutritionistForTutorial) {
+      // Utente senza nutri: l'ultimo step del drawer è "Trova Coach".
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (_scaffoldKey.currentState?.isDrawerOpen == true) {
           _scaffoldKey.currentState?.closeDrawer();
@@ -1751,26 +1774,6 @@ class _MainScreenContentState extends State<MainScreenContent>
 
                       return Column(
                         children: [
-                          if (!hasNutritionist || !hasPT)
-                            PillListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.indigo.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.handshake, color: Colors.indigo, size: 20),
-                              ),
-                              title: "Trova il tuo Coach",
-                              subtitle: "Cerca Nutrizionista o PT",
-                              onTap: () {
-                                Navigator.pop(drawerCtx);
-                                Navigator.push(
-                                  drawerCtx,
-                                  MaterialPageRoute(builder: (_) => const MatchmakingScreen()),
-                                );
-                              },
-                            ),
                           if (hasNutritionist) ...[
                             Showcase(
                               key: _drawerChatKey,
@@ -1880,7 +1883,11 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          PillListTile(
+                          Showcase(
+                            key: _drawerWorkoutKey,
+                            title: 'Allenamento',
+                            description: 'La tua scheda personalizzata\ncreata dal tuo PT.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1898,6 +1905,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 MaterialPageRoute(builder: (_) => const WorkoutScreen()),
                               );
                             },
+                          ),
                           ),
 
                           Showcase(
@@ -1974,7 +1982,11 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          PillListTile(
+                          Showcase(
+                            key: _drawerRewardsKey,
+                            title: 'Shop Premi',
+                            description: 'Riscatta gli XP per premi reali.\nAlcuni si completano online.',
+                            child: PillListTile(
                             leading: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -1992,6 +2004,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 MaterialPageRoute(builder: (_) => const RewardsScreen()),
                               );
                             },
+                          ),
                           ),
 
                           Showcase(
@@ -2039,6 +2052,32 @@ class _MainScreenContentState extends State<MainScreenContent>
                             },
                           ),
                           ),
+
+                          if (!hasNutritionist || !hasPT)
+                            Showcase(
+                              key: _drawerMatchmakingKey,
+                              title: 'Trova il tuo Coach',
+                              description: 'Kybo ti aiuta a trovare\nun nutrizionista o PT.',
+                              child: PillListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.indigo.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.handshake, color: Colors.indigo, size: 20),
+                                ),
+                                title: "Trova il tuo Coach",
+                                subtitle: "Cerca Nutrizionista o PT",
+                                onTap: () {
+                                  Navigator.pop(drawerCtx);
+                                  Navigator.push(
+                                    drawerCtx,
+                                    MaterialPageRoute(builder: (_) => const MatchmakingScreen()),
+                                  );
+                                },
+                              ),
+                            ),
 
                           PillListTile(
                             leading: Container(
