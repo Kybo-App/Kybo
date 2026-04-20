@@ -4,7 +4,7 @@ Router per funzionalità chat (es. upload allegati).
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from firebase_admin import storage
-from app.core.dependencies import verify_professional, MAX_FILE_SIZE, validate_extension, validate_file_content
+from app.core.dependencies import verify_token, MAX_FILE_SIZE, validate_extension, validate_file_content
 from app.core.logging import logger, sanitize_error_message
 from app.core.limiter import limiter
 
@@ -15,11 +15,15 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 async def upload_attachment(
     request: Request,
     file: UploadFile = File(...),
-    requester: dict = Depends(verify_professional)
+    requester: dict = Depends(verify_token)
 ):
     """
     Carica un allegato (immagine/PDF) su Firebase Storage per la chat.
-    Ritorna l'URL pubblico (o firmato) del file.
+    Ritorna l'URL firmato del file.
+
+    Autenticazione: qualsiasi utente loggato. La chat è un canale bidirezionale
+    client ↔ professionista, quindi restringere a verify_professional causava
+    403 quando un cliente inviava una foto al nutrizionista.
     """
     allowed_types = ["image/jpeg", "image/png", "application/pdf"]
     if file.content_type not in allowed_types:
