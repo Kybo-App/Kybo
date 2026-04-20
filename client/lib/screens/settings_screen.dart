@@ -1,5 +1,6 @@
 // Schermata impostazioni: password, allarmi pasti, budget spesa, dark mode, privacy, tutorial,
 // preferenze supermercato, timer cottura.
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +11,10 @@ import 'change_password_screen.dart';
 import 'cooking_timer_screen.dart';
 import '../widgets/meal_reminder_dialog.dart';
 
+// Legacy (single value) — letto solo per la migrazione one-shot.
 const _kSupermarketPrefKey = 'preferred_supermarket';
+// Nuova chiave: lista di supermercati preferiti (JSON array di stringhe).
+const _kSupermarketsPrefKey = 'preferred_supermarkets';
 const _supermarkets = [
   'Esselunga',
   'Conad',
@@ -37,7 +41,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String? _preferredSupermarket;
+  Set<String> _preferredSupermarkets = {};
 
   @override
   void initState() {
@@ -47,21 +51,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSupermarketPref() async {
     final prefs = await SharedPreferences.getInstance();
+
+    Set<String> loaded = {};
+    final raw = prefs.getString(_kSupermarketsPrefKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          loaded = decoded.whereType<String>().toSet();
+        }
+      } catch (_) {}
+    } else {
+      // Migrazione one-shot dalla vecchia chiave singola.
+      final legacy = prefs.getString(_kSupermarketPrefKey);
+      if (legacy != null && legacy.isNotEmpty) {
+        loaded = {legacy};
+        await prefs.setString(
+          _kSupermarketsPrefKey,
+          jsonEncode(loaded.toList()),
+        );
+        await prefs.remove(_kSupermarketPrefKey);
+      }
+    }
+
     if (mounted) {
-      setState(() {
-        _preferredSupermarket = prefs.getString(_kSupermarketPrefKey);
-      });
+      setState(() => _preferredSupermarkets = loaded);
     }
   }
 
-  Future<void> _saveSupermarketPref(String? value) async {
+  Future<void> _saveSupermarketPref(Set<String> values) async {
     final prefs = await SharedPreferences.getInstance();
-    if (value == null) {
-      await prefs.remove(_kSupermarketPrefKey);
+    if (values.isEmpty) {
+      await prefs.remove(_kSupermarketsPrefKey);
     } else {
-      await prefs.setString(_kSupermarketPrefKey, value);
+      await prefs.setString(
+        _kSupermarketsPrefKey,
+        jsonEncode(values.toList()),
+      );
     }
-    if (mounted) setState(() => _preferredSupermarket = value);
+    if (mounted) setState(() => _preferredSupermarkets = values);
   }
 
   @override
@@ -168,8 +196,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: const Icon(Icons.store_rounded, color: Colors.orange, size: 20),
               ),
-              title: "Supermercato Preferito",
-              subtitle: _preferredSupermarket ?? "Nessuna preferenza impostata",
+              title: "Supermercati Preferiti",
+              subtitle: _preferredSupermarkets.isEmpty
+                  ? "Nessuna preferenza impostata"
+                  : _preferredSupermarkets.join(', '),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showSupermarketDialog(context),
             ),
@@ -296,74 +326,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showSupermarketDialog(BuildContext context) {
+    // Copia locale così i check rispondono senza chiudere il dialog;
+    // persistiamo solo su "Salva".
+    final Set<String> draft = {..._preferredSupermarkets};
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: KyboColors.surface(context),
-        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.store_rounded, color: Colors.orange, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Supermercato Preferito',
-              style: TextStyle(
-                color: KyboColors.textPrimary(context),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          backgroundColor: KyboColors.surface(context),
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Row(
             children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.store_rounded,
+                    color: Colors.orange, size: 20),
+              ),
+              const SizedBox(width: 12),
               Text(
-                'Seleziona il supermercato dove fai la spesa più spesso.',
+                'Supermercati Preferiti',
                 style: TextStyle(
-                  color: KyboColors.textSecondary(context),
-                  fontSize: 13,
+                  color: KyboColors.textPrimary(context),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: SingleChildScrollView(
-                  // [FIX M-5] Migrato da RadioListTile(groupValue/onChanged)
-                  // deprecati in Flutter 3.32 → RadioGroup ancestor pattern.
-                  child: RadioGroup<String?>(
-                    groupValue: _preferredSupermarket,
-                    onChanged: (v) {
-                      _saveSupermarketPref(v);
-                      Navigator.pop(ctx);
-                    },
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Seleziona uno o più supermercati dove fai la spesa.',
+                  style: TextStyle(
+                    color: KyboColors.textSecondary(context),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  child: SingleChildScrollView(
                     child: Column(
-                      children: [
-                        // Opzione "Nessuna preferenza"
-                        RadioListTile<String?>(
-                          value: null,
-                          title: Text(
-                            'Nessuna preferenza',
-                            style: TextStyle(
-                              color: KyboColors.textSecondary(context),
-                              fontSize: 14,
-                            ),
-                          ),
-                          activeColor: KyboColors.primary,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                        ..._supermarkets.map((name) => RadioListTile<String?>(
-                          value: name,
+                      children: _supermarkets.map((name) {
+                        final selected = draft.contains(name);
+                        return CheckboxListTile(
+                          value: selected,
+                          onChanged: (v) {
+                            setLocal(() {
+                              if (v == true) {
+                                draft.add(name);
+                              } else {
+                                draft.remove(name);
+                              }
+                            });
+                          },
                           title: Text(
                             name,
                             style: TextStyle(
@@ -372,25 +397,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           activeColor: KyboColors.primary,
+                          controlAffinity: ListTileControlAffinity.leading,
                           contentPadding: EdgeInsets.zero,
-                        )),
-                      ],
+                          dense: true,
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            PillButton(
+              label: 'Annulla',
+              onPressed: () => Navigator.pop(ctx),
+              backgroundColor: KyboColors.surface(context),
+              textColor: KyboColors.textPrimary(context),
+              height: 40,
+            ),
+            const SizedBox(width: 8),
+            PillButton(
+              label: 'Salva',
+              onPressed: () {
+                _saveSupermarketPref(draft);
+                Navigator.pop(ctx);
+              },
+              height: 40,
+            ),
+          ],
         ),
-        actions: [
-          PillButton(
-            label: 'Chiudi',
-            onPressed: () => Navigator.pop(ctx),
-            backgroundColor: KyboColors.surface(context),
-            textColor: KyboColors.textPrimary(context),
-            height: 40,
-          ),
-        ],
       ),
     );
   }
