@@ -309,7 +309,10 @@ class _BadgesTab extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 0.85,
+              // Più alto (aspect < 0.85) per evitare che descrizione a 2 righe
+              // + data di sblocco / progress bar vada in overflow e mostri
+              // le strisce gialle/nere di renderflex.
+              childAspectRatio: 0.75,
             ),
             itemBuilder: (ctx, index) {
               final badge = regularBadges[index];
@@ -784,6 +787,7 @@ class _BadgeCard extends StatelessWidget {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Tier indicator
             if (badge.tier != null && isUnlocked)
