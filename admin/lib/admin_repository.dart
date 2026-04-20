@@ -175,6 +175,7 @@ class AdminRepository {
     String? specializations,
     String? phone,
     int? maxClients,
+    String? studioName,
   }) async {
     final token = await _getToken();
     final response = await http.put(
@@ -191,6 +192,7 @@ class AdminRepository {
         if (specializations != null) 'specializations': specializations,
         if (phone != null) 'phone': phone,
         if (maxClients != null) 'max_clients': maxClients,
+        if (studioName != null) 'studio_name': studioName,
       }),
     );
     if (response.statusCode != 200) {
@@ -956,6 +958,7 @@ class AdminRepository {
     required int xpCost,
     String description = '',
     String? imageUrl,
+    String? redirectUrl,
     int? stock,
     bool isActive = true,
   }) async {
@@ -971,6 +974,7 @@ class AdminRepository {
         'description': description,
         'xp_cost': xpCost,
         if (imageUrl != null) 'image_url': imageUrl,
+        if (redirectUrl != null) 'redirect_url': redirectUrl,
         if (stock != null) 'stock': stock,
         'is_active': isActive,
       }),
@@ -989,6 +993,7 @@ class AdminRepository {
     String? description,
     int? xpCost,
     String? imageUrl,
+    String? redirectUrl,
     int? stock,
     bool? isActive,
   }) async {
@@ -1004,6 +1009,7 @@ class AdminRepository {
         if (description != null) 'description': description,
         if (xpCost != null) 'xp_cost': xpCost,
         if (imageUrl != null) 'image_url': imageUrl,
+        if (redirectUrl != null) 'redirect_url': redirectUrl,
         if (stock != null) 'stock': stock,
         if (isActive != null) 'is_active': isActive,
       }),

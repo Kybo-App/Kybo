@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/xp_service.dart';
 import '../widgets/design_system.dart';
@@ -249,6 +250,44 @@ class _RewardsScreenState extends State<RewardsScreen>
                   borderRadius: KyboBorderRadius.medium),
             ),
           );
+        }
+
+        // Se il premio ha un URL esterno associato (pagina sconto, shop
+        // partner...), proponiamo al cliente di aprirlo subito.
+        final redirect = (reward['redirect_url'] as String?)?.trim();
+        if (mounted && redirect != null && redirect.isNotEmpty) {
+          final open = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: KyboColors.surface(context),
+              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+              title: Text('Completa il riscatto', style: TextStyle(color: KyboColors.textPrimary(context))),
+              content: Text(
+                'Apri il link del premio per completare il riscatto.',
+                style: TextStyle(color: KyboColors.textSecondary(context)),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Dopo'),
+                ),
+                PillButton(
+                  label: 'Apri',
+                  icon: Icons.open_in_new_rounded,
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  height: 40,
+                  onPressed: () => Navigator.pop(ctx, true),
+                ),
+              ],
+            ),
+          );
+          if (open == true) {
+            final uri = Uri.tryParse(redirect);
+            if (uri != null) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          }
         }
       } else {
         final detail = _parseError(response);

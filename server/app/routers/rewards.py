@@ -27,6 +27,9 @@ class CreateRewardRequest(BaseModel):
     xp_cost: int = Field(..., ge=1, le=100_000)
     # [FIX H-3] AnyHttpUrl richiede schema https/http valido — previene XSS e SSRF
     image_url: Optional[AnyHttpUrl] = Field(None)
+    # URL esterno opzionale aperto dal client dopo il riscatto
+    # (es. pagina sconto, shop partner). Stessa validazione di image_url.
+    redirect_url: Optional[AnyHttpUrl] = Field(None)
     stock: Optional[int] = Field(None, ge=0, le=100_000)
     is_active: bool = True
 
@@ -37,6 +40,7 @@ class UpdateRewardRequest(BaseModel):
     xp_cost: Optional[int] = Field(None, ge=1, le=100_000)
     # [FIX H-3] Stessa validazione URL per gli update
     image_url: Optional[AnyHttpUrl] = Field(None)
+    redirect_url: Optional[AnyHttpUrl] = Field(None)
     stock: Optional[int] = Field(None, ge=0, le=100_000)
     is_active: Optional[bool] = None
 
@@ -87,6 +91,7 @@ async def create_reward(
             'xp_cost': body.xp_cost,
             # AnyHttpUrl → str (Firestore non serializza Pydantic Url types)
             'image_url': str(body.image_url) if body.image_url else None,
+            'redirect_url': str(body.redirect_url) if body.redirect_url else None,
             'stock': body.stock,
             'is_active': body.is_active,
             'created_at': firestore.SERVER_TIMESTAMP,
@@ -129,6 +134,8 @@ async def update_reward(
         if body.image_url is not None:
             # Pydantic AnyHttpUrl non è serializzabile direttamente da Firestore
             update_data['image_url'] = str(body.image_url)
+        if body.redirect_url is not None:
+            update_data['redirect_url'] = str(body.redirect_url)
         if body.stock is not None:
             update_data['stock'] = body.stock
         if body.is_active is not None:
