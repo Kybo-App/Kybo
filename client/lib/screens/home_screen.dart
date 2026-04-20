@@ -84,6 +84,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   final GlobalKey _pantryTabKey = GlobalKey();
   final GlobalKey _shoppingTabKey = GlobalKey();
 
+  final GlobalKey _drawerAvatarKey = GlobalKey();
   final GlobalKey _drawerChatKey = GlobalKey();
   final GlobalKey _drawerUploadKey = GlobalKey();
   final GlobalKey _drawerHistoryKey = GlobalKey();
@@ -1645,9 +1646,13 @@ class _MainScreenContentState extends State<MainScreenContent>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: user == null ? null : () => _pickAndUploadProfilePhoto(drawerCtx),
-                      child: Stack(
+                    Showcase(
+                      key: _drawerAvatarKey,
+                      title: 'Foto profilo',
+                      description: 'Tocca l\'avatar per caricare\nla tua foto profilo.',
+                      child: GestureDetector(
+                        onTap: user == null ? null : () => _pickAndUploadProfilePhoto(drawerCtx),
+                        child: Stack(
                         children: [
                           Container(
                             width: 70,
@@ -1700,6 +1705,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                             ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                     const SizedBox(height: 16),

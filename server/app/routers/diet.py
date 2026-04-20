@@ -354,7 +354,7 @@ async def upload_diet_admin(
                 requester_role,
                 custom_prompt,
                 fcm_token,
-                False,
+                True,
                 result_ttl=settings.RQ_RESULT_TTL,
                 failure_ttl=settings.RQ_FAILURE_TTL,
                 meta={'owner_uid': requester_id},
@@ -374,7 +374,7 @@ async def upload_diet_admin(
         formatted_data = _convert_to_app_format(raw_data)
         dict_data = formatted_data.dict()
 
-        save_diet_to_firestore(db, target_uid, requester_id, file.filename, dict_data, set_as_current=False)
+        save_diet_to_firestore(db, target_uid, requester_id, file.filename, dict_data, set_as_current=True)
 
         if fcm_token:
             await run_in_threadpool(notification_service.send_diet_ready, fcm_token)

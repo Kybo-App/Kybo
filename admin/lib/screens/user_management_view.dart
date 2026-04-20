@@ -221,8 +221,8 @@ class _UserManagementViewState extends State<UserManagementView> {
     final firstCtrl = TextEditingController(text: currentFirst);
     final lastCtrl = TextEditingController(text: currentLast);
     
-    final role = (userData['role'] ?? '').toString();
-    final isNutritionistOrCoach = role == 'nutritionist' || role == 'coach' || role == 'personal_trainer';
+    final initialRole = (userData['role'] ?? '').toString();
+    String selectedRole = initialRole;
     final bioCtrl = TextEditingController(text: userData['bio'] ?? '');
     final specCtrl = TextEditingController(text: userData['specializations'] ?? '');
     final phoneCtrl = TextEditingController(text: userData['phone'] ?? '');
@@ -234,7 +234,12 @@ class _UserManagementViewState extends State<UserManagementView> {
 
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final isNutritionistOrCoach = selectedRole == 'nutritionist' ||
+              selectedRole == 'coach' ||
+              selectedRole == 'personal_trainer';
+          return AlertDialog(
         title: const Text("Modifica Account"),
         content: SingleChildScrollView(
           child: Column(
@@ -254,6 +259,27 @@ class _UserManagementViewState extends State<UserManagementView> {
                 controller: emailCtrl,
                 decoration: const InputDecoration(labelText: "Email"),
               ),
+              if (_currentUserRole == 'admin') ...[
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedRole.isEmpty ? 'user' : selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: "Ruolo",
+                    prefixIcon: Icon(Icons.admin_panel_settings),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'user', child: Text('Cliente (user)')),
+                    DropdownMenuItem(value: 'independent', child: Text('Indipendente')),
+                    DropdownMenuItem(value: 'nutritionist', child: Text('Nutrizionista')),
+                    DropdownMenuItem(value: 'personal_trainer', child: Text('Personal Trainer')),
+                    DropdownMenuItem(value: 'coach', child: Text('Coach (nutri + PT)')),
+                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setDialogState(() => selectedRole = v);
+                  },
+                ),
+              ],
               if (isNutritionistOrCoach) ...[
                 const SizedBox(height: 16),
                 const Divider(),
@@ -322,6 +348,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                   studioName: isNutritionistOrCoach && _currentUserRole == 'admin'
                       ? studioCtrl.text
                       : null,
+                  role: _currentUserRole == 'admin' && selectedRole != initialRole
+                      ? selectedRole
+                      : null,
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -345,6 +374,8 @@ class _UserManagementViewState extends State<UserManagementView> {
             child: const Text("Salva"),
           ),
         ],
+      );
+        },
       ),
     );
   }

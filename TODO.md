@@ -244,3 +244,10 @@ New TODOs:
 - [ ] agli utenti indipendenti dare la possibilità di volere un nutrizionista/personal trainer e kybo ti mette in contatto con lui in base a dove vivi e al budget che hai a disposizione e all'obbiettivo che hai 
 - [ ]  
  
+
+
+ manca da controllare la lingua inglese 
+ da admin devo poter modificare il ruolo di un nutri o pt 
+ in analytics vedo i dati in chiaro degli utenti , se sono admin non dovrei , come nutri o pt si 
+ bisogna lavorare su come un new workout viene aggiunto ad un utente , deve funzionare come le diete secondo me
+ 

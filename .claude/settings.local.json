@@ -47,7 +47,10 @@
       "Bash(GOOGLE_API_KEY=test GOOGLE_APPLICATION_CREDENTIALS=\"\" python -c \":*)",
       "Bash(npm install --save-dev eslint eslint-config-next --legacy-peer-deps)",
       "Bash(npm install --save-dev eslint@8 --legacy-peer-deps)",
-      "Bash(npm install --save-dev eslint@8 eslint-config-next@14.2.35 --legacy-peer-deps)"
+      "Bash(npm install --save-dev eslint@8 eslint-config-next@14.2.35 --legacy-peer-deps)",
+      "Bash(gh run *)",
+      "Bash(grep -i \"\\\\.env$\")",
+      "Bash(git check-ignore *)"
     ]
   }
 }
