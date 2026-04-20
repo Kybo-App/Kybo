@@ -136,12 +136,24 @@ async def create_workout_plan(
             current_ref = db.collection('users').document(body.target_uid).collection(
                 'workout'
             ).document('current')
-            batch.set(current_ref, {
+            current_payload = {
                 'plan_id': plan_id,
                 'plan_name': body.name,
                 'assigned_at': firestore.SERVER_TIMESTAMP,
                 'assigned_by': requester['uid'],
                 'days': days_dump,
+            }
+            batch.set(current_ref, current_payload)
+            # Storico per-utente (mirror del pattern diete): ogni scheda assegnata
+            # lascia traccia in users/{uid}/workouts_history/{plan_id} così il
+            # client può mostrare lo storico anche quando il PT sostituisce la current.
+            history_ref = db.collection('users').document(body.target_uid).collection(
+                'workouts_history'
+            ).document(plan_id)
+            batch.set(history_ref, {
+                **current_payload,
+                'name': body.name,
+                'description': body.description or '',
             })
 
         batch.commit()
@@ -206,6 +218,16 @@ async def update_workout_plan(
                 if body.name is not None:
                     current_update['plan_name'] = body.name
                 current_ref.update(current_update)
+                # Sync anche il record di storico (mirror pattern diete)
+                history_ref = db.collection('users').document(target_uid).collection(
+                    'workouts_history'
+                ).document(plan_id)
+                history_update = dict(current_update)
+                if body.name is not None:
+                    history_update['name'] = body.name
+                if body.description is not None:
+                    history_update['description'] = body.description
+                history_ref.set(history_update, merge=True)
 
         logger.info("workout_plan_updated", plan_id=plan_id, by=requester['uid'])
         return {"message": "Scheda aggiornata"}
@@ -339,12 +361,22 @@ async def assign_workout_plan(
                     transaction.delete(prev_current_ref)
 
             # Salva come scheda corrente del nuovo utente
-            transaction.set(new_current_ref, {
+            current_payload = {
                 'plan_id': plan_id,
                 'plan_name': plan_snap.to_dict().get('name', ''),
                 'assigned_at': firestore.SERVER_TIMESTAMP,
                 'assigned_by': requester['uid'],
                 'days': plan_snap.to_dict().get('days', []),
+            }
+            transaction.set(new_current_ref, current_payload)
+            # Storico per-utente (mirror pattern diete)
+            history_ref = db.collection('users').document(target_uid).collection(
+                'workouts_history'
+            ).document(plan_id)
+            transaction.set(history_ref, {
+                **current_payload,
+                'name': plan_snap.to_dict().get('name', ''),
+                'description': plan_snap.to_dict().get('description', ''),
             })
 
             # Aggiorna il piano con il nuovo target_uid
@@ -397,6 +429,34 @@ async def get_my_workout(
     except Exception as e:
         logger.error("get_my_workout_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante il caricamento della scheda.")
+
+
+@router.get("/workouts/history")
+@limiter.limit("60/minute")
+async def get_workout_history(
+    request: Request,
+    uid: str = Depends(get_current_uid),
+):
+    """Storico schede allenamento assegnate all'utente (mirror del pattern diete)."""
+    try:
+        db = firebase_admin.firestore.client()
+        docs = db.collection('users').document(uid).collection(
+            'workouts_history'
+        ).order_by('assigned_at', direction=firestore.Query.DESCENDING).limit(50).stream()
+
+        history = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['id'] = doc.id
+            for ts_field in ('assigned_at', 'updated_at'):
+                if data.get(ts_field) and hasattr(data[ts_field], 'isoformat'):
+                    data[ts_field] = data[ts_field].isoformat()
+            history.append(data)
+
+        return {"history": history}
+    except Exception as e:
+        logger.error("get_workout_history_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante il caricamento dello storico.")
 
 
 _WORKOUT_XP = 30  # XP assegnati per ogni allenamento completato
