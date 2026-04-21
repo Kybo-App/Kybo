@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -236,44 +237,45 @@ class _UserManagementViewState extends State<UserManagementView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          final t = AppLocalizations.of(ctx);
           final isNutritionistOrCoach = selectedRole == 'nutritionist' ||
               selectedRole == 'coach' ||
               selectedRole == 'personal_trainer';
           return AlertDialog(
-        title: const Text("Modifica Account"),
+        title: Text(t.isItalian ? 'Modifica Account' : 'Edit Account'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: firstCtrl,
-                decoration: const InputDecoration(labelText: "Nome"),
+                decoration: InputDecoration(labelText: t.firstName),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: lastCtrl,
-                decoration: const InputDecoration(labelText: "Cognome"),
+                decoration: InputDecoration(labelText: t.lastName),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: emailCtrl,
-                decoration: const InputDecoration(labelText: "Email"),
+                decoration: InputDecoration(labelText: t.email),
               ),
               if (_currentUserRole == 'admin') ...[
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: selectedRole.isEmpty ? 'user' : selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: "Ruolo",
-                    prefixIcon: Icon(Icons.admin_panel_settings),
+                  decoration: InputDecoration(
+                    labelText: t.role,
+                    prefixIcon: const Icon(Icons.admin_panel_settings),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'user', child: Text('Cliente (user)')),
-                    DropdownMenuItem(value: 'independent', child: Text('Indipendente')),
-                    DropdownMenuItem(value: 'nutritionist', child: Text('Nutrizionista')),
-                    DropdownMenuItem(value: 'personal_trainer', child: Text('Personal Trainer')),
-                    DropdownMenuItem(value: 'coach', child: Text('Coach (nutri + PT)')),
-                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                  items: [
+                    DropdownMenuItem(value: 'user', child: Text(t.roleClient)),
+                    DropdownMenuItem(value: 'independent', child: Text(t.roleIndependent)),
+                    DropdownMenuItem(value: 'nutritionist', child: Text(t.roleNutritionist)),
+                    DropdownMenuItem(value: 'personal_trainer', child: Text(t.rolePersonalTrainer)),
+                    DropdownMenuItem(value: 'coach', child: Text(t.roleCoach)),
+                    DropdownMenuItem(value: 'admin', child: Text(t.roleAdmin)),
                   ],
                   onChanged: (v) {
                     if (v != null) setDialogState(() => selectedRole = v);
@@ -283,38 +285,38 @@ class _UserManagementViewState extends State<UserManagementView> {
               if (isNutritionistOrCoach) ...[
                 const SizedBox(height: 16),
                 const Divider(),
-                const Text("Profilo Professionale", style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(t.professionalProfile, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                  TextField(
                   controller: phoneCtrl,
-                  decoration: const InputDecoration(labelText: "Telefono", prefixIcon: Icon(Icons.phone)),
+                  decoration: InputDecoration(labelText: t.phone, prefixIcon: const Icon(Icons.phone)),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: bioCtrl,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: "Bio (presentazione)"),
+                  decoration: InputDecoration(labelText: t.bio),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: specCtrl,
-                  decoration: const InputDecoration(labelText: "Specializzazioni (es. Sportivo, Vegano)"),
+                  decoration: InputDecoration(labelText: t.specializations),
                 ),
                 if (_currentUserRole == 'admin') ...[
                    const SizedBox(height: 8),
                    TextField(
                     controller: studioCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Nome Studio (mostrato in app ai clienti)",
-                      hintText: "Es. Studio Nutrizionistico Rossi",
-                      prefixIcon: Icon(Icons.store_mall_directory),
+                    decoration: InputDecoration(
+                      labelText: t.studioName,
+                      hintText: t.studioNameHint,
+                      prefixIcon: const Icon(Icons.store_mall_directory),
                     ),
                   ),
                    const SizedBox(height: 8),
                    TextField(
                     controller: limitCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: "Limite Clienti (Admin Only)"),
+                    decoration: InputDecoration(labelText: t.clientLimit),
                   ),
                 ]
               ]
@@ -324,7 +326,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Annulla"),
+            child: Text(t.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -354,7 +356,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Utente aggiornato")),
+                    SnackBar(content: Text(t.isItalian ? 'Utente aggiornato' : 'User updated')),
                   );
                   _refreshList();
                 }
@@ -362,7 +364,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("Errore: $e"),
+                      content: Text("${t.loginError}$e"),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -371,7 +373,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 if (mounted) setState(() => _isLoading = false);
               }
             },
-            child: const Text("Salva"),
+            child: Text(t.save),
           ),
         ],
       );
