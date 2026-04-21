@@ -144,9 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (mounted) {
+        final t = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${t.loginError}$e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -158,6 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: KyboColors.background,
       body: Center(
@@ -198,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Accesso riservato al pannello di controllo",
+                t.loginReserved,
                 style: TextStyle(color: KyboColors.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 36),
@@ -215,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textInputAction: TextInputAction.next,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: "Email",
+                    hintText: t.email,
                     hintStyle: TextStyle(color: KyboColors.textMuted),
                     prefixIcon: Icon(
                       Icons.email_outlined,
@@ -246,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onSubmitted: (_) => _login(),
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: "Password",
+                    hintText: t.password,
                     hintStyle: TextStyle(color: KyboColors.textMuted),
                     prefixIcon: Icon(
                       Icons.lock_outline,
@@ -278,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
-                  label: "ACCEDI AL PANNELLO",
+                  label: t.loginButton,
                   icon: Icons.login_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
@@ -327,15 +329,13 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
         await FirebaseAuth.instance.signOut();
 
         if (mounted) {
+          final t = AppLocalizations.of(context);
           showDialog(
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
-              title: const Text("Accesso Web non consentito"),
-              content: const Text(
-                "Questa dashboard è riservata ai Nutrizionisti.\n\n"
-                "Se sei un cliente, scarica l'App Kybo sul tuo smartphone per gestire il piano.",
-              ),
+              title: Text(t.webAccessDeniedTitle),
+              content: Text(t.webAccessDeniedBody),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -344,7 +344,7 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     );
                   },
-                  child: const Text("Torna indietro"),
+                  child: Text(t.goBack),
                 ),
               ],
             ),

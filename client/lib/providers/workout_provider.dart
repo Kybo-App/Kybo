@@ -55,6 +55,26 @@ class WorkoutProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Storico schede allenamento assegnate all'utente.
+  /// Mirror del pattern diete: ogni scheda assegnata resta consultabile anche
+  /// dopo che il PT ne carica una nuova.
+  Future<List<Map<String, dynamic>>> fetchHistory() async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) return [];
+
+    final response = await http.get(
+      Uri.parse('${Env.apiUrl}/workouts/history'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final list = (data['history'] as List? ?? []);
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return [];
+  }
+
   /// Segna l'allenamento di oggi come completato. Ritorna gli XP guadagnati.
   /// Lancia eccezione se già completato oggi (409) o nessuna scheda (404).
   Future<int> completeDay() async {

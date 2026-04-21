@@ -95,6 +95,48 @@ class AppLocalizations {
   String get language => isItalian ? 'Lingua' : 'Language';
   String get italian => isItalian ? 'Italiano' : 'Italian';
   String get english => isItalian ? 'Inglese' : 'English';
+
+  // Login / role check
+  String get webAccessDeniedTitle =>
+      isItalian ? 'Accesso Web non consentito' : 'Web access not allowed';
+  String get webAccessDeniedBody =>
+      isItalian
+          ? 'Questa dashboard è riservata ai Nutrizionisti.\n\nSe sei un cliente, scarica l\'App Kybo sul tuo smartphone per gestire il piano.'
+          : 'This dashboard is reserved for Nutritionists.\n\nIf you are a client, download the Kybo app on your smartphone to manage your plan.';
+  String get goBack => isItalian ? 'Torna indietro' : 'Go back';
+  String get loginError => isItalian ? 'Errore: ' : 'Error: ';
+
+  // User management dialog
+  String get firstName => isItalian ? 'Nome' : 'First name';
+  String get lastName => isItalian ? 'Cognome' : 'Last name';
+  String get role => isItalian ? 'Ruolo' : 'Role';
+  String get professionalProfile =>
+      isItalian ? 'Profilo Professionale' : 'Professional Profile';
+  String get phone => isItalian ? 'Telefono' : 'Phone';
+  String get bio => isItalian ? 'Bio (presentazione)' : 'Bio (introduction)';
+  String get specializations =>
+      isItalian
+          ? 'Specializzazioni (es. Sportivo, Vegano)'
+          : 'Specializations (e.g. Sports, Vegan)';
+  String get studioName =>
+      isItalian
+          ? 'Nome Studio (mostrato in app ai clienti)'
+          : 'Studio Name (shown in app to clients)';
+  String get studioNameHint =>
+      isItalian
+          ? 'Es. Studio Nutrizionistico Rossi'
+          : 'E.g. Rossi Nutrition Studio';
+  String get clientLimit =>
+      isItalian ? 'Limite Clienti (Admin Only)' : 'Client Limit (Admin Only)';
+
+  // Role labels
+  String get roleClient => isItalian ? 'Cliente (user)' : 'Client (user)';
+  String get roleIndependent => isItalian ? 'Indipendente' : 'Independent';
+  String get roleNutritionist => isItalian ? 'Nutrizionista' : 'Nutritionist';
+  String get rolePersonalTrainer => 'Personal Trainer';
+  String get roleCoach =>
+      isItalian ? 'Coach (nutri + PT)' : 'Coach (nutri + PT)';
+  String get roleAdmin => 'Admin';
 }
 
 class _AppLocalizationsDelegate
