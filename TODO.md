@@ -252,14 +252,34 @@ New TODOs:
  bisogna lavorare su come un new workout viene aggiunto ad un utente , deve funzionare come le diete secondo me
 
 ## Idee UX Client (da valutare)
-- [ ] Streak counter in home ("5 giorni di allenamento consecutivi") — riusa completamenti/claimed_at
-- [ ] Skeleton loading al posto di CircularProgressIndicator (liste cronologia, chat, matchmaking)
-- [ ] Haptic feedback su completamento workout + riscatto reward (HapticFeedback.mediumImpact)
-- [ ] Empty state con mini-CTA (es. "Chiedi la prima dieta" → apre chat)
-- [ ] Push notification: reminder allenamento, nuova dieta caricata, messaggio chat (FCM)
-- [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget)
-- [ ] Feedback post-workout rapido (emoji 3 livelli) salvato per il PT
-- [ ] Ricerca dentro la dieta (filtra pasti/ingredienti)
-- [ ] Onboarding wizard utenti nuovi senza coach (obiettivo/livello/preferenze → matchmaking pre-filtrato)
-- [ ] Condividi traguardo (badge/reward → immagine per Instagram Stories)
+- [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
+- [x] Skeleton loading (history diete) — implementato con package shimmer
+- [x] Haptic feedback su completamento workout + riscatto reward — implementato
+- [ ] Skeleton loading esteso a chat list + matchmaking + rewards list
+- [ ] Empty state con mini-CTA (es. "Chiedi la prima dieta" → apre chat). Valutare caso per caso: dove un'azione ovvia non esiste, meglio lasciare solo testo
+- [ ] Push reminder programmati: allenamento (orario scelto), reminder pasti extra, notifica "nuova dieta caricata", notifica messaggio chat mentre app chiusa. FCM è già inizializzato, manca lo scheduler server-side + preferenze utente
+- [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget, richiede codice nativo Swift/Kotlin)
+- [ ] Feedback post-workout rapido (3 emoji) salvato su Firestore per il PT. Richiede: campo workout_feedback in workout_plans, bottoni dopo completeDay, visualizzazione lato admin
+- [x] Ricerca dentro la dieta — GIÀ ESISTENTE (diet_view.dart)
+- [x] Onboarding wizard utenti nuovi senza coach — GIÀ ESISTENTE (onboarding_screen.dart)
+- [x] Condividi traguardo — GIÀ ESISTENTE (share_plus + achievement_card_generator.dart). Possibile espansione: format dedicato Instagram Stories 9:16 con sfondo brand
+
+## Idee UX Admin (da valutare)
+- [x] Saved filter ruolo — GIÀ ESISTENTE (_roleFilter)
+- [x] Change log per cliente — GIÀ ESISTENTE (audit_log_view.dart)
+- [x] Keyboard shortcut hint visibile — implementato (pill "Cerca... ⌘K")
+- [x] Scroll dashboard con mouse wheel + drag — implementato (_AdminScrollBehavior)
+- [x] Skeleton loader lista utenti — implementato
+- [x] Last activity per user (pallino verde/giallo/rosso + timeago) — implementato
+- [ ] Bulk actions nella lista utenti (checkbox multi-select → assegna a nutri / export CSV / aggiungi tag). Richiede refactor UserCardRow con selection state + bottom action bar
+- [ ] "La mia giornata" come home per nutri/PT: "3 clienti da ricontattare", "N chat non lette", "X dieta da approvare". Dashboard operativa al posto della analytics
+- [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
+- [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
+- [ ] Drag & drop PDF dieta su user card (DragTarget + callback upload)
+- [ ] Chat: typing indicator + read receipts (probabilmente dati già in Firestore, manca UI)
+- [ ] Notification in-app: badge rosso su icona Chat quando arriva messaggio mentre sei su altra vista
+- [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
+- [ ] Export report PDF per cliente (cronologia diete + workout + note)
+- [ ] Dark mode admin (ThemeProvider già esiste lato client, replicare)
+- [ ] i18n admin: completare traduzioni dei testi ancora hardcoded (solo login + user-edit-dialog tradotti finora)
  
