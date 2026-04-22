@@ -41,10 +41,10 @@ service cloud.firestore {
                        request.resource.data.uid == userId &&
                        request.resource.data.role in ['independent', 'user'];
 
-      // UPDATE: Invariato (più campi aggiunti per XP)
+      // UPDATE: Invariato (più campi aggiunti per XP + last_seen heartbeat)
       allow update: if (isOwner(userId) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['first_name', 'last_name', 'last_login', 'is_active', 'unlocked_badges', 'xp_total', 'xp_today', 'xp_today_date'])) ||
+                        .hasOnly(['first_name', 'last_name', 'last_login', 'last_seen', 'is_active', 'unlocked_badges', 'xp_total', 'xp_today', 'xp_today_date'])) ||
                        hasRole('admin') ||
                        isAssignedProfessional(resource.data);
 

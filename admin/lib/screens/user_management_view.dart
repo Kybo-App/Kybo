@@ -2,11 +2,13 @@
 // _checkCurrentUser — carica ruolo dai token claims; _buildAdminGroupedLayout — raggruppa utenti per nutrizionista.
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -713,9 +715,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   @override
   Widget build(BuildContext context) {
     if (!_isDataLoaded) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      return const SkeletonUserList();
     }
 
     return Column(
@@ -866,7 +866,7 @@ class _UserManagementViewState extends State<UserManagementView> {
             future: _usersFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonUserList();
               }
               if (snapshot.hasError) {
                 return Center(
@@ -1344,6 +1344,28 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
+    // Ultima attività (last_seen aggiornato dal client a ogni avvio).
+    // Fallback a last_login se last_seen non presente. Inattivo >30gg → rosso.
+    String? lastSeenLabel;
+    Color lastSeenColor = KyboColors.textMuted;
+    final lastSeenRaw = data['last_seen'] ?? data['last_login'];
+    if (lastSeenRaw != null) {
+      try {
+        final d = DateTime.tryParse(lastSeenRaw.toString());
+        if (d != null) {
+          lastSeenLabel = timeago.format(d, locale: 'it');
+          final days = DateTime.now().difference(d).inDays;
+          if (days >= 30) {
+            lastSeenColor = KyboColors.error;
+          } else if (days >= 7) {
+            lastSeenColor = KyboColors.warning;
+          } else {
+            lastSeenColor = KyboColors.success;
+          }
+        }
+      } catch (_) {}
+    }
+
     // --- EXPIRING DIET CHECK ---
     bool isDietExpired = false;
     String? dietDateStr;
@@ -1427,6 +1449,31 @@ class _UserCardState extends State<_UserCard> {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (lastSeenLabel != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: lastSeenColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Attivo $lastSeenLabel",
+                            style: TextStyle(
+                              color: lastSeenColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (isAdmin) ...[
                       const SizedBox(height: 2),
                       Text(

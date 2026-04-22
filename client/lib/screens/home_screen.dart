@@ -361,6 +361,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       provider.syncFromFirebase(user.uid);
+      _auth.touchLastSeen();
     }
 
     final storage = StorageService();

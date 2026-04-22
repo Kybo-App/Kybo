@@ -108,10 +108,25 @@ class AuthService {
     try {
       await _db.collection('users').doc(uid).update({
         'last_login': FieldValue.serverTimestamp(),
+        'last_seen': FieldValue.serverTimestamp(),
         'is_active': true,
       });
     } catch (e) {
       debugPrint("⚠️ Failed to update last_login: $e");
+    }
+  }
+
+  /// Aggiorna solo `last_seen` — chiamato dall'app ad ogni avvio per dare
+  /// un segnale "freschezza" visibile ai PT/nutri in admin (last activity).
+  Future<void> touchLastSeen() async {
+    final uid = currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await _db.collection('users').doc(uid).update({
+        'last_seen': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("⚠️ Failed to update last_seen: $e");
     }
   }
 }

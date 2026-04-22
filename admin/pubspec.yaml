@@ -50,6 +50,7 @@ dependencies:
   fl_chart: ^0.70.2
   pdf: ^3.11.1
   timeago: ^3.7.1
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

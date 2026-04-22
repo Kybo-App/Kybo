@@ -7,6 +7,7 @@ import '../providers/diet_provider.dart';
 import '../providers/workout_provider.dart';
 import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 
 enum _HistoryCategory { diets, workouts }
 
@@ -75,7 +76,7 @@ class _DietsHistoryList extends StatelessWidget {
       stream: firestore.getDietHistory(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const SkeletonCardList();
         }
         if (snapshot.hasError) {
           return _EmptyState(
@@ -210,7 +211,7 @@ class _WorkoutsHistoryListState extends State<_WorkoutsHistoryList> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const SkeletonCardList();
         }
         if (snapshot.hasError) {
           return _EmptyState(
