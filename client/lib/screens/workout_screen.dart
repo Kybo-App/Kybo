@@ -1,6 +1,7 @@
 // Schermata Workout: mostra la scheda allenamento assegnata dal Personal Trainer.
 // Usa tab per i giorni e mostra gli esercizi con sets/reps/rest.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/workout_provider.dart';
@@ -254,6 +255,7 @@ class _WorkoutScreenState extends State<WorkoutScreen>
     try {
       final xp = await context.read<WorkoutProvider>().completeDay();
       if (!context.mounted) return;
+      HapticFeedback.mediumImpact();
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
