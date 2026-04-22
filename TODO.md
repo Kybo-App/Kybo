@@ -250,4 +250,16 @@ New TODOs:
  da admin devo poter modificare il ruolo di un nutri o pt 
  in analytics vedo i dati in chiaro degli utenti , se sono admin non dovrei , come nutri o pt si 
  bisogna lavorare su come un new workout viene aggiunto ad un utente , deve funzionare come le diete secondo me
+
+## Idee UX Client (da valutare)
+- [ ] Streak counter in home ("5 giorni di allenamento consecutivi") — riusa completamenti/claimed_at
+- [ ] Skeleton loading al posto di CircularProgressIndicator (liste cronologia, chat, matchmaking)
+- [ ] Haptic feedback su completamento workout + riscatto reward (HapticFeedback.mediumImpact)
+- [ ] Empty state con mini-CTA (es. "Chiedi la prima dieta" → apre chat)
+- [ ] Push notification: reminder allenamento, nuova dieta caricata, messaggio chat (FCM)
+- [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget)
+- [ ] Feedback post-workout rapido (emoji 3 livelli) salvato per il PT
+- [ ] Ricerca dentro la dieta (filtra pasti/ingredienti)
+- [ ] Onboarding wizard utenti nuovi senza coach (obiettivo/livello/preferenze → matchmaking pre-filtrato)
+- [ ] Condividi traguardo (badge/reward → immagine per Instagram Stories)
  

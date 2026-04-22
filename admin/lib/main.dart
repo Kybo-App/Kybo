@@ -6,6 +6,7 @@ import 'package:kybo_admin/screens/dashboard_screen.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -29,6 +30,36 @@ Future<void> main() async {
   runApp(const AdminApp());
 }
 
+/// ScrollBehavior per web desktop: abilita drag con mouse/trackpad/touch e
+/// mostra sempre una Scrollbar visibile e trascinabile.
+class _AdminScrollBehavior extends MaterialScrollBehavior {
+  const _AdminScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
+
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return Scrollbar(
+      controller: details.controller,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: true,
+      child: child,
+    );
+  }
+}
+
 class AdminApp extends StatelessWidget {
   const AdminApp({super.key});
 
@@ -48,6 +79,7 @@ class AdminApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: const [Locale('it'), Locale('en')],
+      scrollBehavior: const _AdminScrollBehavior(),
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
