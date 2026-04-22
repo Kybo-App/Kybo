@@ -453,11 +453,9 @@ class _DashboardContentState extends State<_DashboardContent> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        PillIconButton(
-          icon: Icons.search_rounded,
-          color: KyboColors.textSecondary,
-          tooltip: '${l10n.globalSearch} (Ctrl+K)',
-          onPressed: () => _openGlobalSearch(navItems),
+        _SearchPillHint(
+          label: l10n.globalSearch,
+          onTap: () => _openGlobalSearch(navItems),
         ),
 
         const SizedBox(width: 4),
@@ -549,6 +547,65 @@ class _DashboardContentState extends State<_DashboardContent> {
           onPressed: _logout,
         ),
       ],
+    );
+  }
+}
+
+/// Pill "Cerca..." con badge della scorciatoia Ctrl+K, per rendere
+/// la ricerca globale scopribile senza dover aprire il dialog shortcut.
+class _SearchPillHint extends StatelessWidget {
+  const _SearchPillHint({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMac = Theme.of(context).platform == TargetPlatform.macOS;
+    final modifier = isMac ? '⌘' : 'Ctrl';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: KyboBorderRadius.pill,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: KyboColors.background,
+          borderRadius: KyboBorderRadius.pill,
+          border: Border.all(color: KyboColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_rounded,
+                size: 16, color: KyboColors.textMuted),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: KyboColors.textMuted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: KyboColors.surface,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: KyboColors.border),
+              ),
+              child: Text(
+                '$modifier K',
+                style: TextStyle(
+                  color: KyboColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

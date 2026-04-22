@@ -3,6 +3,7 @@
 // _claimReward — riscatta un premio spendendo XP con conferma.
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -224,6 +225,8 @@ class _RewardsScreenState extends State<RewardsScreen>
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final newXpTotal = (data['new_xp_total'] as num?)?.toInt();
+
+        HapticFeedback.mediumImpact();
 
         // Aggiorna XP locale
         if (newXpTotal != null) {
