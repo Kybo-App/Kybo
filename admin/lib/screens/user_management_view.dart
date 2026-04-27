@@ -1556,6 +1556,14 @@ class _UserCardState extends State<_UserCard> {
           if (data['two_factor_enabled'] == true || requiresPassChange || isDietExpired)
             const SizedBox(height: 12),
 
+          // Riga "Workout 7gg" — solo per clienti seguiti dal PT/admin.
+          // Mostra completamenti recenti con emoji feedback. Errori → silenzioso.
+          if (showDiet)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _WorkoutActivityRow(uid: uid),
+            ),
+
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
@@ -2597,6 +2605,107 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Mini badge "7gg" per la card utente: legge gli ultimi 7 documenti
+/// di workout_completions e mostra una timeline con emoji feedback.
+/// Errori e lista vuota → SizedBox.shrink (silenzioso, opzionale).
+class _WorkoutActivityRow extends StatelessWidget {
+  final String uid;
+  const _WorkoutActivityRow({required this.uid});
+
+  static const _ratingEmoji = {
+    'easy': '😅',
+    'ok': '👌',
+    'hard': '🔥',
+  };
+
+  Future<List<Map<String, dynamic>>> _load() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('workout_completions')
+        .orderBy('completed_at', descending: true)
+        .limit(7)
+        .get();
+    return snap.docs.map((d) {
+      final data = d.data();
+      return {
+        'id': d.id,
+        'feedback': data['feedback'],
+        'completed_at': data['completed_at'],
+      };
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _load(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
+        final items = snapshot.data!;
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        // Ultimo feedback (primo della lista, ordinata desc)
+        final lastFeedback = items
+            .firstWhere(
+              (e) => e['feedback'] != null,
+              orElse: () => <String, dynamic>{},
+            )['feedback'] as String?;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: KyboColors.primary.withValues(alpha: 0.06),
+            borderRadius: KyboBorderRadius.medium,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.fitness_center_rounded,
+                size: 16,
+                color: KyboColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "${items.length}/7 allenamenti",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: KyboColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (lastFeedback != null) ...[
+                Text(
+                  _ratingEmoji[lastFeedback] ?? '',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  "ultimo",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: KyboColors.textMuted,
+                  ),
+                ),
+              ] else
+                Text(
+                  "nessun feedback",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: KyboColors.textMuted,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

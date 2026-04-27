@@ -111,6 +111,16 @@ service cloud.firestore {
         allow write: if isOwner(userId);
       }
 
+      // Workout completions: scritti dal backend (transazione complete-day),
+      // letti dall'owner e dal PT/coach assegnato (per vedere feedback emoji).
+      match /workout_completions/{docId} {
+        allow read: if isOwner(userId) ||
+                   hasRole('admin') ||
+                   isAssignedPT(get(/databases/$(database)/documents/users/$(userId)).data);
+        // Scritture solo via Admin SDK (backend) — nessun client può forgiare completamenti.
+        allow write: if false;
+      }
+
       // [SECURITY] Note interne visibili/modificabili solo da admin o dal professionista
       // corrente (parent_id/pt_id). I client non possono accedere alle proprie note interne.
       match /internal_notes/{noteId} {
