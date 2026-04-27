@@ -251,7 +251,7 @@ New TODOs:
 - [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
 - [x] Skeleton loading (history diete) — implementato con package shimmer
 - [x] Haptic feedback su completamento workout + riscatto reward — implementato
-- [ ] Skeleton loading esteso a chat list + matchmaking + rewards list
+- [x] Skeleton loading esteso a chat (bolle), matchmaking e rewards (catalogo + storico)
 - [ ] Empty state con mini-CTA (es. "Chiedi la prima dieta" → apre chat). Valutare caso per caso: dove un'azione ovvia non esiste, meglio lasciare solo testo
 - [ ] Push reminder programmati: allenamento (orario scelto), reminder pasti extra, notifica "nuova dieta caricata", notifica messaggio chat mentre app chiusa. FCM è già inizializzato, manca lo scheduler server-side + preferenze utente
 - [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget, richiede codice nativo Swift/Kotlin)
