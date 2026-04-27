@@ -51,6 +51,8 @@ dependencies:
   pdf: ^3.11.1
   timeago: ^3.7.1
   shimmer: ^3.0.0
+  desktop_drop: ^0.6.0
+  cross_file: ^0.3.4+2
 
 dev_dependencies:
   flutter_test:
