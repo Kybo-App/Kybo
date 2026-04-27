@@ -255,7 +255,7 @@ New TODOs:
 - [ ] Empty state con mini-CTA (es. "Chiedi la prima dieta" → apre chat). Valutare caso per caso: dove un'azione ovvia non esiste, meglio lasciare solo testo
 - [ ] Push reminder programmati: allenamento (orario scelto), reminder pasti extra, notifica "nuova dieta caricata", notifica messaggio chat mentre app chiusa. FCM è già inizializzato, manca lo scheduler server-side + preferenze utente
 - [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget, richiede codice nativo Swift/Kotlin)
-- [ ] Feedback post-workout rapido (3 emoji) salvato su Firestore per il PT. Richiede: campo workout_feedback in workout_plans, bottoni dopo completeDay, visualizzazione lato admin
+- [x] Feedback post-workout rapido (3 emoji 😅/👌/🔥): POST /workouts/feedback, scrive su workout_completions/{date}. Visualizzazione lato admin ancora da fare
 - [x] Ricerca dentro la dieta — GIÀ ESISTENTE (diet_view.dart)
 - [x] Onboarding wizard utenti nuovi senza coach — GIÀ ESISTENTE (onboarding_screen.dart)
 - [x] Condividi traguardo — GIÀ ESISTENTE (share_plus + achievement_card_generator.dart). Possibile espansione: format dedicato Instagram Stories 9:16 con sfondo brand
