@@ -272,7 +272,7 @@ New TODOs:
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
 - [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
-- [x] Chat: read receipts (✓ inviato / ✓✓ letto) sia admin che client. Typing indicator ancora da fare
+- [x] Chat: read receipts (✓ inviato / ✓✓ letto) + typing indicator (3 puntini animati) sia admin che client. Debounce 3s, scrittura su chats/{id}/typing.{role}
 - [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)
 - [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
 - [ ] Export report PDF per cliente (cronologia diete + workout + note)
