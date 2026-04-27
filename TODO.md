@@ -272,10 +272,10 @@ New TODOs:
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
 - [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
-- [ ] Chat: typing indicator + read receipts (probabilmente dati già in Firestore, manca UI)
-- [ ] Notification in-app: badge rosso su icona Chat quando arriva messaggio mentre sei su altra vista
+- [x] Chat: read receipts (✓ inviato / ✓✓ letto) sia admin che client. Typing indicator ancora da fare
+- [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)
 - [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
 - [ ] Export report PDF per cliente (cronologia diete + workout + note)
-- [ ] Dark mode admin (ThemeProvider già esiste lato client, replicare)
+- [x] Dark mode admin — GIÀ ESISTENTE (toggle in user section, KyboThemeProvider)
 - [ ] i18n admin: completare traduzioni dei testi ancora hardcoded (solo login + user-edit-dialog tradotti finora)
  
