@@ -96,4 +96,23 @@ class WorkoutProvider extends ChangeNotifier {
       throw Exception(body['detail'] ?? 'Errore sconosciuto');
     }
   }
+
+  /// Invia il feedback emoji per l'allenamento di oggi. Fire-and-forget:
+  /// gli errori vengono solo loggati per non bloccare l'utente.
+  Future<void> submitFeedback(String rating) async {
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (token == null) return;
+      await http.post(
+        Uri.parse('${Env.apiUrl}/workouts/feedback'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'rating': rating}),
+      );
+    } catch (_) {
+      // silenzioso: il feedback è opzionale
+    }
+  }
 }

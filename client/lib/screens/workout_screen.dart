@@ -253,22 +253,71 @@ class _WorkoutScreenState extends State<WorkoutScreen>
 
   Future<void> _completeWorkout(BuildContext context) async {
     try {
-      final xp = await context.read<WorkoutProvider>().completeDay();
+      final provider = context.read<WorkoutProvider>();
+      final xp = await provider.completeDay();
       if (!context.mounted) return;
       HapticFeedback.mediumImpact();
       showDialog(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogCtx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
           title: const Text('💪 Ottimo lavoro!'),
-          content: Text(
-            'Hai completato l\'allenamento di oggi e guadagnato +$xp XP!',
-            style: TextStyle(color: KyboColors.textPrimary(context)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hai completato l\'allenamento di oggi e guadagnato +$xp XP!',
+                style: TextStyle(color: KyboColors.textPrimary(context)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Come è andata?',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: KyboColors.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _FeedbackEmoji(
+                    emoji: '😅',
+                    label: 'Facile',
+                    onTap: () {
+                      provider.submitFeedback('easy');
+                      Navigator.pop(dialogCtx);
+                    },
+                  ),
+                  _FeedbackEmoji(
+                    emoji: '👌',
+                    label: 'Ok',
+                    onTap: () {
+                      provider.submitFeedback('ok');
+                      Navigator.pop(dialogCtx);
+                    },
+                  ),
+                  _FeedbackEmoji(
+                    emoji: '🔥',
+                    label: 'Duro',
+                    onTap: () {
+                      provider.submitFeedback('hard');
+                      Navigator.pop(dialogCtx);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Fantastico!'),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(
+                'Salta',
+                style: TextStyle(color: KyboColors.textMuted(context)),
+              ),
             ),
           ],
         ),
@@ -458,6 +507,47 @@ class _WorkoutScreenState extends State<WorkoutScreen>
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _FeedbackEmoji extends StatelessWidget {
+  const _FeedbackEmoji({
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 32)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: KyboColors.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -526,3 +526,49 @@ async def complete_workout_day(
     except Exception as e:
         logger.error("complete_workout_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante il completamento.")
+
+
+class WorkoutFeedbackBody(BaseModel):
+    rating: str = Field(..., description="easy | ok | hard")
+    note: Optional[str] = Field(None, max_length=300)
+
+
+@router.post("/workouts/feedback")
+@limiter.limit("10/day")
+async def submit_workout_feedback(
+    request: Request,
+    body: WorkoutFeedbackBody,
+    uid: str = Depends(get_current_uid),
+):
+    """Salva il feedback (3 livelli emoji) sull'allenamento di oggi.
+    Viene scritto sul documento workout_completions/{YYYY-MM-DD} così che
+    il PT possa vedere il rating insieme al completamento.
+    """
+    if body.rating not in ("easy", "ok", "hard"):
+        raise HTTPException(status_code=400, detail="Rating non valido.")
+    try:
+        db = firebase_admin.firestore.client()
+        today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        completion_ref = (
+            db.collection('users').document(uid)
+            .collection('workout_completions').document(today)
+        )
+        snap = completion_ref.get()
+        if not snap.exists:
+            raise HTTPException(status_code=404, detail="Nessun allenamento completato oggi.")
+
+        update_data = {
+            'feedback': body.rating,
+            'feedback_at': firestore.SERVER_TIMESTAMP,
+        }
+        if body.note:
+            update_data['feedback_note'] = body.note
+        completion_ref.update(update_data)
+
+        logger.info("workout_feedback_saved", uid=uid, date=today, rating=body.rating)
+        return {"message": "Grazie per il feedback!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("workout_feedback_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante il salvataggio del feedback.")
