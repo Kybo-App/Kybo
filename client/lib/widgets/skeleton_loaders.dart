@@ -27,6 +27,48 @@ class _ShimmerBox extends StatelessWidget {
   }
 }
 
+/// Placeholder per la lista messaggi della chat: bolle alternate sx/dx.
+class SkeletonChatBubbles extends StatelessWidget {
+  const SkeletonChatBubbles({super.key, this.itemCount = 6});
+  final int itemCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.white12 : Colors.grey.shade300;
+    final highlight = isDark ? Colors.white24 : Colors.grey.shade100;
+
+    // Larghezze pseudo-casuali ma deterministiche per dare varietà visiva.
+    const widths = [220.0, 140.0, 260.0, 180.0, 200.0, 120.0];
+    const heights = [40.0, 28.0, 56.0, 36.0, 44.0, 28.0];
+
+    return Shimmer.fromColors(
+      baseColor: base,
+      highlightColor: highlight,
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: itemCount,
+        itemBuilder: (_, i) {
+          final isClient = i.isOdd;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Align(
+              alignment:
+                  isClient ? Alignment.centerRight : Alignment.centerLeft,
+              child: _ShimmerBox(
+                width: widths[i % widths.length],
+                height: heights[i % heights.length],
+                radius: 18,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 /// Placeholder per una ListView di card (stile dieta/workout history).
 class SkeletonCardList extends StatelessWidget {
   const SkeletonCardList({super.key, this.itemCount = 6});

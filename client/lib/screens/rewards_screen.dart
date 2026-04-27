@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/xp_service.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 import '../core/env.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -462,9 +463,7 @@ class _RewardsScreenState extends State<RewardsScreen>
 
   Widget _buildCatalogTab(XpService xpService) {
     if (_isLoadingCatalog) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      return const SkeletonCardList(itemCount: 6);
     }
 
     if (_catalog.isEmpty) {
@@ -717,9 +716,7 @@ class _RewardsScreenState extends State<RewardsScreen>
 
   Widget _buildClaimsTab() {
     if (_isLoadingClaims) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      return const SkeletonCardList(itemCount: 4);
     }
 
     if (_claims.isEmpty) {
