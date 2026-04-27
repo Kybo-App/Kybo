@@ -229,6 +229,64 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
+  // --- TYPING INDICATOR ---
+  // Stato locale: per evitare di scrivere su Firestore a ogni keystroke,
+  // marchiamo "sto scrivendo" una sola volta per burst e usiamo un timer
+  // che azzera il flag dopo 3s di inattività.
+  bool _isTypingLocal = false;
+  Timer? _typingTimer;
+
+  /// Stream del flag "sta scrivendo" della controparte (nutrizionista).
+  Stream<bool> watchOtherTyping() {
+    if (_currentChatId == null) return Stream.value(false);
+    return _firestore
+        .collection('chats')
+        .doc(_currentChatId)
+        .snapshots()
+        .map((snap) {
+      final data = snap.data();
+      if (data == null) return false;
+      final typing = data['typing'] as Map<String, dynamic>? ?? const {};
+      return typing['nutritionist'] == true;
+    });
+  }
+
+  /// Da chiamare a ogni TextField.onChanged. Scrive su Firestore al massimo
+  /// una volta a inizio burst e una volta dopo 3s di inattività.
+  void notifyTyping() {
+    if (_currentChatId == null) return;
+    if (!_isTypingLocal) {
+      _isTypingLocal = true;
+      _setTypingRemote(true);
+    }
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), () {
+      _isTypingLocal = false;
+      _setTypingRemote(false);
+    });
+  }
+
+  /// Forza l'azzeramento (es. invio messaggio o uscita schermata).
+  void clearTyping() {
+    _typingTimer?.cancel();
+    if (_isTypingLocal) {
+      _isTypingLocal = false;
+      _setTypingRemote(false);
+    }
+  }
+
+  Future<void> _setTypingRemote(bool value) async {
+    if (_currentChatId == null) return;
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .set({'typing': {'client': value}}, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('typing update error: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
     final token = await _auth.currentUser?.getIdToken();
     if (token == null) throw Exception('Non autenticato');
@@ -291,6 +349,9 @@ class ChatProvider extends ChangeNotifier {
 
     final user = _auth.currentUser;
     if (user == null) return;
+
+    // Azzera subito il typing indicator: il messaggio è in volo.
+    clearTyping();
 
     try {
       final message = ChatMessage(

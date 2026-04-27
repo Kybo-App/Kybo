@@ -32,6 +32,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Azzera l'eventuale "sta scrivendo" quando l'utente lascia la schermata.
+    try {
+      context.read<ChatProvider>().clearTyping();
+    } catch (_) {}
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -226,6 +230,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
           if (_pickedFile != null) _buildFilePreview(),
 
+          _buildTypingIndicator(),
+
           _buildMessageInput(),
         ],
       ),
@@ -288,6 +294,37 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildTypingIndicator() {
+    return StreamBuilder<bool>(
+      stream: context.read<ChatProvider>().watchOtherTyping(),
+      builder: (context, snapshot) {
+        if (snapshot.data != true) return const SizedBox.shrink();
+        final name = context.read<ChatProvider>().nutritionistName;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 22,
+                height: 14,
+                child: _TypingDots(color: KyboColors.primary),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "$name sta scrivendo...",
+                style: TextStyle(
+                  color: KyboColors.textMuted(context),
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -338,6 +375,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 maxLines: null,
                 textInputAction: TextInputAction.send,
+                onChanged: (_) => context.read<ChatProvider>().notifyTyping(),
                 onSubmitted: (_) => _sendMessage(),
               ),
             ),
@@ -567,5 +605,59 @@ class _MessageBubble extends StatelessWidget {
     } else {
       return '${timestamp.day}/${timestamp.month}, $timeStr';
     }
+  }
+}
+
+/// Tre puntini animati in stile chat ("●●●" che pulsano in fase).
+class _TypingDots extends StatefulWidget {
+  final Color color;
+  const _TypingDots({required this.color});
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _opacity(double t, double offset) {
+    final v = (t - offset) % 1.0;
+    return 0.3 + 0.7 * (v < 0.5 ? v * 2 : (1 - v) * 2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        final t = _controller.value;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(3, (i) {
+            return Opacity(
+              opacity: _opacity(t, i * 0.2),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 }

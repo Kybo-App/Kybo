@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -144,6 +145,9 @@ class AdminChatProvider with ChangeNotifier {
     final user = _auth.currentUser;
     if (user == null || (messageText.trim().isEmpty && attachmentUrl == null)) return;
 
+    // Azzera subito il typing: il messaggio è in volo.
+    clearTyping(chatId);
+
     try {
       final senderType = _userRole == 'admin' ? 'admin' : 'nutritionist';
 
@@ -249,11 +253,81 @@ class AdminChatProvider with ChangeNotifier {
   }
 
   void selectChat(String? chatId) {
+    // Cambio chat: azzera l'eventuale typing precedente
+    if (_selectedChatId != null && _selectedChatId != chatId) {
+      clearTyping(_selectedChatId!);
+    }
     _selectedChatId = chatId;
     notifyListeners();
 
     if (chatId != null) {
       markAsRead(chatId);
+    }
+  }
+
+  // --- TYPING INDICATOR ---
+  // Stato locale: scriviamo su Firestore al massimo una volta a inizio
+  // burst e una dopo 3s di inattività.
+  bool _isTypingLocal = false;
+  Timer? _typingTimer;
+
+  /// Stream del flag "sta scrivendo" della controparte (cliente o admin a
+  /// seconda del chatType).
+  Stream<bool> watchOtherTyping(String chatId) {
+    return _firestore.collection('chats').doc(chatId).snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return false;
+      final typing = data['typing'] as Map<String, dynamic>? ?? const {};
+      final chatType = data['chatType'] ?? 'nutritionist-client';
+      // Sono nutrizionista → mostro typing del client; sono admin in chat
+      // admin-nutritionist → mostro typing del nutrizionista (chiave 'nutritionist').
+      if (chatType == 'admin-nutritionist' && _userRole == 'admin') {
+        return typing['nutritionist'] == true;
+      }
+      return typing['client'] == true;
+    });
+  }
+
+  /// Da chiamare a ogni TextField.onChanged.
+  void notifyTyping(String chatId) {
+    if (!_isTypingLocal) {
+      _isTypingLocal = true;
+      _setTypingRemote(chatId, true);
+    }
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), () {
+      _isTypingLocal = false;
+      _setTypingRemote(chatId, false);
+    });
+  }
+
+  void clearTyping(String chatId) {
+    _typingTimer?.cancel();
+    if (_isTypingLocal) {
+      _isTypingLocal = false;
+      _setTypingRemote(chatId, false);
+    }
+  }
+
+  Future<void> _setTypingRemote(String chatId, bool value) async {
+    try {
+      // La chiave dipende dal proprio ruolo: nutritionist scrive su
+      // typing.nutritionist; admin in chat admin-nutritionist scrive su
+      // typing.client (perché lì admin gioca il ruolo "client").
+      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+      final chatType = chatDoc.data()?['chatType'] ?? 'nutritionist-client';
+      String key;
+      if (chatType == 'admin-nutritionist' && _userRole == 'admin') {
+        key = 'client';
+      } else {
+        key = 'nutritionist';
+      }
+      await _firestore.collection('chats').doc(chatId).set(
+        {'typing': {key: value}},
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('admin typing update error: $e');
     }
   }
 

@@ -824,6 +824,35 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           ),
         ),
 
+        // Typing indicator: visibile solo se la controparte sta scrivendo.
+        StreamBuilder<bool>(
+          stream: provider.watchOtherTyping(selectedChatId),
+          builder: (context, snapshot) {
+            if (snapshot.data != true) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 14,
+                    child: _AdminTypingDots(color: KyboColors.primary),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "sta scrivendo...",
+                    style: TextStyle(
+                      color: KyboColors.textMuted,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -886,6 +915,14 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                     ),
                   ),
                   maxLines: null,
+                  onChanged: (_) {
+                    final chatId = context
+                        .read<AdminChatProvider>()
+                        .selectedChatId;
+                    if (chatId != null) {
+                      context.read<AdminChatProvider>().notifyTyping(chatId);
+                    }
+                  },
                   onSubmitted: (_) => _sendMessage(),
                 ),
                    ],
@@ -1360,6 +1397,60 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
           onPressed: _isSaving ? null : _save,
         ),
       ],
+    );
+  }
+}
+
+/// Tre puntini animati per il typing indicator (versione admin).
+class _AdminTypingDots extends StatefulWidget {
+  final Color color;
+  const _AdminTypingDots({required this.color});
+
+  @override
+  State<_AdminTypingDots> createState() => _AdminTypingDotsState();
+}
+
+class _AdminTypingDotsState extends State<_AdminTypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _opacity(double t, double offset) {
+    final v = (t - offset) % 1.0;
+    return 0.3 + 0.7 * (v < 0.5 ? v * 2 : (1 - v) * 2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) {
+        final t = _controller.value;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(3, (i) {
+            return Opacity(
+              opacity: _opacity(t, i * 0.2),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }
