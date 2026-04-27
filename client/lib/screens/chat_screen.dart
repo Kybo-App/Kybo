@@ -442,9 +442,25 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _formatTime(message.timestamp),
-                  style: TextStyle(color: KyboColors.textMuted(context), fontSize: 11),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(message.timestamp),
+                      style: TextStyle(color: KyboColors.textMuted(context), fontSize: 11),
+                    ),
+                    if (isClient) ...[
+                      const SizedBox(width: 4),
+                      // ✓ inviato (grigio) → ✓✓ letto (azzurro)
+                      Icon(
+                        message.read ? Icons.done_all : Icons.done,
+                        size: 14,
+                        color: message.read
+                            ? KyboColors.primary
+                            : KyboColors.textMuted(context),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

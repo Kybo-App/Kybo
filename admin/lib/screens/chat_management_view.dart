@@ -991,14 +991,31 @@ class _MessageBubble extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 4),
-                  Text(
-                    DateFormat('HH:mm').format(message.timestamp),
-                    style: TextStyle(
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : KyboColors.textMuted,
-                      fontSize: 11,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        DateFormat('HH:mm').format(message.timestamp),
+                        style: TextStyle(
+                          color: isMe
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : KyboColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        // Read receipt: ✓ inviato (bianco trasparente) → ✓✓ letto (azzurro chiaro)
+                        Icon(
+                          message.read ? Icons.done_all : Icons.done,
+                          size: 14,
+                          color: message.read
+                              ? Colors.lightBlueAccent.shade100
+                              : Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
