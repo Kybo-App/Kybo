@@ -12,6 +12,8 @@ import '../widgets/skeleton_loaders.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:cross_file/cross_file.dart';
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -178,6 +180,64 @@ class _UserManagementViewState extends State<UserManagementView> {
             ),
           );
         }
+      }
+    }
+  }
+
+  /// Variante drag-and-drop: prende il primo PDF dai file rilasciati sulla
+  /// user card, ne legge i byte, lo wrappa in PlatformFile e riusa
+  /// AdminRepository.uploadDietForUser. Se nessun PDF tra i file rilasciati
+  /// → snackbar di errore.
+  Future<void> _uploadDroppedDiet(String targetUid, List<XFile> files) async {
+    final pdf = files.firstWhere(
+      (f) => f.name.toLowerCase().endsWith('.pdf'),
+      orElse: () => XFile(''),
+    );
+    if (pdf.path.isEmpty && pdf.name.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Trascina un file PDF"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final bytes = await pdf.readAsBytes();
+    final platformFile = PlatformFile(
+      name: pdf.name,
+      size: bytes.length,
+      bytes: bytes,
+    );
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const _DietUploadProgressDialog(),
+    );
+
+    try {
+      await _repo.uploadDietForUser(targetUid, platformFile);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Dieta caricata!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Errore upload: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -951,6 +1011,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           user: users[index],
           onDelete: (uid) => _deleteUser(uid),
           onUploadDiet: _uploadDiet,
+                          onDropDiet: _uploadDroppedDiet,
           onUploadParser: _uploadParser,
           onHistory: (uid) =>
               _showUserHistory(uid, users[index]['first_name'] ?? 'User'),
@@ -1053,6 +1114,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         user: expertDoc,
                         onDelete: _deleteUser,
                         onUploadDiet: _uploadDiet,
+                          onDropDiet: _uploadDroppedDiet,
                         onUploadParser: _uploadParser,
                         onHistory: (_) {},
                         onEdit: _editUser,
@@ -1086,6 +1148,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           user: clients[idx],
                           onDelete: _deleteUser,
                           onUploadDiet: _uploadDiet,
+                          onDropDiet: _uploadDroppedDiet,
                           onUploadParser: _uploadParser,
                           onHistory: (uid) => _showUserHistory(
                             uid,
@@ -1148,6 +1211,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         user: independents[idx],
                         onDelete: _deleteUser,
                         onUploadDiet: _uploadDiet,
+                          onDropDiet: _uploadDroppedDiet,
                         onUploadParser: _uploadParser,
                         onHistory: (uid) => _showUserHistory(
                           uid,
@@ -1208,6 +1272,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         user: admins[idx],
                         onDelete: _deleteUser,
                         onUploadDiet: _uploadDiet,
+                          onDropDiet: _uploadDroppedDiet,
                         onUploadParser: _uploadParser,
                         onHistory: (_) {},
                         onEdit: _editUser,
@@ -1231,6 +1296,7 @@ class _UserCard extends StatefulWidget {
   final Map<String, dynamic> user;
   final Function(String) onDelete;
   final Function(String) onUploadDiet;
+  final Function(String, List<XFile>)? onDropDiet;
   final Function(String) onUploadParser;
   final Function(String) onHistory;
   final Function(String, String, String, String, Map<String, dynamic>) onEdit;
@@ -1244,6 +1310,7 @@ class _UserCard extends StatefulWidget {
     required this.user,
     required this.onDelete,
     required this.onUploadDiet,
+    this.onDropDiet,
     required this.onUploadParser,
     required this.onHistory,
     required this.onEdit,
@@ -1264,6 +1331,7 @@ class _UserCard extends StatefulWidget {
 class _UserCardState extends State<_UserCard> {
   bool _isUnlocked = false;
   bool _isUnlocking = false;
+  bool _isDraggingOver = false;
   final AdminRepository _repo = AdminRepository();
 
   String _maskEmail(String email) => (email.length <= 4)
@@ -1384,7 +1452,7 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
-    return PillCard(
+    final Widget card = PillCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1649,6 +1717,61 @@ class _UserCardState extends State<_UserCard> {
             "Creato il: $dateStr",
             style: TextStyle(fontSize: 11, color: KyboColors.textMuted),
           ),
+        ],
+      ),
+    );
+
+    // Drag & drop PDF dieta: solo per ruoli che possono ricevere diete.
+    if (!showDiet || widget.onDropDiet == null) return card;
+
+    return DropTarget(
+      onDragEntered: (_) => setState(() => _isDraggingOver = true),
+      onDragExited: (_) => setState(() => _isDraggingOver = false),
+      onDragDone: (detail) {
+        setState(() => _isDraggingOver = false);
+        if (detail.files.isEmpty) return;
+        widget.onDropDiet!(uid, detail.files);
+      },
+      child: Stack(
+        children: [
+          card,
+          if (_isDraggingOver)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: KyboColors.primary.withValues(alpha: 0.18),
+                    borderRadius: KyboBorderRadius.large,
+                    border: Border.all(
+                      color: KyboColors.primary,
+                      width: 2,
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.upload_file_rounded,
+                          size: 40,
+                          color: KyboColors.primary,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Rilascia il PDF della dieta",
+                          style: TextStyle(
+                            color: KyboColors.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
