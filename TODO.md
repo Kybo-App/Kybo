@@ -271,7 +271,7 @@ New TODOs:
 - [ ] "La mia giornata" come home per nutri/PT: "3 clienti da ricontattare", "N chat non lette", "X dieta da approvare". Dashboard operativa al posto della analytics
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
 - [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
-- [ ] Drag & drop PDF dieta su user card (DragTarget + callback upload)
+- [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
 - [ ] Chat: typing indicator + read receipts (probabilmente dati già in Firestore, manca UI)
 - [ ] Notification in-app: badge rosso su icona Chat quando arriva messaggio mentre sei su altra vista
 - [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
