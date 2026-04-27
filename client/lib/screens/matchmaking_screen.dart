@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/matchmaking_provider.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 
 class MatchmakingScreen extends StatefulWidget {
   const MatchmakingScreen({super.key});
@@ -175,7 +176,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
       body: Consumer<MatchmakingProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.myRequests.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const SkeletonCardList(itemCount: 3);
           }
 
           if (provider.error != null && provider.myRequests.isEmpty) {

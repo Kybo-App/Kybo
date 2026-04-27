@@ -7,6 +7,7 @@ import '../providers/chat_provider.dart';
 import '../models/chat_message.dart';
 import '../services/badge_service.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -175,9 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
               stream: context.watch<ChatProvider>().getMessages(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
-                    child: CircularProgressIndicator(color: KyboColors.primary),
-                  );
+                  return const SkeletonChatBubbles();
                 }
 
                 if (snapshot.hasError) {
