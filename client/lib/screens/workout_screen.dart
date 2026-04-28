@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/workout_provider.dart';
 import '../models/workout_model.dart';
 import '../widgets/design_system.dart';
+import '../widgets/workout_reminder_dialog.dart';
 import 'chat_screen.dart';
 
 class WorkoutScreen extends StatefulWidget {
@@ -52,6 +53,17 @@ class _WorkoutScreenState extends State<WorkoutScreen>
           ),
         ),
         iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.alarm_rounded),
+            tooltip: 'Promemoria allenamento',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const WorkoutReminderDialog(),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: provider.isLoading
           ? Center(

@@ -257,6 +257,101 @@ class NotificationService {
     await _localNotifications.cancelAll();
   }
 
+  // --- WORKOUT REMINDER ---
+  // Notifiche locali ricorrenti per i giorni di allenamento. Usa ID
+  // dedicati [9000-9006] (uno per giorno settimana) per non collidere
+  // con quelle pasti (che partono da 0).
+  // Le preferenze sono salvate in SharedPreferences:
+  //   workout_reminder_enabled: bool
+  //   workout_reminder_time: "HH:mm"
+  //   workout_reminder_days: List<int> (1=Lun..7=Dom)
+  static const int _workoutReminderIdBase = 9000;
+
+  Future<void> cancelWorkoutReminders() async {
+    for (int i = 0; i < 7; i++) {
+      await _localNotifications.cancel(_workoutReminderIdBase + i);
+    }
+  }
+
+  Future<Map<String, dynamic>> loadWorkoutReminderPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'enabled': prefs.getBool('workout_reminder_enabled') ?? false,
+      'time': prefs.getString('workout_reminder_time') ?? '18:00',
+      'days': prefs.getStringList('workout_reminder_days') ??
+          ['1', '3', '5'], // lun-mer-ven default
+    };
+  }
+
+  /// Salva le preferenze del reminder workout e (ri)schedula le notifiche.
+  /// Se [enabled]=false cancella tutte le notifiche workout.
+  Future<void> saveWorkoutReminder({
+    required bool enabled,
+    required TimeOfDay time,
+    required List<int> weekdays, // 1=Lun..7=Dom
+  }) async {
+    if (!_isInitialized) await init();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('workout_reminder_enabled', enabled);
+    await prefs.setString(
+      'workout_reminder_time',
+      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+    );
+    await prefs.setStringList(
+      'workout_reminder_days',
+      weekdays.map((d) => d.toString()).toList(),
+    );
+
+    await cancelWorkoutReminders();
+
+    if (!enabled || weekdays.isEmpty) {
+      debugPrint('🔕 Workout reminder disabilitato');
+      return;
+    }
+
+    final now = DateTime.now();
+    for (final wd in weekdays) {
+      // Trova il prossimo occurrence per questo weekday a quell'ora
+      DateTime target = _nextWeekday(wd, now);
+      DateTime fire = DateTime(
+          target.year, target.month, target.day, time.hour, time.minute);
+      if (fire.isBefore(now)) fire = fire.add(const Duration(days: 7));
+
+      try {
+        await _localNotifications.zonedSchedule(
+          _workoutReminderIdBase + (wd - 1),
+          '💪 Ora di allenarti!',
+          'Apri Kybo per iniziare la tua sessione.',
+          tz.TZDateTime.from(fire, tz.local),
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'kybo_workout_channel_v1',
+              'Promemoria Workout',
+              channelDescription: 'Notifiche per i giorni di allenamento',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: _iconName,
+              color: Color(0xFF4CAF50),
+            ),
+            iOS: DarwinNotificationDetails(),
+          ),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          // Ripetizione settimanale stesso giorno+ora
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        );
+      } catch (e) {
+        debugPrint('❌ Errore schedule workout reminder $wd: $e');
+      }
+    }
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    debugPrint(
+        '🔔 Schedulati ${weekdays.length} workout reminder alle $hh:$mm');
+  }
+
   void dispose() {
     _messageSubscription?.cancel();
     debugPrint("🧹 NotificationService disposed");
