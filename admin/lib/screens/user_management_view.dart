@@ -42,6 +42,28 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   static const _selectableRoles = {'user', 'independent'};
 
+  // --- VIRTUALIZZAZIONE LISTA UTENTI ---
+  // Le GridView annidate dentro PillExpansionTile usano shrinkWrap+
+  // NeverScrollableScrollPhysics, che rompe la lazy build di Flutter:
+  // tutti i _UserCard di una sezione vengono costruiti subito anche se
+  // non visibili. Per dataset grandi (>500) è il bottleneck principale.
+  // Soluzione pragmatica: mostriamo i primi N elementi per sezione e
+  // riveliamo il resto in step quando l'utente clicca "Mostra altri".
+  static const int _sectionInitialVisible = 60;
+  static const int _sectionLoadStep = 60;
+  final Map<String, int> _sectionVisible = {};
+
+  int _visibleCount(String key) =>
+      _sectionVisible[key] ?? _sectionInitialVisible;
+
+  void _loadMoreSection(String key, int total) {
+    setState(() {
+      final cur = _visibleCount(key);
+      _sectionVisible[key] =
+          (cur + _sectionLoadStep).clamp(0, total).toInt();
+    });
+  }
+
   bool _isSelectableRole(String role) =>
       _selectableRoles.contains(role.toLowerCase());
 
@@ -1226,6 +1248,28 @@ class _UserManagementViewState extends State<UserManagementView> {
     );
   }
 
+  // Pulsante "Mostra altri N" per sezioni con più di _sectionInitialVisible
+  // utenti. Click → svela altri _sectionLoadStep elementi.
+  Widget _buildLoadMoreButton(String sectionKey, int total) {
+    final visible = _visibleCount(sectionKey);
+    if (total <= visible) return const SizedBox.shrink();
+    final remaining = total - visible;
+    final next = remaining < _sectionLoadStep ? remaining : _sectionLoadStep;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Center(
+        child: PillButton(
+          label: 'Mostra altri $next  ($visible/$total)',
+          icon: Icons.expand_more_rounded,
+          backgroundColor: KyboColors.background,
+          textColor: KyboColors.primary,
+          height: 36,
+          onPressed: () => _loadMoreSection(sectionKey, total),
+        ),
+      ),
+    );
+  }
+
   // Barra azioni di massa: visibile solo quando ci sono utenti selezionati.
   // Mostra contatore + pulsanti Assegna/Esporta CSV/Annulla.
   Widget _buildBulkActionBar(Map<String, String> nutritionists) {
@@ -1417,12 +1461,17 @@ class _UserManagementViewState extends State<UserManagementView> {
                       ),
                     ),
                   ),
-                if (clients.isNotEmpty)
+                if (clients.isNotEmpty) ...[
                   LayoutBuilder(
                     builder: (context, constraints) {
                       if (constraints.maxWidth <= 0) {
                         return const SizedBox.shrink();
                       }
+                      final sectionKey = 'expert_$expertId';
+                      final visibleClients =
+                          clients.length > _visibleCount(sectionKey)
+                              ? clients.sublist(0, _visibleCount(sectionKey))
+                              : clients;
                       return GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
@@ -1433,10 +1482,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: clients.length,
+                        itemCount: visibleClients.length,
                         padding: const EdgeInsets.all(12),
                         itemBuilder: (ctx, idx) {
-                          final u = clients[idx] as Map<String, dynamic>;
+                          final u = visibleClients[idx] as Map<String, dynamic>;
                           final uid = u['uid'] as String;
                           return _UserCard(
                             user: u,
@@ -1465,6 +1514,8 @@ class _UserManagementViewState extends State<UserManagementView> {
                       );
                     },
                   ),
+                  _buildLoadMoreButton('expert_$expertId', clients.length),
+                ],
               ],
             ),
           );
@@ -1495,6 +1546,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                     if (constraints.maxWidth <= 0) {
                       return const SizedBox.shrink();
                     }
+                    final visIndep = independents.length >
+                            _visibleCount('independents')
+                        ? independents.sublist(0, _visibleCount('independents'))
+                        : independents;
                     return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1505,10 +1560,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                       ),
-                      itemCount: independents.length,
+                      itemCount: visIndep.length,
                       padding: const EdgeInsets.all(12),
                       itemBuilder: (ctx, idx) {
-                        final u = independents[idx] as Map<String, dynamic>;
+                        final u = visIndep[idx] as Map<String, dynamic>;
                         final uid = u['uid'] as String;
                         return _UserCard(
                           user: u,
@@ -1536,6 +1591,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     );
                   },
                 ),
+                _buildLoadMoreButton('independents', independents.length),
               ],
             ),
           ),
@@ -1565,6 +1621,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                     if (constraints.maxWidth <= 0) {
                       return const SizedBox.shrink();
                     }
+                    final visAdmins = admins.length > _visibleCount('admins')
+                        ? admins.sublist(0, _visibleCount('admins'))
+                        : admins;
                     return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1575,10 +1634,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                       ),
-                      itemCount: admins.length,
+                      itemCount: visAdmins.length,
                       padding: const EdgeInsets.all(12),
                       itemBuilder: (ctx, idx) => _UserCard(
-                        user: admins[idx],
+                        user: visAdmins[idx],
                         onDelete: _deleteUser,
                         onUploadDiet: _uploadDiet,
                           onDropDiet: _uploadDroppedDiet,
@@ -1593,6 +1652,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     );
                   },
                 ),
+                _buildLoadMoreButton('admins', admins.length),
               ],
             ),
           ),
