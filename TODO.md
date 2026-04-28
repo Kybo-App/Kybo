@@ -274,7 +274,7 @@ New TODOs:
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
 - [x] Chat: read receipts (✓ inviato / ✓✓ letto) + typing indicator (3 puntini animati) sia admin che client. Debounce 3s, scrittura su chats/{id}/typing.{role}
 - [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)
-- [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
+- [x] Tabella utenti virtualizzata — implementato cap a 60 elementi per sezione (clienti per nutri, indipendenti, admin) + bottone "Mostra altri 60 (visible/total)". Risolve il bottleneck delle GridView.builder annidate con shrinkWrap+NeverScrollable che costringevano Flutter a costruire tutti i _UserCard eagerly. Il _buildUserGrid top-level (per nutri/PT) è già lazy.
 - [x] Export report PDF per cliente — implementato (admin/lib/services/client_report_service.dart). Bottone PDF rosso sulla user card → genera PDF con info base, storico diete, ultimi 30 workout completion + breakdown feedback (facili/ok/duri), note interne. Multi-page con header/footer.
 - [x] Dark mode admin — GIÀ ESISTENTE (toggle in user section, KyboThemeProvider)
 - [ ] i18n admin: completare traduzioni dei testi ancora hardcoded (solo login + user-edit-dialog tradotti finora)
