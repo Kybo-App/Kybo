@@ -271,7 +271,7 @@ class _DashboardContentState extends State<_DashboardContent> {
     final List<_NavItem> navItems = [
       _NavItem(
         icon: Icons.today_rounded,
-        label: 'La mia giornata',
+        label: l10n.myDayTab,
         view: MyDayView(
           key: ValueKey('myday_$themeKey'),
           onNavigateTo: onMyDayNav,

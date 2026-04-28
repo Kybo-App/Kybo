@@ -137,6 +137,80 @@ class AppLocalizations {
   String get roleCoach =>
       isItalian ? 'Coach (nutri + PT)' : 'Coach (nutri + PT)';
   String get roleAdmin => 'Admin';
+
+  // --- "La mia giornata" (MyDayView) ---
+  String get myDayTab => isItalian ? 'La mia giornata' : 'My day';
+  String get goodMorning => isItalian ? 'Buongiorno' : 'Good morning';
+  String get goodAfternoon => isItalian ? 'Buon pomeriggio' : 'Good afternoon';
+  String get goodEvening => isItalian ? 'Buonasera' : 'Good evening';
+  String get statUnreadChats => isItalian ? 'Chat non lette' : 'Unread chats';
+  String get statExpiredDiets => isItalian ? 'Diete scadute' : 'Expired diets';
+  String get statInactiveClients =>
+      isItalian ? 'Clienti inattivi' : 'Inactive clients';
+  String get statInactiveSubtitle =>
+      isItalian ? '>14 giorni' : '>14 days';
+  String get clientsToContact =>
+      isItalian ? 'Clienti da ricontattare' : 'Clients to contact';
+  String get allUnderControl =>
+      isItalian ? 'Tutto sotto controllo!' : 'All under control!';
+  String get noClientsAttention =>
+      isItalian
+          ? 'Nessun cliente richiede attenzione oggi.'
+          : 'No client needs attention today.';
+  String get reasonExpiredDiet =>
+      isItalian ? 'Dieta scaduta' : 'Expired diet';
+  String get reasonNeverActive =>
+      isItalian ? 'Mai attivo' : 'Never active';
+  String reasonInactive(int days) =>
+      isItalian ? 'Inattivo da ${days}gg' : 'Inactive for ${days}d';
+  String get tooltipOpenChat => isItalian ? 'Apri chat' : 'Open chat';
+  String get tooltipOpenProfile =>
+      isItalian ? 'Vai al profilo' : 'Open profile';
+  String lastActivity(String label) =>
+      isItalian ? '· Ultima attività $label' : '· Last activity $label';
+
+  // --- Bulk actions / templates / export PDF ---
+  String selectedCount(int n) =>
+      isItalian ? '$n selezionati' : '$n selected';
+  String get bulkAssign => isItalian ? 'ASSEGNA' : 'ASSIGN';
+  String get bulkExportCsv =>
+      isItalian ? 'ESPORTA CSV' : 'EXPORT CSV';
+  String get bulkCancelTooltip =>
+      isItalian ? 'Annulla selezione' : 'Cancel selection';
+  String get bulkAssignTitle =>
+      isItalian ? 'Assegna utenti' : 'Assign users';
+  String get exportReportTooltip =>
+      isItalian ? 'Esporta Report PDF' : 'Export PDF Report';
+  String get reportGenerating =>
+      isItalian ? 'Generazione report in corso...' : 'Generating report...';
+  String get reportDownloaded =>
+      isItalian ? 'Report PDF scaricato' : 'PDF report downloaded';
+
+  // Workout templates
+  String get templatesSection => isItalian ? 'Template' : 'Templates';
+  String get plansSection => isItalian ? 'Schede' : 'Plans';
+  String get saveAsTemplate =>
+      isItalian ? 'Salva come template' : 'Save as template';
+  String get saveAsTemplateSubtitle =>
+      isItalian
+          ? 'Riutilizzabile su più utenti — non lo assegna a nessuno'
+          : 'Reusable across users — not assigned to anyone';
+  String get useTemplate => isItalian ? 'Usa template' : 'Use template';
+  String get useTemplateTooltip =>
+      isItalian
+          ? 'Usa template — clona e assegna'
+          : 'Use template — clone and assign';
+  String get cloneAndAssign =>
+      isItalian ? 'Crea e assegna' : 'Create and assign';
+  String get templateBadge => isItalian ? 'Template' : 'Template';
+  String get templateClonedOk =>
+      isItalian ? 'Template clonato e assegnato ✓' : 'Template cloned and assigned ✓';
+
+  // Virtualization
+  String loadMoreUsers(int next, int visible, int total) =>
+      isItalian
+          ? 'Mostra altri $next  ($visible/$total)'
+          : 'Show $next more  ($visible/$total)';
 }
 
 class _AppLocalizationsDelegate
