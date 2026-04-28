@@ -45,6 +45,7 @@ from app.routers.shopping_share import router as shopping_share_router
 from app.routers.rewards import router as rewards_router
 from app.routers.workouts import router as workouts_router
 from app.routers.matchmaking import router as matchmaking_router
+from app.routers.diet_templates import router as diet_templates_router
 from app.core.cache import redis_cache
 from app.workers.unread_notifier import unread_notification_worker
 from app.workers.monthly_report_mailer import monthly_report_mailer_worker
@@ -137,6 +138,7 @@ app.include_router(shopping_share_router)
 app.include_router(rewards_router)
 app.include_router(workouts_router)
 app.include_router(matchmaking_router)
+app.include_router(diet_templates_router)
 
 
 async def maintenance_worker():

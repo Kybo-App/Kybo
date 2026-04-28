@@ -270,7 +270,7 @@ New TODOs:
 - [x] Bulk actions nella lista utenti (long-press → multi-select → assegna a nutri / export CSV) — implementato (admin user_management_view.dart)
 - [x] "La mia giornata" — dashboard operativa con greeting, 3 stat card cliccabili (chat non lette, diete scadute, clienti inattivi >14gg) e lista top-8 clienti da ricontattare ordinati per priorità (admin/lib/screens/my_day_view.dart, prima tab nel dashboard)
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
-- [~] Templates workout riutilizzabili — implementato (toggle "Salva come template" nel dialog crea-scheda + endpoint POST /workouts/plans/{id}/clone-and-assign/{uid} che clona il template lasciandolo intatto + UI partizionata in sezioni "Template" / "Schede" con badge accent + azione "Usa template"). Diete templates ancora pending (pattern simile, ma serve nuovo flusso upload-as-template).
+- [x] Templates workout + diete riutilizzabili — workout: toggle "Salva come template" + endpoint clone-and-assign + UI partizionata. Diete: nuovo router server diet_templates.py (CRUD + clone-and-assign su collection diet_templates/{id}, riusa diet_save_service per coerenza con upload diretto) + DietTemplatesView nuovo tab "Templates Diete" (admin/nutritionist) con upload PDF, lista e clone-and-assign con cliente picker.
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
 - [x] Chat: read receipts (✓ inviato / ✓✓ letto) + typing indicator (3 puntini animati) sia admin che client. Debounce 3s, scrittura su chats/{id}/typing.{role}
 - [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)
