@@ -253,7 +253,7 @@ New TODOs:
 - [x] Haptic feedback su completamento workout + riscatto reward — implementato
 - [x] Skeleton loading esteso a chat (bolle), matchmaking e rewards (catalogo + storico)
 - [x] Empty state con mini-CTA — implementato in diet_view (Contatta nutrizionista), workout_screen (Contatta PT), chat_screen (3 quick-reply chip che pre-popolano il campo)
-- [ ] Push reminder programmati: allenamento (orario scelto), reminder pasti extra, notifica "nuova dieta caricata", notifica messaggio chat mentre app chiusa. FCM è già inizializzato, manca lo scheduler server-side + preferenze utente
+- [~] Push reminder programmati — allenamento implementato lato client come notifiche LOCALI ricorrenti (NotificationService.saveWorkoutReminder + WorkoutReminderDialog accessibile da AppBar workout_screen, con toggle/orario/giorni 1-7). Pasti già esistente (scheduleDietNotifications). "Nuova dieta caricata" già esistente (notification_service server). Manca: notifiche chat in background (FCM message handler) + scheduler server-side per push remoti programmati a orari specifici.
 - [ ] Widget home iOS/Android: pasto / allenamento di oggi (package home_widget, richiede codice nativo Swift/Kotlin)
 - [x] Feedback post-workout rapido (3 emoji 😅/👌/🔥): POST /workouts/feedback, scrive su workout_completions/{date}. Visualizzazione admin: badge "X/7 allenamenti + ultimo feedback" sulla user card
 - [x] Ricerca dentro la dieta — GIÀ ESISTENTE (diet_view.dart)
