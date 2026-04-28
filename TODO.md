@@ -275,7 +275,7 @@ New TODOs:
 - [x] Chat: read receipts (✓ inviato / ✓✓ letto) + typing indicator (3 puntini animati) sia admin che client. Debounce 3s, scrittura su chats/{id}/typing.{role}
 - [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)
 - [ ] Tabella utenti virtualizzata se > 500 righe (lazy loading)
-- [ ] Export report PDF per cliente (cronologia diete + workout + note)
+- [x] Export report PDF per cliente — implementato (admin/lib/services/client_report_service.dart). Bottone PDF rosso sulla user card → genera PDF con info base, storico diete, ultimi 30 workout completion + breakdown feedback (facili/ok/duri), note interne. Multi-page con header/footer.
 - [x] Dark mode admin — GIÀ ESISTENTE (toggle in user section, KyboThemeProvider)
 - [ ] i18n admin: completare traduzioni dei testi ancora hardcoded (solo login + user-edit-dialog tradotti finora)
  
