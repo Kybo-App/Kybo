@@ -242,7 +242,7 @@ New TODOs:
 - [x] Aggiungere le schede di allenamento e tutta l'unterfaccia necessaria e la gestione di eessere un personal trainer , sia nutrizionista che personal trainer  , e così ti da le pagine solo necessarie al tuo account 
 - [x] preparare un sistema di reward per l'app con reward inseribili dall'admin panel , default vuoto 
 - [x] agli utenti indipendenti dare la possibilità di volere un nutrizionista/personal trainer e kybo ti mette in contatto con lui in base a dove vivi e al budget che hai a disposizione e all'obbiettivo che hai 
-- [ ] manca da controllare la lingua inglese (fatto solo in parte , bisogna controllare tutto )
+- [~] manca da controllare la lingua inglese — esteso AppLocalizations con +30 chiavi nuove (myday, bulk actions, templates, virtualization, export PDF). MyDayView, workout templates, bulk actions bar e load-more pulsanti ora si traducono correttamente IT↔EN. Resto delle view legacy ancora hardcoded in italiano (audit log, gdpr, server metrics, analytics, reports).
 - [x] da admin devo poter modificare il ruolo di un nutri o pt 
 - [x] in analytics vedo i dati in chiaro degli utenti , se sono admin non dovrei , come nutri o pt si 
 - [x] bisogna lavorare su come un new workout viene aggiunto ad un utente , deve funzionare come le diete secondo me

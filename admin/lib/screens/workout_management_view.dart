@@ -4,6 +4,7 @@
 // _assignPlan — assegna scheda a un utente.
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 class WorkoutManagementView extends StatefulWidget {
@@ -154,7 +155,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                           title: Text(
-                            'Salva come template',
+                            AppLocalizations.of(context).saveAsTemplate,
                             style: TextStyle(
                               color: KyboColors.textPrimary,
                               fontWeight: FontWeight.w600,
@@ -162,7 +163,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                             ),
                           ),
                           subtitle: Text(
-                            'Riutilizzabile su più utenti — non lo assegna a nessuno',
+                            AppLocalizations.of(context)
+                                .saveAsTemplateSubtitle,
                             style: TextStyle(
                               color: KyboColors.textMuted,
                               fontSize: 11,
@@ -555,7 +557,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                   color: KyboColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Usa template',
+                AppLocalizations.of(ctx).useTemplate,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -602,7 +604,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                   style: TextStyle(color: KyboColors.textSecondary)),
             ),
             PillButton(
-              label: 'Crea e assegna',
+              label: AppLocalizations.of(ctx).cloneAndAssign,
               icon: Icons.check_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -626,7 +628,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Template clonato e assegnato ✓'),
+                              content: Text(AppLocalizations.of(context)
+                                  .templateClonedOk),
                               backgroundColor: KyboColors.success,
                             ),
                           );
@@ -885,19 +888,20 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
   // Lista partizionata: prima i template (riutilizzabili), poi le schede
   // assegnate o ancora non assegnate. Header per ogni sezione.
   Widget _buildPartitionedList() {
+    final l10n = AppLocalizations.of(context);
     final templates = _plans.where((p) => p['is_template'] == true).toList();
     final assigned = _plans.where((p) => p['is_template'] != true).toList();
     return ListView(
       children: [
         if (templates.isNotEmpty) ...[
-          _sectionHeader('Template', templates.length, Icons.bookmark_rounded,
-              KyboColors.accent),
+          _sectionHeader(l10n.templatesSection, templates.length,
+              Icons.bookmark_rounded, KyboColors.accent),
           const SizedBox(height: 8),
           ...templates.map(_buildPlanRow),
           const SizedBox(height: 16),
         ],
         if (assigned.isNotEmpty) ...[
-          _sectionHeader('Schede', assigned.length,
+          _sectionHeader(l10n.plansSection, assigned.length,
               Icons.fitness_center_rounded, KyboColors.primary),
           const SizedBox(height: 8),
           ...assigned.map(_buildPlanRow),
@@ -1008,7 +1012,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                     ),
                     if (isTemplate)
                       PillBadge(
-                        label: 'Template',
+                        label: AppLocalizations.of(context).templateBadge,
                         icon: Icons.bookmark_rounded,
                         color: KyboColors.accent,
                       ),
@@ -1070,7 +1074,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                 PillIconButton(
                   icon: Icons.content_copy_rounded,
                   color: KyboColors.success,
-                  tooltip: 'Usa template — clona e assegna',
+                  tooltip: AppLocalizations.of(context).useTemplateTooltip,
                   onPressed: () => _useTemplate(plan),
                 )
               else

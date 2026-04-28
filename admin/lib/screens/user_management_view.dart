@@ -508,10 +508,11 @@ class _UserManagementViewState extends State<UserManagementView> {
   // Mostra snackbar di stato per feedback immediato durante il fetch dei dati.
   Future<void> _exportClientReport(
       String clientUid, Map<String, dynamic> clientData) async {
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Generazione report in corso..."),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(l10n.reportGenerating),
+        duration: const Duration(seconds: 2),
       ),
     );
     try {
@@ -521,8 +522,8 @@ class _UserManagementViewState extends State<UserManagementView> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Report PDF scaricato"),
+          SnackBar(
+            content: Text(l10n.reportDownloaded),
             backgroundColor: Colors.green,
           ),
         );
@@ -1253,13 +1254,14 @@ class _UserManagementViewState extends State<UserManagementView> {
   Widget _buildLoadMoreButton(String sectionKey, int total) {
     final visible = _visibleCount(sectionKey);
     if (total <= visible) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
     final remaining = total - visible;
     final next = remaining < _sectionLoadStep ? remaining : _sectionLoadStep;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Center(
         child: PillButton(
-          label: 'Mostra altri $next  ($visible/$total)',
+          label: l10n.loadMoreUsers(next, visible, total),
           icon: Icons.expand_more_rounded,
           backgroundColor: KyboColors.background,
           textColor: KyboColors.primary,
@@ -1273,6 +1275,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   // Barra azioni di massa: visibile solo quando ci sono utenti selezionati.
   // Mostra contatore + pulsanti Assegna/Esporta CSV/Annulla.
   Widget _buildBulkActionBar(Map<String, String> nutritionists) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -1285,7 +1288,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           Icon(Icons.checklist_rounded, color: KyboColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            "${_selectedUids.length} selezionati",
+            l10n.selectedCount(_selectedUids.length),
             style: TextStyle(
               color: KyboColors.primary,
               fontWeight: FontWeight.w700,
@@ -1295,7 +1298,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           const Spacer(),
           if (_currentUserRole == 'admin') ...[
             PillButton(
-              label: "ASSEGNA",
+              label: l10n.bulkAssign,
               icon: Icons.person_add_rounded,
               backgroundColor: KyboColors.accent,
               textColor: Colors.white,
@@ -1304,7 +1307,7 @@ class _UserManagementViewState extends State<UserManagementView> {
             const SizedBox(width: 8),
           ],
           PillButton(
-            label: "ESPORTA CSV",
+            label: l10n.bulkExportCsv,
             icon: Icons.download_rounded,
             backgroundColor: KyboColors.primary,
             textColor: Colors.white,
@@ -1314,7 +1317,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           PillIconButton(
             icon: Icons.close_rounded,
             color: KyboColors.textSecondary,
-            tooltip: "Annulla selezione",
+            tooltip: l10n.bulkCancelTooltip,
             onPressed: _clearSelection,
             size: 36,
           ),
@@ -2063,7 +2066,8 @@ class _UserCardState extends State<_UserCard> {
                     PillIconButton(
                       icon: Icons.picture_as_pdf_rounded,
                       color: KyboColors.error,
-                      tooltip: "Esporta Report PDF",
+                      tooltip:
+                          AppLocalizations.of(context).exportReportTooltip,
                       onPressed: () =>
                           widget.onExportReport!(uid, data),
                       size: 36,

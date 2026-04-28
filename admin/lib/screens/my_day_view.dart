@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../core/app_localizations.dart';
 import '../providers/admin_notification_provider.dart';
 import '../widgets/design_system.dart';
 
@@ -57,11 +58,11 @@ class _MyDayViewState extends State<MyDayView> {
     }
   }
 
-  String _greeting() {
+  String _greeting(AppLocalizations l10n) {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Buongiorno';
-    if (h < 18) return 'Buon pomeriggio';
-    return 'Buonasera';
+    if (h < 12) return l10n.goodMorning;
+    if (h < 18) return l10n.goodAfternoon;
+    return l10n.goodEvening;
   }
 
   // Query gli utenti del nutri/PT (parent_id == uid). Per admin: tutti
@@ -84,15 +85,16 @@ class _MyDayViewState extends State<MyDayView> {
       );
     }
 
+    final l10n = AppLocalizations.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(l10n),
           const SizedBox(height: 24),
-          _buildStatsRow(),
+          _buildStatsRow(l10n),
           const SizedBox(height: 24),
-          _buildActionableList(),
+          _buildActionableList(l10n),
         ],
       ),
     );
@@ -106,11 +108,23 @@ class _MyDayViewState extends State<MyDayView> {
     'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
     'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
   ];
+  static const _enDays = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+    'Friday', 'Saturday', 'Sunday',
+  ];
+  static const _enMonths = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AppLocalizations l10n) {
     final now = DateTime.now();
-    final today =
-        '${_itDays[now.weekday - 1]} ${now.day} ${_itMonths[now.month - 1]}';
+    final isItalian = l10n.locale.languageCode == 'it';
+    final days = isItalian ? _itDays : _enDays;
+    final months = isItalian ? _itMonths : _enMonths;
+    final today = isItalian
+        ? '${days[now.weekday - 1]} ${now.day} ${months[now.month - 1]}'
+        : '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
     return Row(
       children: [
         Expanded(
@@ -118,7 +132,7 @@ class _MyDayViewState extends State<MyDayView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_greeting()}${_userName.isNotEmpty ? ', $_userName' : ''}',
+                '${_greeting(l10n)}${_userName.isNotEmpty ? ', $_userName' : ''}',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -140,7 +154,7 @@ class _MyDayViewState extends State<MyDayView> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(AppLocalizations l10n) {
     final notif = context.watch<AdminNotificationProvider>();
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -170,7 +184,7 @@ class _MyDayViewState extends State<MyDayView> {
           children: [
             Expanded(
               child: _ClickableStat(
-                title: 'Chat non lette',
+                title: l10n.statUnreadChats,
                 value: '${notif.unreadChats}',
                 icon: Icons.chat_bubble_rounded,
                 color: KyboColors.primary,
@@ -180,7 +194,7 @@ class _MyDayViewState extends State<MyDayView> {
             const SizedBox(width: 16),
             Expanded(
               child: _ClickableStat(
-                title: 'Diete scadute',
+                title: l10n.statExpiredDiets,
                 value: '$expiringDiets',
                 icon: Icons.timer_off_outlined,
                 color: KyboColors.error,
@@ -190,11 +204,11 @@ class _MyDayViewState extends State<MyDayView> {
             const SizedBox(width: 16),
             Expanded(
               child: _ClickableStat(
-                title: 'Clienti inattivi',
+                title: l10n.statInactiveClients,
                 value: '$inactive',
                 icon: Icons.person_off_outlined,
                 color: KyboColors.warning,
-                subtitle: '>14 giorni',
+                subtitle: l10n.statInactiveSubtitle,
                 onTap: () => widget.onNavigateTo?.call('users'),
               ),
             ),
@@ -204,7 +218,7 @@ class _MyDayViewState extends State<MyDayView> {
     );
   }
 
-  Widget _buildActionableList() {
+  Widget _buildActionableList(AppLocalizations l10n) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _clientsStream(),
       builder: (ctx, snap) {
@@ -229,7 +243,7 @@ class _MyDayViewState extends State<MyDayView> {
           if (lastDiet is Timestamp) dietDt = lastDiet.toDate();
           if (lastDiet is String) dietDt = DateTime.tryParse(lastDiet);
           if (dietDt != null && now.difference(dietDt).inDays >= 30) {
-            reasons.add('Dieta scaduta');
+            reasons.add(l10n.reasonExpiredDiet);
             priority += 10;
           }
 
@@ -238,11 +252,11 @@ class _MyDayViewState extends State<MyDayView> {
           if (lastSeenRaw != null) {
             final dt = DateTime.tryParse(lastSeenRaw.toString());
             if (dt != null && now.difference(dt).inDays >= 14) {
-              reasons.add('Inattivo da ${now.difference(dt).inDays}gg');
+              reasons.add(l10n.reasonInactive(now.difference(dt).inDays));
               priority += 5;
             }
           } else {
-            reasons.add('Mai attivo');
+            reasons.add(l10n.reasonNeverActive);
             priority += 3;
           }
 
@@ -265,7 +279,7 @@ class _MyDayViewState extends State<MyDayView> {
                     size: 48, color: KyboColors.success),
                 const SizedBox(height: 12),
                 Text(
-                  'Tutto sotto controllo!',
+                  l10n.allUnderControl,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -274,7 +288,7 @@ class _MyDayViewState extends State<MyDayView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Nessun cliente richiede attenzione oggi.',
+                  l10n.noClientsAttention,
                   style: TextStyle(
                     fontSize: 13,
                     color: KyboColors.textSecondary,
@@ -291,7 +305,7 @@ class _MyDayViewState extends State<MyDayView> {
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 12),
               child: Text(
-                'Clienti da ricontattare',
+                l10n.clientsToContact,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -303,6 +317,7 @@ class _MyDayViewState extends State<MyDayView> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _ActionableUserRow(
                     user: u,
+                    l10n: l10n,
                     onOpenChat: () => widget.onNavigateTo?.call('chat'),
                     onOpenUser: () => widget.onNavigateTo?.call('users'),
                   ),
@@ -351,11 +366,13 @@ class _ClickableStat extends StatelessWidget {
 
 class _ActionableUserRow extends StatelessWidget {
   final Map<String, dynamic> user;
+  final AppLocalizations l10n;
   final VoidCallback? onOpenChat;
   final VoidCallback? onOpenUser;
 
   const _ActionableUserRow({
     required this.user,
+    required this.l10n,
     this.onOpenChat,
     this.onOpenUser,
   });
@@ -369,7 +386,10 @@ class _ActionableUserRow extends StatelessWidget {
     String? lastSeenLabel;
     if (lastSeenRaw != null) {
       final dt = DateTime.tryParse(lastSeenRaw.toString());
-      if (dt != null) lastSeenLabel = timeago.format(dt, locale: 'it');
+      if (dt != null) {
+        lastSeenLabel = timeago.format(dt,
+            locale: l10n.locale.languageCode == 'it' ? 'it' : 'en');
+      }
     }
 
     return PillCard(
@@ -429,7 +449,7 @@ class _ActionableUserRow extends StatelessWidget {
                         )),
                     if (lastSeenLabel != null)
                       Text(
-                        '· Ultima attività $lastSeenLabel',
+                        l10n.lastActivity(lastSeenLabel),
                         style: TextStyle(
                           color: KyboColors.textMuted,
                           fontSize: 11,
@@ -443,7 +463,7 @@ class _ActionableUserRow extends StatelessWidget {
           PillIconButton(
             icon: Icons.chat_bubble_outline_rounded,
             color: KyboColors.primary,
-            tooltip: 'Apri chat',
+            tooltip: l10n.tooltipOpenChat,
             onPressed: onOpenChat,
             size: 36,
           ),
@@ -451,7 +471,7 @@ class _ActionableUserRow extends StatelessWidget {
           PillIconButton(
             icon: Icons.person_rounded,
             color: KyboColors.accent,
-            tooltip: 'Vai al profilo',
+            tooltip: l10n.tooltipOpenProfile,
             onPressed: onOpenUser,
             size: 36,
           ),
