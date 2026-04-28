@@ -41,6 +41,9 @@ class CreateWorkoutPlanRequest(BaseModel):
     description: Optional[str] = Field(None, max_length=1000)
     days: List[WorkoutDay] = []
     target_uid: Optional[str] = Field(None, max_length=200)
+    # is_template=True crea un piano riutilizzabile (non assegnato a nessuno).
+    # Se True, target_uid viene ignorato.
+    is_template: bool = False
 
 
 class UpdateWorkoutPlanRequest(BaseModel):
@@ -98,7 +101,7 @@ async def create_workout_plan(
         db = firebase_admin.firestore.client()
 
         # Se target_uid specificato, verifica che sia un utente del professionista
-        if body.target_uid:
+        if effective_target:
             target_doc = db.collection('users').document(body.target_uid).get()
             if not target_doc.exists:
                 raise HTTPException(status_code=404, detail="Utente non trovato")
@@ -119,6 +122,9 @@ async def create_workout_plan(
         # [FIX W-3] body.dict() → body.model_dump() per Pydantic v2
         days_dump = [day.model_dump() for day in body.days]
 
+        # I template non hanno target_uid: ignoriamo eventuale valore inviato
+        # per evitare inconsistenze (template assegnato non è più un template).
+        effective_target = None if body.is_template else body.target_uid
         plan_data = {
             'name': body.name,
             'description': body.description or '',
@@ -126,14 +132,15 @@ async def create_workout_plan(
             'created_by': requester['uid'],
             'created_at': firestore.SERVER_TIMESTAMP,
             'is_active': True,
-            'target_uid': body.target_uid,
+            'is_template': body.is_template,
+            'target_uid': effective_target,
         }
 
         batch = db.batch()
         batch.set(plan_ref, plan_data)
 
-        if body.target_uid:
-            current_ref = db.collection('users').document(body.target_uid).collection(
+        if effective_target:
+            current_ref = db.collection('users').document(effective_target).collection(
                 'workout'
             ).document('current')
             current_payload = {
@@ -147,7 +154,7 @@ async def create_workout_plan(
             # Storico per-utente (mirror del pattern diete): ogni scheda assegnata
             # lascia traccia in users/{uid}/workouts_history/{plan_id} così il
             # client può mostrare lo storico anche quando il PT sostituisce la current.
-            history_ref = db.collection('users').document(body.target_uid).collection(
+            history_ref = db.collection('users').document(effective_target).collection(
                 'workouts_history'
             ).document(plan_id)
             batch.set(history_ref, {
@@ -159,7 +166,7 @@ async def create_workout_plan(
         batch.commit()
 
         logger.info("workout_plan_created", plan_id=plan_id, by=requester['uid'],
-                     target=body.target_uid)
+                     target=effective_target, is_template=body.is_template)
         return {"id": plan_id, "message": "Scheda creata"}
     except HTTPException:
         raise
@@ -400,6 +407,94 @@ async def assign_workout_plan(
     except Exception as e:
         logger.error("assign_workout_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'assegnazione della scheda.")
+
+
+@router.post("/workouts/plans/{plan_id}/clone-and-assign/{target_uid}")
+@limiter.limit("30/hour")
+async def clone_and_assign_workout_plan(
+    request: Request,
+    plan_id: str,
+    target_uid: str,
+    requester: dict = Depends(verify_professional),
+):
+    """Clona una scheda (tipicamente un template) e assegna la copia a un utente.
+    A differenza di /assign che mutava il target_uid del piano originale, qui
+    creiamo un nuovo plan_doc così il template resta intatto e riutilizzabile.
+    """
+    try:
+        db = firebase_admin.firestore.client()
+
+        # Carica la scheda sorgente
+        src_ref = db.collection('workout_plans').document(plan_id)
+        src_doc = src_ref.get()
+        if not src_doc.exists:
+            raise HTTPException(status_code=404, detail="Scheda non trovata")
+
+        src_data = src_doc.to_dict()
+        if src_data.get('created_by') != requester['uid'] and requester['role'] != 'admin':
+            raise HTTPException(status_code=403, detail="Non puoi clonare questa scheda")
+
+        # Verifica che il target esista e sia gestito dal requester (se non admin)
+        target_doc = db.collection('users').document(target_uid).get()
+        if not target_doc.exists:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+        if requester['role'] != 'admin':
+            target_data = target_doc.to_dict()
+            if (target_data.get('parent_id') != requester['uid']
+                    and target_data.get('created_by') != requester['uid']
+                    and target_data.get('pt_id') != requester['uid']):
+                raise HTTPException(status_code=403, detail="Non puoi assegnare schede a questo utente")
+
+        new_ref = db.collection('workout_plans').document()
+        new_id = new_ref.id
+
+        new_plan = {
+            'name': src_data.get('name', ''),
+            'description': src_data.get('description', ''),
+            'days': src_data.get('days', []),
+            'created_by': requester['uid'],
+            'created_at': firestore.SERVER_TIMESTAMP,
+            'is_active': True,
+            'is_template': False,
+            'target_uid': target_uid,
+            'cloned_from': plan_id,
+        }
+
+        current_ref = db.collection('users').document(target_uid).collection(
+            'workout'
+        ).document('current')
+        history_ref = db.collection('users').document(target_uid).collection(
+            'workouts_history'
+        ).document(new_id)
+
+        current_payload = {
+            'plan_id': new_id,
+            'plan_name': new_plan['name'],
+            'assigned_at': firestore.SERVER_TIMESTAMP,
+            'assigned_by': requester['uid'],
+            'days': new_plan['days'],
+        }
+
+        batch = db.batch()
+        batch.set(new_ref, new_plan)
+        batch.set(current_ref, current_payload)
+        batch.set(history_ref, {
+            **current_payload,
+            'name': new_plan['name'],
+            'description': new_plan['description'],
+        })
+        batch.commit()
+
+        logger.info(
+            "workout_template_cloned",
+            source=plan_id, new=new_id, target=target_uid, by=requester['uid'],
+        )
+        return {"id": new_id, "message": "Template clonato e assegnato"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("clone_workout_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante il clone della scheda.")
 
 
 # --- Client endpoints ---
