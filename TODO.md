@@ -268,7 +268,7 @@ New TODOs:
 - [x] Skeleton loader lista utenti — implementato
 - [x] Last activity per user (pallino verde/giallo/rosso + timeago) — implementato
 - [x] Bulk actions nella lista utenti (long-press → multi-select → assegna a nutri / export CSV) — implementato (admin user_management_view.dart)
-- [ ] "La mia giornata" come home per nutri/PT: "3 clienti da ricontattare", "N chat non lette", "X dieta da approvare". Dashboard operativa al posto della analytics
+- [x] "La mia giornata" — dashboard operativa con greeting, 3 stat card cliccabili (chat non lette, diete scadute, clienti inattivi >14gg) e lista top-8 clienti da ricontattare ordinati per priorità (admin/lib/screens/my_day_view.dart, prima tab nel dashboard)
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
 - [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)

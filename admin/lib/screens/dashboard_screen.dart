@@ -14,6 +14,7 @@ import 'user_management_view.dart';
 import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
+import 'my_day_view.dart';
 
 import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
@@ -157,7 +158,8 @@ class _DashboardContentState extends State<_DashboardContent> {
       }
 
       if (event.logicalKey == LogicalKeyboardKey.keyN) {
-        _onNavSelected(0);
+        // Ctrl+N → tab Utenti (creazione nuovo utente). MyDayView è in 0.
+        _onNavSelected(1);
         return KeyEventResult.handled;
       }
 
@@ -251,7 +253,30 @@ class _DashboardContentState extends State<_DashboardContent> {
     final themeKey = KyboColors.isDark ? 'dark' : 'light';
     final notifProvider = context.watch<AdminNotificationProvider>();
 
+    // Calcolo lazy degli indici delle tab "chat" e "users" per permettere
+    // a MyDayView di saltare a quelle tab tramite onNavigateTo.
+    void onMyDayNav(String label) {
+      // navItems viene costruito sotto, quindi calcoliamo qui post-build:
+      // tab fisse → 'myday'=0, 'users'=1, 'chat'=2 (vedi ordine sotto).
+      switch (label) {
+        case 'users':
+          _onNavSelected(1);
+          break;
+        case 'chat':
+          _onNavSelected(2);
+          break;
+      }
+    }
+
     final List<_NavItem> navItems = [
+      _NavItem(
+        icon: Icons.today_rounded,
+        label: 'La mia giornata',
+        view: MyDayView(
+          key: ValueKey('myday_$themeKey'),
+          onNavigateTo: onMyDayNav,
+        ),
+      ),
       _NavItem(
         icon: Icons.people_alt_rounded,
         label: l10n.navUsers,
