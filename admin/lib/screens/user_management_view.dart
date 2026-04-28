@@ -16,6 +16,7 @@ import 'package:csv/csv.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:universal_html/html.dart' as html;
+import '../services/client_report_service.dart';
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -479,6 +480,41 @@ class _UserManagementViewState extends State<UserManagementView> {
         },
       ),
     );
+  }
+
+  // Esporta il report PDF del cliente (cronologia diete + workout + note).
+  // Mostra snackbar di stato per feedback immediato durante il fetch dei dati.
+  Future<void> _exportClientReport(
+      String clientUid, Map<String, dynamic> clientData) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Generazione report in corso..."),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    try {
+      await ClientReportService().generateAndDownload(
+        clientUid: clientUid,
+        clientData: clientData,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Report PDF scaricato"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Errore generazione report: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Assegna in bulk gli utenti selezionati a un nutrizionista.
@@ -1268,6 +1304,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           onEdit: _editUser,
           onAssign: null,
           onNotes: _showClientNotes,
+          onExportReport: _exportClientReport,
           currentUserRole: _currentUserRole,
           currentUserId: _currentUserId,
           roleColor: _getRoleColor(role),
@@ -1415,6 +1452,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                             onAssign: (uid) =>
                                 _showManageAssignmentDialog(uid, expertNameMap),
                             onNotes: _showClientNotes,
+                            onExportReport: _exportClientReport,
                             currentUserRole: _currentUserRole,
                             currentUserId: _currentUserId,
                             roleColor: _getRoleColor('user'),
@@ -1485,6 +1523,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           onEdit: _editUser,
                           onAssign: (uid) => _assignUser(uid, expertNameMap),
                           onNotes: _showClientNotes,
+                          onExportReport: _exportClientReport,
                           currentUserRole: _currentUserRole,
                           currentUserId: _currentUserId,
                           roleColor: _getRoleColor('independent'),
@@ -1572,6 +1611,7 @@ class _UserCard extends StatefulWidget {
   final Function(String, String, String, String, Map<String, dynamic>) onEdit;
   final Function(String)? onAssign;
   final Function(String, String)? onNotes;
+  final Function(String, Map<String, dynamic>)? onExportReport;
   final String currentUserRole;
   final String currentUserId;
   final Color roleColor;
@@ -1592,6 +1632,7 @@ class _UserCard extends StatefulWidget {
     required this.onEdit,
     this.onAssign,
     this.onNotes,
+    this.onExportReport,
     required this.currentUserRole,
     required this.currentUserId,
     required this.roleColor,
@@ -1958,6 +1999,15 @@ class _UserCardState extends State<_UserCard> {
                     onPressed: () => widget.onUploadDiet(uid),
                     size: 36,
                   ),
+                  if (widget.onExportReport != null)
+                    PillIconButton(
+                      icon: Icons.picture_as_pdf_rounded,
+                      color: KyboColors.error,
+                      tooltip: "Esporta Report PDF",
+                      onPressed: () =>
+                          widget.onExportReport!(uid, data),
+                      size: 36,
+                    ),
                 ],
                 if (showParser)
                   PillIconButton(
