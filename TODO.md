@@ -270,7 +270,7 @@ New TODOs:
 - [x] Bulk actions nella lista utenti (long-press → multi-select → assegna a nutri / export CSV) — implementato (admin user_management_view.dart)
 - [x] "La mia giornata" — dashboard operativa con greeting, 3 stat card cliccabili (chat non lette, diete scadute, clienti inattivi >14gg) e lista top-8 clienti da ricontattare ordinati per priorità (admin/lib/screens/my_day_view.dart, prima tab nel dashboard)
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
-- [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
+- [~] Templates workout riutilizzabili — implementato (toggle "Salva come template" nel dialog crea-scheda + endpoint POST /workouts/plans/{id}/clone-and-assign/{uid} che clona il template lasciandolo intatto + UI partizionata in sezioni "Template" / "Schede" con badge accent + azione "Usa template"). Diete templates ancora pending (pattern simile, ma serve nuovo flusso upload-as-template).
 - [x] Drag & drop PDF dieta su user card (desktop_drop + overlay hover, _uploadDroppedDiet)
 - [x] Chat: read receipts (✓ inviato / ✓✓ letto) + typing indicator (3 puntini animati) sia admin che client. Debounce 3s, scrittura su chats/{id}/typing.{role}
 - [x] Notification in-app: badge rosso su icona Chat — GIÀ ESISTENTE (AdminNotificationProvider)

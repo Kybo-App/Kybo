@@ -1089,12 +1089,14 @@ class AdminRepository {
     }
   }
 
-  /// Creates a new workout plan
+  /// Creates a new workout plan. Se [isTemplate] è true, [targetUid] è ignorato
+  /// e la scheda viene salvata come template riutilizzabile.
   Future<void> createWorkoutPlan({
     required String name,
     String description = '',
     List<Map<String, dynamic>> days = const [],
     String? targetUid,
+    bool isTemplate = false,
   }) async {
     final token = await _getToken();
     final response = await http.post(
@@ -1107,7 +1109,8 @@ class AdminRepository {
         'name': name,
         'description': description,
         'days': days,
-        if (targetUid != null) 'target_uid': targetUid,
+        if (targetUid != null && !isTemplate) 'target_uid': targetUid,
+        'is_template': isTemplate,
       }),
     );
 
@@ -1171,6 +1174,25 @@ class AdminRepository {
     if (response.statusCode != 200) {
       await _checkUnauthorized(response);
       throw Exception("Errore Assegnazione Scheda (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Clona un template e assegna la copia a un utente. Il template originale
+  /// resta intatto e riutilizzabile (a differenza di assignWorkoutPlan che
+  /// muta il target_uid del piano).
+  Future<void> cloneAndAssignWorkoutPlan(
+      String planId, String targetUid) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse(
+          '$_baseUrl/workouts/plans/$planId/clone-and-assign/$targetUid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception(
+          "Errore Clone Template (${response.statusCode}): ${_safeBody(response)}");
     }
   }
 

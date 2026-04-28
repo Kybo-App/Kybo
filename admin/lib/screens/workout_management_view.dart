@@ -88,6 +88,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
     }
 
     bool isSaving = false;
+    bool isTemplate = (existing?['is_template'] as bool?) ?? false;
 
     showDialog(
       context: context,
@@ -133,7 +134,50 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                     ),
                     const SizedBox(height: 12),
                     if (existing == null) ...[
-                      if (_clients.isNotEmpty)
+                      // Toggle "Salva come template": se attivo, il piano non
+                      // viene assegnato a nessuno e resta riutilizzabile.
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isTemplate
+                              ? KyboColors.primary.withValues(alpha: 0.08)
+                              : KyboColors.background,
+                          borderRadius: KyboBorderRadius.medium,
+                          border: Border.all(
+                            color: isTemplate
+                                ? KyboColors.primary
+                                : KyboColors.border,
+                          ),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(
+                            'Salva come template',
+                            style: TextStyle(
+                              color: KyboColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Riutilizzabile su più utenti — non lo assegna a nessuno',
+                            style: TextStyle(
+                              color: KyboColors.textMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          value: isTemplate,
+                          activeThumbColor: KyboColors.primary,
+                          onChanged: (v) => setDialogState(() {
+                            isTemplate = v;
+                            if (v) targetUidCtrl.text = '';
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (!isTemplate && _clients.isNotEmpty)
                         _ClientPicker(
                           clients: _clients,
                           selectedUid: targetUidCtrl.text.isNotEmpty
@@ -143,7 +187,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                             setDialogState(() => targetUidCtrl.text = uid ?? '');
                           },
                         )
-                      else
+                      else if (!isTemplate)
                         PillTextField(
                           controller: targetUidCtrl,
                           hintText: 'UID utente (opzionale, assegna subito)',
@@ -430,6 +474,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                               targetUid: targetUidCtrl.text.trim().isNotEmpty
                                   ? targetUidCtrl.text.trim()
                                   : null,
+                              isTemplate: isTemplate,
                             );
                           } else {
                             await _repo.updateWorkoutPlan(
@@ -487,6 +532,123 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         enabledBorder: OutlineInputBorder(
           borderRadius: KyboBorderRadius.small,
           borderSide: BorderSide(color: KyboColors.border),
+        ),
+      ),
+    );
+  }
+
+  // Clona un template e lo assegna a un utente. Differisce da _assignPlan
+  // perché crea un nuovo plan_doc, lasciando il template intatto.
+  Future<void> _useTemplate(Map<String, dynamic> template) async {
+    String? selectedUid;
+    bool isAssigning = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: KyboColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Row(
+            children: [
+              Icon(Icons.content_copy_rounded,
+                  color: KyboColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Usa template',
+                style: TextStyle(
+                  color: KyboColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Verrà creata una copia di "${template['name'] ?? 'template'}" '
+                  'assegnata all\'utente selezionato. Il template originale '
+                  'resta riutilizzabile.',
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_clients.isNotEmpty)
+                  _ClientPicker(
+                    clients: _clients,
+                    selectedUid: selectedUid,
+                    onSelected: (uid) {
+                      setDialogState(() => selectedUid = uid);
+                    },
+                  )
+                else
+                  Text(
+                    'Nessun cliente disponibile.',
+                    style: TextStyle(color: KyboColors.textMuted),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Annulla',
+                  style: TextStyle(color: KyboColors.textSecondary)),
+            ),
+            PillButton(
+              label: 'Crea e assegna',
+              icon: Icons.check_rounded,
+              backgroundColor: KyboColors.primary,
+              textColor: Colors.white,
+              height: 40,
+              isLoading: isAssigning,
+              onPressed: isAssigning
+                  ? null
+                  : () async {
+                      final uid = selectedUid;
+                      if (uid == null || uid.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Seleziona un utente')),
+                        );
+                        return;
+                      }
+                      setDialogState(() => isAssigning = true);
+                      try {
+                        await _repo.cloneAndAssignWorkoutPlan(
+                            template['id'], uid);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Template clonato e assegnato ✓'),
+                              backgroundColor: KyboColors.success,
+                            ),
+                          );
+                        }
+                        _loadPlans();
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Errore: $e'),
+                              backgroundColor: KyboColors.error,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (ctx.mounted) {
+                          setDialogState(() => isAssigning = false);
+                        }
+                      }
+                    },
+            ),
+          ],
         ),
       ),
     );
@@ -714,18 +876,76 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      itemCount: _plans.length,
-                      itemBuilder: (context, index) =>
-                          _buildPlanRow(_plans[index]),
-                    ),
+                  : _buildPartitionedList(),
         ),
       ],
     );
   }
 
+  // Lista partizionata: prima i template (riutilizzabili), poi le schede
+  // assegnate o ancora non assegnate. Header per ogni sezione.
+  Widget _buildPartitionedList() {
+    final templates = _plans.where((p) => p['is_template'] == true).toList();
+    final assigned = _plans.where((p) => p['is_template'] != true).toList();
+    return ListView(
+      children: [
+        if (templates.isNotEmpty) ...[
+          _sectionHeader('Template', templates.length, Icons.bookmark_rounded,
+              KyboColors.accent),
+          const SizedBox(height: 8),
+          ...templates.map(_buildPlanRow),
+          const SizedBox(height: 16),
+        ],
+        if (assigned.isNotEmpty) ...[
+          _sectionHeader('Schede', assigned.length,
+              Icons.fitness_center_rounded, KyboColors.primary),
+          const SizedBox(height: 8),
+          ...assigned.map(_buildPlanRow),
+        ],
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String label, int count, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPlanRow(Map<String, dynamic> plan) {
     final isActive = plan['is_active'] ?? true;
+    final isTemplate = plan['is_template'] == true;
     final days = plan['days'] as List? ?? [];
     final targetUid = plan['target_uid'] as String?;
     final totalExercises = days.fold<int>(
@@ -740,23 +960,32 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         color: KyboColors.background,
         borderRadius: KyboBorderRadius.medium,
         border: Border.all(
-          color: isActive
-              ? KyboColors.border
-              : KyboColors.error.withValues(alpha: 0.3),
+          color: !isActive
+              ? KyboColors.error.withValues(alpha: 0.3)
+              : isTemplate
+                  ? KyboColors.accent.withValues(alpha: 0.4)
+                  : KyboColors.border,
+          width: isTemplate ? 1.5 : 1,
         ),
       ),
       child: Row(
         children: [
-          // Icon
+          // Icon (accent color per template)
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: KyboColors.primary.withValues(alpha: 0.1),
+              color: (isTemplate ? KyboColors.accent : KyboColors.primary)
+                  .withValues(alpha: 0.1),
               borderRadius: KyboBorderRadius.medium,
             ),
-            child: Icon(Icons.fitness_center_rounded,
-                color: KyboColors.primary, size: 24),
+            child: Icon(
+              isTemplate
+                  ? Icons.bookmark_rounded
+                  : Icons.fitness_center_rounded,
+              color: isTemplate ? KyboColors.accent : KyboColors.primary,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
 
@@ -777,6 +1006,12 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         ),
                       ),
                     ),
+                    if (isTemplate)
+                      PillBadge(
+                        label: 'Template',
+                        icon: Icons.bookmark_rounded,
+                        color: KyboColors.accent,
+                      ),
                     if (!isActive)
                       PillBadge(
                         label: 'Disattivata',
@@ -831,12 +1066,20 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              PillIconButton(
-                icon: Icons.person_add_rounded,
-                color: KyboColors.success,
-                tooltip: 'Assegna a utente',
-                onPressed: () => _assignPlan(plan),
-              ),
+              if (isTemplate)
+                PillIconButton(
+                  icon: Icons.content_copy_rounded,
+                  color: KyboColors.success,
+                  tooltip: 'Usa template — clona e assegna',
+                  onPressed: () => _useTemplate(plan),
+                )
+              else
+                PillIconButton(
+                  icon: Icons.person_add_rounded,
+                  color: KyboColors.success,
+                  tooltip: 'Assegna a utente',
+                  onPressed: () => _assignPlan(plan),
+                ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.edit_rounded,
