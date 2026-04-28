@@ -1196,6 +1196,88 @@ class AdminRepository {
     }
   }
 
+  // --- DIET TEMPLATES ---
+
+  Future<Map<String, dynamic>> getDietTemplates() async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/diet-templates'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes))
+          as Map<String, dynamic>;
+    } else {
+      await _checkUnauthorized(response);
+      throw Exception(
+          "Errore Templates Diete (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  /// Upload PDF dieta come template riutilizzabile (no target user).
+  Future<void> createDietTemplate({
+    required PlatformFile file,
+    required String name,
+    String description = '',
+  }) async {
+    final token = await _getToken();
+    if (file.bytes == null) throw Exception('File corrotto');
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/diet-templates'),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['name'] = name;
+    request.fields['description'] = description;
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        file.bytes!,
+        filename: file.name,
+        contentType: MediaType('application', 'pdf'),
+      ),
+    );
+
+    final streamResponse = await request.send();
+    final body = await streamResponse.stream.bytesToString();
+    if (streamResponse.statusCode != 200) {
+      if (streamResponse.statusCode == 401) {
+        await FirebaseAuth.instance.signOut();
+        throw Exception('Sessione scaduta.');
+      }
+      throw Exception('Errore Template Dieta (${streamResponse.statusCode}): $body');
+    }
+  }
+
+  Future<void> deleteDietTemplate(String templateId) async {
+    final token = await _getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl/diet-templates/$templateId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception(
+          "Errore Eliminazione Template (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
+  Future<void> cloneAndAssignDietTemplate(
+      String templateId, String targetUid) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse(
+          '$_baseUrl/diet-templates/$templateId/clone-and-assign/$targetUid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception(
+          "Errore Clone Template (${response.statusCode}): ${_safeBody(response)}");
+    }
+  }
+
   // --- MATCHMAKING ---
 
   Future<List<dynamic>> getMatchmakingBoard() async {

@@ -15,6 +15,7 @@ import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
 import 'my_day_view.dart';
+import 'diet_templates_view.dart';
 
 import 'analytics_view.dart';
 import 'gdpr_privacy_view.dart';
@@ -337,6 +338,12 @@ class _DashboardContentState extends State<_DashboardContent> {
           icon: Icons.fitness_center_rounded,
           label: 'Workout',
           view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
+        ),
+      if (_isNutritionist || _isAdmin)
+        _NavItem(
+          icon: Icons.bookmark_rounded,
+          label: 'Templates Diete',
+          view: DietTemplatesView(key: ValueKey('diettpl_$themeKey')),
         ),
       if (_isAdmin || _isPT || _isNutritionist)
         _NavItem(
