@@ -56,6 +56,26 @@ class _UserManagementViewState extends State<UserManagementView> {
   int _visibleCount(String key) =>
       _sectionVisible[key] ?? _sectionInitialVisible;
 
+  // --- SPLIT VIEW MASTER-DETAIL ---
+  // Quando _detailUid != null e il viewport è largo (>1100px), la build
+  // mostra la lista a sinistra e un pannello dettaglio a destra.
+  String? _detailUid;
+  Map<String, dynamic>? _detailUserData;
+
+  void _showUserDetail(Map<String, dynamic> user) {
+    setState(() {
+      _detailUid = user['uid'] as String?;
+      _detailUserData = user;
+    });
+  }
+
+  void _closeUserDetail() {
+    setState(() {
+      _detailUid = null;
+      _detailUserData = null;
+    });
+  }
+
   void _loadMoreSection(String key, int total) {
     setState(() {
       final cur = _visibleCount(key);
@@ -1020,7 +1040,10 @@ class _UserManagementViewState extends State<UserManagementView> {
       return const SkeletonUserList();
     }
 
-    return Column(
+    final width = MediaQuery.of(context).size.width;
+    final showDetailPane = width > 1100 && _detailUid != null;
+
+    final mainColumn = Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
@@ -1247,6 +1270,30 @@ class _UserManagementViewState extends State<UserManagementView> {
         ),
       ],
     );
+
+    if (!showDetailPane) return mainColumn;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(flex: 2, child: mainColumn),
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 1,
+          child: _UserDetailPane(
+            user: _detailUserData!,
+            roleColor: _getRoleColor(
+                (_detailUserData!['role'] ?? 'user').toString()),
+            onClose: _closeUserDetail,
+            onOpenChat: () => _closeUserDetail(),
+            onShowHistory: () {
+              _showUserHistory(
+                  _detailUid!, _detailUserData!['first_name'] ?? 'Utente');
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   // Pulsante "Mostra altri N" per sezioni con più di _sectionInitialVisible
@@ -1352,6 +1399,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           onAssign: null,
           onNotes: _showClientNotes,
           onExportReport: _exportClientReport,
+          onShowDetail: _showUserDetail,
           currentUserRole: _currentUserRole,
           currentUserId: _currentUserId,
           roleColor: _getRoleColor(role),
@@ -1505,6 +1553,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                                 _showManageAssignmentDialog(uid, expertNameMap),
                             onNotes: _showClientNotes,
                             onExportReport: _exportClientReport,
+                            onShowDetail: _showUserDetail,
                             currentUserRole: _currentUserRole,
                             currentUserId: _currentUserId,
                             roleColor: _getRoleColor('user'),
@@ -1582,6 +1631,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                           onAssign: (uid) => _assignUser(uid, expertNameMap),
                           onNotes: _showClientNotes,
                           onExportReport: _exportClientReport,
+                          onShowDetail: _showUserDetail,
                           currentUserRole: _currentUserRole,
                           currentUserId: _currentUserId,
                           roleColor: _getRoleColor('independent'),
@@ -1675,6 +1725,7 @@ class _UserCard extends StatefulWidget {
   final Function(String)? onAssign;
   final Function(String, String)? onNotes;
   final Function(String, Map<String, dynamic>)? onExportReport;
+  final Function(Map<String, dynamic>)? onShowDetail;
   final String currentUserRole;
   final String currentUserId;
   final Color roleColor;
@@ -1696,6 +1747,7 @@ class _UserCard extends StatefulWidget {
     this.onAssign,
     this.onNotes,
     this.onExportReport,
+    this.onShowDetail,
     required this.currentUserRole,
     required this.currentUserId,
     required this.roleColor,
@@ -2029,6 +2081,14 @@ class _UserCardState extends State<_UserCard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (widget.onShowDetail != null)
+                  PillIconButton(
+                    icon: Icons.info_outline_rounded,
+                    color: KyboColors.primary,
+                    tooltip: "Dettagli",
+                    onPressed: () => widget.onShowDetail!(data),
+                    size: 36,
+                  ),
                 if (canAssign)
                   PillIconButton(
                     icon: role == 'user'
@@ -3284,5 +3344,194 @@ class _WorkoutActivityRow extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+// Pannello dettaglio user mostrato a destra in modalità split-view (>1100px).
+// Mostra avatar grande, info base, badge e azioni rapide. Per dati GDPR-sensibili
+// (storico diete, note) ci sono pulsanti "Apri" che riusano i dialog esistenti.
+class _UserDetailPane extends StatelessWidget {
+  final Map<String, dynamic> user;
+  final Color roleColor;
+  final VoidCallback onClose;
+  final VoidCallback onOpenChat;
+  final VoidCallback onShowHistory;
+
+  const _UserDetailPane({
+    required this.user,
+    required this.roleColor,
+    required this.onClose,
+    required this.onOpenChat,
+    required this.onShowHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = "${user['first_name'] ?? ''} ${user['last_name'] ?? ''}".trim();
+    final email = (user['email'] ?? '').toString();
+    final role = (user['role'] ?? 'user').toString();
+    final uid = (user['uid'] ?? '').toString();
+    final createdAt = user['created_at']?.toString();
+    final lastSeen = (user['last_seen'] ?? user['last_login'])?.toString();
+    final lastDiet = user['last_diet_update']?.toString();
+
+    return PillCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.person_rounded, color: roleColor, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'Dettaglio cliente',
+                style: TextStyle(
+                  color: KyboColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              PillIconButton(
+                icon: Icons.close_rounded,
+                color: KyboColors.textSecondary,
+                tooltip: 'Chiudi',
+                onPressed: onClose,
+                size: 32,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Avatar grande + nome
+          Row(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: roleColor.withValues(alpha: 0.12),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: Center(
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      color: roleColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 28,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? 'Senza nome' : name,
+                      style: TextStyle(
+                        color: KyboColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: TextStyle(
+                        color: KyboColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    PillBadge.role(role),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Divider(color: KyboColors.border, height: 1),
+          const SizedBox(height: 12),
+
+          // Info table
+          _detailRow('UID', uid.isEmpty ? '-' : uid, mono: true),
+          _detailRow('Account creato', _fmtDate(createdAt)),
+          _detailRow('Ultima attività', _fmtDate(lastSeen)),
+          _detailRow('Ultima dieta', _fmtDate(lastDiet)),
+
+          const SizedBox(height: 16),
+
+          // Quick actions
+          Row(
+            children: [
+              Expanded(
+                child: PillButton(
+                  label: 'STORICO',
+                  icon: Icons.history_rounded,
+                  backgroundColor: KyboColors.primary,
+                  textColor: Colors.white,
+                  height: 38,
+                  onPressed: onShowHistory,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: PillButton(
+                  label: 'CHIUDI',
+                  icon: Icons.close_rounded,
+                  backgroundColor: KyboColors.background,
+                  textColor: KyboColors.textPrimary,
+                  height: 38,
+                  onPressed: onOpenChat,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, {bool mono = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: KyboColors.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: KyboColors.textPrimary,
+                fontSize: 12,
+                fontFamily: mono ? 'monospace' : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return raw;
+    return DateFormat('dd MMM yyyy HH:mm').format(dt);
   }
 }
