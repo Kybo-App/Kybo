@@ -196,22 +196,57 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 if (messages.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: KyboColors.textMuted(context)),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Nessun messaggio',
-                          style: TextStyle(color: KyboColors.textSecondary(context), fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Invia un messaggio al\ntuo nutrizionista!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: KyboColors.textMuted(context), fontSize: 14),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.chat_bubble_outline,
+                              size: 64,
+                              color: KyboColors.textMuted(context)),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Inizia la conversazione',
+                            style: TextStyle(
+                              color: KyboColors.textPrimary(context),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tocca un suggerimento o scrivi\nun messaggio al tuo nutrizionista',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: KyboColors.textMuted(context),
+                                fontSize: 14),
+                          ),
+                          const SizedBox(height: 20),
+                          // Quick-reply suggestions: pre-popolano il
+                          // text field per ridurre la frizione iniziale.
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _QuickReplyChip(
+                                label: 'Ciao! 👋',
+                                onTap: () => _messageController.text = 'Ciao! 👋',
+                              ),
+                              _QuickReplyChip(
+                                label: 'Ho una domanda sulla dieta',
+                                onTap: () => _messageController.text =
+                                    'Ho una domanda sulla dieta',
+                              ),
+                              _QuickReplyChip(
+                                label: 'Posso modificare un pasto?',
+                                onTap: () => _messageController.text =
+                                    'Posso modificare un pasto?',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
@@ -658,6 +693,39 @@ class _TypingDotsState extends State<_TypingDots>
           }),
         );
       },
+    );
+  }
+}
+
+/// Chip suggerimento rapido per l'empty state della chat.
+class _QuickReplyChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _QuickReplyChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: KyboColors.primary.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: KyboColors.primary.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: KyboColors.primary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
