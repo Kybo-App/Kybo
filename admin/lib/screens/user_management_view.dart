@@ -12,8 +12,10 @@ import '../widgets/skeleton_loaders.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:csv/csv.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:universal_html/html.dart' as html;
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -29,6 +31,41 @@ class _UserManagementViewState extends State<UserManagementView> {
   String _searchQuery = "";
   String _roleFilter = "all";
   final TextEditingController _searchCtrl = TextEditingController();
+
+  // --- BULK SELECTION ---
+  // Solo i ruoli "user" e "independent" sono selezionabili (sono gli unici
+  // su cui ha senso fare azioni di massa: assegnazione + export CSV).
+  final Set<String> _selectedUids = {};
+  final Map<String, Map<String, dynamic>> _selectedUserData = {};
+  bool _selectionMode = false;
+
+  static const _selectableRoles = {'user', 'independent'};
+
+  bool _isSelectableRole(String role) =>
+      _selectableRoles.contains(role.toLowerCase());
+
+  void _toggleSelection(Map<String, dynamic> user) {
+    final uid = user['uid'] as String;
+    setState(() {
+      if (_selectedUids.contains(uid)) {
+        _selectedUids.remove(uid);
+        _selectedUserData.remove(uid);
+        if (_selectedUids.isEmpty) _selectionMode = false;
+      } else {
+        _selectedUids.add(uid);
+        _selectedUserData[uid] = user;
+        _selectionMode = true;
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedUids.clear();
+      _selectedUserData.clear();
+      _selectionMode = false;
+    });
+  }
 
   String _currentUserId = '';
   String _currentUserRole = '';
@@ -442,6 +479,152 @@ class _UserManagementViewState extends State<UserManagementView> {
         },
       ),
     );
+  }
+
+  // Assegna in bulk gli utenti selezionati a un nutrizionista.
+  // Itera serialmente per evitare burst sull'API e fornisce snackbar finale
+  // con conteggio successi/errori.
+  Future<void> _bulkAssign(Map<String, String> nutritionists) async {
+    if (_selectedUids.isEmpty) return;
+    if (nutritionists.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Nessun nutrizionista disponibile."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    String? selectedNutId = nutritionists.keys.first;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text("Assegna ${_selectedUids.length} utenti"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Stai per assegnare ${_selectedUids.length} utenti al nutrizionista selezionato.",
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedNutId,
+                isExpanded: true,
+                items: nutritionists.entries
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.key,
+                        child: Text(e.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setDialogState(() => selectedNutId = v),
+                decoration: const InputDecoration(
+                  labelText: "Seleziona Nutrizionista",
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Annulla"),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Assegna"),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true || selectedNutId == null) return;
+
+    setState(() => _isLoading = true);
+    int ok = 0;
+    final errors = <String>[];
+    final uids = List<String>.from(_selectedUids);
+    for (final uid in uids) {
+      try {
+        await _repo.assignUserToNutritionist(uid, selectedNutId!);
+        ok++;
+      } catch (e) {
+        errors.add(uid.substring(0, 6));
+      }
+    }
+    if (mounted) {
+      _clearSelection();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            errors.isEmpty
+                ? "$ok utenti assegnati con successo!"
+                : "$ok ok, ${errors.length} errori (${errors.join(', ')})",
+          ),
+          backgroundColor: errors.isEmpty ? Colors.green : Colors.orange,
+        ),
+      );
+      _refreshList();
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Esporta gli utenti selezionati in CSV (download via blob su web).
+  // Colonne: UID, Nome, Cognome, Email, Ruolo, Creato il, Ultima attività.
+  Future<void> _bulkExportCsv() async {
+    if (_selectedUids.isEmpty) return;
+
+    final rows = <List<dynamic>>[];
+    rows.add([
+      "UID",
+      "Nome",
+      "Cognome",
+      "Email",
+      "Ruolo",
+      "Creato il",
+      "Ultima attività",
+    ]);
+
+    for (final uid in _selectedUids) {
+      final u = _selectedUserData[uid];
+      if (u == null) continue;
+      rows.add([
+        uid,
+        u['first_name'] ?? '',
+        u['last_name'] ?? '',
+        u['email'] ?? '',
+        u['role'] ?? '',
+        u['created_at'] ?? '',
+        u['last_seen'] ?? u['last_login'] ?? '',
+      ]);
+    }
+
+    final csvData = const ListToCsvConverter().convert(rows);
+    final bytes = utf8.encode(csvData);
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    html.AnchorElement(href: url)
+      ..setAttribute(
+        "download",
+        "users_export_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv",
+      )
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Esportati ${_selectedUids.length} utenti in CSV."),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> _assignUser(
@@ -985,15 +1168,78 @@ class _UserManagementViewState extends State<UserManagementView> {
                 );
               }
 
-              if (_currentUserRole == 'admin') {
-                return _buildAdminGroupedLayout(filteredUsers, expertNameMap);
-              } else {
-                return _buildUserGrid(filteredUsers);
+              final layout = _currentUserRole == 'admin'
+                  ? _buildAdminGroupedLayout(filteredUsers, expertNameMap)
+                  : _buildUserGrid(filteredUsers);
+
+              if (!_selectionMode || _selectedUids.isEmpty) {
+                return layout;
               }
+
+              return Column(
+                children: [
+                  _buildBulkActionBar(expertNameMap),
+                  const SizedBox(height: 12),
+                  Expanded(child: layout),
+                ],
+              );
             },
           ),
         ),
       ],
+    );
+  }
+
+  // Barra azioni di massa: visibile solo quando ci sono utenti selezionati.
+  // Mostra contatore + pulsanti Assegna/Esporta CSV/Annulla.
+  Widget _buildBulkActionBar(Map<String, String> nutritionists) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: KyboColors.primary.withValues(alpha: 0.10),
+        borderRadius: KyboBorderRadius.pill,
+        border: Border.all(color: KyboColors.primary, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.checklist_rounded, color: KyboColors.primary, size: 22),
+          const SizedBox(width: 10),
+          Text(
+            "${_selectedUids.length} selezionati",
+            style: TextStyle(
+              color: KyboColors.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const Spacer(),
+          if (_currentUserRole == 'admin') ...[
+            PillButton(
+              label: "ASSEGNA",
+              icon: Icons.person_add_rounded,
+              backgroundColor: KyboColors.accent,
+              textColor: Colors.white,
+              onPressed: _isLoading ? null : () => _bulkAssign(nutritionists),
+            ),
+            const SizedBox(width: 8),
+          ],
+          PillButton(
+            label: "ESPORTA CSV",
+            icon: Icons.download_rounded,
+            backgroundColor: KyboColors.primary,
+            textColor: Colors.white,
+            onPressed: _isLoading ? null : _bulkExportCsv,
+          ),
+          const SizedBox(width: 8),
+          PillIconButton(
+            icon: Icons.close_rounded,
+            color: KyboColors.textSecondary,
+            tooltip: "Annulla selezione",
+            onPressed: _clearSelection,
+            size: 36,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1007,20 +1253,28 @@ class _UserManagementViewState extends State<UserManagementView> {
       ),
       itemCount: users.length,
       itemBuilder: (context, index) {
+        final u = users[index] as Map<String, dynamic>;
+        final uid = u['uid'] as String;
+        final role = (u['role'] ?? 'user').toString();
+        final selectable = _isSelectableRole(role);
         return _UserCard(
-          user: users[index],
+          user: u,
           onDelete: (uid) => _deleteUser(uid),
           onUploadDiet: _uploadDiet,
                           onDropDiet: _uploadDroppedDiet,
           onUploadParser: _uploadParser,
           onHistory: (uid) =>
-              _showUserHistory(uid, users[index]['first_name'] ?? 'User'),
+              _showUserHistory(uid, u['first_name'] ?? 'User'),
           onEdit: _editUser,
           onAssign: null,
           onNotes: _showClientNotes,
           currentUserRole: _currentUserRole,
           currentUserId: _currentUserId,
-          roleColor: _getRoleColor(users[index]['role'] ?? 'user'),
+          roleColor: _getRoleColor(role),
+          selectable: selectable,
+          selectionMode: _selectionMode,
+          isSelected: _selectedUids.contains(uid),
+          onToggleSelect: selectable ? () => _toggleSelection(u) : null,
         );
       },
     );
@@ -1144,24 +1398,32 @@ class _UserManagementViewState extends State<UserManagementView> {
                         ),
                         itemCount: clients.length,
                         padding: const EdgeInsets.all(12),
-                        itemBuilder: (ctx, idx) => _UserCard(
-                          user: clients[idx],
-                          onDelete: _deleteUser,
-                          onUploadDiet: _uploadDiet,
-                          onDropDiet: _uploadDroppedDiet,
-                          onUploadParser: _uploadParser,
-                          onHistory: (uid) => _showUserHistory(
-                            uid,
-                            clients[idx]['first_name'] ?? 'Client',
-                          ),
-                          onEdit: _editUser,
-                          onAssign: (uid) =>
-                              _showManageAssignmentDialog(uid, expertNameMap),
-                          onNotes: _showClientNotes,
-                          currentUserRole: _currentUserRole,
-                          currentUserId: _currentUserId,
-                          roleColor: _getRoleColor('user'),
-                        ),
+                        itemBuilder: (ctx, idx) {
+                          final u = clients[idx] as Map<String, dynamic>;
+                          final uid = u['uid'] as String;
+                          return _UserCard(
+                            user: u,
+                            onDelete: _deleteUser,
+                            onUploadDiet: _uploadDiet,
+                            onDropDiet: _uploadDroppedDiet,
+                            onUploadParser: _uploadParser,
+                            onHistory: (uid) => _showUserHistory(
+                              uid,
+                              u['first_name'] ?? 'Client',
+                            ),
+                            onEdit: _editUser,
+                            onAssign: (uid) =>
+                                _showManageAssignmentDialog(uid, expertNameMap),
+                            onNotes: _showClientNotes,
+                            currentUserRole: _currentUserRole,
+                            currentUserId: _currentUserId,
+                            roleColor: _getRoleColor('user'),
+                            selectable: true,
+                            selectionMode: _selectionMode,
+                            isSelected: _selectedUids.contains(uid),
+                            onToggleSelect: () => _toggleSelection(u),
+                          );
+                        },
                       );
                     },
                   ),
@@ -1207,23 +1469,31 @@ class _UserManagementViewState extends State<UserManagementView> {
                       ),
                       itemCount: independents.length,
                       padding: const EdgeInsets.all(12),
-                      itemBuilder: (ctx, idx) => _UserCard(
-                        user: independents[idx],
-                        onDelete: _deleteUser,
-                        onUploadDiet: _uploadDiet,
+                      itemBuilder: (ctx, idx) {
+                        final u = independents[idx] as Map<String, dynamic>;
+                        final uid = u['uid'] as String;
+                        return _UserCard(
+                          user: u,
+                          onDelete: _deleteUser,
+                          onUploadDiet: _uploadDiet,
                           onDropDiet: _uploadDroppedDiet,
-                        onUploadParser: _uploadParser,
-                        onHistory: (uid) => _showUserHistory(
-                          uid,
-                          independents[idx]['first_name'] ?? 'User',
-                        ),
-                        onEdit: _editUser,
-                        onAssign: (uid) => _assignUser(uid, expertNameMap),
-                        onNotes: _showClientNotes,
-                        currentUserRole: _currentUserRole,
-                        currentUserId: _currentUserId,
-                        roleColor: _getRoleColor('independent'),
-                      ),
+                          onUploadParser: _uploadParser,
+                          onHistory: (uid) => _showUserHistory(
+                            uid,
+                            u['first_name'] ?? 'User',
+                          ),
+                          onEdit: _editUser,
+                          onAssign: (uid) => _assignUser(uid, expertNameMap),
+                          onNotes: _showClientNotes,
+                          currentUserRole: _currentUserRole,
+                          currentUserId: _currentUserId,
+                          roleColor: _getRoleColor('independent'),
+                          selectable: true,
+                          selectionMode: _selectionMode,
+                          isSelected: _selectedUids.contains(uid),
+                          onToggleSelect: () => _toggleSelection(u),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1305,6 +1575,12 @@ class _UserCard extends StatefulWidget {
   final String currentUserRole;
   final String currentUserId;
   final Color roleColor;
+  // Multi-select: se selectable=true e l'utente clicca/long-press, viene
+  // chiamato onToggleSelect. selectionMode rende visibile la checkbox.
+  final bool selectable;
+  final bool selectionMode;
+  final bool isSelected;
+  final VoidCallback? onToggleSelect;
 
   const _UserCard({
     required this.user,
@@ -1320,6 +1596,10 @@ class _UserCard extends StatefulWidget {
     required this.currentUserId,
     required this.roleColor,
     this.clientCount,
+    this.selectable = false,
+    this.selectionMode = false,
+    this.isSelected = false,
+    this.onToggleSelect,
   });
 
   final int? clientCount;
@@ -1452,7 +1732,7 @@ class _UserCardState extends State<_UserCard> {
       }
     }
 
-    final Widget card = PillCard(
+    final Widget rawCard = PillCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1720,6 +2000,66 @@ class _UserCardState extends State<_UserCard> {
         ],
       ),
     );
+
+    // Wrapper selezione: long-press apre la modalità multi-select; in
+    // modalità selezione, tap toggla. Overlay con checkbox quando selezionato.
+    Widget card = rawCard;
+    if (widget.selectable && widget.onToggleSelect != null) {
+      card = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onLongPress: widget.onToggleSelect,
+        onTap: widget.selectionMode ? widget.onToggleSelect : null,
+        child: Stack(
+          children: [
+            // Bordo evidenziato quando selezionato.
+            if (widget.isSelected)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: KyboColors.primary.withValues(alpha: 0.08),
+                      borderRadius: KyboBorderRadius.large,
+                      border: Border.all(
+                        color: KyboColors.primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            rawCard,
+            if (widget.selectionMode)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? KyboColors.primary
+                        : KyboColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: widget.isSelected
+                          ? KyboColors.primary
+                          : KyboColors.textMuted,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: widget.isSelected
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     // Drag & drop PDF dieta: solo per ruoli che possono ricevere diete.
     if (!showDiet || widget.onDropDiet == null) return card;

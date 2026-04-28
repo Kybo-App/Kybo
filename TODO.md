@@ -267,7 +267,7 @@ New TODOs:
 - [x] Scroll dashboard con mouse wheel + drag — implementato (_AdminScrollBehavior)
 - [x] Skeleton loader lista utenti — implementato
 - [x] Last activity per user (pallino verde/giallo/rosso + timeago) — implementato
-- [ ] Bulk actions nella lista utenti (checkbox multi-select → assegna a nutri / export CSV / aggiungi tag). Richiede refactor UserCardRow con selection state + bottom action bar
+- [x] Bulk actions nella lista utenti (long-press → multi-select → assegna a nutri / export CSV) — implementato (admin user_management_view.dart)
 - [ ] "La mia giornata" come home per nutri/PT: "3 clienti da ricontattare", "N chat non lette", "X dieta da approvare". Dashboard operativa al posto della analytics
 - [ ] Split view master-detail nella user list (lista a sx, dettaglio a dx, stile Gmail)
 - [ ] Templates diete/workout riutilizzabili: nuovo modello Firestore templates/{id} + UI per creare/assegnare con 1 click
