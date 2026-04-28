@@ -13,6 +13,7 @@ import '../logic/diet_calculator.dart';
 import '../widgets/design_system.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
+import 'chat_screen.dart';
 
 class DietView extends StatefulWidget {
   final String day;
@@ -60,16 +61,49 @@ class _DietViewState extends State<DietView> {
 
     if (widget.dietPlan == null || currentWeekPlan.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.description_outlined, size: 60, color: KyboColors.textMuted(context)),
-            const SizedBox(height: 10),
-            Text(
-              "Nessuna dieta caricata.",
-              style: TextStyle(color: KyboColors.textSecondary(context)),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.description_outlined,
+                  size: 64, color: KyboColors.textMuted(context)),
+              const SizedBox(height: 16),
+              Text(
+                "Nessuna dieta caricata",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: KyboColors.textPrimary(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Il tuo nutrizionista non ti ha ancora\ncaricato un piano alimentare.",
+                style: TextStyle(
+                    fontSize: 14, color: KyboColors.textSecondary(context)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                icon: const Icon(Icons.chat_bubble_outline_rounded),
+                label: const Text('Contatta il nutrizionista'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: KyboColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                  shape: const StadiumBorder(),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ChatScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       );
     }

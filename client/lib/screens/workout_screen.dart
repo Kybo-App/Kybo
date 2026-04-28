@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../providers/workout_provider.dart';
 import '../models/workout_model.dart';
 import '../widgets/design_system.dart';
+import 'chat_screen.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -97,6 +98,24 @@ class _WorkoutScreenState extends State<WorkoutScreen>
                 color: KyboColors.textSecondary(context),
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
+              label: const Text('Contatta il PT'),
+              style: FilledButton.styleFrom(
+                backgroundColor: KyboColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
+                shape: const StadiumBorder(),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ChatScreen()),
+                );
+              },
             ),
           ],
         ),
