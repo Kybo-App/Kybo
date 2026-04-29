@@ -390,6 +390,37 @@ class AppLocalizations {
       isItalian ? 'Nessun report per questo mese.' : 'No report for this month.';
   String get reportsPdfDownloaded =>
       isItalian ? 'PDF scaricato' : 'PDF downloaded';
+  String get reportsAllNutritionists =>
+      isItalian ? 'Tutti i nutrizionisti' : 'All nutritionists';
+  String get reportsHistory =>
+      isItalian ? 'Storico Report' : 'Report history';
+  String get reportsNoneAvailable =>
+      isItalian ? 'Nessun report disponibile' : 'No report available';
+  String get reportsSelectOne =>
+      isItalian ? 'Seleziona un report' : 'Select a report';
+  String get reportsOrGenerate =>
+      isItalian
+          ? 'Oppure genera un nuovo report'
+          : 'Or generate a new report';
+  String get reportsRegenerate =>
+      isItalian ? 'Rigenera report' : 'Regenerate report';
+  String get reportsSummary =>
+      isItalian ? 'Riepilogo' : 'Summary';
+  String get reportsDietsPerClient =>
+      isItalian ? 'Diete per cliente' : 'Diets per client';
+  String get reportsClientId =>
+      isItalian ? 'Cliente ID' : 'Client ID';
+  String get reportsTitlePdf =>
+      isItalian ? 'Kybo - Report mensile' : 'Kybo - Monthly Report';
+  String get reportsGeneratedOn =>
+      isItalian ? 'Generato il' : 'Generated on';
+  String get reportsBrandFooter =>
+      isItalian ? 'Kybo Diet Management' : 'Kybo Diet Management';
+  String get reportsGenerationError =>
+      isItalian ? 'Errore generazione PDF' : 'PDF generation error';
+  String get reportsGeneratedOk =>
+      isItalian ? 'Report generato con successo' : 'Report generated successfully';
+  String get fallbackNotApplicable => 'N/A';
 
   // --- Analytics ---
   String get analyticsTitle => 'Analytics';

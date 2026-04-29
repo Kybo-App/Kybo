@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'dart:typed_data';
 import 'package:universal_html/html.dart' as html;
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 // Vista report mensili: lista report con filtri per nutrizionista/mese, dettaglio statistiche e download PDF.
@@ -137,7 +138,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -166,8 +167,8 @@ class _ReportsViewState extends State<ReportsView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Report generato con successo"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).reportsGeneratedOk),
             backgroundColor: KyboColors.success,
           ),
         );
@@ -176,7 +177,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -219,7 +220,7 @@ class _ReportsViewState extends State<ReportsView> {
             Text(_error!, style: TextStyle(color: KyboColors.textSecondary)),
             const SizedBox(height: 16),
             PillButton(
-              label: "Riprova",
+              label: AppLocalizations.of(context).retry,
               icon: Icons.refresh,
               onPressed: _loadReports,
             ),
@@ -250,11 +251,12 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   Widget _buildLeftPanel() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Report Mensili",
+          l10n.reportsTitle,
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 18,
@@ -265,7 +267,7 @@ class _ReportsViewState extends State<ReportsView> {
 
         if (_isAdmin && _nutritionists.isNotEmpty) ...[
           Text(
-            "Nutrizionista",
+            l10n.reportsNutritionist,
             style: TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 13,
@@ -284,11 +286,11 @@ class _ReportsViewState extends State<ReportsView> {
               value: _selectedNutritionistId,
               isExpanded: true,
               underline: const SizedBox(),
-              hint: const Text("Tutti i nutrizionisti"),
+              hint: Text(l10n.reportsAllNutritionists),
               items: [
-                const DropdownMenuItem(
+                DropdownMenuItem(
                   value: null,
-                  child: Text("Tutti i nutrizionisti"),
+                  child: Text(l10n.reportsAllNutritionists),
                 ),
                 ..._nutritionists.map((n) => DropdownMenuItem(
                   value: n['uid'] as String,
@@ -315,7 +317,7 @@ class _ReportsViewState extends State<ReportsView> {
             ),
             const SizedBox(width: 8),
             PillButton(
-              label: "Genera",
+              label: l10n.reportsGenerate,
               icon: Icons.add_chart_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -328,7 +330,7 @@ class _ReportsViewState extends State<ReportsView> {
         const SizedBox(height: 24),
 
         Text(
-          "Storico Report",
+          l10n.reportsHistory,
           style: TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: 13,
@@ -350,7 +352,7 @@ class _ReportsViewState extends State<ReportsView> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        "Nessun report disponibile",
+                        l10n.reportsNoneAvailable,
                         style: TextStyle(color: KyboColors.textSecondary),
                       ),
                     ],
@@ -443,14 +445,18 @@ class _ReportsViewState extends State<ReportsView> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    "$clients clienti",
+                    AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "$clients clienti"
+                        : "$clients clients",
                     style: TextStyle(
                       fontSize: 12,
                       color: KyboColors.textSecondary,
                     ),
                   ),
                   Text(
-                    "$diets diete",
+                    AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "$diets diete"
+                        : "$diets diets",
                     style: TextStyle(
                       fontSize: 12,
                       color: KyboColors.textSecondary,
@@ -484,7 +490,7 @@ class _ReportsViewState extends State<ReportsView> {
             ),
             const SizedBox(height: 16),
             Text(
-              "Seleziona un report",
+              AppLocalizations.of(context).reportsSelectOne,
               style: TextStyle(
                 fontSize: 18,
                 color: KyboColors.textSecondary,
@@ -492,7 +498,7 @@ class _ReportsViewState extends State<ReportsView> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Oppure genera un nuovo report",
+              AppLocalizations.of(context).reportsOrGenerate,
               style: TextStyle(
                 fontSize: 14,
                 color: KyboColors.textMuted,
@@ -507,6 +513,7 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   Widget _buildReportDetails() {
+    final l10n = AppLocalizations.of(context);
     final report = _selectedReport!;
     final month = report['month'] ?? '';
     final name = report['nutritionist_name'] ?? '';
@@ -522,7 +529,7 @@ class _ReportsViewState extends State<ReportsView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Report ${_formatMonth(month)}",
+                      "${l10n.reportsTitle} ${_formatMonth(month)}",
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 20,
@@ -542,14 +549,14 @@ class _ReportsViewState extends State<ReportsView> {
               ),
               PillIconButton(
                 icon: Icons.download_rounded,
-                tooltip: "Scarica PDF",
+                tooltip: l10n.reportsDownloadPdf,
                 color: KyboColors.success,
                 onPressed: _downloadPdf,
               ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.refresh_rounded,
-                tooltip: "Rigenera Report",
+                tooltip: l10n.reportsRegenerate,
                 onPressed: _generateReport,
               ),
             ],
@@ -560,7 +567,7 @@ class _ReportsViewState extends State<ReportsView> {
             children: [
               Expanded(
                 child: StatCard(
-                  title: "Clienti Totali",
+                  title: l10n.reportsTotalClients,
                   value: "${report['total_clients'] ?? 0}",
                   icon: Icons.people_rounded,
                   color: KyboColors.accent,
@@ -569,7 +576,7 @@ class _ReportsViewState extends State<ReportsView> {
               const SizedBox(width: 12),
               Expanded(
                 child: StatCard(
-                  title: "Nuovi Clienti",
+                  title: l10n.reportsNewClients,
                   value: "${report['new_clients'] ?? 0}",
                   icon: Icons.person_add_rounded,
                   color: KyboColors.success,
@@ -578,7 +585,7 @@ class _ReportsViewState extends State<ReportsView> {
               const SizedBox(width: 12),
               Expanded(
                 child: StatCard(
-                  title: "Clienti Attivi",
+                  title: l10n.reportsActiveClients,
                   value: "${report['active_clients'] ?? 0}",
                   icon: Icons.trending_up_rounded,
                   color: KyboColors.primary,
@@ -592,7 +599,7 @@ class _ReportsViewState extends State<ReportsView> {
             children: [
               Expanded(
                 child: StatCard(
-                  title: "Diete Caricate",
+                  title: l10n.reportsDietsUploaded,
                   value: "${report['diets_uploaded'] ?? 0}",
                   icon: Icons.restaurant_menu_rounded,
                   color: KyboColors.roleNutritionist,
@@ -601,7 +608,7 @@ class _ReportsViewState extends State<ReportsView> {
               const SizedBox(width: 12),
               Expanded(
                 child: StatCard(
-                  title: "Messaggi Inviati",
+                  title: l10n.reportsMessagesSent,
                   value: "${report['total_messages_sent'] ?? 0}",
                   icon: Icons.send_rounded,
                   color: KyboColors.warning,
@@ -610,7 +617,7 @@ class _ReportsViewState extends State<ReportsView> {
               const SizedBox(width: 12),
               Expanded(
                 child: StatCard(
-                  title: "Tempo Risposta",
+                  title: l10n.reportsResponseTime,
                   value: _formatResponseTime(report['average_response_time_hours']),
                   icon: Icons.timer_rounded,
                   color: KyboColors.roleAdmin,
@@ -622,7 +629,7 @@ class _ReportsViewState extends State<ReportsView> {
 
           if ((report['diets_by_client'] as Map<String, dynamic>?)?.isNotEmpty ?? false) ...[
             Text(
-              "Diete per Cliente",
+              l10n.reportsDietsPerClient,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -667,7 +674,9 @@ class _ReportsViewState extends State<ReportsView> {
                       ),
                     ),
                     Text(
-                      "$count diete",
+                      AppLocalizations.of(context).locale.languageCode == 'it'
+                          ? "$count diete"
+                          : "$count diets",
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: KyboColors.textPrimary,
@@ -705,10 +714,11 @@ class _ReportsViewState extends State<ReportsView> {
 
   Future<void> _downloadPdf() async {
     if (_selectedReport == null) return;
+    final l10n = AppLocalizations.of(context);
 
     final report = _selectedReport!;
     final month = report['month'] ?? '';
-    final name = report['nutritionist_name'] ?? 'Nutrizionista';
+    final name = report['nutritionist_name'] ?? l10n.chatNutritionistRole;
 
     try {
       final pdf = pw.Document();
@@ -728,7 +738,7 @@ class _ReportsViewState extends State<ReportsView> {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'Kybo - Report Mensile',
+                          l10n.reportsTitlePdf,
                           style: pw.TextStyle(
                             fontSize: 22,
                             fontWeight: pw.FontWeight.bold,
@@ -755,7 +765,7 @@ class _ReportsViewState extends State<ReportsView> {
                 pw.SizedBox(height: 20),
 
                 pw.Text(
-                  'Riepilogo',
+                  l10n.reportsSummary,
                   style: pw.TextStyle(
                     fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
@@ -764,28 +774,28 @@ class _ReportsViewState extends State<ReportsView> {
                 pw.SizedBox(height: 12),
                 pw.Row(
                   children: [
-                    _pdfStatBox('Clienti Totali', '${report['total_clients'] ?? 0}'),
+                    _pdfStatBox(l10n.reportsTotalClients, '${report['total_clients'] ?? 0}'),
                     pw.SizedBox(width: 12),
-                    _pdfStatBox('Nuovi Clienti', '${report['new_clients'] ?? 0}'),
+                    _pdfStatBox(l10n.reportsNewClients, '${report['new_clients'] ?? 0}'),
                     pw.SizedBox(width: 12),
-                    _pdfStatBox('Clienti Attivi', '${report['active_clients'] ?? 0}'),
+                    _pdfStatBox(l10n.reportsActiveClients, '${report['active_clients'] ?? 0}'),
                   ],
                 ),
                 pw.SizedBox(height: 12),
                 pw.Row(
                   children: [
-                    _pdfStatBox('Diete Caricate', '${report['diets_uploaded'] ?? 0}'),
+                    _pdfStatBox(l10n.reportsDietsUploaded, '${report['diets_uploaded'] ?? 0}'),
                     pw.SizedBox(width: 12),
-                    _pdfStatBox('Messaggi Inviati', '${report['total_messages_sent'] ?? 0}'),
+                    _pdfStatBox(l10n.reportsMessagesSent, '${report['total_messages_sent'] ?? 0}'),
                     pw.SizedBox(width: 12),
-                    _pdfStatBox('Tempo Risposta', _formatResponseTime(report['average_response_time_hours'])),
+                    _pdfStatBox(l10n.reportsResponseTime, _formatResponseTime(report['average_response_time_hours'])),
                   ],
                 ),
                 pw.SizedBox(height: 24),
 
                 if ((report['diets_by_client'] as Map<String, dynamic>?)?.isNotEmpty ?? false) ...[
                   pw.Text(
-                    'Diete per Cliente',
+                    l10n.reportsDietsPerClient,
                     style: pw.TextStyle(
                       fontSize: 16,
                       fontWeight: pw.FontWeight.bold,
@@ -796,7 +806,7 @@ class _ReportsViewState extends State<ReportsView> {
                     headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                     headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
                     cellPadding: const pw.EdgeInsets.all(6),
-                    headers: ['Cliente ID', 'Diete Caricate'],
+                    headers: [l10n.reportsClientId, l10n.reportsDietsUploaded],
                     data: (report['diets_by_client'] as Map<String, dynamic>)
                         .entries
                         .map((e) => [
@@ -815,11 +825,11 @@ class _ReportsViewState extends State<ReportsView> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Generato il ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
+                      '${l10n.reportsGeneratedOn} ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
                       style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
                     ),
                     pw.Text(
-                      'Kybo Diet Management',
+                      l10n.reportsBrandFooter,
                       style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
                     ),
                   ],
@@ -843,8 +853,8 @@ class _ReportsViewState extends State<ReportsView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("PDF scaricato"),
+          SnackBar(
+            content: Text(l10n.reportsPdfDownloaded),
             backgroundColor: KyboColors.success,
           ),
         );
@@ -853,7 +863,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore generazione PDF: $e"),
+            content: Text("${l10n.reportsGenerationError}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -891,14 +901,19 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   String _formatResponseTime(dynamic hours) {
-    if (hours == null) return "N/A";
+    if (hours == null) return AppLocalizations.of(context).fallbackNotApplicable;
     final h = hours as double;
+    final isItalian = AppLocalizations.of(context).locale.languageCode == 'it';
     if (h < 1) {
       return "${(h * 60).round()} min";
     } else if (h < 24) {
-      return "${h.toStringAsFixed(1)} ore";
+      return isItalian
+          ? "${h.toStringAsFixed(1)} ore"
+          : "${h.toStringAsFixed(1)} hours";
     } else {
-      return "${(h / 24).toStringAsFixed(1)} giorni";
+      return isItalian
+          ? "${(h / 24).toStringAsFixed(1)} giorni"
+          : "${(h / 24).toStringAsFixed(1)} days";
     }
   }
 }
