@@ -420,6 +420,66 @@ class AppLocalizations {
   String get rewardsActive => isItalian ? 'Attivo' : 'Active';
   String get rewardsNoCatalog =>
       isItalian ? 'Catalogo premi vuoto' : 'Rewards catalog empty';
+  String get rewardsManagement =>
+      isItalian ? 'Gestione Premi' : 'Rewards management';
+  String get rewardsEditDialog =>
+      isItalian ? 'Modifica premio' : 'Edit reward';
+  String get rewardsNamePlaceholder =>
+      isItalian ? 'Nome premio' : 'Reward name';
+  String get rewardsDescriptionPlaceholder =>
+      isItalian ? 'Descrizione (opzionale)' : 'Description (optional)';
+  String get rewardsCostHint =>
+      isItalian ? 'Costo XP' : 'XP cost';
+  String get rewardsStockHint =>
+      isItalian
+          ? 'Stock (vuoto = illimitato)'
+          : 'Stock (empty = unlimited)';
+  String get rewardsImageUrl =>
+      isItalian ? 'URL immagine (opzionale)' : 'Image URL (optional)';
+  String get rewardsRedeemUrl =>
+      isItalian
+          ? 'URL esterno riscatto (es. https://shop...)'
+          : 'External redemption URL (e.g. https://shop...)';
+  String get rewardsRedeemUrlHelp =>
+      isItalian
+          ? 'Link aperto al cliente dopo il riscatto (sconto, shop partner...).'
+          : 'Link opened to the client after redemption (discount, partner shop...).';
+  String get rewardsActiveStatus =>
+      isItalian ? 'Attivo' : 'Active';
+  String get rewardsInactiveStatus =>
+      isItalian ? 'Disattivato' : 'Inactive';
+  String get rewardsNameAndCostRequired =>
+      isItalian
+          ? 'Nome e costo XP obbligatori'
+          : 'Name and XP cost are required';
+  String get rewardsCostInvalid =>
+      isItalian ? 'Costo XP non valido' : 'XP cost is invalid';
+  String get rewardsDeleteTitle =>
+      isItalian ? 'Elimina premio' : 'Delete reward';
+  String rewardsDeleteConfirm(String name) =>
+      isItalian
+          ? 'Vuoi eliminare "$name"? L\'azione è irreversibile.'
+          : 'Delete "$name"? This action is irreversible.';
+  String get rewardsRedeemed =>
+      isItalian ? 'Premio segnato come evaso ✓' : 'Reward marked as fulfilled ✓';
+  String get rewardsCatalogTab =>
+      isItalian ? 'Catalogo' : 'Catalog';
+  String get rewardsClaimsTab =>
+      isItalian ? 'Riscatti' : 'Claims';
+  String get rewardsNoneInCatalog =>
+      isItalian ? 'Nessun premio nel catalogo' : 'No rewards in catalog';
+  String get rewardsCreateFirst =>
+      isItalian
+          ? 'Crea il primo premio con il pulsante in alto'
+          : 'Create the first reward with the button above';
+  String get rewardsNoneRedeemed =>
+      isItalian ? 'Nessun premio riscattato' : 'No reward redeemed yet';
+  String get rewardsStatusFulfilled =>
+      isItalian ? 'Evaso' : 'Fulfilled';
+  String get rewardsStatusPending =>
+      isItalian ? 'In attesa' : 'Pending';
+  String get rewardsFulfill =>
+      isItalian ? 'Evadi' : 'Fulfill';
 
   // --- Matchmaking board ---
   String get matchmakingTitle =>
