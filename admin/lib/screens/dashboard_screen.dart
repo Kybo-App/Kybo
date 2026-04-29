@@ -342,13 +342,13 @@ class _DashboardContentState extends State<_DashboardContent> {
       if (_isNutritionist || _isAdmin)
         _NavItem(
           icon: Icons.bookmark_rounded,
-          label: 'Templates Diete',
+          label: l10n.dietTemplatesTab,
           view: DietTemplatesView(key: ValueKey('diettpl_$themeKey')),
         ),
       if (_isAdmin || _isPT || _isNutritionist)
         _NavItem(
           icon: Icons.handshake_rounded,
-          label: 'Bacheca Annunci',
+          label: l10n.matchmakingTitle,
           view: MatchmakingBoardView(key: ValueKey('matchmaking_$themeKey')),
         ),
     ];
