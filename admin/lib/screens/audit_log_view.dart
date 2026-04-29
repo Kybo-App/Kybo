@@ -6,22 +6,25 @@ import 'package:intl/intl.dart';
 import 'package:csv/csv.dart';
 import 'package:universal_html/html.dart' as html;
 import 'dart:convert';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 class AuditLogView extends StatelessWidget {
   const AuditLogView({super.key});
 
   /// Esporta i dati in CSV
-  Future<void> _exportCsv(List<QueryDocumentSnapshot> docs) async {
+  Future<void> _exportCsv(
+      BuildContext context, List<QueryDocumentSnapshot> docs) async {
+    final l10n = AppLocalizations.of(context);
     List<List<dynamic>> rows = [];
 
     rows.add([
-      "Data e Ora",
-      "Admin Richiedente (ID)",
-      "Azione",
-      "Utente Target (ID)",
-      "Motivazione Legale",
-      "User Agent",
+      l10n.auditTimestamp,
+      l10n.auditAdmin,
+      l10n.auditAction,
+      l10n.auditTargetUser,
+      l10n.auditReason,
+      l10n.auditUserAgent,
     ]);
 
     for (var doc in docs) {
@@ -77,14 +80,15 @@ class AuditLogView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(),
+        _buildHeader(context),
         const SizedBox(height: 24),
-        Expanded(child: _buildLogsTable()),
+        Expanded(child: _buildLogsTable(context)),
       ],
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Container(
@@ -106,7 +110,7 @@ class AuditLogView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Registro Accessi",
+                l10n.auditTitle,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 20,
@@ -115,7 +119,9 @@ class AuditLogView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                "Cronologia di tutte le azioni sensibili eseguite dagli amministratori",
+                AppLocalizations.of(context).locale.languageCode == 'it'
+                    ? "Cronologia di tutte le azioni sensibili eseguite dagli amministratori"
+                    : "Log of all sensitive actions performed by administrators",
                 style: TextStyle(color: KyboColors.textSecondary, fontSize: 14),
               ),
             ],
@@ -132,11 +138,13 @@ class AuditLogView extends StatelessWidget {
                 snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
             return PillButton(
-              label: "Esporta CSV",
+              label: l10n.auditExportCsv,
               icon: Icons.download_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
-              onPressed: hasData ? () => _exportCsv(snapshot.data!.docs) : null,
+              onPressed: hasData
+                  ? () => _exportCsv(context, snapshot.data!.docs)
+                  : null,
             );
           },
         ),
@@ -144,7 +152,8 @@ class AuditLogView extends StatelessWidget {
     );
   }
 
-  Widget _buildLogsTable() {
+  Widget _buildLogsTable(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('access_logs')
@@ -167,7 +176,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Errore caricamento log",
+                    l10n.error,
                     style: TextStyle(
                       color: KyboColors.error,
                       fontWeight: FontWeight.w600,
@@ -218,7 +227,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    "Nessun log registrato",
+                    l10n.auditNoLogs,
                     style: TextStyle(
                       color: KyboColors.textPrimary,
                       fontWeight: FontWeight.w600,
@@ -227,7 +236,9 @@ class AuditLogView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Le azioni sensibili appariranno qui",
+                    l10n.locale.languageCode == 'it'
+                        ? "Le azioni sensibili appariranno qui"
+                        : "Sensitive actions will appear here",
                     style: TextStyle(
                       color: KyboColors.textSecondary,
                       fontSize: 14,
@@ -256,7 +267,7 @@ class AuditLogView extends StatelessWidget {
                 columns: [
                   DataColumn(
                     label: Text(
-                      "DATA/ORA",
+                      l10n.auditTimestamp.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -267,7 +278,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   DataColumn(
                     label: Text(
-                      "ADMIN",
+                      l10n.auditAdmin.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -278,7 +289,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   DataColumn(
                     label: Text(
-                      "AZIONE",
+                      l10n.auditAction.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -289,7 +300,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   DataColumn(
                     label: Text(
-                      "TARGET UID",
+                      l10n.auditTargetUser.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -300,7 +311,7 @@ class AuditLogView extends StatelessWidget {
                   ),
                   DataColumn(
                     label: Text(
-                      "MOTIVAZIONE",
+                      l10n.auditReason.toUpperCase(),
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
@@ -366,7 +377,7 @@ class AuditLogView extends StatelessWidget {
                             borderRadius: KyboBorderRadius.pill,
                           ),
                           child: Text(
-                            data['requester_id'] ?? 'Unknown',
+                            data['requester_id'] ?? l10n.unknown,
                             style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 11,

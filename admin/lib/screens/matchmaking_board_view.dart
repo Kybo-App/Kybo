@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kybo_admin/admin_repository.dart';
+import 'package:kybo_admin/core/app_localizations.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -27,6 +28,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   }
 
   Future<void> _fetchBoard() async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _isLoading = true);
     try {
       final board = await _repo.getMatchmakingBoard();
@@ -34,7 +36,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e")),
+          SnackBar(content: Text("${l10n.error}: $e")),
         );
       }
     } finally {
@@ -43,22 +45,20 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   }
 
   Future<void> _withdrawOffer(String reqId) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Ritirare l'offerta?"),
-        content: const Text(
-          "La tua offerta verrà marcata come ritirata. Potrai farne una nuova "
-          "finché la richiesta è aperta.",
-        ),
+        title: Text(l10n.matchmakingWithdrawTitle),
+        content: Text(l10n.matchmakingWithdrawBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Annulla"),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Ritira offerta"),
+            child: Text(l10n.matchmakingWithdrawOffer),
           ),
         ],
       ),
@@ -72,15 +72,15 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(existed
-                ? "Offerta ritirata."
-                : "Non risulta una tua offerta su questa richiesta."),
+                ? l10n.matchmakingWithdrawn
+                : l10n.matchmakingNoOffer),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e")),
+          SnackBar(content: Text("${l10n.error}: $e")),
         );
       }
     } finally {
@@ -89,32 +89,33 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   }
 
   void _showOfferDialog(String reqId, String roleType) {
+    final l10n = AppLocalizations.of(context);
     final notesCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Fai una Proposta"),
+        title: Text(l10n.matchmakingMakeProposal),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Descrivi perché saresti la scelta migliore per questo utente."),
+            Text(l10n.matchmakingProposalDescription),
             const SizedBox(height: 16),
             TextField(
               controller: notesCtrl,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: "Il tuo messaggio/proposta",
+              decoration: InputDecoration(
+                labelText: l10n.matchmakingMessage,
                 alignLabelWithHint: true,
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: priceCtrl,
-              decoration: const InputDecoration(
-                labelText: "Indicazione Prezzo (Opzionale)",
-                hintText: "Es. 50€/mese, o 'Pacchetto Premium'",
+              decoration: InputDecoration(
+                labelText: l10n.matchmakingPriceHint,
+                hintText: l10n.matchmakingPricePlaceholder,
               ),
             ),
           ],
@@ -122,7 +123,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Annulla"),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -136,20 +137,20 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Offerta inviata! L'utente riceverà la tua proposta.")),
+                    SnackBar(content: Text(l10n.matchmakingOfferSent)),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Errore: $e")),
+                    SnackBar(content: Text("${l10n.error}: $e")),
                   );
                 }
               } finally {
                 if (mounted) setState(() => _isLoading = false);
               }
             },
-            child: const Text("Invia Offerta"),
+            child: Text(l10n.matchmakingSendOffer),
           ),
         ],
       ),
@@ -158,6 +159,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final displayRequests = _requests.where((r) {
       if (_filterType == 'all') return true;
       return r['coach_type'] == _filterType;
@@ -169,7 +171,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
          Row(
           children: [
             Text(
-              "Bacheca Annunci",
+              l10n.matchmakingTitle,
               style: TextStyle(
                 color: KyboColors.textPrimary,
                 fontSize: 22,
@@ -179,10 +181,15 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
             const Spacer(),
             DropdownButton<String>(
               value: _filterType,
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text("Tutti")),
-                DropdownMenuItem(value: 'nutritionist', child: Text("Nutrizionista")),
-                DropdownMenuItem(value: 'personal_trainer', child: Text("Personal Trainer")),
+              items: [
+                DropdownMenuItem(
+                    value: 'all', child: Text(l10n.matchmakingAll)),
+                DropdownMenuItem(
+                    value: 'nutritionist',
+                    child: Text(l10n.roleNutritionist)),
+                DropdownMenuItem(
+                    value: 'personal_trainer',
+                    child: Text(l10n.rolePersonalTrainer)),
               ],
               onChanged: (val) {
                 if (val != null) setState(() => _filterType = val);
@@ -192,21 +199,22 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
              PillIconButton(
               icon: Icons.refresh_rounded,
               color: KyboColors.primary,
-              tooltip: "Ricarica",
+              tooltip: l10n.refresh,
               onPressed: _fetchBoard,
             ),
           ],
         ),
         const SizedBox(height: 24),
-        if (_isLoading) 
+        if (_isLoading)
            const LinearProgressIndicator(),
-        
+
         const SizedBox(height: 16),
-        
+
         if (displayRequests.isEmpty && !_isLoading)
-          const Center(child: Padding(
-            padding: EdgeInsets.all(32.0),
-            child: Text("Nessun annuncio presente.", style: TextStyle(color: Colors.grey)),
+          Center(child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Text(l10n.matchmakingNoAnnouncements,
+                style: const TextStyle(color: Colors.grey)),
           )),
 
         Expanded(
@@ -216,7 +224,10 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
               final req = displayRequests[index];
               final isPT = req['coach_type'] == 'personal_trainer';
               final date = req['created_at'] != null ? DateTime.tryParse(req['created_at']) : null;
-              final timeString = date != null ? timeago.format(date, locale: 'it') : 'Manca data';
+              final timeagoLocale = l10n.locale.languageCode == 'it' ? 'it' : 'en';
+              final timeString = date != null
+                  ? timeago.format(date, locale: timeagoLocale)
+                  : l10n.missingDate;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -228,12 +239,14 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                       Row(
                         children: [
                            Icon(
-                            isPT ? Icons.fitness_center : Icons.restaurant, 
+                            isPT ? Icons.fitness_center : Icons.restaurant,
                             color: isPT ? Colors.teal : Colors.blue,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            isPT ? "Cerca Personal Trainer" : "Cerca Nutrizionista",
+                            isPT
+                                ? l10n.matchmakingFindPT
+                                : l10n.matchmakingFindNutritionist,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           const Spacer(),
@@ -241,11 +254,15 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      const Text("Obiettivo:", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(l10n.matchmakingObjectiveLabel,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13)),
                       Text(req['goal'] ?? '', style: const TextStyle(fontSize: 14)),
                       if (req['notes'] != null && req['notes'].toString().isNotEmpty) ...[
                         const SizedBox(height: 8),
-                        const Text("Note utente:", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text(l10n.matchmakingUserNotes,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13)),
                         Text(req['notes'], style: const TextStyle(fontSize: 14)),
                       ],
                       const SizedBox(height: 16),
@@ -255,7 +272,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                           TextButton.icon(
                             onPressed: () => _withdrawOffer(req['id']),
                             icon: const Icon(Icons.undo_rounded, size: 16),
-                            label: const Text("Ritira offerta"),
+                            label: Text(l10n.matchmakingWithdrawOffer),
                             style: TextButton.styleFrom(
                               foregroundColor: KyboColors.textSecondary,
                             ),
@@ -264,7 +281,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                           FilledButton.icon(
                             onPressed: () => _showOfferDialog(req['id'], req['coach_type']),
                             icon: const Icon(Icons.handshake),
-                            label: const Text("Fai una Proposta"),
+                            label: Text(l10n.matchmakingMakeProposal),
                           ),
                         ],
                       )

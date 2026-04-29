@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 class DietTemplatesView extends StatefulWidget {
@@ -45,7 +46,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text('${AppLocalizations.of(context).error}: $e'),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -98,7 +99,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                   color: KyboColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Nuovo template dieta',
+                AppLocalizations.of(ctx).dietTemplateNew,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -122,13 +123,14 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                 const SizedBox(height: 12),
                 PillTextField(
                   controller: nameCtrl,
-                  hintText: 'Nome template (es. "Dieta dimagrante 1500kcal")',
+                  hintText: AppLocalizations.of(ctx).dietTemplateNameHint,
                   prefixIcon: Icons.label_rounded,
                 ),
                 const SizedBox(height: 12),
                 PillTextField(
                   controller: descCtrl,
-                  hintText: 'Descrizione (opzionale)',
+                  hintText:
+                      '${AppLocalizations.of(ctx).description} (${AppLocalizations.of(ctx).optional.toLowerCase()})',
                   prefixIcon: Icons.description_rounded,
                 ),
                 const SizedBox(height: 16),
@@ -147,7 +149,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Il PDF verrà parsato dall\'AI (può richiedere 30-60s).',
+                          AppLocalizations.of(ctx).dietTemplateAiWarning,
                           style: TextStyle(
                             color: KyboColors.warning,
                             fontSize: 12,
@@ -163,11 +165,11 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
           actions: [
             TextButton(
               onPressed: isUploading ? null : () => Navigator.pop(ctx),
-              child: Text('Annulla',
+              child: Text(AppLocalizations.of(ctx).cancel,
                   style: TextStyle(color: KyboColors.textSecondary)),
             ),
             PillButton(
-              label: 'Crea template',
+              label: AppLocalizations.of(ctx).create,
               icon: Icons.bookmark_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -179,8 +181,9 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                       final name = nameCtrl.text.trim();
                       if (name.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Nome obbligatorio')),
+                          SnackBar(
+                              content: Text(
+                                  '${AppLocalizations.of(context).name} ${AppLocalizations.of(context).required.toLowerCase()}')),
                         );
                         return;
                       }
@@ -195,7 +198,8 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Template creato ✓'),
+                              content: Text(
+                                  AppLocalizations.of(context).dietTemplateCreated),
                               backgroundColor: KyboColors.success,
                             ),
                           );
@@ -205,7 +209,8 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Errore: $e'),
+                              content: Text(
+                                  '${AppLocalizations.of(context).error}: $e'),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -224,9 +229,10 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   }
 
   Future<void> _useTemplate(Map<String, dynamic> template) async {
+    final l10n = AppLocalizations.of(context);
     if (_clients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nessun cliente disponibile.')),
+        SnackBar(content: Text(l10n.noDataAvailable)),
       );
       return;
     }
@@ -245,7 +251,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                   color: KyboColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Usa template',
+                AppLocalizations.of(ctx).useTemplate,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -260,9 +266,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Verrà assegnata una copia di "${template['name'] ?? 'template'}" '
-                  'come dieta corrente del cliente. Il template originale '
-                  'resta riutilizzabile.',
+                  AppLocalizations.of(ctx).dietTemplateUseDescription,
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 13,
@@ -286,8 +290,8 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                           ))
                       .toList(),
                   onChanged: (v) => setDialogState(() => selectedUid = v),
-                  decoration: const InputDecoration(
-                    labelText: 'Seleziona cliente',
+                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(ctx).roleClient,
                   ),
                 ),
               ],
@@ -296,11 +300,11 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Annulla',
+              child: Text(AppLocalizations.of(ctx).cancel,
                   style: TextStyle(color: KyboColors.textSecondary)),
             ),
             PillButton(
-              label: 'Assegna',
+              label: AppLocalizations.of(ctx).assign,
               icon: Icons.check_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -311,7 +315,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                   : () async {
                       if (selectedUid == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Seleziona un cliente')),
+                          SnackBar(content: Text(AppLocalizations.of(context).noResults)),
                         );
                         return;
                       }
@@ -323,7 +327,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Dieta assegnata ✓'),
+                              content: Text(AppLocalizations.of(context).dietTemplateAssigned),
                               backgroundColor: KyboColors.success,
                             ),
                           );
@@ -332,7 +336,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Errore: $e'),
+                              content: Text('${AppLocalizations.of(context).error}: $e'),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -351,25 +355,26 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   }
 
   Future<void> _deleteTemplate(Map<String, dynamic> template) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: KyboColors.surface,
         shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-        title: Text('Elimina template',
+        title: Text('${AppLocalizations.of(ctx).delete} template',
             style: TextStyle(color: KyboColors.textPrimary)),
         content: Text(
-          'Vuoi eliminare "${template['name'] ?? 'template'}"? L\'azione è irreversibile.',
+          AppLocalizations.of(ctx).dietTemplateDeleteConfirm,
           style: TextStyle(color: KyboColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Annulla',
+            child: Text(AppLocalizations.of(ctx).cancel,
                 style: TextStyle(color: KyboColors.textSecondary)),
           ),
           PillButton(
-            label: 'Elimina',
+            label: AppLocalizations.of(ctx).delete,
             icon: Icons.delete_rounded,
             backgroundColor: KyboColors.error,
             textColor: Colors.white,
@@ -386,7 +391,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Template eliminato'),
+            content: Text(l10n.dietTemplateDeleted),
             backgroundColor: KyboColors.success,
           ),
         );
@@ -396,7 +401,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text('${l10n.error}: $e'),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -406,6 +411,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Row(
@@ -413,7 +419,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
             Icon(Icons.bookmark_rounded, color: KyboColors.primary, size: 24),
             const SizedBox(width: 12),
             Text(
-              'Templates Diete',
+              l10n.dietTemplatesTab,
               style: TextStyle(
                 fontSize: 22,
                 color: KyboColors.textPrimary,
@@ -422,7 +428,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
             ),
             const Spacer(),
             PillButton(
-              label: 'Carica template',
+              label: l10n.dietTemplateUploadCta,
               icon: Icons.upload_file_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -445,7 +451,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                               size: 56, color: KyboColors.textMuted),
                           const SizedBox(height: 16),
                           Text(
-                            'Nessun template caricato',
+                            l10n.dietTemplateNoneTitle,
                             style: TextStyle(
                               fontSize: 16,
                               color: KyboColors.textSecondary,
@@ -453,7 +459,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Carica un PDF dieta per crearne uno riutilizzabile',
+                            l10n.dietTemplateNoneSubtitle,
                             style: TextStyle(
                               fontSize: 13,
                               color: KyboColors.textMuted,
@@ -473,7 +479,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   }
 
   Widget _buildTemplateRow(Map<String, dynamic> template) {
-    final name = template['name'] ?? 'Senza nome';
+    final name = template['name'] ?? AppLocalizations.of(context).clientUnnamed;
     final desc = (template['description'] ?? '').toString();
     final fileName = (template['file_name'] ?? '').toString();
 
@@ -542,14 +548,14 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
               PillIconButton(
                 icon: Icons.content_copy_rounded,
                 color: KyboColors.success,
-                tooltip: 'Usa template — clona e assegna',
+                tooltip: AppLocalizations.of(context).useTemplateTooltip,
                 onPressed: () => _useTemplate(template),
               ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.delete_rounded,
                 color: KyboColors.error,
-                tooltip: 'Elimina',
+                tooltip: AppLocalizations.of(context).delete,
                 onPressed: () => _deleteTemplate(template),
               ),
             ],

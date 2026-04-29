@@ -211,6 +211,268 @@ class AppLocalizations {
       isItalian
           ? 'Mostra altri $next  ($visible/$total)'
           : 'Show $next more  ($visible/$total)';
+
+  // --- Common labels ---
+  String get edit => isItalian ? 'Modifica' : 'Edit';
+  String get create => isItalian ? 'Crea' : 'Create';
+  String get add => isItalian ? 'Aggiungi' : 'Add';
+  String get update => isItalian ? 'Aggiorna' : 'Update';
+  String get assign => isItalian ? 'Assegna' : 'Assign';
+  String get refresh => isItalian ? 'Ricarica' : 'Refresh';
+  String get download => isItalian ? 'Scarica' : 'Download';
+  String get upload => isItalian ? 'Carica' : 'Upload';
+  String get details => isItalian ? 'Dettagli' : 'Details';
+  String get notes => isItalian ? 'Note' : 'Notes';
+  String get description => isItalian ? 'Descrizione' : 'Description';
+  String get name => isItalian ? 'Nome' : 'Name';
+  String get date => isItalian ? 'Data' : 'Date';
+  String get status => isItalian ? 'Stato' : 'Status';
+  String get actions => isItalian ? 'Azioni' : 'Actions';
+  String get optional => isItalian ? 'Opzionale' : 'Optional';
+  String get required => isItalian ? 'Obbligatorio' : 'Required';
+  String get unknown => isItalian ? 'Sconosciuto' : 'Unknown';
+  String get loadingDots => isItalian ? 'Caricamento...' : 'Loading...';
+  String get genericError =>
+      isItalian ? 'Si è verificato un errore' : 'An error occurred';
+  String get retry => isItalian ? 'Riprova' : 'Retry';
+  String get noData => isItalian ? 'Nessun dato' : 'No data';
+  String get noDataAvailable =>
+      isItalian ? 'Nessun dato disponibile' : 'No data available';
+
+  // --- Change password ---
+  String get pwdSecurityUpdate =>
+      isItalian ? 'Aggiornamento sicurezza' : 'Security Update Required';
+  String get pwdWelcome =>
+      isItalian
+          ? 'Benvenuto! Trattandosi di un nuovo account, devi cambiare la password temporanea per procedere.'
+          : 'Welcome! Since this is a new account, you must change your temporary password to proceed.';
+  String get pwdNew => isItalian ? 'Nuova password' : 'New Password';
+  String get pwdConfirm => isItalian ? 'Conferma password' : 'Confirm Password';
+  String get pwdSet => isItalian
+      ? 'IMPOSTA PASSWORD E CONTINUA'
+      : 'SET PASSWORD & ENTER';
+  String get pwdMismatch =>
+      isItalian ? 'Le password non corrispondono' : 'Passwords do not match';
+  String get pwdPolicyError =>
+      isItalian
+          ? 'La password deve avere almeno 12 caratteri, una maiuscola, una minuscola e un numero'
+          : 'Password must have at least 12 characters, including uppercase, lowercase, and a digit';
+  String get pwdChangeError =>
+      isItalian
+          ? 'Errore durante il cambio password. Riprova.'
+          : 'Error changing password. Please try again.';
+
+  // --- Audit log ---
+  String get auditTitle => isItalian ? 'Audit Log' : 'Audit Log';
+  String get auditExportCsv =>
+      isItalian ? 'Esporta CSV' : 'Export CSV';
+  String get auditTimestamp => isItalian ? 'Data e ora' : 'Timestamp';
+  String get auditAdmin => isItalian ? 'Admin richiedente' : 'Requesting admin';
+  String get auditAction => isItalian ? 'Azione' : 'Action';
+  String get auditTargetUser =>
+      isItalian ? 'Utente target' : 'Target user';
+  String get auditReason =>
+      isItalian ? 'Motivazione legale' : 'Legal reason';
+  String get auditUserAgent => 'User Agent';
+  String get auditNoLogs =>
+      isItalian ? 'Nessun log disponibile' : 'No logs available';
+
+  // --- GDPR ---
+  String get gdprTitle =>
+      isItalian ? 'GDPR & Privacy' : 'GDPR & Privacy';
+  String get gdprConsents => isItalian ? 'Consensi' : 'Consents';
+  String get gdprRetention =>
+      isItalian ? 'Retention policy' : 'Retention policy';
+  String get gdprPurgeInactive =>
+      isItalian ? 'Elimina utenti inattivi' : 'Purge inactive users';
+  String get gdprMonthsRetention =>
+      isItalian ? 'Mesi di retention' : 'Retention months';
+
+  // --- Reports ---
+  String get reportsTitle =>
+      isItalian ? 'Report mensili' : 'Monthly reports';
+  String get reportsMonth => isItalian ? 'Mese' : 'Month';
+  String get reportsNutritionist =>
+      isItalian ? 'Nutrizionista' : 'Nutritionist';
+  String get reportsTotalClients =>
+      isItalian ? 'Clienti totali' : 'Total clients';
+  String get reportsNewClients =>
+      isItalian ? 'Nuovi clienti' : 'New clients';
+  String get reportsActiveClients =>
+      isItalian ? 'Clienti attivi' : 'Active clients';
+  String get reportsDietsUploaded =>
+      isItalian ? 'Diete caricate' : 'Diets uploaded';
+  String get reportsMessagesSent =>
+      isItalian ? 'Messaggi inviati' : 'Messages sent';
+  String get reportsResponseTime =>
+      isItalian ? 'Tempo risposta medio' : 'Average response time';
+  String get reportsDownloadPdf =>
+      isItalian ? 'Scarica PDF' : 'Download PDF';
+  String get reportsGenerate =>
+      isItalian ? 'Genera report' : 'Generate report';
+  String get reportsNoData =>
+      isItalian ? 'Nessun report per questo mese.' : 'No report for this month.';
+  String get reportsPdfDownloaded =>
+      isItalian ? 'PDF scaricato' : 'PDF downloaded';
+
+  // --- Analytics ---
+  String get analyticsTitle => 'Analytics';
+  String get analyticsNoData =>
+      isItalian ? 'Nessun dato analytics disponibile' : 'No analytics data available';
+
+  // --- Chat management (admin) ---
+  String get chatTitle => 'Chat';
+  String get chatNoChats =>
+      isItalian ? 'Nessuna chat attiva' : 'No active chats';
+  String get chatSelectFromList =>
+      isItalian ? 'Seleziona una chat dalla lista' : 'Select a chat from the list';
+  String get chatTypeMessage =>
+      isItalian ? 'Scrivi un messaggio...' : 'Type a message...';
+  String get chatBroadcast => 'Broadcast';
+  String get chatBroadcastTitle =>
+      isItalian ? 'Messaggio broadcast' : 'Broadcast message';
+  String get chatBroadcastSend =>
+      isItalian ? 'Invia a tutti i clienti' : 'Send to all clients';
+  String get chatAttach =>
+      isItalian ? 'Allega file' : 'Attach file';
+
+  // --- Rewards catalog ---
+  String get rewardsTitle => isItalian ? 'Premi' : 'Rewards';
+  String get rewardsNew => isItalian ? 'Nuovo premio' : 'New reward';
+  String get rewardsCost => isItalian ? 'Costo XP' : 'XP cost';
+  String get rewardsStock => isItalian ? 'Disponibilità' : 'Stock';
+  String get rewardsActive => isItalian ? 'Attivo' : 'Active';
+  String get rewardsNoCatalog =>
+      isItalian ? 'Catalogo premi vuoto' : 'Rewards catalog empty';
+
+  // --- Matchmaking board ---
+  String get matchmakingTitle =>
+      isItalian ? 'Bacheca annunci' : 'Matchmaking board';
+  String get matchmakingNoRequests =>
+      isItalian ? 'Nessuna richiesta attiva' : 'No active requests';
+  String get matchmakingBudget => isItalian ? 'Budget' : 'Budget';
+  String get matchmakingGoal => isItalian ? 'Obiettivo' : 'Goal';
+  String get matchmakingLocation => isItalian ? 'Località' : 'Location';
+  String get matchmakingAll => isItalian ? 'Tutti' : 'All';
+  String get matchmakingFindNutritionist =>
+      isItalian ? 'Cerca Nutrizionista' : 'Looking for Nutritionist';
+  String get matchmakingFindPT =>
+      isItalian ? 'Cerca Personal Trainer' : 'Looking for Personal Trainer';
+  String get matchmakingMakeProposal =>
+      isItalian ? 'Fai una proposta' : 'Make a proposal';
+  String get matchmakingProposalDescription =>
+      isItalian
+          ? 'Descrivi perché saresti la scelta migliore per questo utente.'
+          : 'Describe why you\'d be the best choice for this user.';
+  String get matchmakingMessage =>
+      isItalian ? 'Il tuo messaggio/proposta' : 'Your message/proposal';
+  String get matchmakingPriceHint =>
+      isItalian ? 'Indicazione prezzo (opzionale)' : 'Price indication (optional)';
+  String get matchmakingPricePlaceholder =>
+      isItalian ? 'Es. 50€/mese, o "Pacchetto Premium"' : 'E.g. €50/month, or "Premium package"';
+  String get matchmakingSendOffer =>
+      isItalian ? 'Invia offerta' : 'Send offer';
+  String get matchmakingOfferSent =>
+      isItalian
+          ? 'Offerta inviata! L\'utente riceverà la tua proposta.'
+          : 'Offer sent! The user will receive your proposal.';
+  String get matchmakingWithdrawOffer =>
+      isItalian ? 'Ritira offerta' : 'Withdraw offer';
+  String get matchmakingWithdrawTitle =>
+      isItalian ? 'Ritirare l\'offerta?' : 'Withdraw the offer?';
+  String get matchmakingWithdrawBody =>
+      isItalian
+          ? 'La tua offerta verrà marcata come ritirata. Potrai farne una nuova finché la richiesta è aperta.'
+          : 'Your offer will be marked as withdrawn. You can make a new one while the request is open.';
+  String get matchmakingWithdrawn =>
+      isItalian ? 'Offerta ritirata.' : 'Offer withdrawn.';
+  String get matchmakingNoOffer =>
+      isItalian
+          ? 'Non risulta una tua offerta su questa richiesta.'
+          : 'No offer of yours found on this request.';
+  String get matchmakingUserNotes =>
+      isItalian ? 'Note utente:' : 'User notes:';
+  String get matchmakingObjectiveLabel =>
+      isItalian ? 'Obiettivo:' : 'Goal:';
+  String get matchmakingNoAnnouncements =>
+      isItalian ? 'Nessun annuncio presente.' : 'No announcements available.';
+  String get missingDate => isItalian ? 'Manca data' : 'Missing date';
+
+  // --- Server metrics ---
+  String get serverMetricsTitle =>
+      isItalian ? 'Metriche server' : 'Server metrics';
+  String get serverHealth => isItalian ? 'Stato' : 'Health';
+  String get serverLatency => isItalian ? 'Latenza' : 'Latency';
+  String get serverErrors => isItalian ? 'Errori' : 'Errors';
+  String get serverThroughput => 'Throughput';
+
+  // --- Diet templates ---
+  String get dietTemplatesTab =>
+      isItalian ? 'Templates Diete' : 'Diet Templates';
+  String get dietTemplateUploadCta =>
+      isItalian ? 'Carica template' : 'Upload template';
+  String get dietTemplateNew =>
+      isItalian ? 'Nuovo template dieta' : 'New diet template';
+  String get dietTemplateNoneTitle =>
+      isItalian ? 'Nessun template caricato' : 'No template uploaded';
+  String get dietTemplateNoneSubtitle =>
+      isItalian
+          ? 'Carica un PDF dieta per crearne uno riutilizzabile'
+          : 'Upload a diet PDF to create a reusable one';
+  String get dietTemplateAiWarning =>
+      isItalian
+          ? 'Il PDF verrà parsato dall\'AI (può richiedere 30-60s).'
+          : 'The PDF will be parsed by AI (may take 30-60s).';
+  String get dietTemplateNameHint =>
+      isItalian
+          ? 'Nome template (es. "Dieta dimagrante 1500kcal")'
+          : 'Template name (e.g. "Weight loss 1500kcal")';
+  String get dietTemplateCreated =>
+      isItalian ? 'Template creato ✓' : 'Template created ✓';
+  String get dietTemplateAssigned =>
+      isItalian ? 'Dieta assegnata ✓' : 'Diet assigned ✓';
+  String get dietTemplateDeleted =>
+      isItalian ? 'Template eliminato' : 'Template deleted';
+  String get dietTemplateDeleteConfirm =>
+      isItalian
+          ? 'Vuoi eliminare il template? L\'azione è irreversibile.'
+          : 'Delete this template? This action is irreversible.';
+  String get dietTemplateUseDescription =>
+      isItalian
+          ? 'Verrà assegnata una copia come dieta corrente del cliente. Il template originale resta riutilizzabile.'
+          : 'A copy will be assigned as the client\'s current diet. The original template remains reusable.';
+
+  // --- Workout reminder (client) ---
+  String get workoutReminderTitle =>
+      isItalian ? 'Promemoria allenamento' : 'Workout reminder';
+  String get reminderEnabled => isItalian ? 'Attivo' : 'Active';
+  String get reminderNotificationsOn =>
+      isItalian
+          ? 'Riceverai notifica nei giorni selezionati'
+          : 'You\'ll receive a notification on selected days';
+  String get reminderNotificationsOff =>
+      isItalian ? 'Nessuna notifica' : 'No notifications';
+  String get reminderTime => isItalian ? 'Orario' : 'Time';
+  String get reminderDays => isItalian ? 'Giorni' : 'Days';
+  String get reminderSaved =>
+      isItalian ? 'Promemoria salvato ✓' : 'Reminder saved ✓';
+  String get reminderDisabled =>
+      isItalian ? 'Promemoria disattivato' : 'Reminder disabled';
+
+  // --- User detail pane (split view) ---
+  String get clientDetailTitle =>
+      isItalian ? 'Dettaglio cliente' : 'Client detail';
+  String get clientUid => 'UID';
+  String get clientCreated =>
+      isItalian ? 'Account creato' : 'Account created';
+  String get clientLastActivity =>
+      isItalian ? 'Ultima attività' : 'Last activity';
+  String get clientLastDiet =>
+      isItalian ? 'Ultima dieta' : 'Last diet';
+  String get clientHistory => isItalian ? 'STORICO' : 'HISTORY';
+  String get closeUpper => isItalian ? 'CHIUDI' : 'CLOSE';
+  String get clientUnnamed =>
+      isItalian ? 'Senza nome' : 'No name';
 }
 
 class _AppLocalizationsDelegate

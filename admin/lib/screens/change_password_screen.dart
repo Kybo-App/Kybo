@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/app_localizations.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -18,10 +19,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Future<void> _updatePassword() async {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;
+    final l10n = AppLocalizations.of(context);
 
     if (_passCtrl.text != _confirmCtrl.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Le password non corrispondono")),
+        SnackBar(content: Text(l10n.pwdMismatch)),
       );
       return;
     }
@@ -34,11 +36,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         !pass.contains(RegExp(r'[a-z]')) ||
         !pass.contains(RegExp(r'[0-9]'))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "La password deve avere almeno 12 caratteri, una maiuscola, una minuscola e un numero",
-          ),
-        ),
+        SnackBar(content: Text(l10n.pwdPolicyError)),
       );
       return;
     }
@@ -56,7 +54,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Errore durante il cambio password. Riprova.")),
+        SnackBar(content: Text(l10n.pwdChangeError)),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -65,6 +63,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.blueGrey[50],
       body: Center(
@@ -81,34 +80,34 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               children: [
                 const Icon(Icons.security, size: 64, color: Colors.orange),
                 const SizedBox(height: 24),
-                const Text(
-                  "Security Update Required",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.pwdSecurityUpdate,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  "Welcome! Since this is a new account, you must change your temporary password to proceed.",
+                Text(
+                  l10n.pwdWelcome,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black54),
+                  style: const TextStyle(color: Colors.black54),
                 ),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _passCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "New Password",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                  decoration: InputDecoration(
+                    labelText: l10n.pwdNew,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _confirmCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "Confirm Password",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                  decoration: InputDecoration(
+                    labelText: l10n.pwdConfirm,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -119,13 +118,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     onPressed: _isLoading ? null : _updatePassword,
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("SET PASSWORD & ENTER"),
+                        : Text(l10n.pwdSet),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
                   onPressed: () => FirebaseAuth.instance.signOut(),
-                  child: const Text("Logout"),
+                  child: Text(l10n.logout),
                 ),
               ],
             ),
