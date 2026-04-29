@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 // Vista GDPR privacy: dashboard retention, statistiche inattività e purge utenti.
@@ -72,8 +73,8 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Configurazione salvata"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).gdprConfigSaved),
             backgroundColor: KyboColors.success,
           ),
         );
@@ -83,7 +84,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -93,10 +94,11 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Future<void> _executePurge({String? targetUid}) async {
+    final l10n = AppLocalizations.of(context);
     final isDryRun = _dryRun;
     final targetText = targetUid != null
-        ? "l'utente $targetUid"
-        : "tutti gli utenti inattivi";
+        ? (l10n.locale.languageCode == 'it' ? "l'utente $targetUid" : "user $targetUid")
+        : (l10n.locale.languageCode == 'it' ? "tutti gli utenti inattivi" : "all inactive users");
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -109,18 +111,14 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
               color: isDryRun ? KyboColors.accent : KyboColors.error,
             ),
             const SizedBox(width: 12),
-            Text(isDryRun ? "Simulazione Purge" : "ATTENZIONE"),
+            Text(isDryRun ? l10n.gdprPurgeSimulation : l10n.gdprWarning),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              isDryRun
-                  ? "Verrà eseguita una SIMULAZIONE della purge per $targetText."
-                  : "Stai per ELIMINARE PERMANENTEMENTE i dati di $targetText.",
-            ),
+            Text(l10n.gdprPurgeBody(isDryRun, targetText)),
             const SizedBox(height: 16),
             if (!isDryRun)
               Container(
@@ -133,10 +131,10 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                   children: [
                     const Icon(Icons.error_outline, color: KyboColors.error),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        "Questa operazione è IRREVERSIBILE!",
-                        style: TextStyle(
+                        l10n.gdprIrreversible,
+                        style: const TextStyle(
                           color: KyboColors.error,
                           fontWeight: FontWeight.bold,
                         ),
@@ -150,10 +148,10 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Annulla"),
+            child: Text(l10n.cancel),
           ),
           PillButton(
-            label: isDryRun ? "Simula" : "Elimina",
+            label: isDryRun ? l10n.gdprSimulate : l10n.delete,
             backgroundColor: isDryRun ? KyboColors.accent : KyboColors.error,
             textColor: Colors.white,
             height: 40,
@@ -175,9 +173,12 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
 
       if (mounted) {
         final summary = result['summary'] as Map<String, dynamic>?;
+        final n = isDryRun
+            ? (summary?['total_processed'] ?? 0)
+            : (summary?['successful'] ?? 0);
         final message = isDryRun
-            ? "Simulazione completata: ${summary?['total_processed'] ?? 0} utenti processati"
-            : "Purge completato: ${summary?['successful'] ?? 0} utenti eliminati";
+            ? l10n.gdprSimulationDone(n is int ? n : (n as num).toInt())
+            : l10n.gdprPurgeDone(n is int ? n : (n as num).toInt());
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -191,7 +192,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${l10n.error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -218,7 +219,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             Text(_error!, style: TextStyle(color: KyboColors.textSecondary)),
             const SizedBox(height: 16),
             PillButton(
-              label: "Riprova",
+              label: AppLocalizations.of(context).retry,
               icon: Icons.refresh,
               onPressed: _loadDashboard,
             ),
@@ -251,6 +252,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildHeader() {
+    final l10n = AppLocalizations.of(context);
     return PillCard(
       padding: const EdgeInsets.all(20),
       backgroundColor: KyboColors.roleAdmin.withValues(alpha: 0.08),
@@ -275,7 +277,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "GDPR & Privacy",
+                  l10n.gdprTitle,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
@@ -284,7 +286,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Gestione retention policy e conformità GDPR",
+                  l10n.gdprSubtitle,
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 14,
@@ -295,7 +297,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           ),
           PillIconButton(
             icon: Icons.refresh_rounded,
-            tooltip: "Aggiorna",
+            tooltip: l10n.refresh,
             onPressed: _loadDashboard,
           ),
         ],
@@ -304,6 +306,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildStatisticsSection() {
+    final l10n = AppLocalizations.of(context);
     final stats = _dashboard?['statistics'] as Map<String, dynamic>? ?? {};
     final totalUsers = stats['total_users'] ?? 0;
     final inactiveCount = stats['inactive_users_count'] ?? 0;
@@ -313,7 +316,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Statistiche",
+          l10n.gdprStatistics,
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -325,7 +328,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           children: [
             Expanded(
               child: StatCard(
-                title: "Utenti Totali",
+                title: l10n.gdprTotalUsers,
                 value: totalUsers.toString(),
                 icon: Icons.people_rounded,
                 color: KyboColors.accent,
@@ -334,7 +337,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             const SizedBox(width: 12),
             Expanded(
               child: StatCard(
-                title: "Inattivi",
+                title: l10n.gdprInactiveUsers,
                 value: inactiveCount.toString(),
                 icon: Icons.person_off_rounded,
                 color: inactiveCount > 0 ? KyboColors.warning : KyboColors.success,
@@ -343,7 +346,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             const SizedBox(width: 12),
             Expanded(
               child: StatCard(
-                title: "In Scadenza",
+                title: l10n.gdprApproaching,
                 value: approachingCount.toString(),
                 icon: Icons.timer_rounded,
                 color: approachingCount > 0 ? KyboColors.error : KyboColors.success,
@@ -356,6 +359,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildConfigurationSection() {
+    final l10n = AppLocalizations.of(context);
     return PillCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -366,7 +370,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
               Icon(Icons.settings_rounded, color: KyboColors.textSecondary),
               const SizedBox(width: 12),
               Text(
-                "Configurazione Retention",
+                l10n.gdprConfigTitle,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
@@ -384,14 +388,14 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Periodo di Retention",
+                      l10n.gdprRetentionPeriod,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
                         color: KyboColors.textPrimary,
                       ),
                     ),
                     Text(
-                      "Mesi di inattività prima della purge",
+                      l10n.gdprRetentionPeriodSub,
                       style: TextStyle(
                         fontSize: 12,
                         color: KyboColors.textSecondary,
@@ -407,7 +411,9 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                   borderRadius: KyboBorderRadius.small,
                 ),
                 child: Text(
-                  "$_retentionMonths mesi",
+                  l10n.locale.languageCode == 'it'
+                      ? "$_retentionMonths mesi"
+                      : "$_retentionMonths months",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: KyboColors.primary,
@@ -429,16 +435,16 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           const SizedBox(height: 16),
 
           _buildToggleRow(
-            title: "Retention Automatica",
-            subtitle: "Abilita purge automatica degli utenti inattivi",
+            title: l10n.gdprAutoRetention,
+            subtitle: l10n.gdprAutoRetentionSub,
             value: _isEnabled,
             onChanged: (val) => setState(() => _isEnabled = val),
             activeColor: KyboColors.primary,
           ),
           const SizedBox(height: 12),
           _buildToggleRow(
-            title: "Modalità Dry Run",
-            subtitle: "Simula le operazioni senza eliminare dati",
+            title: l10n.gdprDryRun,
+            subtitle: l10n.gdprDryRunSub,
             value: _dryRun,
             onChanged: (val) => setState(() => _dryRun = val),
             activeColor: KyboColors.warning,
@@ -450,7 +456,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             children: [
               Expanded(
                 child: PillButton(
-                  label: "Salva Configurazione",
+                  label: l10n.gdprSaveConfig,
                   icon: Icons.save_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
@@ -460,7 +466,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
               const SizedBox(width: 12),
               Expanded(
                 child: PillButton(
-                  label: _dryRun ? "Simula Purge" : "Esegui Purge",
+                  label: _dryRun ? l10n.gdprSimulatePurge : l10n.gdprRunPurge,
                   icon: _dryRun ? Icons.science_rounded : Icons.delete_forever_rounded,
                   backgroundColor: _dryRun ? KyboColors.accent : KyboColors.error,
                   textColor: Colors.white,
@@ -520,6 +526,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildInactiveUsersSection() {
+    final l10n = AppLocalizations.of(context);
     final inactiveUsers = _dashboard?['inactive_users'] as List<dynamic>? ?? [];
 
     if (inactiveUsers.isEmpty) {
@@ -534,7 +541,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             Icon(Icons.person_off_rounded, color: KyboColors.warning),
             const SizedBox(width: 8),
             Text(
-              "Utenti Inattivi (${inactiveUsers.length})",
+              l10n.gdprInactiveListTitle(inactiveUsers.length),
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -549,7 +556,9 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              "...e altri ${inactiveUsers.length - 10} utenti",
+              l10n.locale.languageCode == 'it'
+                  ? "...e altri ${inactiveUsers.length - 10} utenti"
+                  : "...and ${inactiveUsers.length - 10} more users",
               style: TextStyle(
                 color: KyboColors.textSecondary,
                 fontStyle: FontStyle.italic,
@@ -561,6 +570,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildApproachingDeadlineSection() {
+    final l10n = AppLocalizations.of(context);
     final approachingUsers = _dashboard?['approaching_deadline'] as List<dynamic>? ?? [];
 
     if (approachingUsers.isEmpty) {
@@ -575,7 +585,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
             Icon(Icons.timer_rounded, color: KyboColors.error),
             const SizedBox(width: 8),
             Text(
-              "Prossimi alla Scadenza (${approachingUsers.length})",
+              l10n.gdprApproachingListTitle(approachingUsers.length),
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
@@ -591,6 +601,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
   }
 
   Widget _buildUserTile(Map<String, dynamic> user, {required bool isInactive}) {
+    final l10n = AppLocalizations.of(context);
     // Mostriamo l'UID (codice univoco) al posto dell'email: la sezione GDPR
     // non deve esporre PII in chiaro agli operatori che la consultano.
     final uid = (user['uid'] ?? '').toString();
@@ -637,7 +648,12 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "Inattivo da $daysInactive giorni${deadline != null ? ' • Scadenza: ${DateFormat('dd/MM/yyyy').format(deadline)}' : ''}",
+                    l10n.gdprInactiveSubtitle(
+                      daysInactive is int ? daysInactive : (daysInactive as num).toInt(),
+                      deadline != null
+                          ? DateFormat('dd/MM/yyyy').format(deadline)
+                          : null,
+                    ),
                     style: TextStyle(
                       fontSize: 12,
                       color: KyboColors.textSecondary,
@@ -650,7 +666,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
               PillIconButton(
                 icon: Icons.delete_outline_rounded,
                 color: KyboColors.error,
-                tooltip: "Elimina utente",
+                tooltip: l10n.gdprDeleteUserTooltip,
                 size: 32,
                 onPressed: () => _executePurge(targetUid: user['uid']),
               ),

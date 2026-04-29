@@ -324,7 +324,7 @@ class _DashboardContentState extends State<_DashboardContent> {
       if (_isAdmin)
         _NavItem(
           icon: Icons.monitor_heart_rounded,
-          label: 'Server',
+          label: l10n.navServer,
           view: ServerMetricsView(key: ValueKey('server_$themeKey')),
         ),
       if (_isAdmin)
@@ -336,7 +336,7 @@ class _DashboardContentState extends State<_DashboardContent> {
       if (_isPT || _isAdmin)
         _NavItem(
           icon: Icons.fitness_center_rounded,
-          label: 'Workout',
+          label: l10n.navWorkout,
           view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
         ),
       if (_isNutritionist || _isAdmin)

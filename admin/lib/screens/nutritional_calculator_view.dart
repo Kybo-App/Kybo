@@ -1,6 +1,7 @@
 // Calcolatrice nutrizionale: inserimento ingredienti con quantità e macro per 100g, calcolo totali in tempo reale.
 // _calculateTotals — ricalcola kcal/proteine/carboidrati/grassi sommando tutti gli ingredienti validi.
 import 'package:flutter/material.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 class NutritionalCalculatorView extends StatefulWidget {
@@ -63,6 +64,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -71,7 +73,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             Icon(Icons.calculate_rounded, color: KyboColors.primary, size: 28),
             const SizedBox(width: 12),
             Text(
-              "Calcolatrice Nutrizionale",
+              l10n.calculatorTitle,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -82,12 +84,12 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         ),
         const SizedBox(height: 8),
         Text(
-          "Inserisci gli ingredienti e le quantità per calcolare i macro totali del pasto.",
+          l10n.calculatorDescription,
           style: TextStyle(color: KyboColors.textSecondary),
         ),
         const SizedBox(height: 24),
 
-        _buildTotalsCard(),
+        _buildTotalsCard(l10n),
         const SizedBox(height: 24),
 
         Expanded(
@@ -100,7 +102,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
                   child: Row(
                     children: [
                       Text(
-                        "Ingredienti",
+                        l10n.calculatorIngredients,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -109,7 +111,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
                       ),
                       const Spacer(),
                       PillButton(
-                        label: "Aggiungi Ingrediente",
+                        label: l10n.calculatorAddIngredient,
                         icon: Icons.add,
                         onPressed: _addIngredient,
                         height: 36,
@@ -124,7 +126,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
                     itemCount: _ingredients.length,
                     separatorBuilder: (ctx, idx) => const SizedBox(height: 16),
                     itemBuilder: (ctx, idx) {
-                      return _buildIngredientRow(idx, _ingredients[idx]);
+                      return _buildIngredientRow(idx, _ingredients[idx], l10n);
                     },
                   ),
                 ),
@@ -136,17 +138,17 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
     );
   }
 
-  Widget _buildTotalsCard() {
+  Widget _buildTotalsCard(AppLocalizations l10n) {
     return PillCard(
       backgroundColor: KyboColors.primary.withValues(alpha: 0.05),
       padding: const EdgeInsets.all(24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildMacroStat("Kcal", _totalKcal, "kcal", Colors.grey[800]!),
-          _buildMacroStat("Proteine", _totalProtein, "g", KyboColors.protein),
-          _buildMacroStat("Carboidrati", _totalCarbs, "g", KyboColors.carbs),
-          _buildMacroStat("Grassi", _totalFat, "g", KyboColors.fat),
+          _buildMacroStat(l10n.calculatorKcal, _totalKcal, "kcal", Colors.grey[800]!),
+          _buildMacroStat(l10n.calculatorProtein, _totalProtein, "g", KyboColors.protein),
+          _buildMacroStat(l10n.calculatorCarbs, _totalCarbs, "g", KyboColors.carbs),
+          _buildMacroStat(l10n.calculatorFat, _totalFat, "g", KyboColors.fat),
         ],
       ),
     );
@@ -177,7 +179,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
     );
   }
 
-  Widget _buildIngredientRow(int index, _IngredientRow ingredient) {
+  Widget _buildIngredientRow(
+      int index, _IngredientRow ingredient, AppLocalizations l10n) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -195,8 +198,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         Expanded(
           flex: 2,
           child: PillTextField(
-            labelText:"Nome Ingrediente",
-            hintText:"es. Pollo",
+            labelText: l10n.calculatorIngredientName,
+            hintText: l10n.calculatorIngredientHint,
             onChanged: (val) => ingredient.name = val,
           ),
         ),
@@ -204,8 +207,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
 
         Expanded(
           child: PillTextField(
-            labelText:"Quantità (g)",
-            hintText:"100",
+            labelText: l10n.calculatorQuantity,
+            hintText: "100",
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.quantity = double.tryParse(val) ?? 0;
@@ -217,7 +220,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
 
         Expanded(
           child: PillTextField(
-            labelText:"Kcal/100g",
+            labelText: l10n.calculatorKcal100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.kcal100 = double.tryParse(val) ?? 0;
@@ -228,7 +231,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            labelText:"Prot/100g",
+            labelText: l10n.calculatorProt100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.protein100 = double.tryParse(val) ?? 0;
@@ -239,7 +242,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            labelText:"Carb/100g",
+            labelText: l10n.calculatorCarb100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.carbs100 = double.tryParse(val) ?? 0;
@@ -250,7 +253,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
         const SizedBox(width: 8),
         Expanded(
           child: PillTextField(
-            labelText:"Fat/100g",
+            labelText: l10n.calculatorFat100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
               ingredient.fat100 = double.tryParse(val) ?? 0;
@@ -266,7 +269,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             icon: const Icon(Icons.delete_outline),
             color: KyboColors.error,
             onPressed: () => _removeIngredient(index),
-            tooltip: "Rimuovi",
+            tooltip: l10n.remove,
           ),
         ),
       ],
