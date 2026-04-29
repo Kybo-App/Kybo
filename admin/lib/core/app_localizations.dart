@@ -411,6 +411,82 @@ class AppLocalizations {
       isItalian ? 'Invia a tutti i clienti' : 'Send to all clients';
   String get chatAttach =>
       isItalian ? 'Allega file' : 'Attach file';
+  String get chatMessages => isItalian ? 'Messaggi' : 'Messages';
+  String get chatNewChat => isItalian ? 'Nuova chat' : 'New chat';
+  String get chatNewChatTitle =>
+      isItalian ? 'Nuova chat' : 'New chat';
+  String get chatNoNutritionists =>
+      isItalian ? 'Nessun nutrizionista trovato' : 'No nutritionists found';
+  String get chatSelectNutritionist =>
+      isItalian ? 'Seleziona un nutrizionista' : 'Select a nutritionist';
+  String get chatBroadcastToNutritionists =>
+      isItalian
+          ? 'Invia un messaggio a tutti i nutrizionisti.'
+          : 'Send a message to all nutritionists.';
+  String get chatBroadcastToClients =>
+      isItalian
+          ? 'Invia un messaggio a tutti i tuoi clienti.'
+          : 'Send a message to all your clients.';
+  String get chatBroadcastWriteHint =>
+      isItalian
+          ? 'Scrivi il messaggio broadcast...'
+          : 'Write the broadcast message...';
+  String get chatBroadcastInfoAdmin =>
+      isItalian
+          ? 'Il messaggio apparirà nelle chat admin-nutrizionista.'
+          : 'The message will appear in admin-nutritionist chats.';
+  String get chatBroadcastInfoNut =>
+      isItalian
+          ? 'Il messaggio apparirà in tutte le chat attive.'
+          : 'The message will appear in all active chats.';
+  String get chatBroadcastSent =>
+      isItalian ? 'Broadcast inviato!' : 'Broadcast sent!';
+  String get chatBroadcastSendCta =>
+      isItalian ? 'Invia Broadcast' : 'Send Broadcast';
+  String get chatStartTitle =>
+      isItalian ? 'Seleziona una chat per iniziare' : 'Select a chat to start';
+  String get chatNoMessages =>
+      isItalian ? 'Nessun messaggio' : 'No messages';
+  String get chatYesterday => isItalian ? 'Ieri' : 'Yesterday';
+  String get chatPaziente => isItalian ? 'Paziente' : 'Patient';
+  String get chatNutritionistRole =>
+      isItalian ? 'Nutrizionista' : 'Nutritionist';
+  String get chatAdminSupport =>
+      isItalian ? 'Supporto Admin' : 'Admin Support';
+  String get chatGenericFile =>
+      isItalian ? 'Documento' : 'Document';
+  String get chatAlertEmailTooltip =>
+      isItalian
+          ? 'Alert email messaggi non letti'
+          : 'Email alert for unread messages';
+  String get chatAlertTitle =>
+      isItalian ? 'Alert Messaggi Non Letti' : 'Unread Messages Alert';
+  String get chatAlertEnabled =>
+      isItalian ? 'Notifiche email attive' : 'Email notifications enabled';
+  String get chatAlertEnabledSub =>
+      isItalian
+          ? 'Ricevi un\'email quando un cliente non risponde'
+          : 'Receive an email when a client does not reply';
+  String get chatAlertNotConfigured =>
+      isItalian
+          ? 'Email SMTP non configurata sul server. Contatta l\'amministratore.'
+          : 'SMTP email not configured on the server. Contact the administrator.';
+  String get chatAlertDaysSub =>
+      isItalian
+          ? 'Giorni di inattività prima della notifica'
+          : 'Days of inactivity before notification';
+  String chatAlertDescription(int days) {
+    final dayWord = isItalian
+        ? (days == 1 ? 'giorno' : 'giorni')
+        : (days == 1 ? 'day' : 'days');
+    return isItalian
+        ? 'Riceverai una notifica email se un cliente non ti ha risposto da almeno $days $dayWord.'
+        : 'You will receive an email notification if a client has not replied for at least $days $dayWord.';
+  }
+  String get chatAlertSendError =>
+      isItalian ? 'Errore invio:' : 'Send error:';
+  String get chatTyping =>
+      isItalian ? 'sta scrivendo...' : 'is typing...';
 
   // --- Rewards catalog ---
   String get rewardsTitle => isItalian ? 'Premi' : 'Rewards';
