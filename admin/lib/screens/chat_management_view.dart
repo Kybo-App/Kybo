@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/chat.dart';
 import '../providers/admin_chat_provider.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import 'package:intl/intl.dart';
 
@@ -30,6 +31,7 @@ class _ChatManagementContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         SizedBox(
@@ -43,7 +45,7 @@ class _ChatManagementContent extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Messaggi',
+                      l10n.chatMessages,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -58,14 +60,14 @@ class _ChatManagementContent extends StatelessWidget {
                           children: [
                             PillIconButton(
                               icon: Icons.notifications_active_rounded,
-                              tooltip: 'Alert email messaggi non letti',
+                              tooltip: l10n.chatAlertEmailTooltip,
                               color: KyboColors.primary,
                               onPressed: () => _showEmailAlertConfigDialog(ctx),
                             ),
                             const SizedBox(width: 4),
                             PillIconButton(
                               icon: Icons.campaign_rounded,
-                              tooltip: 'Broadcast',
+                              tooltip: l10n.chatBroadcast,
                               color: KyboColors.warning,
                               onPressed: () => _showBroadcastDialog(ctx),
                             ),
@@ -73,7 +75,7 @@ class _ChatManagementContent extends StatelessWidget {
                               const SizedBox(width: 4),
                               PillIconButton(
                                 icon: Icons.add_comment_rounded,
-                                tooltip: 'Nuova chat',
+                                tooltip: l10n.chatNewChat,
                                 color: KyboColors.primary,
                                 onPressed: () => _showNewChatDialog(ctx),
                               ),
@@ -105,6 +107,7 @@ class _ChatManagementContent extends StatelessWidget {
   }
 
   void _showBroadcastDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final messageController = TextEditingController();
     final isAdmin = context.read<AdminChatProvider>().userRole == 'admin';
 
@@ -118,7 +121,7 @@ class _ChatManagementContent extends StatelessWidget {
             Icon(Icons.campaign_rounded, color: KyboColors.warning),
             const SizedBox(width: 8),
             Text(
-              'Broadcast',
+              l10n.chatBroadcast,
               style: TextStyle(color: KyboColors.textPrimary),
             ),
           ],
@@ -131,8 +134,8 @@ class _ChatManagementContent extends StatelessWidget {
             children: [
               Text(
                 isAdmin
-                    ? 'Invia un messaggio a tutti i nutrizionisti.'
-                    : 'Invia un messaggio a tutti i tuoi clienti.',
+                    ? l10n.chatBroadcastToNutritionists
+                    : l10n.chatBroadcastToClients,
                 style: TextStyle(
                   color: KyboColors.textSecondary,
                   fontSize: 14,
@@ -144,7 +147,7 @@ class _ChatManagementContent extends StatelessWidget {
                 maxLines: 4,
                 style: TextStyle(color: KyboColors.textPrimary),
                 decoration: InputDecoration(
-                  hintText: 'Scrivi il messaggio broadcast...',
+                  hintText: l10n.chatBroadcastWriteHint,
                   hintStyle: TextStyle(color: KyboColors.textMuted),
                   filled: true,
                   fillColor: KyboColors.background,
@@ -165,8 +168,8 @@ class _ChatManagementContent extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 isAdmin
-                    ? 'Il messaggio apparirà nelle chat admin-nutrizionista.'
-                    : 'Il messaggio apparirà in tutte le chat attive.',
+                    ? l10n.chatBroadcastInfoAdmin
+                    : l10n.chatBroadcastInfoNut,
                 style: TextStyle(
                   color: KyboColors.textMuted,
                   fontSize: 12,
@@ -180,12 +183,12 @@ class _ChatManagementContent extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
             child: Text(
-              'Annulla',
+              l10n.cancel,
               style: TextStyle(color: KyboColors.textSecondary),
             ),
           ),
           PillButton(
-            label: 'Invia Broadcast',
+            label: l10n.chatBroadcastSendCta,
             icon: Icons.send_rounded,
             backgroundColor: KyboColors.warning,
             textColor: Colors.white,
@@ -202,7 +205,7 @@ class _ChatManagementContent extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(result['message'] ?? 'Broadcast inviato!'),
+                      content: Text(result['message'] ?? l10n.chatBroadcastSent),
                       backgroundColor: KyboColors.success,
                     ),
                   );
@@ -211,7 +214,7 @@ class _ChatManagementContent extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Errore: $e'),
+                      content: Text('${l10n.error}: $e'),
                       backgroundColor: KyboColors.error,
                     ),
                   );
@@ -225,6 +228,7 @@ class _ChatManagementContent extends StatelessWidget {
   }
 
   void _showNewChatDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final provider = context.read<AdminChatProvider>();
     final nutritionists = await provider.getNutritionists();
 
@@ -233,7 +237,7 @@ class _ChatManagementContent extends StatelessWidget {
     if (nutritionists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Nessun nutrizionista trovato'),
+          content: Text(l10n.chatNoNutritionists),
           backgroundColor: KyboColors.error,
         ),
       );
@@ -246,7 +250,7 @@ class _ChatManagementContent extends StatelessWidget {
         backgroundColor: KyboColors.surface,
         shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
         title: Text(
-          'Nuova Chat',
+          l10n.chatNewChatTitle,
           style: TextStyle(color: KyboColors.textPrimary),
         ),
         content: SizedBox(
@@ -256,7 +260,7 @@ class _ChatManagementContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Seleziona un nutrizionista',
+                l10n.chatSelectNutritionist,
                 style: TextStyle(
                   color: KyboColors.textSecondary,
                   fontSize: 14,
@@ -271,14 +275,15 @@ class _ChatManagementContent extends StatelessWidget {
                       try {
                         await provider.createChatWithNutritionist(
                           nutritionistId: nutri['uid'],
-                          nutritionistName: nutri['name'] ?? 'Nutrizionista',
+                          nutritionistName:
+                              nutri['name'] ?? l10n.chatNutritionistRole,
                           nutritionistEmail: nutri['email'] ?? '',
                         );
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Errore: $e'),
+                              content: Text('${l10n.error}: $e'),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -349,7 +354,9 @@ class _NutritionistTileState extends State<_NutritionistTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.name.isEmpty ? 'Nutrizionista' : widget.name,
+                      widget.name.isEmpty
+                          ? AppLocalizations.of(context).chatNutritionistRole
+                          : widget.name,
                       style: TextStyle(
                         color: KyboColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -408,7 +415,7 @@ class _ChatListState extends State<_ChatList> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Errore: ${snapshot.error}',
+                '${AppLocalizations.of(context).error}: ${snapshot.error}',
                 style: TextStyle(color: KyboColors.error),
               ),
             ),
@@ -430,7 +437,7 @@ class _ChatListState extends State<_ChatList> {
                     size: 64, color: KyboColors.textMuted),
                 const SizedBox(height: 16),
                 Text(
-                  'Nessun messaggio',
+                  AppLocalizations.of(context).chatNoMessages,
                   style:
                       TextStyle(color: KyboColors.textSecondary, fontSize: 16),
                 ),
@@ -465,7 +472,7 @@ class _ChatListTile extends StatelessWidget {
 
     if (provider.userRole != 'admin' &&
         chat.chatType == 'admin-nutritionist') {
-      displayName = 'Supporto Admin';
+      displayName = AppLocalizations.of(context).chatAdminSupport;
       isSupportChat = true;
     }
 
@@ -594,6 +601,9 @@ class _ChatListTile extends StatelessWidget {
     if (diff.inDays == 0) {
       return DateFormat('HH:mm').format(time);
     } else if (diff.inDays == 1) {
+      // Note: questo formatter è invocato in StatelessWidget senza context
+      // facilmente accessibile; manteniamo localizzato a livello di widget
+      // chiamante. Default 'Ieri' per IT.
       return 'Ieri';
     } else if (diff.inDays < 7) {
       return DateFormat('EEE').format(time);
@@ -679,8 +689,11 @@ class _ChatInterfaceState extends State<_ChatInterface> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Errore invio: $e'), backgroundColor: KyboColors.error),
+        SnackBar(
+            content: Text('${AppLocalizations.of(context).chatAlertSendError} $e'),
+            backgroundColor: KyboColors.error),
       );
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -700,7 +713,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
             Icon(Icons.chat_rounded, size: 64, color: KyboColors.textMuted),
             const SizedBox(height: 16),
             Text(
-              'Seleziona una chat per iniziare',
+              AppLocalizations.of(context).chatStartTitle,
               style: TextStyle(color: KyboColors.textSecondary, fontSize: 16),
             ),
           ],
@@ -723,16 +736,20 @@ class _ChatInterfaceState extends State<_ChatInterface> {
           final chatType = data['chatType'] ?? 'nutritionist-client';
           final participants = data['participants'] as Map<String, dynamic>? ?? {};
 
+          final l10nLocal = AppLocalizations.of(context);
           if (chatType == 'admin-nutritionist') {
             final nutriId = participants['nutritionistId'] as String? ?? '';
-            contactName = provider.getCachedName(nutriId) ?? (data['clientName'] ?? 'Nutrizionista');
-            contactRole = 'Nutrizionista';
+            contactName = provider.getCachedName(nutriId) ??
+                (data['clientName'] ?? l10nLocal.chatNutritionistRole);
+            contactRole = l10nLocal.chatNutritionistRole;
           } else {
             final clientId = participants['clientId'] as String? ?? '';
             contactName = provider.getCachedName(clientId) ??
                 (data['clientName'] as String? ?? '');
-            if (contactName.isEmpty) contactName = data['clientEmail'] ?? 'Paziente';
-            contactRole = 'Paziente';
+            if (contactName.isEmpty) {
+              contactName = data['clientEmail'] ?? l10nLocal.chatPaziente;
+            }
+            contactRole = l10nLocal.chatPaziente;
           }
           contactInitial = contactName.isNotEmpty
               ? contactName.substring(0, 1).toUpperCase()
@@ -800,7 +817,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
               if (messages.isEmpty) {
                 return Center(
                   child: Text(
-                    'Nessun messaggio',
+                    AppLocalizations.of(context).chatNoMessages,
                     style: TextStyle(color: KyboColors.textSecondary),
                   ),
                 );
@@ -840,7 +857,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    "sta scrivendo...",
+                    AppLocalizations.of(context).chatTyping,
                     style: TextStyle(
                       color: KyboColors.textMuted,
                       fontSize: 11,
@@ -892,7 +909,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
                       controller: _messageController,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'Scrivi un messaggio...',
+                    hintText: AppLocalizations.of(context).chatTypeMessage,
                     hintStyle: TextStyle(color: KyboColors.textMuted),
                     filled: true,
                     fillColor: KyboColors.background,
@@ -1119,7 +1136,7 @@ class _MessageBubble extends StatelessWidget {
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  message.fileName ?? 'Documento',
+                  message.fileName ?? AppLocalizations.of(context).chatGenericFile,
                   style: TextStyle(
                     color: isMe ? Colors.white : KyboColors.textPrimary,
                     decoration: TextDecoration.underline,
@@ -1188,7 +1205,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
       nav.pop();
       messenger.showSnackBar(
         SnackBar(
-          content: const Text('Configurazione salvata'),
+          content: Text(AppLocalizations.of(context).gdprConfigSaved),
           backgroundColor: KyboColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.pill),
@@ -1198,7 +1215,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: $e'),
+          content: Text('${AppLocalizations.of(context).error}: $e'),
           backgroundColor: KyboColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.pill),
@@ -1211,6 +1228,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
       backgroundColor: KyboColors.surface,
@@ -1219,7 +1237,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
           Icon(Icons.notifications_active_rounded, color: KyboColors.primary, size: 22),
           const SizedBox(width: 10),
           Text(
-            'Alert Messaggi Non Letti',
+            l10n.chatAlertTitle,
             style: TextStyle(
               color: KyboColors.textPrimary,
               fontWeight: FontWeight.w700,
@@ -1252,7 +1270,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Email SMTP non configurata sul server. Contatta l\'amministratore.',
+                              l10n.chatAlertNotConfigured,
                               style: TextStyle(
                                 color: KyboColors.warning,
                                 fontSize: 12,
@@ -1284,7 +1302,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Notifiche email attive',
+                                l10n.chatAlertEnabled,
                                 style: TextStyle(
                                   color: KyboColors.textPrimary,
                                   fontWeight: FontWeight.w600,
@@ -1292,7 +1310,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                                 ),
                               ),
                               Text(
-                                'Ricevi un\'email quando un cliente non risponde',
+                                l10n.chatAlertEnabledSub,
                                 style: TextStyle(
                                   color: KyboColors.textMuted,
                                   fontSize: 12,
@@ -1315,7 +1333,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                   const SizedBox(height: 16),
 
                   Text(
-                    'Giorni di inattività prima della notifica',
+                    l10n.chatAlertDaysSub,
                     style: TextStyle(
                       color: KyboColors.textSecondary,
                       fontSize: 13,
@@ -1356,7 +1374,9 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _thresholdDays == 1 ? 'giorno' : 'giorni',
+                        l10n.locale.languageCode == 'it'
+                            ? (_thresholdDays == 1 ? 'giorno' : 'giorni')
+                            : (_thresholdDays == 1 ? 'day' : 'days'),
                         style: TextStyle(color: KyboColors.textMuted, fontSize: 13),
                       ),
                     ],
@@ -1371,7 +1391,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
                         borderRadius: KyboBorderRadius.medium,
                       ),
                       child: Text(
-                        'Riceverai una notifica email se un cliente non ti ha risposto da almeno $_thresholdDays ${_thresholdDays == 1 ? 'giorno' : 'giorni'}.',
+                        l10n.chatAlertDescription(_thresholdDays),
                         style: TextStyle(
                           color: KyboColors.primary,
                           fontSize: 12,
@@ -1385,10 +1405,10 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Annulla', style: TextStyle(color: KyboColors.textSecondary)),
+          child: Text(l10n.cancel, style: TextStyle(color: KyboColors.textSecondary)),
         ),
         PillButton(
-          label: 'Salva',
+          label: l10n.save,
           icon: Icons.save_rounded,
           backgroundColor: KyboColors.primary,
           textColor: Colors.white,
