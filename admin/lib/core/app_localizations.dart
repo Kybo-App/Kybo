@@ -25,6 +25,8 @@ class AppLocalizations {
   String get navGdpr => 'GDPR';
   String get navAuditLog => isItalian ? 'Audit Log' : 'Audit Log';
   String get navRewards => isItalian ? 'Premi' : 'Rewards';
+  String get navWorkout => 'Workout';
+  String get navServer => isItalian ? 'Server' : 'Server';
 
   String get confirm => isItalian ? 'Conferma' : 'Confirm';
   String get cancel => isItalian ? 'Annulla' : 'Cancel';
@@ -287,6 +289,80 @@ class AppLocalizations {
       isItalian ? 'Elimina utenti inattivi' : 'Purge inactive users';
   String get gdprMonthsRetention =>
       isItalian ? 'Mesi di retention' : 'Retention months';
+  String get gdprConfigSaved =>
+      isItalian ? 'Configurazione salvata' : 'Configuration saved';
+  String get gdprPurgeSimulation =>
+      isItalian ? 'Simulazione Purge' : 'Purge Simulation';
+  String get gdprWarning =>
+      isItalian ? 'ATTENZIONE' : 'WARNING';
+  String gdprPurgeBody(bool isDryRun, String target) =>
+      isDryRun
+          ? (isItalian
+              ? 'Verrà eseguita una SIMULAZIONE della purge per $target.'
+              : 'A SIMULATION of the purge will be run for $target.')
+          : (isItalian
+              ? 'Stai per ELIMINARE PERMANENTEMENTE i dati di $target.'
+              : 'You are about to PERMANENTLY DELETE data for $target.');
+  String get gdprIrreversible =>
+      isItalian
+          ? 'Questa operazione è IRREVERSIBILE!'
+          : 'This operation is IRREVERSIBLE!';
+  String get gdprSimulate => isItalian ? 'Simula' : 'Simulate';
+  String gdprSimulationDone(int n) =>
+      isItalian
+          ? 'Simulazione completata: $n utenti processati'
+          : 'Simulation complete: $n users processed';
+  String gdprPurgeDone(int n) =>
+      isItalian
+          ? 'Purge completato: $n utenti eliminati'
+          : 'Purge complete: $n users deleted';
+  String get gdprStatistics => isItalian ? 'Statistiche' : 'Statistics';
+  String get gdprTotalUsers =>
+      isItalian ? 'Utenti totali' : 'Total users';
+  String get gdprInactiveUsers =>
+      isItalian ? 'Inattivi' : 'Inactive';
+  String get gdprApproaching =>
+      isItalian ? 'In scadenza' : 'Approaching';
+  String get gdprConfigTitle =>
+      isItalian ? 'Configurazione retention' : 'Retention configuration';
+  String get gdprRetentionPeriod =>
+      isItalian ? 'Periodo di retention' : 'Retention period';
+  String get gdprRetentionPeriodSub =>
+      isItalian
+          ? 'Mesi di inattività prima della purge'
+          : 'Months of inactivity before purge';
+  String get gdprAutoRetention =>
+      isItalian ? 'Retention automatica' : 'Automatic retention';
+  String get gdprAutoRetentionSub =>
+      isItalian
+          ? 'Abilita purge automatica degli utenti inattivi'
+          : 'Enable automatic purge of inactive users';
+  String get gdprDryRun =>
+      isItalian ? 'Modalità dry run' : 'Dry run mode';
+  String get gdprDryRunSub =>
+      isItalian
+          ? 'Simula le operazioni senza eliminare dati'
+          : 'Simulate operations without deleting data';
+  String get gdprSaveConfig =>
+      isItalian ? 'Salva configurazione' : 'Save configuration';
+  String get gdprRunPurge =>
+      isItalian ? 'Esegui purge' : 'Run purge';
+  String get gdprSimulatePurge =>
+      isItalian ? 'Simula purge' : 'Simulate purge';
+  String gdprInactiveListTitle(int n) =>
+      isItalian ? 'Utenti inattivi ($n)' : 'Inactive users ($n)';
+  String gdprApproachingListTitle(int n) =>
+      isItalian ? 'Prossimi alla scadenza ($n)' : 'Approaching deadline ($n)';
+  String gdprInactiveSubtitle(int days, String? deadline) =>
+      isItalian
+          ? 'Inattivo da $days giorni${deadline != null ? ' • Scadenza: $deadline' : ''}'
+          : 'Inactive for $days days${deadline != null ? ' • Deadline: $deadline' : ''}';
+  String get gdprSubtitle =>
+      isItalian
+          ? 'Gestione retention policy e conformità GDPR'
+          : 'Retention policy and GDPR compliance management';
+  String get gdprDeleteUserTooltip =>
+      isItalian ? 'Elimina utente' : 'Delete user';
 
   // --- Reports ---
   String get reportsTitle =>
@@ -473,6 +549,38 @@ class AppLocalizations {
   String get closeUpper => isItalian ? 'CHIUDI' : 'CLOSE';
   String get clientUnnamed =>
       isItalian ? 'Senza nome' : 'No name';
+
+  // --- Nutritional calculator ---
+  String get calculatorTitle =>
+      isItalian ? 'Calcolatrice Nutrizionale' : 'Nutritional Calculator';
+  String get calculatorDescription =>
+      isItalian
+          ? 'Inserisci gli ingredienti e le quantità per calcolare i macro totali del pasto.'
+          : 'Enter ingredients and quantities to calculate the meal\'s total macros.';
+  String get calculatorIngredients =>
+      isItalian ? 'Ingredienti' : 'Ingredients';
+  String get calculatorAddIngredient =>
+      isItalian ? 'Aggiungi ingrediente' : 'Add ingredient';
+  String get calculatorIngredientName =>
+      isItalian ? 'Nome ingrediente' : 'Ingredient name';
+  String get calculatorIngredientHint =>
+      isItalian ? 'es. Pollo' : 'e.g. Chicken';
+  String get calculatorQuantity =>
+      isItalian ? 'Quantità (g)' : 'Quantity (g)';
+  String get calculatorKcal100 => 'Kcal/100g';
+  String get calculatorProt100 =>
+      isItalian ? 'Prot/100g' : 'Prot/100g';
+  String get calculatorCarb100 =>
+      isItalian ? 'Carb/100g' : 'Carb/100g';
+  String get calculatorFat100 =>
+      isItalian ? 'Grassi/100g' : 'Fat/100g';
+  String get calculatorKcal => 'Kcal';
+  String get calculatorProtein =>
+      isItalian ? 'Proteine' : 'Protein';
+  String get calculatorCarbs =>
+      isItalian ? 'Carboidrati' : 'Carbs';
+  String get calculatorFat => isItalian ? 'Grassi' : 'Fat';
+  String get remove => isItalian ? 'Rimuovi' : 'Remove';
 }
 
 class _AppLocalizationsDelegate
