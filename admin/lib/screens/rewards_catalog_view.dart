@@ -4,6 +4,7 @@
 // _fulfillClaim — segna un riscatto come evaso.
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 class RewardsCatalogView extends StatefulWidget {
@@ -52,7 +53,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         setState(() => _isLoadingRewards = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text('${AppLocalizations.of(context).error}: $e'),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -109,7 +110,9 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  existing == null ? 'Nuovo Premio' : 'Modifica Premio',
+                  existing == null
+                      ? AppLocalizations.of(ctx).rewardsNew
+                      : AppLocalizations.of(ctx).rewardsEditDialog,
                   style: TextStyle(
                     color: KyboColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -125,13 +128,14 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                   children: [
                     PillTextField(
                       controller: nameCtrl,
-                      hintText: 'Nome premio',
+                      hintText: AppLocalizations.of(ctx).rewardsNamePlaceholder,
                       prefixIcon: Icons.card_giftcard_rounded,
                     ),
                     const SizedBox(height: 12),
                     PillTextField(
                       controller: descCtrl,
-                      hintText: 'Descrizione (opzionale)',
+                      hintText:
+                          AppLocalizations.of(ctx).rewardsDescriptionPlaceholder,
                       prefixIcon: Icons.description_rounded,
                     ),
                     const SizedBox(height: 12),
@@ -140,7 +144,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                         Expanded(
                           child: PillTextField(
                             controller: xpCtrl,
-                            hintText: 'Costo XP',
+                            hintText: AppLocalizations.of(ctx).rewardsCostHint,
                             prefixIcon: Icons.star_rounded,
                             keyboardType: TextInputType.number,
                           ),
@@ -149,7 +153,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                         Expanded(
                           child: PillTextField(
                             controller: stockCtrl,
-                            hintText: 'Stock (vuoto = illimitato)',
+                            hintText: AppLocalizations.of(ctx).rewardsStockHint,
                             prefixIcon: Icons.inventory_2_rounded,
                             keyboardType: TextInputType.number,
                           ),
@@ -159,19 +163,19 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                     const SizedBox(height: 12),
                     PillTextField(
                       controller: imageCtrl,
-                      hintText: 'URL immagine (opzionale)',
+                      hintText: AppLocalizations.of(ctx).rewardsImageUrl,
                       prefixIcon: Icons.image_rounded,
                     ),
                     const SizedBox(height: 12),
                     PillTextField(
                       controller: redirectCtrl,
-                      hintText: 'URL esterno riscatto (es. https://shop...)',
+                      hintText: AppLocalizations.of(ctx).rewardsRedeemUrl,
                       prefixIcon: Icons.open_in_new_rounded,
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 4, left: 12),
                       child: Text(
-                        "Link aperto al cliente dopo il riscatto (sconto, shop partner...).",
+                        AppLocalizations.of(ctx).rewardsRedeemUrlHelp,
                         style: TextStyle(fontSize: 11, color: KyboColors.textMuted),
                       ),
                     ),
@@ -186,7 +190,9 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isActive ? 'Attivo' : 'Disattivato',
+                          isActive
+                              ? AppLocalizations.of(ctx).rewardsActiveStatus
+                              : AppLocalizations.of(ctx).rewardsInactiveStatus,
                           style: TextStyle(
                             color: KyboColors.textSecondary,
                             fontWeight: FontWeight.w500,
@@ -202,12 +208,14 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text(
-                  'Annulla',
+                  AppLocalizations.of(ctx).cancel,
                   style: TextStyle(color: KyboColors.textSecondary),
                 ),
               ),
               PillButton(
-                label: existing == null ? 'Crea' : 'Salva',
+                label: existing == null
+                    ? AppLocalizations.of(ctx).create
+                    : AppLocalizations.of(ctx).save,
                 icon: existing == null ? Icons.add : Icons.save,
                 backgroundColor: KyboColors.primary,
                 textColor: Colors.white,
@@ -220,16 +228,18 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                         final xpStr = xpCtrl.text.trim();
                         if (name.isEmpty || xpStr.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Nome e costo XP obbligatori')),
+                            SnackBar(
+                                content: Text(AppLocalizations.of(context)
+                                    .rewardsNameAndCostRequired)),
                           );
                           return;
                         }
                         final xpCost = int.tryParse(xpStr);
                         if (xpCost == null || xpCost <= 0) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Costo XP non valido')),
+                            SnackBar(
+                                content: Text(AppLocalizations.of(context)
+                                    .rewardsCostInvalid)),
                           );
                           return;
                         }
@@ -273,7 +283,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Errore: $e'),
+                                content: Text('${AppLocalizations.of(context).error}: $e'),
                                 backgroundColor: KyboColors.error,
                               ),
                             );
@@ -299,21 +309,21 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         backgroundColor: KyboColors.surface,
         shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
         title: Text(
-          'Elimina premio',
+          AppLocalizations.of(ctx).rewardsDeleteTitle,
           style: TextStyle(color: KyboColors.textPrimary),
         ),
         content: Text(
-          'Vuoi eliminare "$name"? L\'azione è irreversibile.',
+          AppLocalizations.of(ctx).rewardsDeleteConfirm(name),
           style: TextStyle(color: KyboColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Annulla',
+            child: Text(AppLocalizations.of(ctx).cancel,
                 style: TextStyle(color: KyboColors.textSecondary)),
           ),
           PillButton(
-            label: 'Elimina',
+            label: AppLocalizations.of(ctx).delete,
             icon: Icons.delete_rounded,
             backgroundColor: KyboColors.error,
             textColor: Colors.white,
@@ -332,7 +342,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Errore: $e'),
+              content: Text('${AppLocalizations.of(context).error}: $e'),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -348,7 +358,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Premio segnato come evaso ✓'),
+            content: Text(AppLocalizations.of(context).rewardsRedeemed),
             backgroundColor: KyboColors.success,
           ),
         );
@@ -357,7 +367,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text('${AppLocalizations.of(context).error}: $e'),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -367,6 +377,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         // Header
@@ -376,7 +387,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                 color: KyboColors.primary, size: 22),
             const SizedBox(width: 10),
             Text(
-              'Gestione Premi',
+              l10n.rewardsManagement,
               style: TextStyle(
                 color: KyboColors.textPrimary,
                 fontSize: 20,
@@ -385,7 +396,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
             ),
             const Spacer(),
             PillButton(
-              label: 'Nuovo Premio',
+              label: l10n.rewardsNew,
               icon: Icons.add_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -419,7 +430,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                   children: [
                     const Icon(Icons.storefront_rounded, size: 18),
                     const SizedBox(width: 8),
-                    Text('Catalogo (${_rewards.length})'),
+                    Text('${l10n.rewardsCatalogTab} (${_rewards.length})'),
                   ],
                 ),
               ),
@@ -429,7 +440,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                   children: [
                     const Icon(Icons.receipt_long_rounded, size: 18),
                     const SizedBox(width: 8),
-                    Text('Riscatti (${_claims.length})'),
+                    Text('${l10n.rewardsClaimsTab} (${_claims.length})'),
                   ],
                 ),
               ),
@@ -453,6 +464,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
   }
 
   Widget _buildCatalogTab() {
+    final l10n = AppLocalizations.of(context);
     if (_isLoadingRewards) {
       return Center(
         child: CircularProgressIndicator(color: KyboColors.primary),
@@ -468,7 +480,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                 size: 56, color: KyboColors.textMuted),
             const SizedBox(height: 16),
             Text(
-              'Nessun premio nel catalogo',
+              l10n.rewardsNoneInCatalog,
               style: TextStyle(
                 fontSize: 16,
                 color: KyboColors.textSecondary,
@@ -476,7 +488,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
             ),
             const SizedBox(height: 8),
             Text(
-              'Crea il primo premio con il pulsante in alto',
+              l10n.rewardsCreateFirst,
               style: TextStyle(
                 fontSize: 13,
                 color: KyboColors.textMuted,
@@ -569,7 +581,8 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                     ),
                     if (!isActive)
                       PillBadge(
-                        label: 'Disattivato',
+                        label:
+                            AppLocalizations.of(context).rewardsInactiveStatus,
                         icon: Icons.visibility_off_rounded,
                         color: KyboColors.error,
                       ),
@@ -600,13 +613,20 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                     const SizedBox(width: 8),
                     _buildInfoChip(
                       Icons.inventory_2_rounded,
-                      stock != null ? '$stock rimasti' : '∞',
+                      stock != null
+                          ? (AppLocalizations.of(context).locale.languageCode ==
+                                  'it'
+                              ? '$stock rimasti'
+                              : '$stock left')
+                          : '∞',
                       KyboColors.primary,
                     ),
                     const SizedBox(width: 8),
                     _buildInfoChip(
                       Icons.redeem_rounded,
-                      '$claimedCount riscattati',
+                      AppLocalizations.of(context).locale.languageCode == 'it'
+                          ? '$claimedCount riscattati'
+                          : '$claimedCount redeemed',
                       KyboColors.accent,
                     ),
                   ],
@@ -622,14 +642,14 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
               PillIconButton(
                 icon: Icons.edit_rounded,
                 color: KyboColors.primary,
-                tooltip: 'Modifica',
+                tooltip: AppLocalizations.of(context).edit,
                 onPressed: () => _showCreateEditDialog(existing: reward),
               ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.delete_rounded,
                 color: KyboColors.error,
-                tooltip: 'Elimina',
+                tooltip: AppLocalizations.of(context).delete,
                 onPressed: () =>
                     _deleteReward(reward['id'], reward['name'] ?? ''),
               ),
@@ -681,7 +701,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                 size: 56, color: KyboColors.textMuted),
             const SizedBox(height: 16),
             Text(
-              'Nessun premio riscattato',
+              AppLocalizations.of(context).rewardsNoneRedeemed,
               style: TextStyle(
                 fontSize: 16,
                 color: KyboColors.textSecondary,
@@ -702,6 +722,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
   }
 
   Widget _buildClaimRow(Map<String, dynamic> claim) {
+    final l10n = AppLocalizations.of(context);
     final status = claim['status'] ?? 'pending';
     final isPending = status == 'pending';
     final userUid = claim['user_uid'] ?? '';
@@ -713,13 +734,13 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
     switch (status) {
       case 'fulfilled':
         statusColor = KyboColors.success;
-        statusLabel = 'Evaso';
+        statusLabel = l10n.rewardsStatusFulfilled;
         statusIcon = Icons.check_circle_rounded;
         break;
       case 'pending':
       default:
         statusColor = KyboColors.warning;
-        statusLabel = 'In attesa';
+        statusLabel = l10n.rewardsStatusPending;
         statusIcon = Icons.hourglass_top_rounded;
         break;
     }
@@ -748,7 +769,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  claim['reward_name'] ?? 'Premio',
+                  claim['reward_name'] ?? l10n.rewardsTitle,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -794,7 +815,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
           if (isPending) ...[
             const SizedBox(width: 8),
             PillButton(
-              label: 'Evadi',
+              label: l10n.rewardsFulfill,
               icon: Icons.check_rounded,
               backgroundColor: KyboColors.success,
               textColor: Colors.white,
