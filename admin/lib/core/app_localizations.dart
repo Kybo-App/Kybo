@@ -426,6 +426,39 @@ class AppLocalizations {
   String get analyticsTitle => 'Analytics';
   String get analyticsNoData =>
       isItalian ? 'Nessun dato analytics disponibile' : 'No analytics data available';
+  String get analyticsDashboard =>
+      isItalian ? 'Analytics Dashboard' : 'Analytics Dashboard';
+  String get analyticsLoadError =>
+      isItalian ? 'Errore nel caricamento' : 'Loading error';
+  String get analyticsTotalUsers =>
+      isItalian ? 'Utenti totali' : 'Total users';
+  String get analyticsDietsUploaded =>
+      isItalian ? 'Diete caricate' : 'Diets uploaded';
+  String get analyticsChatMessages =>
+      isItalian ? 'Messaggi chat' : 'Chat messages';
+  String get analyticsDietTrend =>
+      isItalian ? 'Trend upload diete' : 'Diet upload trend';
+  String get analyticsPeriodDaily =>
+      isItalian ? 'Giornaliero' : 'Daily';
+  String get analyticsPeriodWeekly =>
+      isItalian ? 'Settimanale' : 'Weekly';
+  String get analyticsPeriodMonthly =>
+      isItalian ? 'Mensile' : 'Monthly';
+  String get analyticsNutritionistActivity =>
+      isItalian ? 'Attività Nutrizionisti' : 'Nutritionist Activity';
+  String get analyticsYourActivity =>
+      isItalian ? 'La Tua Attività' : 'Your Activity';
+  String get analyticsInactiveUsers =>
+      isItalian ? 'Utenti Inattivi' : 'Inactive Users';
+  String get analyticsAllActive =>
+      isItalian
+          ? 'Tutti gli utenti sono attivi!'
+          : 'All users are active!';
+  String get analyticsLastLogin =>
+      isItalian ? 'Ultimo accesso' : 'Last login';
+  String get analyticsNever => isItalian ? 'Mai' : 'Never';
+  String get analyticsInvalidDate =>
+      isItalian ? 'Non valido' : 'Invalid';
 
   // --- Chat management (admin) ---
   String get chatTitle => 'Chat';

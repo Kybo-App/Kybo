@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../core/app_localizations.dart';
 import '../core/env.dart';
 import '../widgets/design_system.dart';
 
@@ -149,6 +150,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       );
     }
 
+    final l10n = AppLocalizations.of(context);
     if (_error != null) {
       return Center(
         child: Column(
@@ -157,7 +159,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
             Icon(Icons.error_outline_rounded, size: 48, color: KyboColors.error),
             const SizedBox(height: 16),
             Text(
-              "Errore nel caricamento",
+              l10n.analyticsLoadError,
               style: TextStyle(
                 color: KyboColors.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -172,7 +174,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
             ),
             const SizedBox(height: 16),
             PillButton(
-              label: "Riprova",
+              label: l10n.retry,
               icon: Icons.refresh_rounded,
               onPressed: _loadAllData,
             ),
@@ -193,7 +195,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               Icon(Icons.analytics_rounded, color: KyboColors.primary, size: 28),
               const SizedBox(width: 12),
               Text(
-                "Analytics Dashboard",
+                l10n.analyticsDashboard,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontSize: 22,
@@ -202,7 +204,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               ),
               const Spacer(),
               PillButton(
-                label: "Aggiorna",
+                label: l10n.refresh,
                 icon: Icons.refresh_rounded,
                 height: 40,
                 onPressed: _loadAllData,
@@ -224,6 +226,8 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _buildOverviewCards() {
+    final l10n = AppLocalizations.of(context);
+    final isItalian = l10n.locale.languageCode == 'it';
     final totalUsers = _overview['total_users'] ?? 0;
     final activeLast30 = _overview['active_last_30_days'] ?? 0;
     final totalDiets = _overview['total_diets'] ?? 0;
@@ -236,25 +240,31 @@ class _AnalyticsViewState extends State<AnalyticsView> {
         final isWide = constraints.maxWidth > 800;
         final cards = [
           StatCard(
-            title: "Utenti Totali",
+            title: l10n.analyticsTotalUsers,
             value: "$totalUsers",
             icon: Icons.people_alt_rounded,
             color: KyboColors.accent,
-            subtitle: "$activeLast30 attivi (30gg)",
+            subtitle: isItalian
+                ? "$activeLast30 attivi (30gg)"
+                : "$activeLast30 active (30d)",
           ),
           StatCard(
-            title: "Diete Caricate",
+            title: l10n.analyticsDietsUploaded,
             value: "$totalDiets",
             icon: Icons.restaurant_menu_rounded,
             color: KyboColors.primary,
-            subtitle: "+$dietsLast30 ultimo mese",
+            subtitle: isItalian
+                ? "+$dietsLast30 ultimo mese"
+                : "+$dietsLast30 last month",
           ),
           StatCard(
-            title: "Messaggi Chat",
+            title: l10n.analyticsChatMessages,
             value: "$totalMessages",
             icon: Icons.chat_bubble_rounded,
             color: KyboColors.warning,
-            subtitle: "$totalChats conversazioni",
+            subtitle: isItalian
+                ? "$totalChats conversazioni"
+                : "$totalChats conversations",
           ),
         ];
 
@@ -293,7 +303,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               Icon(Icons.trending_up_rounded, color: KyboColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                "Trend Upload Diete",
+                AppLocalizations.of(context).analyticsDietTrend,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontSize: 16,
@@ -310,7 +320,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
             child: _trendData.isEmpty
                 ? Center(
                     child: Text(
-                      "Nessun dato disponibile",
+                      AppLocalizations.of(context).noDataAvailable,
                       style: TextStyle(color: KyboColors.textMuted, fontSize: 14),
                     ),
                   )
@@ -322,6 +332,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _buildPeriodSelector() {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -331,9 +342,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _periodPill("Giornaliero", "daily"),
-          _periodPill("Settimanale", "weekly"),
-          _periodPill("Mensile", "monthly"),
+          _periodPill(l10n.analyticsPeriodDaily, "daily"),
+          _periodPill(l10n.analyticsPeriodWeekly, "weekly"),
+          _periodPill(l10n.analyticsPeriodMonthly, "monthly"),
         ],
       ),
     );
@@ -497,6 +508,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _buildNutritionistActivitySection() {
+    final l10n = AppLocalizations.of(context);
     return PillCard(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -507,7 +519,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               Icon(Icons.health_and_safety_rounded, color: KyboColors.roleNutritionist, size: 22),
               const SizedBox(width: 10),
               Text(
-                _userRole == 'admin' ? "Attività Nutrizionisti" : "La Tua Attività",
+                _userRole == 'admin'
+                    ? l10n.analyticsNutritionistActivity
+                    : l10n.analyticsYourActivity,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontSize: 16,
@@ -522,7 +536,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  "Nessun nutrizionista trovato",
+                  l10n.chatNoNutritionists,
                   style: TextStyle(color: KyboColors.textMuted, fontSize: 14),
                 ),
               ),
@@ -684,7 +698,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
               Icon(Icons.person_off_rounded, color: KyboColors.error, size: 22),
               const SizedBox(width: 10),
               Text(
-                "Utenti Inattivi",
+                AppLocalizations.of(context).analyticsInactiveUsers,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontSize: 16,
@@ -714,7 +728,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "Tutti gli utenti sono attivi!",
+                      AppLocalizations.of(context).analyticsAllActive,
                       style: TextStyle(
                         color: KyboColors.textSecondary,
                         fontSize: 14,
@@ -740,6 +754,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _buildDaysSelector() {
+    final isItalian =
+        AppLocalizations.of(context).locale.languageCode == 'it';
+    final suffix = isItalian ? 'gg' : 'd';
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -749,9 +766,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _daysPill("7gg", 7),
-          _daysPill("30gg", 30),
-          _daysPill("90gg", 90),
+          _daysPill("7$suffix", 7),
+          _daysPill("30$suffix", 30),
+          _daysPill("90$suffix", 90),
         ],
       ),
     );
@@ -788,20 +805,27 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   }
 
   Widget _buildInactiveUserRow(Map<String, dynamic> user) {
+    final l10n = AppLocalizations.of(context);
     final name = user['name'] ?? 'N/A';
     final email = user['email'] ?? '';
-    final lastLogin = user['last_login'] ?? 'Mai';
+    final rawLastLogin = user['last_login'] ?? 'Mai';
     final role = user['role'] ?? '';
 
+    // Sentinelle dal backend (sempre IT) → traduciamo per la UI.
+    final isNeverLogin = rawLastLogin == 'Mai';
+    final isInvalidLogin = rawLastLogin == 'Non valido';
+
     String lastLoginDisplay;
-    if (lastLogin == 'Mai' || lastLogin == 'Non valido') {
-      lastLoginDisplay = lastLogin;
+    if (isNeverLogin) {
+      lastLoginDisplay = l10n.analyticsNever;
+    } else if (isInvalidLogin) {
+      lastLoginDisplay = l10n.analyticsInvalidDate;
     } else {
       try {
-        final dt = DateTime.parse(lastLogin);
+        final dt = DateTime.parse(rawLastLogin);
         lastLoginDisplay = DateFormat('dd/MM/yyyy').format(dt);
       } catch (_) {
-        lastLoginDisplay = lastLogin;
+        lastLoginDisplay = rawLastLogin;
       }
     }
 
@@ -862,13 +886,15 @@ class _AnalyticsViewState extends State<AnalyticsView> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "Ultimo accesso",
+                l10n.analyticsLastLogin,
                 style: TextStyle(color: KyboColors.textMuted, fontSize: 10),
               ),
               Text(
                 lastLoginDisplay,
                 style: TextStyle(
-                  color: lastLogin == 'Mai' ? KyboColors.error : KyboColors.textSecondary,
+                  color: isNeverLogin
+                      ? KyboColors.error
+                      : KyboColors.textSecondary,
                   fontWeight: FontWeight.w500,
                   fontSize: 12,
                 ),
