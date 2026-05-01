@@ -460,6 +460,66 @@ class AppLocalizations {
   String get analyticsInvalidDate =>
       isItalian ? 'Non valido' : 'Invalid';
 
+  // --- Config (maintenance) ---
+  String get configEmergencyMsg =>
+      isItalian
+          ? 'Manutenzione di emergenza, stiamo lavorando per te'
+          : 'Emergency maintenance, we are working for you';
+  String get configConfirmSchedule =>
+      isItalian ? 'Conferma schedulazione' : 'Confirm schedule';
+  String configScheduleBody(String when) =>
+      isItalian
+          ? 'Verrà inviata una notifica a TUTTI gli utenti che la manutenzione inizierà:\n\n$when'
+          : 'A notification will be sent to ALL users that maintenance will start:\n\n$when';
+  String get configMaintenanceScheduled =>
+      isItalian ? 'Manutenzione schedulata!' : 'Maintenance scheduled!';
+  String get configCancelScheduleTitle =>
+      isItalian ? 'Annullare schedulazione?' : 'Cancel schedule?';
+  String get configCancelScheduleBody =>
+      isItalian
+          ? 'Questo rimuoverà la schedulazione. Se la manutenzione è attiva, gli utenti potranno accedere immediatamente.'
+          : 'This will remove the schedule. If maintenance is active, users will be able to access immediately.';
+  String get configCancelScheduleAction =>
+      isItalian ? 'Sì, annulla' : 'Yes, cancel';
+  String get configScheduleCancelled =>
+      isItalian ? 'Schedulazione annullata' : 'Schedule cancelled';
+  String get configManualOverrideActive =>
+      isItalian ? 'Override manuale ATTIVO' : 'Manual override ACTIVE';
+  String get configScheduleActive =>
+      isItalian
+          ? 'Schedulazione attiva (ora passata)'
+          : 'Schedule active (time passed)';
+  String get configUsersCanAccess =>
+      isItalian
+          ? 'Gli utenti possono accedere all\'app'
+          : 'Users can access the app';
+  String get configManualOverride =>
+      isItalian ? 'Override manuale' : 'Manual override';
+  String get configForceImmediate =>
+      isItalian ? 'Forza manutenzione immediata' : 'Force immediate maintenance';
+  String get configScheduleMaintenance =>
+      isItalian ? 'Schedula manutenzione' : 'Schedule maintenance';
+  String configScheduledLabel(String when) =>
+      isItalian ? 'Schedulato: $when' : 'Scheduled: $when';
+  String get configCancelSchedule =>
+      isItalian ? 'Annulla schedulazione' : 'Cancel schedule';
+  String get configNewSchedule =>
+      isItalian ? 'Nuova schedulazione' : 'New schedule';
+  String get configSelectDateTime =>
+      isItalian ? 'Seleziona data e ora' : 'Select date and time';
+  String get configScheduleCta =>
+      isItalian ? 'Schedula' : 'Schedule';
+  String get configSystemOffline =>
+      isItalian ? 'SISTEMA OFFLINE' : 'SYSTEM OFFLINE';
+  String get configSystemActive =>
+      isItalian ? 'SISTEMA ATTIVO' : 'SYSTEM ACTIVE';
+  String get configBadgeActive =>
+      isItalian ? 'ATTIVO' : 'ACTIVE';
+  String get configBadgePending =>
+      isItalian ? 'IN ATTESA' : 'PENDING';
+  String configScheduledAt(String date, String time) =>
+      isItalian ? '$date alle $time' : '$date at $time';
+
   // --- Chat management (admin) ---
   String get chatTitle => 'Chat';
   String get chatNoChats =>

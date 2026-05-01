@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import '../widgets/app_config_section.dart';
 
@@ -67,14 +68,18 @@ class _ConfigViewState extends State<ConfigView> {
     try {
       String? msg;
       if (value == true) {
-        msg = "Emergency maintenance, we are working for you";
+        // Messaggio mostrato agli utenti finali: lo lasciamo nella lingua
+        // della UI dell'admin che lo ha attivato.
+        if (mounted) {
+          msg = AppLocalizations.of(context).configEmergencyMsg;
+        }
       }
       await _repo.setMaintenanceStatus(value, message: msg);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -106,6 +111,7 @@ class _ConfigViewState extends State<ConfigView> {
 
   Future<void> _scheduleMaintenance() async {
     if (_selectedDate == null || _selectedTime == null) return;
+    final l10n = AppLocalizations.of(context);
 
     final dateTime = DateTime(
       _selectedDate!.year,
@@ -120,17 +126,18 @@ class _ConfigViewState extends State<ConfigView> {
           context: context,
           builder: (context) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-            title: const Text("Conferma Schedulazione"),
+            title: Text(l10n.configConfirmSchedule),
             content: Text(
-              "Verrà inviata una notifica a TUTTI gli utenti che la manutenzione inizierà:\n\n${DateFormat('yyyy-MM-dd HH:mm').format(dateTime)}",
+              l10n.configScheduleBody(
+                  DateFormat('yyyy-MM-dd HH:mm').format(dateTime)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text("Annulla"),
+                child: Text(l10n.cancel),
               ),
               PillButton(
-                label: "Conferma",
+                label: l10n.confirm,
                 backgroundColor: KyboColors.warning,
                 textColor: Colors.white,
                 height: 40,
@@ -147,8 +154,8 @@ class _ConfigViewState extends State<ConfigView> {
         await _repo.scheduleMaintenance(dateTime, true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Manutenzione Schedulata!"),
+            SnackBar(
+              content: Text(l10n.configMaintenanceScheduled),
               backgroundColor: KyboColors.accent,
             ),
           );
@@ -161,7 +168,7 @@ class _ConfigViewState extends State<ConfigView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Error: $e"),
+              content: Text("${l10n.error}: $e"),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -173,22 +180,21 @@ class _ConfigViewState extends State<ConfigView> {
   }
 
   Future<void> _cancelSchedule() async {
+    final l10n = AppLocalizations.of(context);
     bool confirm =
         await showDialog(
           context: context,
           builder: (c) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-            title: const Text("Annullare Schedulazione?"),
-            content: const Text(
-              "Questo rimuoverà la schedulazione. Se la manutenzione è attiva, gli utenti potranno accedere immediatamente.",
-            ),
+            title: Text(l10n.configCancelScheduleTitle),
+            content: Text(l10n.configCancelScheduleBody),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
-                child: const Text("No"),
+                child: Text(l10n.no),
               ),
               PillButton(
-                label: "Sì, Annulla",
+                label: l10n.configCancelScheduleAction,
                 backgroundColor: KyboColors.error,
                 textColor: Colors.white,
                 height: 40,
@@ -205,14 +211,14 @@ class _ConfigViewState extends State<ConfigView> {
         await _repo.cancelMaintenanceSchedule();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Schedulazione Annullata")),
+            SnackBar(content: Text(l10n.configScheduleCancelled)),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Error: $e"),
+              content: Text("${l10n.error}: $e"),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -252,18 +258,19 @@ class _ConfigViewState extends State<ConfigView> {
   }
 
   Widget _buildStatusCard() {
+    final l10n = AppLocalizations.of(context);
     final isDown = _isEffectivelyDown;
     final color = isDown ? KyboColors.error : KyboColors.success;
     final icon = isDown ? Icons.lock_rounded : Icons.check_circle_rounded;
-    final title = isDown ? "SISTEMA OFFLINE" : "SISTEMA ATTIVO";
+    final title = isDown ? l10n.configSystemOffline : l10n.configSystemActive;
 
     String subtitle;
     if (_manualMaintenance) {
-      subtitle = "Override Manuale ATTIVO";
+      subtitle = l10n.configManualOverrideActive;
     } else if (isDown) {
-      subtitle = "Schedulazione Attiva (Ora passata)";
+      subtitle = l10n.configScheduleActive;
     } else {
-      subtitle = "Gli utenti possono accedere all'app";
+      subtitle = l10n.configUsersCanAccess;
     }
 
     return PillCard(
@@ -333,7 +340,7 @@ class _ConfigViewState extends State<ConfigView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Override Manuale",
+                  AppLocalizations.of(context).configManualOverride,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
@@ -342,7 +349,7 @@ class _ConfigViewState extends State<ConfigView> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Forza manutenzione immediata",
+                  AppLocalizations.of(context).configForceImmediate,
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 13,
@@ -362,11 +369,12 @@ class _ConfigViewState extends State<ConfigView> {
   }
 
   Widget _buildScheduleSection() {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Schedula Manutenzione",
+          l10n.configScheduleMaintenance,
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 16,
@@ -400,7 +408,9 @@ class _ConfigViewState extends State<ConfigView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Schedulato: ${DateFormat('EEE, d MMM - HH:mm').format(_scheduledDate!)}",
+                        l10n.configScheduledLabel(
+                            DateFormat('EEE, d MMM - HH:mm')
+                                .format(_scheduledDate!)),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -409,7 +419,9 @@ class _ConfigViewState extends State<ConfigView> {
                       ),
                       const SizedBox(height: 4),
                       PillBadge(
-                        label: _isEffectivelyDown ? "ATTIVO" : "IN ATTESA",
+                        label: _isEffectivelyDown
+                            ? l10n.configBadgeActive
+                            : l10n.configBadgePending,
                         color: _isEffectivelyDown
                             ? KyboColors.error
                             : KyboColors.warning,
@@ -421,7 +433,7 @@ class _ConfigViewState extends State<ConfigView> {
                 PillIconButton(
                   icon: Icons.delete_rounded,
                   color: KyboColors.error,
-                  tooltip: "Annulla Schedulazione",
+                  tooltip: l10n.configCancelSchedule,
                   onPressed: _cancelSchedule,
                 ),
               ],
@@ -436,7 +448,7 @@ class _ConfigViewState extends State<ConfigView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Nuova Schedulazione",
+                l10n.configNewSchedule,
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
@@ -449,15 +461,17 @@ class _ConfigViewState extends State<ConfigView> {
                   Expanded(
                     child: PillButton(
                       label: _selectedDate == null
-                          ? "Seleziona Data e Ora"
-                          : "${DateFormat('dd/MM').format(_selectedDate!)} alle ${_selectedTime!.format(context)}",
+                          ? l10n.configSelectDateTime
+                          : l10n.configScheduledAt(
+                              DateFormat('dd/MM').format(_selectedDate!),
+                              _selectedTime!.format(context)),
                       icon: Icons.calendar_today_rounded,
                       onPressed: _pickDateTime,
                     ),
                   ),
                   const SizedBox(width: 16),
                   PillButton(
-                    label: "Schedula",
+                    label: l10n.configScheduleCta,
                     icon: Icons.send_rounded,
                     backgroundColor: KyboColors.warning,
                     textColor: Colors.white,
