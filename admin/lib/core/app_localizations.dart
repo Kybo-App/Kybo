@@ -898,6 +898,65 @@ class AppLocalizations {
   String get dayPresetMobility => 'Mobility';
   String get dayPresetRest => isItalian ? 'Riposo' : 'Rest';
 
+  // --- 2FA setup screen ---
+  String get tfaTitle =>
+      isItalian ? 'Autenticazione a Due Fattori' : 'Two-Factor Authentication';
+  String get tfaProtected =>
+      isItalian
+          ? 'Il tuo account è protetto con autenticazione a due fattori.'
+          : 'Your account is protected with two-factor authentication.';
+  String get tfaAddExtra =>
+      isItalian
+          ? 'Aggiungi un livello extra di sicurezza al tuo account.'
+          : 'Add an extra layer of security to your account.';
+  String get tfaEnable =>
+      isItalian ? 'Attiva 2FA' : 'Enable 2FA';
+  String get tfaDisable =>
+      isItalian ? 'Disabilita 2FA' : 'Disable 2FA';
+  String get tfaSetupAuthenticator =>
+      isItalian ? 'Configura Authenticator' : 'Set up Authenticator';
+  String get tfaStep1 =>
+      isItalian
+          ? 'Apri la tua app authenticator'
+          : 'Open your authenticator app';
+  String get tfaStep2 =>
+      isItalian
+          ? 'Scansiona il QR code o inserisci il codice manualmente'
+          : 'Scan the QR code or enter the code manually';
+  String get tfaStep3 =>
+      isItalian
+          ? 'Inserisci il codice a 6 cifre generato'
+          : 'Enter the generated 6-digit code';
+  String get tfaOrEnterManually =>
+      isItalian ? 'Oppure inserisci manualmente:' : 'Or enter manually:';
+  String get tfaCopy => isItalian ? 'Copia' : 'Copy';
+  String get tfaCodeCopied =>
+      isItalian ? 'Codice copiato' : 'Code copied';
+  String get tfaVerifying => isItalian ? 'Verifica...' : 'Verifying...';
+  String get tfaVerify => isItalian ? 'Verifica' : 'Verify';
+  String get tfaInvalidCode =>
+      isItalian ? 'Codice non valido' : 'Invalid code';
+  String get tfaSixDigits =>
+      isItalian ? 'Inserisci un codice a 6 cifre' : 'Enter a 6-digit code';
+  String get tfaDisableDialogTitle =>
+      isItalian ? 'Disabilita 2FA' : 'Disable 2FA';
+  String get tfaDisableDialogBody =>
+      isItalian
+          ? 'Inserisci il codice 2FA per confermare'
+          : 'Enter the 2FA code to confirm';
+  String get tfaBackupCodesTitle =>
+      isItalian ? 'Codici di Backup' : 'Backup Codes';
+  String get tfaBackupCodesIntro =>
+      isItalian
+          ? 'Salva questi codici di backup in un posto sicuro. Potrai usarli se perdi l\'accesso al tuo authenticator.'
+          : 'Save these backup codes in a safe place. You can use them if you lose access to your authenticator.';
+  String get tfaCopyAll =>
+      isItalian ? 'Copia tutti' : 'Copy all';
+  String get tfaCodesCopied =>
+      isItalian ? 'Codici copiati' : 'Codes copied';
+  String get tfaSavedCodes =>
+      isItalian ? 'Ho salvato i codici' : 'I saved the codes';
+
   // --- Diet templates ---
   String get dietTemplatesTab =>
       isItalian ? 'Templates Diete' : 'Diet Templates';

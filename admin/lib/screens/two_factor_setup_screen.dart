@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 // Schermata configurazione 2FA: attivazione con codice TOTP, visualizzazione secret e salvataggio codici di backup.
@@ -54,7 +55,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -77,7 +78,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isSettingUp = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -89,8 +90,8 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
     final code = _codeController.text.trim();
     if (code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Inserisci un codice a 6 cifre"),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).tfaSixDigits),
           backgroundColor: KyboColors.error,
         ),
       );
@@ -118,7 +119,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
           setState(() => _isVerifying = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? "Codice non valido"),
+              content: Text(result['message'] ?? AppLocalizations.of(context).tfaInvalidCode),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -129,7 +130,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isVerifying = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -138,7 +139,8 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
   }
 
   Future<void> _disable2FA() async {
-    final code = await _showCodeDialog("Disabilita 2FA", "Inserisci il codice 2FA per confermare");
+    final l10nLocal = AppLocalizations.of(context);
+    final code = await _showCodeDialog(l10nLocal.tfaDisableDialogTitle, l10nLocal.tfaDisableDialogBody);
     if (code == null) return;
 
     setState(() => _isLoading = true);
@@ -162,7 +164,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore: $e"),
+            content: Text("${AppLocalizations.of(context).error}: $e"),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -206,10 +208,10 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Annulla"),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           PillButton(
-            label: "Conferma",
+            label: AppLocalizations.of(context).confirm,
             height: 40,
             backgroundColor: KyboColors.primary,
             textColor: Colors.white,
@@ -228,7 +230,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         backgroundColor: KyboColors.surface,
         elevation: 0,
         title: Text(
-          "Autenticazione a Due Fattori",
+          AppLocalizations.of(context).tfaTitle,
           style: TextStyle(color: KyboColors.textPrimary),
         ),
         leading: IconButton(
@@ -282,8 +284,12 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
 
               Text(
                 _is2FAEnabled
-                    ? "2FA Attivo"
-                    : "2FA Non Attivo",
+                    ? (AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "2FA Attivo"
+                        : "2FA Active")
+                    : (AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "2FA Non Attivo"
+                        : "2FA Not Active"),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -293,8 +299,8 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               const SizedBox(height: 8),
               Text(
                 _is2FAEnabled
-                    ? "Il tuo account è protetto con autenticazione a due fattori."
-                    : "Aggiungi un livello extra di sicurezza al tuo account.",
+                    ? AppLocalizations.of(context).tfaProtected
+                    : AppLocalizations.of(context).tfaAddExtra,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: KyboColors.textSecondary,
@@ -305,7 +311,9 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
-                  label: _is2FAEnabled ? "Disabilita 2FA" : "Attiva 2FA",
+                  label: _is2FAEnabled
+                      ? AppLocalizations.of(context).tfaDisable
+                      : AppLocalizations.of(context).tfaEnable,
                   icon: _is2FAEnabled ? Icons.lock_open_rounded : Icons.lock_rounded,
                   backgroundColor: _is2FAEnabled ? KyboColors.error : KyboColors.primary,
                   textColor: Colors.white,
@@ -334,7 +342,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Configura Authenticator",
+                AppLocalizations.of(context).tfaSetupAuthenticator,
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -348,11 +356,11 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildStep("1", "Apri la tua app authenticator", Icons.phone_android_rounded),
+                    _buildStep("1", AppLocalizations.of(context).tfaStep1, Icons.phone_android_rounded),
                     const SizedBox(height: 12),
-                    _buildStep("2", "Scansiona il QR code o inserisci il codice manualmente", Icons.qr_code_scanner_rounded),
+                    _buildStep("2", AppLocalizations.of(context).tfaStep2, Icons.qr_code_scanner_rounded),
                     const SizedBox(height: 12),
-                    _buildStep("3", "Inserisci il codice a 6 cifre generato", Icons.pin_rounded),
+                    _buildStep("3", AppLocalizations.of(context).tfaStep3, Icons.pin_rounded),
                   ],
                 ),
               ),
@@ -395,7 +403,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                     const SizedBox(height: 16),
 
                     Text(
-                      "Oppure inserisci manualmente:",
+                      AppLocalizations.of(context).tfaOrEnterManually,
                       style: TextStyle(
                         fontSize: 12,
                         color: KyboColors.textSecondary,
@@ -415,11 +423,11 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                     const SizedBox(height: 8),
                     TextButton.icon(
                       icon: const Icon(Icons.copy, size: 16),
-                      label: const Text("Copia"),
+                      label: Text(AppLocalizations.of(context).tfaCopy),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: _secret ?? ""));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Codice copiato")),
+                          SnackBar(content: Text(AppLocalizations.of(context).tfaCodeCopied)),
                         );
                       },
                     ),
@@ -455,7 +463,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                 children: [
                   Expanded(
                     child: PillButton(
-                      label: "Annulla",
+                      label: AppLocalizations.of(context).cancel,
                       onPressed: () {
                         setState(() {
                           _isSettingUp = false;
@@ -468,7 +476,9 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: PillButton(
-                      label: _isVerifying ? "Verifica..." : "Verifica",
+                      label: _isVerifying
+                          ? AppLocalizations.of(context).tfaVerifying
+                          : AppLocalizations.of(context).tfaVerify,
                       backgroundColor: KyboColors.primary,
                       textColor: Colors.white,
                       onPressed: _isVerifying ? null : _verifyAndEnable,
@@ -539,7 +549,9 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "2FA Attivato!",
+                AppLocalizations.of(context).locale.languageCode == 'it'
+                    ? "2FA Attivato!"
+                    : "2FA Enabled!",
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -548,7 +560,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Salva questi codici di backup in un posto sicuro. Potrai usarli se perdi l'accesso al tuo authenticator.",
+                AppLocalizations.of(context).tfaBackupCodesIntro,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: KyboColors.textSecondary),
               ),
@@ -565,7 +577,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                         const Icon(Icons.key_rounded, color: KyboColors.warning),
                         const SizedBox(width: 8),
                         Text(
-                          "Codici di Backup",
+                          AppLocalizations.of(context).tfaBackupCodesTitle,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: KyboColors.textPrimary,
@@ -597,11 +609,11 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
                     const SizedBox(height: 16),
                     TextButton.icon(
                       icon: const Icon(Icons.copy),
-                      label: const Text("Copia tutti"),
+                      label: Text(AppLocalizations.of(context).tfaCopyAll),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: _backupCodes!.join('\n')));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Codici copiati")),
+                          SnackBar(content: Text(AppLocalizations.of(context).tfaCodesCopied)),
                         );
                       },
                     ),
@@ -613,7 +625,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
-                  label: "Ho salvato i codici",
+                  label: AppLocalizations.of(context).tfaSavedCodes,
                   icon: Icons.check_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
