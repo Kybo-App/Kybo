@@ -957,6 +957,101 @@ class AppLocalizations {
   String get tfaSavedCodes =>
       isItalian ? 'Ho salvato i codici' : 'I saved the codes';
 
+  // --- User management ---
+  String get userDeleteTitle =>
+      isItalian ? 'Elimina utente' : 'Delete user';
+  String get userDeleteConfirm =>
+      isItalian
+          ? 'Sei sicuro di voler eliminare questo utente?'
+          : 'Are you sure you want to delete this user?';
+  String get userDeleted =>
+      isItalian ? 'Utente eliminato.' : 'User deleted.';
+  String get userUpdated =>
+      isItalian ? 'Utente aggiornato' : 'User updated';
+  String get userCreated =>
+      isItalian ? 'Utente creato!' : 'User created!';
+  String get userAssigned =>
+      isItalian ? 'Utente assegnato!' : 'User assigned!';
+  String get userTransferred =>
+      isItalian ? 'Utente trasferito!' : 'User transferred!';
+  String get userAssignmentRemoved =>
+      isItalian ? 'Assegnazione rimossa.' : 'Assignment removed.';
+  String get userDietUploaded =>
+      isItalian ? 'Dieta caricata!' : 'Diet uploaded!';
+  String get userDietUploadError =>
+      isItalian ? 'Errore upload' : 'Upload error';
+  String get userDragPdf =>
+      isItalian ? 'Trascina un file PDF' : 'Drag a PDF file';
+  String get userSyncError =>
+      isItalian ? 'Errore Sync' : 'Sync Error';
+  String get userReportGenError =>
+      isItalian ? 'Errore generazione report' : 'Report generation error';
+  String get userNoNutritionist =>
+      isItalian ? 'Nessun nutrizionista disponibile.' : 'No nutritionist available.';
+  String userBulkAssignTitle(int n) =>
+      isItalian ? 'Assegna $n utenti' : 'Assign $n users';
+  String userBulkExported(int n) =>
+      isItalian ? 'Esportati $n utenti in CSV.' : 'Exported $n users to CSV.';
+  String get userAssignTitle =>
+      isItalian ? 'Assegna a nutrizionista' : 'Assign to nutritionist';
+  String get userManageAssignment =>
+      isItalian ? 'Gestisci assegnazione' : 'Manage assignment';
+  String get userMove => isItalian ? 'Sposta' : 'Move';
+  String get userNew => isItalian ? 'Nuovo utente' : 'New user';
+  String get userDataUnlocked =>
+      isItalian ? 'Dati sbloccati.' : 'Data unlocked.';
+  String get userUnlockFailed =>
+      isItalian ? 'Impossibile sbloccare' : 'Cannot unlock';
+  String get userParserCustom =>
+      isItalian ? 'Parser personalizzato' : 'Custom parser';
+  String get userParserPromptRequired =>
+      isItalian
+          ? 'Inserisci un prompt personalizzato'
+          : 'Enter a custom prompt';
+  String get userParserSaved =>
+      isItalian ? 'Parser personalizzato salvato!' : 'Custom parser saved!';
+  String get userParserLoadError =>
+      isItalian ? 'Errore caricamento' : 'Load error';
+  String get dietDeleteTitle =>
+      isItalian ? 'Elimina dieta' : 'Delete diet';
+  String get dietDeleteConfirm =>
+      isItalian
+          ? 'Questa azione è irreversibile. Confermi?'
+          : 'This action is irreversible. Confirm?';
+  String get dietDeleted =>
+      isItalian ? 'Dieta eliminata' : 'Diet deleted';
+  String userHistoryTitle(String name) =>
+      isItalian ? 'Storico (Secure): $name' : 'History (Secure): $name';
+  String get dietNoneInHistory =>
+      isItalian ? 'Nessuna dieta presente.' : 'No diet present.';
+  String get noteCreated =>
+      isItalian ? 'Nota creata!' : 'Note created!';
+  String get noteUpdated =>
+      isItalian ? 'Nota aggiornata!' : 'Note updated!';
+  String get noteDeleted =>
+      isItalian ? 'Nota eliminata.' : 'Note deleted.';
+  String get noteDeleteTitle =>
+      isItalian ? 'Elimina nota' : 'Delete note';
+  String get noteDeleteConfirm =>
+      isItalian
+          ? 'Sei sicuro di voler eliminare questa nota?'
+          : 'Are you sure you want to delete this note?';
+  String noteForClient(String name) =>
+      isItalian ? 'Note - $name' : 'Notes - $name';
+  String get noteAdd => isItalian ? 'Aggiungi nota' : 'Add note';
+  String get filterAllRoles =>
+      isItalian ? 'Tutti i ruoli' : 'All roles';
+  String get filterClients =>
+      isItalian ? 'Clienti' : 'Clients';
+  String get filterNutritionists =>
+      isItalian ? 'Nutrizionisti' : 'Nutritionists';
+  String get filterPT => 'PT';
+  String get filterCoach =>
+      isItalian ? 'Coach (entrambi)' : 'Coach (both)';
+  String get filterIndependents =>
+      isItalian ? 'Indipendenti' : 'Independents';
+  String get filterAdmin => 'Admin';
+
   // --- Diet templates ---
   String get dietTemplatesTab =>
       isItalian ? 'Templates Diete' : 'Diet Templates';

@@ -169,7 +169,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Sync Error: $e"),
+            content: Text("${AppLocalizations.of(context).userSyncError}: $e"),
             backgroundColor: Colors.red,
           ),
         );
@@ -181,23 +181,22 @@ class _UserManagementViewState extends State<UserManagementView> {
 
   Future<void> _deleteUser(String uid) async {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     bool confirm =
         await showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text("Elimina Utente"),
-            content: const Text(
-              "Sei sicuro? L'azione è irreversibile e verrà loggata.",
-            ),
+            title: Text(l10n.userDeleteTitle),
+            content: Text(l10n.userDeleteConfirm),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
-                child: const Text("Annulla"),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => Navigator.pop(c, true),
-                child: const Text("Elimina"),
+                child: Text(l10n.delete),
               ),
             ],
           ),
@@ -211,14 +210,14 @@ class _UserManagementViewState extends State<UserManagementView> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text("Utente eliminato.")));
+          ).showSnackBar(SnackBar(content: Text(l10n.userDeleted)));
           _refreshList();
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+          ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -244,8 +243,8 @@ class _UserManagementViewState extends State<UserManagementView> {
         if (mounted) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Dieta caricata!"),
+            SnackBar(
+              content: Text(AppLocalizations.of(context).userDietUploaded),
               backgroundColor: Colors.green,
             ),
           );
@@ -255,7 +254,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Errore upload: $e"),
+              content: Text("${AppLocalizations.of(context).userDietUploadError}: $e"),
               backgroundColor: Colors.red,
             ),
           );
@@ -276,8 +275,8 @@ class _UserManagementViewState extends State<UserManagementView> {
     if (pdf.path.isEmpty && pdf.name.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Trascina un file PDF"),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).userDragPdf),
           backgroundColor: Colors.red,
         ),
       );
@@ -552,7 +551,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore generazione report: $e"),
+            content: Text("${AppLocalizations.of(context).userReportGenError}: $e"),
             backgroundColor: Colors.red,
           ),
         );
@@ -564,11 +563,12 @@ class _UserManagementViewState extends State<UserManagementView> {
   // Itera serialmente per evitare burst sull'API e fornisce snackbar finale
   // con conteggio successi/errori.
   Future<void> _bulkAssign(Map<String, String> nutritionists) async {
+    final l10n = AppLocalizations.of(context);
     if (_selectedUids.isEmpty) return;
     if (nutritionists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Nessun nutrizionista disponibile."),
+        SnackBar(
+          content: Text(l10n.userNoNutritionist),
           backgroundColor: Colors.red,
         ),
       );
@@ -580,12 +580,14 @@ class _UserManagementViewState extends State<UserManagementView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: Text("Assegna ${_selectedUids.length} utenti"),
+          title: Text(l10n.userBulkAssignTitle(_selectedUids.length)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Stai per assegnare ${_selectedUids.length} utenti al nutrizionista selezionato.",
+                l10n.locale.languageCode == 'it'
+                    ? "Stai per assegnare ${_selectedUids.length} utenti al nutrizionista selezionato."
+                    : "You're about to assign ${_selectedUids.length} users to the selected nutritionist.",
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -601,8 +603,8 @@ class _UserManagementViewState extends State<UserManagementView> {
                     )
                     .toList(),
                 onChanged: (v) => setDialogState(() => selectedNutId = v),
-                decoration: const InputDecoration(
-                  labelText: "Seleziona Nutrizionista",
+                decoration: InputDecoration(
+                  labelText: l10n.chatSelectNutritionist,
                 ),
               ),
             ],
@@ -610,11 +612,11 @@ class _UserManagementViewState extends State<UserManagementView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("Annulla"),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Assegna"),
+              child: Text(l10n.assign),
             ),
           ],
         ),
@@ -636,13 +638,18 @@ class _UserManagementViewState extends State<UserManagementView> {
       }
     }
     if (mounted) {
+      final l10n2 = AppLocalizations.of(context);
       _clearSelection();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             errors.isEmpty
-                ? "$ok utenti assegnati con successo!"
-                : "$ok ok, ${errors.length} errori (${errors.join(', ')})",
+                ? (l10n2.locale.languageCode == 'it'
+                    ? "$ok utenti assegnati con successo!"
+                    : "$ok users assigned successfully!")
+                : (l10n2.locale.languageCode == 'it'
+                    ? "$ok ok, ${errors.length} errori (${errors.join(', ')})"
+                    : "$ok ok, ${errors.length} errors (${errors.join(', ')})"),
           ),
           backgroundColor: errors.isEmpty ? Colors.green : Colors.orange,
         ),
@@ -699,7 +706,7 @@ class _UserManagementViewState extends State<UserManagementView> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Esportati ${_selectedUids.length} utenti in CSV."),
+          content: Text(AppLocalizations.of(context).userBulkExported(_selectedUids.length)),
           backgroundColor: Colors.green,
         ),
       );
@@ -713,11 +720,12 @@ class _UserManagementViewState extends State<UserManagementView> {
     String? selectedNutId;
     if (nutritionists.isNotEmpty) selectedNutId = nutritionists.keys.first;
 
+    final l10n = AppLocalizations.of(context);
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: const Text("Assegna a Nutrizionista"),
+          title: Text(l10n.userAssignTitle),
           content: DropdownButtonFormField<String>(
             initialValue: selectedNutId,
             isExpanded: true,
@@ -727,14 +735,14 @@ class _UserManagementViewState extends State<UserManagementView> {
                 )
                 .toList(),
             onChanged: (v) => setDialogState(() => selectedNutId = v),
-            decoration: const InputDecoration(
-              labelText: "Seleziona Nutrizionista",
+            decoration: InputDecoration(
+              labelText: l10n.chatSelectNutritionist,
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Annulla"),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -748,7 +756,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Utente assegnato!")),
+                      SnackBar(content: Text(l10n.userAssigned)),
                     );
                     _refreshList();
                   }
@@ -756,7 +764,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("Errore: $e"),
+                        content: Text("${l10n.error}: $e"),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -765,7 +773,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) setState(() => _isLoading = false);
                 }
               },
-              child: const Text("Assegna"),
+              child: Text(l10n.assign),
             ),
           ],
         ),
@@ -779,18 +787,21 @@ class _UserManagementViewState extends State<UserManagementView> {
   ) async {
     String? selectedNutId;
     if (nutritionists.isNotEmpty) selectedNutId = nutritionists.keys.first;
+    final l10n = AppLocalizations.of(context);
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: const Text("Gestisci Assegnazione"),
+          title: Text(l10n.userManageAssignment),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "Sposta utente ad un altro nutrizionista:",
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                l10n.locale.languageCode == 'it'
+                    ? "Sposta utente ad un altro nutrizionista:"
+                    : "Move user to another nutritionist:",
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               DropdownButtonFormField<String>(
                 initialValue: selectedNutId,
@@ -802,16 +813,20 @@ class _UserManagementViewState extends State<UserManagementView> {
                     )
                     .toList(),
                 onChanged: (v) => setDialogState(() => selectedNutId = v),
-                decoration: const InputDecoration(
-                  labelText: "Nuovo Nutrizionista",
+                decoration: InputDecoration(
+                  labelText: l10n.locale.languageCode == 'it'
+                      ? "Nuovo nutrizionista"
+                      : "New nutritionist",
                 ),
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 icon: const Icon(Icons.person_off, color: Colors.red),
-                label: const Text(
-                  "Rimuovi Assegnazione",
-                  style: TextStyle(color: Colors.red),
+                label: Text(
+                  l10n.locale.languageCode == 'it'
+                      ? "Rimuovi assegnazione"
+                      : "Remove assignment",
+                  style: const TextStyle(color: Colors.red),
                 ),
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -820,7 +835,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     await _repo.unassignUser(targetUid);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Assegnazione rimossa.")),
+                        SnackBar(content: Text(l10n.userAssignmentRemoved)),
                       );
                       _refreshList();
                     }
@@ -828,7 +843,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     if (mounted) {
                       ScaffoldMessenger.of(
                         context,
-                      ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+                      ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
                     }
                   } finally {
                     if (mounted) setState(() => _isLoading = false);
@@ -840,7 +855,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Annulla"),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -854,7 +869,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Utente trasferito!")),
+                      SnackBar(content: Text(l10n.userTransferred)),
                     );
                     _refreshList();
                   }
@@ -862,13 +877,13 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+                    ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
                 }
               },
-              child: const Text("Sposta"),
+              child: Text(l10n.userMove),
             ),
           ],
         ),
@@ -877,6 +892,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   Future<void> _showCreateUserDialog() async {
+    final l10n = AppLocalizations.of(context);
     final emailCtrl = TextEditingController();
     final passCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
@@ -885,28 +901,28 @@ class _UserManagementViewState extends State<UserManagementView> {
     String role = 'user';
 
     List<DropdownMenuItem<String>> allowedRoles = [
-      const DropdownMenuItem(value: 'user', child: Text("Cliente")),
+      DropdownMenuItem(value: 'user', child: Text(l10n.roleClient)),
     ];
 
     if (_currentUserRole == 'admin') {
       allowedRoles.addAll([
-        const DropdownMenuItem(
+        DropdownMenuItem(
           value: 'nutritionist',
-          child: Text("Nutrizionista"),
+          child: Text(l10n.roleNutritionist),
         ),
-        const DropdownMenuItem(
+        DropdownMenuItem(
           value: 'personal_trainer',
-          child: Text("Personal Trainer"),
+          child: Text(l10n.rolePersonalTrainer),
         ),
-        const DropdownMenuItem(
+        DropdownMenuItem(
           value: 'coach',
-          child: Text("Coach (Nutri+PT)"),
+          child: Text(l10n.roleCoach),
         ),
-        const DropdownMenuItem(
+        DropdownMenuItem(
           value: 'independent',
-          child: Text("Indipendente"),
+          child: Text(l10n.roleIndependent),
         ),
-        const DropdownMenuItem(value: 'admin', child: Text("Admin")),
+        DropdownMenuItem(value: 'admin', child: Text(l10n.roleAdmin)),
       ]);
     }
 
@@ -914,7 +930,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: const Text("Nuovo Utente"),
+          title: Text(l10n.userNew),
           content: SingleChildScrollView(
             child: SizedBox(
               width: 400,
@@ -926,15 +942,15 @@ class _UserManagementViewState extends State<UserManagementView> {
                       Expanded(
                         child: TextField(
                           controller: nameCtrl,
-                          decoration: const InputDecoration(labelText: "Nome"),
+                          decoration: InputDecoration(labelText: l10n.firstName),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: TextField(
                           controller: surnameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: "Cognome",
+                          decoration: InputDecoration(
+                            labelText: l10n.lastName,
                           ),
                         ),
                       ),
@@ -949,14 +965,16 @@ class _UserManagementViewState extends State<UserManagementView> {
                   ),
                   TextField(
                     controller: passCtrl,
-                    decoration: const InputDecoration(
-                      labelText: "Password Temp",
-                      prefixIcon: Icon(Icons.key),
+                    decoration: InputDecoration(
+                      labelText: l10n.locale.languageCode == 'it'
+                          ? "Password temp"
+                          : "Temp password",
+                      prefixIcon: const Icon(Icons.key),
                     ),
                   ),
                   DropdownButtonFormField<String>(
                     initialValue: role,
-                    decoration: const InputDecoration(labelText: "Ruolo"),
+                    decoration: InputDecoration(labelText: l10n.role),
                     items: allowedRoles,
                     onChanged: (v) => setDialogState(() => role = v!),
                   ),
@@ -965,9 +983,9 @@ class _UserManagementViewState extends State<UserManagementView> {
                      TextField(
                       controller: limitCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: "Limite Clienti (Opzionale)",
-                        hintText: "Default: 50",
+                      decoration: InputDecoration(
+                        labelText: l10n.clientLimit,
+                        hintText: 'Default: 50',
                       ),
                     ),
                   ]
@@ -978,7 +996,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text("Annulla"),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -995,7 +1013,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Utente creato!")),
+                      SnackBar(content: Text(l10n.userCreated)),
                     );
                     _refreshList();
                   }
@@ -1003,13 +1021,13 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+                    ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
                 }
               },
-              child: const Text("Crea"),
+              child: Text(l10n.create),
             ),
           ],
         ),
@@ -1102,29 +1120,29 @@ class _UserManagementViewState extends State<UserManagementView> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _roleFilter,
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'all',
-                          child: Text("Tutti i Ruoli"),
+                          child: Text(AppLocalizations.of(context).filterAllRoles),
                         ),
-                        DropdownMenuItem(value: 'user', child: Text("Clienti")),
+                        DropdownMenuItem(value: 'user', child: Text(AppLocalizations.of(context).filterClients)),
                         DropdownMenuItem(
                           value: 'nutritionist',
-                          child: Text("Nutrizionisti"),
+                          child: Text(AppLocalizations.of(context).filterNutritionists),
                         ),
                         DropdownMenuItem(
                           value: 'personal_trainer',
-                          child: Text("PT"),
+                          child: Text(AppLocalizations.of(context).filterPT),
                         ),
                         DropdownMenuItem(
                           value: 'coach',
-                          child: Text("Coach (Entrambi)"),
+                          child: Text(AppLocalizations.of(context).filterCoach),
                         ),
                         DropdownMenuItem(
                           value: 'independent',
-                          child: Text("Indipendenti"),
+                          child: Text(AppLocalizations.of(context).filterIndependents),
                         ),
-                        DropdownMenuItem(value: 'admin', child: Text("Admin")),
+                        DropdownMenuItem(value: 'admin', child: Text(AppLocalizations.of(context).filterAdmin)),
                       ],
                       onChanged: (val) => setState(() => _roleFilter = val!),
                       icon: Icon(
@@ -1783,8 +1801,8 @@ class _UserCardState extends State<_UserCard> {
       if (mounted) {
         setState(() => _isUnlocked = true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Dati sbloccati."),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).userDataUnlocked),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1793,7 +1811,7 @@ class _UserCardState extends State<_UserCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Impossibile sbloccare: $e"),
+            content: Text("${AppLocalizations.of(context).userUnlockFailed}: $e"),
             backgroundColor: Colors.red,
           ),
         );
@@ -2311,21 +2329,22 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
   }
 
   void _deleteDiet(BuildContext context, String dietId) async {
+    final l10n = AppLocalizations.of(context);
     bool confirm =
         await showDialog(
           context: context,
           builder: (c) => AlertDialog(
-            title: const Text("Elimina Dieta"),
-            content: const Text("Questa azione è irreversibile. Confermi?"),
+            title: Text(l10n.dietDeleteTitle),
+            content: Text(l10n.dietDeleteConfirm),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(c, false),
-                child: const Text("Annulla"),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => Navigator.pop(c, true),
-                child: const Text("Elimina"),
+                child: Text(l10n.delete),
               ),
             ],
           ),
@@ -2338,7 +2357,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(const SnackBar(content: Text("Dieta eliminata")));
+          ).showSnackBar(SnackBar(content: Text(l10n.dietDeleted)));
           setState(
             () => _historyFuture = _repo.getSecureUserHistory(widget.targetUid),
           );
@@ -2347,7 +2366,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+          ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
         }
       }
     }
@@ -2363,7 +2382,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Storico (Secure): ${widget.userName}")),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).userHistoryTitle(widget.userName))),
       body: FutureBuilder<List<dynamic>>(
         future: _historyFuture,
         builder: (context, snapshot) {
@@ -2373,7 +2392,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                "Errore Audit Log: ${snapshot.error}",
+                "${AppLocalizations.of(context).auditTitle}: ${snapshot.error}",
                 style: const TextStyle(color: Colors.red),
               ),
             );
@@ -2381,7 +2400,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
 
           final list = snapshot.data ?? [];
           if (list.isEmpty) {
-            return const Center(child: Text("Nessuna dieta presente."));
+            return Center(child: Text(AppLocalizations.of(context).dietNoneInHistory));
           }
 
           return ListView.separated(
@@ -2538,7 +2557,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Errore caricamento: $e")));
+        ).showSnackBar(SnackBar(content: Text("${AppLocalizations.of(context).userParserLoadError}: $e")));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -2546,9 +2565,10 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
   }
 
   Future<void> _uploadPrompt() async {
+    final l10n = AppLocalizations.of(context);
     if (_promptController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Inserisci un prompt personalizzato")),
+        SnackBar(content: Text(l10n.userParserPromptRequired)),
       );
       return;
     }
@@ -2568,7 +2588,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Parser personalizzato salvato!")),
+          SnackBar(content: Text(l10n.userParserSaved)),
         );
         Navigator.pop(context);
       }
@@ -2576,7 +2596,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("Errore: $e")));
+        ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -2587,7 +2607,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Parser Personalizzato"),
+        title: Text(AppLocalizations.of(context).userParserCustom),
         actions: [
           if (!_isLoading)
             IconButton(icon: const Icon(Icons.save), onPressed: _uploadPrompt),
@@ -2789,7 +2809,9 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Categoria",
+                  AppLocalizations.of(context).locale.languageCode == 'it'
+                      ? "Categoria"
+                      : "Category",
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 12,
@@ -2825,7 +2847,9 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                   maxLines: 5,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: "Scrivi la nota...",
+                    hintText: AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "Scrivi la nota..."
+                        : "Write the note...",
                     hintStyle: TextStyle(color: KyboColors.textMuted),
                     filled: true,
                     fillColor: KyboColors.background,
@@ -2849,7 +2873,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text("Annulla", style: TextStyle(color: KyboColors.textSecondary)),
+              child: Text(AppLocalizations.of(context).cancel, style: TextStyle(color: KyboColors.textSecondary)),
             ),
             FilledButton(
               onPressed: () async {
@@ -2864,21 +2888,21 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Nota creata!")),
+                      SnackBar(content: Text(AppLocalizations.of(context).noteCreated)),
                     );
                     _refreshNotes();
                   }
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+                      SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
                 }
               },
-              child: const Text("Salva"),
+              child: Text(AppLocalizations.of(context).save),
             ),
           ],
         ),
@@ -2897,7 +2921,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           backgroundColor: KyboColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            "Modifica Nota",
+            AppLocalizations.of(ctx).edit,
             style: TextStyle(color: KyboColors.textPrimary),
           ),
           content: SizedBox(
@@ -2907,7 +2931,9 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Categoria",
+                  AppLocalizations.of(context).locale.languageCode == 'it'
+                      ? "Categoria"
+                      : "Category",
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 12,
@@ -2943,7 +2969,9 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                   maxLines: 5,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: "Scrivi la nota...",
+                    hintText: AppLocalizations.of(context).locale.languageCode == 'it'
+                        ? "Scrivi la nota..."
+                        : "Write the note...",
                     hintStyle: TextStyle(color: KyboColors.textMuted),
                     filled: true,
                     fillColor: KyboColors.background,
@@ -2967,7 +2995,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text("Annulla", style: TextStyle(color: KyboColors.textSecondary)),
+              child: Text(AppLocalizations.of(context).cancel, style: TextStyle(color: KyboColors.textSecondary)),
             ),
             FilledButton(
               onPressed: () async {
@@ -2983,21 +3011,21 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Nota aggiornata!")),
+                      SnackBar(content: Text(AppLocalizations.of(context).noteUpdated)),
                     );
                     _refreshNotes();
                   }
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+                      SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
                 }
               },
-              child: const Text("Salva"),
+              child: Text(AppLocalizations.of(context).save),
             ),
           ],
         ),
@@ -3009,17 +3037,17 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text("Elimina Nota"),
-        content: const Text("Sei sicuro di voler eliminare questa nota?"),
+        title: Text(AppLocalizations.of(c).noteDeleteTitle),
+        content: Text(AppLocalizations.of(c).noteDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text("Annulla"),
+            child: Text(AppLocalizations.of(c).cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text("Elimina"),
+            child: Text(AppLocalizations.of(c).delete),
           ),
         ],
       ),
@@ -3035,14 +3063,14 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Nota eliminata.")),
+          SnackBar(content: Text(AppLocalizations.of(context).noteDeleted)),
         );
         _refreshNotes();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -3061,7 +3089,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
         );
       }
     }
@@ -3071,7 +3099,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Note - ${widget.clientName}"),
+        title: Text(AppLocalizations.of(context).noteForClient(widget.clientName)),
         actions: [
           if (!_isLoading)
             IconButton(
@@ -3117,7 +3145,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                         FilledButton.icon(
                           onPressed: _showAddNoteDialog,
                           icon: const Icon(Icons.add),
-                          label: const Text("Aggiungi Nota"),
+                          label: Text(AppLocalizations.of(context).noteAdd),
                         ),
                       ],
                     ),
