@@ -23,10 +23,19 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
 
   // Nomi giorno preimpostati per velocizzare la creazione scheda: tipici split
   // usati dai personal trainer (push/pull/legs, upper/lower, ecc.).
-  static const List<String> _dayPresets = [
-    'Push', 'Pull', 'Gambe', 'Upper Body', 'Lower Body',
-    'Full Body', 'Core', 'Cardio', 'Mobility', 'Riposo',
-  ];
+  // Localizzati a runtime via _localizedDayPresets(l10n).
+  List<String> _localizedDayPresets(AppLocalizations l10n) => [
+        l10n.dayPresetPush,
+        l10n.dayPresetPull,
+        l10n.dayPresetLegs,
+        l10n.dayPresetUpper,
+        l10n.dayPresetLower,
+        l10n.dayPresetFullBody,
+        l10n.dayPresetCore,
+        l10n.dayPresetCardio,
+        l10n.dayPresetMobility,
+        l10n.dayPresetRest,
+      ];
 
   @override
   void initState() {
@@ -50,7 +59,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text('${AppLocalizations.of(context).error}: $e'),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -107,7 +116,9 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  existing == null ? 'Nuova Scheda' : 'Modifica Scheda',
+                  existing == null
+                      ? AppLocalizations.of(ctx).workoutNewPlan
+                      : AppLocalizations.of(ctx).workoutEditPlan,
                   style: TextStyle(
                     color: KyboColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -124,13 +135,13 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                   children: [
                     PillTextField(
                       controller: nameCtrl,
-                      hintText: 'Nome scheda (es. "Push Pull Legs")',
+                      hintText: AppLocalizations.of(ctx).workoutNamePlaceholder,
                       prefixIcon: Icons.fitness_center_rounded,
                     ),
                     const SizedBox(height: 12),
                     PillTextField(
                       controller: descCtrl,
-                      hintText: 'Descrizione (opzionale)',
+                      hintText: AppLocalizations.of(ctx).workoutDescriptionOptional,
                       prefixIcon: Icons.description_rounded,
                     ),
                     const SizedBox(height: 12),
@@ -202,7 +213,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                     Row(
                       children: [
                         Text(
-                          'Giorni di allenamento',
+                          AppLocalizations.of(ctx).workoutDays,
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -213,11 +224,11 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         PillIconButton(
                           icon: Icons.add_rounded,
                           color: KyboColors.primary,
-                          tooltip: 'Aggiungi giorno',
+                          tooltip: AppLocalizations.of(ctx).workoutAddDay,
                           onPressed: () {
                             setDialogState(() {
                               days.add({
-                                'day_name': 'Giorno ${days.length + 1}',
+                                'day_name': AppLocalizations.of(ctx).workoutDayDefault(days.length + 1),
                                 'exercises': <Map<String, dynamic>>[],
                                 'notes': '',
                               });
@@ -234,7 +245,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         child: Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children: _dayPresets.map((p) => ActionChip(
+                          children: _localizedDayPresets(AppLocalizations.of(ctx)).map((p) => ActionChip(
                             label: Text(p, style: const TextStyle(fontSize: 12)),
                             onPressed: () {
                               setDialogState(() {
@@ -278,7 +289,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                       fontSize: 14,
                                     ),
                                     decoration: InputDecoration(
-                                      hintText: 'Nome giorno',
+                                      hintText: AppLocalizations.of(context).workoutDayName,
                                       hintStyle: TextStyle(
                                           color: KyboColors.textMuted),
                                       border: InputBorder.none,
@@ -290,7 +301,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                 PillIconButton(
                                   icon: Icons.add_rounded,
                                   color: KyboColors.primary,
-                                  tooltip: 'Aggiungi esercizio',
+                                  tooltip: AppLocalizations.of(context).workoutAddExercise,
                                   size: 32,
                                   onPressed: () {
                                     setDialogState(() {
@@ -308,7 +319,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                 PillIconButton(
                                   icon: Icons.delete_rounded,
                                   color: KyboColors.error,
-                                  tooltip: 'Rimuovi giorno',
+                                  tooltip: AppLocalizations.of(context).workoutRemoveDay,
                                   size: 32,
                                   onPressed: () {
                                     setDialogState(() => days.removeAt(dayIdx));
@@ -353,7 +364,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                           flex: 4,
                                           child: _miniField(
                                             value: ex['name'] ?? '',
-                                            hint: 'Esercizio',
+                                            hint: AppLocalizations.of(context).workoutExerciseName,
                                             onChanged: (v) {
                                               (day['exercises'] as List)[exIdx]
                                                   ['name'] = v;
@@ -364,7 +375,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                         Expanded(
                                           child: _miniField(
                                             value: '${ex['sets'] ?? 3}',
-                                            hint: 'Set',
+                                            hint: AppLocalizations.of(context).workoutFieldSet,
                                             onChanged: (v) {
                                               (day['exercises'] as List)[exIdx]
                                                   ['sets'] = int.tryParse(v) ?? 3;
@@ -375,7 +386,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                         Expanded(
                                           child: _miniField(
                                             value: ex['reps'] ?? '10',
-                                            hint: 'Reps',
+                                            hint: AppLocalizations.of(context).workoutFieldReps,
                                             onChanged: (v) {
                                               (day['exercises'] as List)[exIdx]
                                                   ['reps'] = v;
@@ -386,7 +397,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                         Expanded(
                                           child: _miniField(
                                             value: ex['weight_kg']?.toString() ?? '',
-                                            hint: 'Kg',
+                                            hint: AppLocalizations.of(context).workoutFieldKg,
                                             onChanged: (v) {
                                               final parsed = double.tryParse(v.replaceAll(',', '.'));
                                               (day['exercises'] as List)[exIdx]
@@ -398,7 +409,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                         Expanded(
                                           child: _miniField(
                                             value: '${ex['rest_seconds'] ?? 90}',
-                                            hint: 'Rest(s)',
+                                            hint: AppLocalizations.of(context).workoutFieldRest,
                                             onChanged: (v) {
                                               (day['exercises'] as List)[exIdx]
                                                       ['rest_seconds'] =
@@ -423,7 +434,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                       padding: const EdgeInsets.only(top: 4, left: 32),
                                       child: _miniField(
                                         value: ex['notes'] ?? '',
-                                        hint: 'Note / tecnica (opzionale)',
+                                        hint: AppLocalizations.of(context).workoutNotesTechnique,
                                         onChanged: (v) {
                                           (day['exercises'] as List)[exIdx]
                                               ['notes'] = v;
@@ -445,11 +456,13 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Annulla',
+                child: Text(AppLocalizations.of(ctx).cancel,
                     style: TextStyle(color: KyboColors.textSecondary)),
               ),
               PillButton(
-                label: existing == null ? 'Crea' : 'Salva',
+                label: existing == null
+                    ? AppLocalizations.of(ctx).create
+                    : AppLocalizations.of(ctx).save,
                 icon: existing == null ? Icons.add : Icons.save,
                 backgroundColor: KyboColors.primary,
                 textColor: Colors.white,
@@ -461,7 +474,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         final name = nameCtrl.text.trim();
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Nome obbligatorio')),
+                            SnackBar(content: Text(AppLocalizations.of(context).workoutNameRequired)),
                           );
                           return;
                         }
@@ -492,7 +505,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Errore: $e'),
+                                content: Text('${AppLocalizations.of(context).error}: $e'),
                                 backgroundColor: KyboColors.error,
                               ),
                             );
@@ -572,9 +585,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Verrà creata una copia di "${template['name'] ?? 'template'}" '
-                  'assegnata all\'utente selezionato. Il template originale '
-                  'resta riutilizzabile.',
+                  AppLocalizations.of(ctx).workoutTemplateUseBody(
+                      (template['name'] ?? 'template').toString()),
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 13,
@@ -591,7 +603,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                   )
                 else
                   Text(
-                    'Nessun cliente disponibile.',
+                    AppLocalizations.of(ctx).workoutNoClientsAvailable,
                     style: TextStyle(color: KyboColors.textMuted),
                   ),
               ],
@@ -600,7 +612,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Annulla',
+              child: Text(AppLocalizations.of(ctx).cancel,
                   style: TextStyle(color: KyboColors.textSecondary)),
             ),
             PillButton(
@@ -616,7 +628,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       final uid = selectedUid;
                       if (uid == null || uid.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Seleziona un utente')),
+                          SnackBar(content: Text(AppLocalizations.of(context).workoutSelectUser)),
                         );
                         return;
                       }
@@ -639,7 +651,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Errore: $e'),
+                              content: Text('${AppLocalizations.of(context).error}: $e'),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -673,7 +685,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
               Icon(Icons.person_add_rounded, color: KyboColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Assegna scheda',
+                AppLocalizations.of(ctx).workoutAssignDialog,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -688,9 +700,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '"${plan['name'] ?? 'Scheda'}" verrà assegnata all\'utente '
-                  'indicato. Se la scheda era già assegnata a qualcun altro, '
-                  'gli verrà rimossa dalla home.',
+                  AppLocalizations.of(ctx).workoutAssignBody(
+                      (plan['name'] ?? '').toString()),
                   style: TextStyle(
                     color: KyboColors.textSecondary,
                     fontSize: 13,
@@ -717,11 +728,11 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Annulla',
+              child: Text(AppLocalizations.of(ctx).cancel,
                   style: TextStyle(color: KyboColors.textSecondary)),
             ),
             PillButton(
-              label: 'Assegna',
+              label: AppLocalizations.of(ctx).assign,
               icon: Icons.check_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -733,7 +744,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       final uid = uidCtrl.text.trim();
                       if (uid.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('UID obbligatorio')),
+                          SnackBar(content: Text(AppLocalizations.of(context).workoutSelectUser)),
                         );
                         return;
                       }
@@ -744,7 +755,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('Scheda assegnata ✓'),
+                              content: Text(AppLocalizations.of(context).workoutAssignedOk),
                               backgroundColor: KyboColors.success,
                             ),
                           );
@@ -754,7 +765,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Errore: $e'),
+                              content: Text('${AppLocalizations.of(context).error}: $e'),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -778,18 +789,18 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
       builder: (ctx) => AlertDialog(
         backgroundColor: KyboColors.surface,
         shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-        title: Text('Elimina scheda',
+        title: Text(AppLocalizations.of(ctx).workoutDeleteTitle,
             style: TextStyle(color: KyboColors.textPrimary)),
-        content: Text('Vuoi eliminare "$name"? L\'azione è irreversibile.',
+        content: Text(AppLocalizations.of(ctx).workoutDeleteConfirm(name),
             style: TextStyle(color: KyboColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Annulla',
+            child: Text(AppLocalizations.of(ctx).cancel,
                 style: TextStyle(color: KyboColors.textSecondary)),
           ),
           PillButton(
-            label: 'Elimina',
+            label: AppLocalizations.of(ctx).delete,
             icon: Icons.delete_rounded,
             backgroundColor: KyboColors.error,
             textColor: Colors.white,
@@ -808,7 +819,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Errore: $e'),
+              content: Text('${AppLocalizations.of(context).error}: $e'),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -828,7 +839,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                 color: KyboColors.primary, size: 22),
             const SizedBox(width: 10),
             Text(
-              'Gestione Schede Allenamento',
+              AppLocalizations.of(context).workoutMgmtTitle,
               style: TextStyle(
                 color: KyboColors.textPrimary,
                 fontSize: 20,
@@ -837,7 +848,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
             ),
             const Spacer(),
             PillButton(
-              label: 'Nuova Scheda',
+              label: AppLocalizations.of(context).workoutNewPlan,
               icon: Icons.add_rounded,
               backgroundColor: KyboColors.primary,
               textColor: Colors.white,
@@ -862,7 +873,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                               size: 56, color: KyboColors.textMuted),
                           const SizedBox(height: 16),
                           Text(
-                            'Nessuna scheda creata',
+                            AppLocalizations.of(context).workoutNoneCreated,
                             style: TextStyle(
                               fontSize: 16,
                               color: KyboColors.textSecondary,
@@ -870,7 +881,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Crea la prima scheda allenamento',
+                            AppLocalizations.of(context).workoutCreateFirst,
                             style: TextStyle(
                               fontSize: 13,
                               color: KyboColors.textMuted,
@@ -1018,7 +1029,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       ),
                     if (!isActive)
                       PillBadge(
-                        label: 'Disattivata',
+                        label: AppLocalizations.of(context).workoutDisabled,
                         icon: Icons.visibility_off_rounded,
                         color: KyboColors.error,
                       ),
@@ -1056,7 +1067,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       const SizedBox(width: 8),
                       _buildInfoChip(
                         Icons.person_rounded,
-                        'Assegnata',
+                        AppLocalizations.of(context).workoutAssigned,
                         KyboColors.success,
                       ),
                     ],
@@ -1081,21 +1092,21 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                 PillIconButton(
                   icon: Icons.person_add_rounded,
                   color: KyboColors.success,
-                  tooltip: 'Assegna a utente',
+                  tooltip: AppLocalizations.of(context).workoutAssignToUser,
                   onPressed: () => _assignPlan(plan),
                 ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.edit_rounded,
                 color: KyboColors.primary,
-                tooltip: 'Modifica',
+                tooltip: AppLocalizations.of(context).edit,
                 onPressed: () => _showCreateEditDialog(existing: plan),
               ),
               const SizedBox(width: 4),
               PillIconButton(
                 icon: Icons.delete_rounded,
                 color: KyboColors.error,
-                tooltip: 'Elimina',
+                tooltip: AppLocalizations.of(context).delete,
                 onPressed: () =>
                     _deletePlan(plan['id'], plan['name'] ?? ''),
               ),
@@ -1158,7 +1169,7 @@ class _ClientPicker extends StatelessWidget {
       isExpanded: true,
       decoration: InputDecoration(
         prefixIcon: Icon(Icons.person_rounded, color: KyboColors.textMuted),
-        hintText: 'Assegna subito a un cliente (opzionale)',
+        hintText: AppLocalizations.of(context).workoutAssignNowOptional,
         filled: true,
         fillColor: KyboColors.background,
         border: OutlineInputBorder(

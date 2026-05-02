@@ -816,6 +816,88 @@ class AppLocalizations {
   String get serverErrorsLabel =>
       isItalian ? 'Errori' : 'Errors';
 
+  // --- Workout management ---
+  String get workoutMgmtTitle =>
+      isItalian ? 'Gestione Schede Allenamento' : 'Workout Plan Management';
+  String get workoutNewPlan =>
+      isItalian ? 'Nuova scheda' : 'New plan';
+  String get workoutEditPlan =>
+      isItalian ? 'Modifica scheda' : 'Edit plan';
+  String get workoutNamePlaceholder =>
+      isItalian
+          ? 'Nome scheda (es. "Push Pull Legs")'
+          : 'Plan name (e.g. "Push Pull Legs")';
+  String get workoutDescriptionOptional =>
+      isItalian ? 'Descrizione (opzionale)' : 'Description (optional)';
+  String get workoutDays =>
+      isItalian ? 'Giorni di allenamento' : 'Training days';
+  String get workoutAddDay =>
+      isItalian ? 'Aggiungi giorno' : 'Add day';
+  String workoutDayDefault(int n) =>
+      isItalian ? 'Giorno $n' : 'Day $n';
+  String get workoutDayName =>
+      isItalian ? 'Nome giorno' : 'Day name';
+  String get workoutAddExercise =>
+      isItalian ? 'Aggiungi esercizio' : 'Add exercise';
+  String get workoutRemoveDay =>
+      isItalian ? 'Rimuovi giorno' : 'Remove day';
+  String get workoutExerciseName =>
+      isItalian ? 'Esercizio' : 'Exercise';
+  String get workoutFieldSet => isItalian ? 'Set' : 'Set';
+  String get workoutFieldReps => 'Reps';
+  String get workoutFieldKg => 'Kg';
+  String get workoutFieldRest => 'Rest(s)';
+  String get workoutNotesTechnique =>
+      isItalian ? 'Note / tecnica (opzionale)' : 'Notes / technique (optional)';
+  String get workoutNameRequired =>
+      isItalian ? 'Nome obbligatorio' : 'Name is required';
+  String get workoutAssignDialog =>
+      isItalian ? 'Assegna scheda' : 'Assign plan';
+  String workoutAssignBody(String name) =>
+      isItalian
+          ? '"$name" verrà assegnata all\'utente indicato. Se la scheda era già assegnata a qualcun altro, gli verrà rimossa dalla home.'
+          : '"$name" will be assigned to the selected user. If the plan was already assigned, it will be removed from their home.';
+  String get workoutAssignedOk =>
+      isItalian ? 'Scheda assegnata ✓' : 'Plan assigned ✓';
+  String get workoutSelectUser =>
+      isItalian ? 'Seleziona un utente' : 'Select a user';
+  String get workoutNoClientsAvailable =>
+      isItalian ? 'Nessun cliente disponibile.' : 'No clients available.';
+  String workoutTemplateUseBody(String name) =>
+      isItalian
+          ? 'Verrà creata una copia di "$name" assegnata all\'utente selezionato. Il template originale resta riutilizzabile.'
+          : 'A copy of "$name" will be created and assigned to the selected user. The original template remains reusable.';
+  String get workoutDeleteTitle =>
+      isItalian ? 'Elimina scheda' : 'Delete plan';
+  String workoutDeleteConfirm(String name) =>
+      isItalian
+          ? 'Vuoi eliminare "$name"? L\'azione è irreversibile.'
+          : 'Delete "$name"? This action is irreversible.';
+  String get workoutNoneCreated =>
+      isItalian ? 'Nessuna scheda creata' : 'No plan created';
+  String get workoutCreateFirst =>
+      isItalian ? 'Crea la prima scheda allenamento' : 'Create the first workout plan';
+  String get workoutDisabled =>
+      isItalian ? 'Disattivata' : 'Disabled';
+  String get workoutAssigned =>
+      isItalian ? 'Assegnata' : 'Assigned';
+  String get workoutAssignToUser =>
+      isItalian ? 'Assegna a utente' : 'Assign to user';
+  String get workoutAssignNowOptional =>
+      isItalian
+          ? 'Assegna subito a un cliente (opzionale)'
+          : 'Assign immediately to a client (optional)';
+  String get dayPresetPush => 'Push';
+  String get dayPresetPull => 'Pull';
+  String get dayPresetLegs => isItalian ? 'Gambe' : 'Legs';
+  String get dayPresetUpper => isItalian ? 'Upper Body' : 'Upper Body';
+  String get dayPresetLower => isItalian ? 'Lower Body' : 'Lower Body';
+  String get dayPresetFullBody => isItalian ? 'Full Body' : 'Full Body';
+  String get dayPresetCore => 'Core';
+  String get dayPresetCardio => 'Cardio';
+  String get dayPresetMobility => 'Mobility';
+  String get dayPresetRest => isItalian ? 'Riposo' : 'Rest';
+
   // --- Diet templates ---
   String get dietTemplatesTab =>
       isItalian ? 'Templates Diete' : 'Diet Templates';
