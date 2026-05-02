@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 // Dashboard metriche server: stato servizi, chiamate Gemini, cache hit ratio e infrastruttura (OCR, Redis).
@@ -72,6 +73,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
   }
 
   Widget _buildHeader() {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Container(
@@ -89,7 +91,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Server & Metriche',
+                l10n.serverAndMetricsTitle,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontSize: 20,
@@ -98,14 +100,15 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               ),
               if (_lastRefresh != null)
                 Text(
-                  'Aggiornato alle ${_lastRefresh!.hour.toString().padLeft(2, '0')}:${_lastRefresh!.minute.toString().padLeft(2, '0')}:${_lastRefresh!.second.toString().padLeft(2, '0')}',
+                  l10n.serverUpdatedAt(
+                      '${_lastRefresh!.hour.toString().padLeft(2, '0')}:${_lastRefresh!.minute.toString().padLeft(2, '0')}:${_lastRefresh!.second.toString().padLeft(2, '0')}'),
                   style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
             ],
           ),
         ),
         PillButton(
-          label: 'Aggiorna',
+          label: l10n.refresh,
           icon: Icons.refresh_rounded,
           height: 38,
           onPressed: _loading ? null : _load,
@@ -115,6 +118,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
   }
 
   Widget _buildError() {
+    final l10n = AppLocalizations.of(context);
     return Expanded(
       child: Center(
         child: Column(
@@ -123,7 +127,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
             Icon(Icons.error_outline_rounded, color: KyboColors.error, size: 48),
             const SizedBox(height: 16),
             Text(
-              'Errore nel caricamento metriche',
+              l10n.serverMetricsError,
               style: TextStyle(
                 color: KyboColors.textPrimary,
                 fontWeight: FontWeight.w600,
@@ -137,7 +141,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            PillButton(label: 'Riprova', icon: Icons.refresh_rounded, onPressed: _load),
+            PillButton(label: l10n.retry, icon: Icons.refresh_rounded, onPressed: _load),
           ],
         ),
       ),
@@ -145,6 +149,8 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
   }
 
   Widget _buildContent() {
+    final l10n = AppLocalizations.of(context);
+    final isItalian = l10n.locale.languageCode == 'it';
     final overallStatus = _health?['status'] as String? ?? 'unknown';
     final warnings = (_health?['warnings'] as List<dynamic>?) ?? [];
     final diet = (_metrics?['diet_parser'] as Map<String, dynamic>?) ?? {};
@@ -166,24 +172,28 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               Expanded(
                 child: _SummaryCard(
                   icon: Icons.health_and_safety_rounded,
-                  label: 'Stato Server',
-                  value: overallStatus == 'healthy' ? 'Healthy' : 'Unhealthy',
+                  label: l10n.serverStatus,
+                  value: overallStatus == 'healthy'
+                      ? l10n.serverHealthy
+                      : l10n.serverUnhealthy,
                   valueColor: overallStatus == 'healthy'
                       ? KyboColors.success
                       : KyboColors.error,
                   sub: warnings.isNotEmpty
                       ? '${warnings.length} warning'
-                      : 'Tutti i servizi ok',
+                      : l10n.serverAllOk,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _SummaryCard(
                   icon: Icons.auto_awesome_rounded,
-                  label: 'Chiamate Gemini',
+                  label: l10n.serverGeminiCalls,
                   value: totalCalls.toString(),
                   valueColor: KyboColors.primary,
-                  sub: totalErrors > 0 ? '$totalErrors errori' : 'Nessun errore',
+                  sub: totalErrors > 0
+                      ? l10n.serverErrorCount(totalErrors)
+                      : l10n.serverNoErrors,
                   subColor: totalErrors > 0 ? KyboColors.error : null,
                 ),
               ),
@@ -191,7 +201,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               Expanded(
                 child: _SummaryCard(
                   icon: Icons.layers_rounded,
-                  label: 'Cache L1 Hit',
+                  label: l10n.serverCacheL1Hit,
                   value: l1Ratio,
                   valueColor: _ratioColor(l1),
                   sub: 'RAM in-process',
@@ -201,14 +211,16 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               Expanded(
                 child: _SummaryCard(
                   icon: Icons.storage_rounded,
-                  label: 'Redis',
-                  value: redis['available'] == true ? 'Online' : 'Offline',
+                  label: l10n.serverRedis,
+                  value: redis['available'] == true
+                      ? l10n.serverOnline
+                      : l10n.serverOffline,
                   valueColor: redis['available'] == true
                       ? KyboColors.success
                       : KyboColors.textMuted,
                   sub: redis['available'] == true
-                      ? 'Cache L1.5 attiva'
-                      : 'Fallback a RAM+Firestore',
+                      ? l10n.serverRedisActive
+                      : l10n.serverRedisFallback,
                 ),
               ),
             ],
@@ -216,34 +228,38 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
 
           const SizedBox(height: 28),
 
-          _buildSectionTitle('Stato Servizi', Icons.health_and_safety_rounded),
+          _buildSectionTitle(l10n.serverServicesStatus, Icons.health_and_safety_rounded),
           const SizedBox(height: 12),
           _buildHealthSection(),
 
           const SizedBox(height: 28),
 
-          _buildSectionTitle('Gemini AI', Icons.auto_awesome_rounded),
+          _buildSectionTitle(l10n.serverGeminiAi, Icons.auto_awesome_rounded),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: _GeminiCard(
-                  title: 'Diet Parser',
+                  title: l10n.serverDietParser,
                   calls: _toInt(diet['gemini_calls']),
                   errors: _toInt(diet['gemini_errors']),
                   avgDuration: _toDouble(diet['avg_parse_duration_s']),
-                  durationLabel: 'durata media parsing',
+                  durationLabel: isItalian
+                      ? 'durata media parsing'
+                      : 'avg parsing duration',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _GeminiCard(
-                  title: 'Meal Suggestions',
+                  title: l10n.serverMealSuggestions,
                   calls: _toInt(sug['gemini_calls']),
                   errors: _toInt(sug['gemini_errors']),
                   avgDuration: _toDouble(sug['avg_generation_duration_s']),
-                  durationLabel: 'durata media suggerimenti',
+                  durationLabel: isItalian
+                      ? 'durata media suggerimenti'
+                      : 'avg generation duration',
                 ),
               ),
             ],
@@ -251,13 +267,13 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
 
           const SizedBox(height: 28),
 
-          _buildSectionTitle('Cache Hit Ratio', Icons.layers_rounded),
+          _buildSectionTitle(l10n.serverCacheHitRatio, Icons.layers_rounded),
           const SizedBox(height: 12),
           _buildCacheSection(diet, sug),
 
           const SizedBox(height: 28),
 
-          _buildSectionTitle('Infrastruttura', Icons.dns_rounded),
+          _buildSectionTitle(l10n.serverInfrastructure, Icons.dns_rounded),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -291,7 +307,9 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
           Row(
             children: [
               _StatusChip(
-                label: overallStatus == 'healthy' ? 'Healthy' : 'Unhealthy',
+                label: overallStatus == 'healthy'
+                    ? AppLocalizations.of(context).serverHealthy
+                    : AppLocalizations.of(context).serverUnhealthy,
                 color: overallStatus == 'healthy' ? KyboColors.success : KyboColors.error,
                 icon: overallStatus == 'healthy'
                     ? Icons.check_circle_rounded
@@ -357,21 +375,22 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCacheGroup('Diet Parser', dietCache),
+          _buildCacheGroup(AppLocalizations.of(context).serverDietParser, dietCache),
           const SizedBox(height: 20),
           Divider(color: KyboColors.border, height: 1),
           const SizedBox(height: 20),
-          _buildCacheGroup('Meal Suggestions', sugCache),
+          _buildCacheGroup(AppLocalizations.of(context).serverMealSuggestions, sugCache),
         ],
       ),
     );
   }
 
   Widget _buildCacheGroup(String title, Map<String, dynamic> cache) {
+    final l10n = AppLocalizations.of(context);
     final layers = [
-      ('L1 RAM', 'Velocissima — in-process', cache['L1_ram'] as Map<String, dynamic>?),
-      ('L1.5 Redis', 'Distribuita — shared tra istanze', cache['L1_5_redis'] as Map<String, dynamic>?),
-      ('L2 Firestore', 'Persistente — 30 giorni TTL', cache['L2_firestore'] as Map<String, dynamic>?),
+      (l10n.serverL1Ram, l10n.serverL1RamDesc, cache['L1_ram'] as Map<String, dynamic>?),
+      (l10n.serverL15Redis, l10n.serverL15RedisDesc, cache['L1_5_redis'] as Map<String, dynamic>?),
+      (l10n.serverL2Firestore, l10n.serverL2FirestoreDesc, cache['L2_firestore'] as Map<String, dynamic>?),
     ];
 
     return Column(
@@ -546,7 +565,9 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                   ),
                 ),
                 Text(
-                  status == 'ok' ? message : 'Non disponibile su Render — funzione scontrini disabilitata',
+                  status == 'ok'
+                      ? message
+                      : AppLocalizations.of(context).serverNotAvailableRender,
                   style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
               ],
@@ -583,7 +604,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Redis Cache (L1.5)',
+                  AppLocalizations.of(context).serverRedisCacheTitle,
                   style: TextStyle(
                     color: KyboColors.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -592,17 +613,19 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                 ),
                 Text(
                   available
-                      ? 'Connesso e operativo'
+                      ? AppLocalizations.of(context).serverRedisConnected
                       : configured
-                          ? 'Configurato ma non raggiungibile'
-                          : 'Non configurato — fallback RAM + Firestore',
+                          ? AppLocalizations.of(context).serverRedisUnreachable
+                          : AppLocalizations.of(context).serverRedisNotConfigured,
                   style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
                 ),
               ],
             ),
           ),
           _StatusChip(
-            label: available ? 'Online' : 'Offline',
+            label: available
+                ? AppLocalizations.of(context).serverOnline
+                : AppLocalizations.of(context).serverOffline,
             color: available ? KyboColors.success : KyboColors.textMuted,
             icon: available ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
           ),
@@ -834,14 +857,14 @@ class _GeminiCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _MetricRow(
-            label: 'Chiamate totali',
+            label: AppLocalizations.of(context).serverTotalCalls,
             value: calls.toString(),
             icon: Icons.call_made_rounded,
             color: KyboColors.primary,
           ),
           const SizedBox(height: 10),
           _MetricRow(
-            label: 'Errori',
+            label: AppLocalizations.of(context).serverErrorsLabel,
             value: '$errors  (${errorRate.toStringAsFixed(1)}%)',
             icon: Icons.error_outline_rounded,
             color: errors > 0 ? KyboColors.error : KyboColors.textMuted,

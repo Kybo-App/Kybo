@@ -741,6 +741,80 @@ class AppLocalizations {
   String get serverLatency => isItalian ? 'Latenza' : 'Latency';
   String get serverErrors => isItalian ? 'Errori' : 'Errors';
   String get serverThroughput => 'Throughput';
+  String get serverAndMetricsTitle =>
+      isItalian ? 'Server & Metriche' : 'Server & Metrics';
+  String serverUpdatedAt(String time) =>
+      isItalian ? 'Aggiornato alle $time' : 'Updated at $time';
+  String get serverMetricsError =>
+      isItalian
+          ? 'Errore nel caricamento metriche'
+          : 'Error loading metrics';
+  String get serverStatus =>
+      isItalian ? 'Stato server' : 'Server status';
+  String get serverHealthy =>
+      isItalian ? 'Healthy' : 'Healthy';
+  String get serverUnhealthy =>
+      isItalian ? 'Unhealthy' : 'Unhealthy';
+  String get serverAllOk =>
+      isItalian ? 'Tutti i servizi ok' : 'All services ok';
+  String get serverGeminiCalls =>
+      isItalian ? 'Chiamate Gemini' : 'Gemini calls';
+  String serverErrorCount(int n) =>
+      isItalian ? '$n errori' : '$n errors';
+  String get serverNoErrors =>
+      isItalian ? 'Nessun errore' : 'No errors';
+  String get serverCacheL1Hit =>
+      isItalian ? 'Cache L1 hit' : 'Cache L1 hit';
+  String get serverRedis => 'Redis';
+  String get serverOnline => 'Online';
+  String get serverOffline => 'Offline';
+  String get serverRedisActive =>
+      isItalian ? 'Cache L1.5 attiva' : 'L1.5 cache active';
+  String get serverRedisFallback =>
+      isItalian ? 'Fallback a RAM+Firestore' : 'Fallback to RAM+Firestore';
+  String get serverServicesStatus =>
+      isItalian ? 'Stato servizi' : 'Services status';
+  String get serverGeminiAi => 'Gemini AI';
+  String get serverDietParser => 'Diet Parser';
+  String get serverMealSuggestions => 'Meal Suggestions';
+  String get serverCacheHitRatio =>
+      isItalian ? 'Cache hit ratio' : 'Cache hit ratio';
+  String get serverInfrastructure =>
+      isItalian ? 'Infrastruttura' : 'Infrastructure';
+  String get serverL1Ram =>
+      isItalian ? 'L1 RAM' : 'L1 RAM';
+  String get serverL1RamDesc =>
+      isItalian ? 'Velocissima — in-process' : 'Very fast — in-process';
+  String get serverL15Redis => 'L1.5 Redis';
+  String get serverL15RedisDesc =>
+      isItalian
+          ? 'Distribuita — shared tra istanze'
+          : 'Distributed — shared across instances';
+  String get serverL2Firestore => 'L2 Firestore';
+  String get serverL2FirestoreDesc =>
+      isItalian
+          ? 'Persistente — 30 giorni TTL'
+          : 'Persistent — 30 days TTL';
+  String get serverNotAvailableRender =>
+      isItalian
+          ? 'Non disponibile su Render — funzione scontrini disabilitata'
+          : 'Not available on Render — receipt scanning disabled';
+  String get serverRedisCacheTitle =>
+      isItalian ? 'Redis Cache (L1.5)' : 'Redis Cache (L1.5)';
+  String get serverRedisConnected =>
+      isItalian ? 'Connesso e operativo' : 'Connected and operational';
+  String get serverRedisUnreachable =>
+      isItalian
+          ? 'Configurato ma non raggiungibile'
+          : 'Configured but unreachable';
+  String get serverRedisNotConfigured =>
+      isItalian
+          ? 'Non configurato — fallback RAM + Firestore'
+          : 'Not configured — fallback RAM + Firestore';
+  String get serverTotalCalls =>
+      isItalian ? 'Chiamate totali' : 'Total calls';
+  String get serverErrorsLabel =>
+      isItalian ? 'Errori' : 'Errors';
 
   // --- Diet templates ---
   String get dietTemplatesTab =>
