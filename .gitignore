@@ -67,6 +67,28 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.*
+!.env.example
+
+# Firebase / Google Cloud credential files (NEVER commit these)
+google-services.json
+GoogleService-Info.plist
+GoogleService-Info-*.plist
+GoogleService-info-*.plist
+firebase_options.dart
+**/firebase_options.dart
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
+service-account*.json
+*.serviceaccount.json
+
+# Generic credential / secret patterns
+*credentials*.json
+*secret*.json
+*.pem
+*.p12
+*.key
 
 # dataconnect generated files
 .dataconnect
