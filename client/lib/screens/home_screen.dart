@@ -74,7 +74,11 @@ class _MainScreenContentState extends State<MainScreenContent>
     with TickerProviderStateMixin {
   int _currentIndex = 1;
   TabController? _tabController;
-  int _lastDaysCount = 0;
+  // [FIX 2026-05-25] Cache key sul contenuto dei giorni, non solo lunghezza.
+  // Senza questo, se i giorni cambiano ordine ma restano 7 (es. da fallback
+  // scrambled a config.days corretti dopo sync), il TabController non viene
+  // ricostruito e resta fermo all'initialIndex sbagliato.
+  String _lastDaysKey = '';
   int _lastSelectedWeek = 0;
   final AuthService _auth = AuthService();
   StreamSubscription<String>? _deepLinkNavSubscription;
@@ -275,8 +279,9 @@ class _MainScreenContentState extends State<MainScreenContent>
   /// Crea o ricrea il TabController quando cambia il numero di giorni o la settimana selezionata.
   void _ensureTabController(List<String> days, int selectedWeek) {
     if (days.isEmpty) return;
+    final daysKey = days.join('|');
     if (_tabController != null &&
-        days.length == _lastDaysCount &&
+        daysKey == _lastDaysKey &&
         selectedWeek == _lastSelectedWeek) {
       return;
     }
@@ -322,7 +327,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       initialIndex: initialIndex,
       vsync: this,
     );
-    _lastDaysCount = days.length;
+    _lastDaysKey = daysKey;
     _lastSelectedWeek = selectedWeek;
   }
 
@@ -1497,7 +1502,7 @@ class _MainScreenContentState extends State<MainScreenContent>
               child: GestureDetector(
                 onTap: () {
                   provider.setWeek(i);
-                  setState(() => _lastDaysCount = 0);
+                  setState(() => _lastDaysKey = '');
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
