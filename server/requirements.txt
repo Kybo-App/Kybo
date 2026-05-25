@@ -20,8 +20,12 @@ Pillow==12.2.0
 pytesseract==0.3.10
 # [SECURITY] Pinned version to prevent supply chain attacks
 google-genai==1.0.0
-pydantic==2.6.0
-pydantic-settings==2.1.0
+# Bumped from 2.6.0 → 2.10+ for Python 3.13/3.14 wheel availability
+# (pydantic-core 2.16.x fails to build from source on Python 3.14 due to
+# ForwardRef._evaluate() API change). Range gives pip flexibility to pick
+# the latest compatible wheel.
+pydantic>=2.10,<3.0
+pydantic-settings>=2.6,<3.0
 python-dotenv==1.0.1
 firebase-admin==6.4.0
 email-validator==2.1.0
