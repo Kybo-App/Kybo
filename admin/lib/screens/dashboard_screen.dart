@@ -371,13 +371,18 @@ class _DashboardContentState extends State<_DashboardContent> {
     if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
     // Content area condiviso dai due layout: PillCard con la vista corrente.
+    // [PERF] RepaintBoundary isola il content così che durante l'animazione
+    // della sidebar (parent) il browser non debba ridisegnare l'intera vista
+    // (utenti, analytics, ecc.) ad ogni frame — solo la sidebar si ridipinge.
     final contentArea = Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: PillCard(
-          key: ValueKey('content_card_$themeKey'),
+      child: RepaintBoundary(
+        child: Padding(
           padding: const EdgeInsets.all(24),
-          child: navItems[_selectedIndex].view,
+          child: PillCard(
+            key: ValueKey('content_card_$themeKey'),
+            padding: const EdgeInsets.all(24),
+            child: navItems[_selectedIndex].view,
+          ),
         ),
       ),
     );
@@ -519,109 +524,162 @@ class _DashboardContentState extends State<_DashboardContent> {
   // Per disattivarlo, cambia _useSidebar a false in cima alla classe.
   // ============================================================
 
-  /// Sidebar verticale. Default = collassata (72px, solo icone).
-  /// Su mouse hover si espande a 240px mostrando label + badge.
-  /// Background surface con leggera shadow sul bordo destro.
+  /// Sidebar verticale. Architettura ottimizzata per fluidità su Flutter web:
+  /// - 1 solo `TweenAnimationBuilder` driva un `t` (0..1) per tutto il sottotree
+  /// - I navItem ricevono `t` come prop, NON usano LayoutBuilder
+  ///   (LayoutBuilder forza rebuild su ogni constraint change → 13 rebuild
+  ///    × 60fps durante animazione = troppo)
+  /// - Width della sidebar = lerp(72, 240, t) calcolato una volta per frame
+  /// - Curva slowMiddle = accelera in apertura/chiusura, rallenta nel mezzo
+  ///   per far percepire smoothness
   Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
-    final collapsed = !_isSidebarHovered;
+    final target = _isSidebarHovered ? 1.0 : 0.0;
     return MouseRegion(
       onEnter: (_) {
-        if (!_isSidebarHovered) {
-          setState(() => _isSidebarHovered = true);
-        }
+        if (!_isSidebarHovered) setState(() => _isSidebarHovered = true);
       },
       onExit: (_) {
-        if (_isSidebarHovered) {
-          setState(() => _isSidebarHovered = false);
-        }
+        if (_isSidebarHovered) setState(() => _isSidebarHovered = false);
       },
-      child: AnimatedContainer(
-        // 450ms + fastOutSlowIn = sensazione "Material": accelerazione veloce
-        // all'inizio, decelerazione morbida verso la fine. Riduce la
-        // percezione di "scatto" sia in apertura che in chiusura.
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.fastOutSlowIn,
-        width: collapsed ? _sidebarCollapsedWidth : _sidebarExpandedWidth,
-        decoration: BoxDecoration(
-          color: KyboColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(2, 0),
-            ),
-          ],
-        ),
-        // ClipRect impedisce che contenuti larghi (riga icona+label) generino
-        // overflow warning mentre la sidebar si contrae verso 72px.
-        child: ClipRect(
-          child: Column(
-            children: [
-              // Logo (la variante compatta/estesa la sceglie il widget stesso via LayoutBuilder)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                child: _buildSidebarLogo(l10n),
-              ),
-              // Separatore
-              Container(
-                height: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                color: KyboColors.border,
-              ),
-              // Lista nav items
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                  itemCount: navItems.length,
-                  itemBuilder: (context, index) {
-                    final item = navItems[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: _SidebarNavItem(
-                        label: item.label,
-                        icon: item.icon,
-                        isSelected: _selectedIndex == index,
-                        badgeCount: item.badgeCount,
-                        onTap: () => _onNavSelected(index),
-                      ),
-                    );
-                  },
+      child: TweenAnimationBuilder<double>(
+        // 600ms = abbastanza lento da percepire la transizione come continua.
+        // easeInOut = simmetrico, accelera dolce dall'inizio e decelera dolce
+        // alla fine, senza "scatti" tipici di easeOutCubic verso la fine.
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+        tween: Tween<double>(begin: target, end: target),
+        builder: (context, t, _) {
+          final width = _sidebarCollapsedWidth +
+              (_sidebarExpandedWidth - _sidebarCollapsedWidth) * t;
+          return SizedBox(
+            width: width,
+            child: ClipRect(
+              child: OverflowBox(
+                minWidth: _sidebarExpandedWidth,
+                maxWidth: _sidebarExpandedWidth,
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: _sidebarExpandedWidth,
+                  // Contenuto SEMPRE renderizzato in larghezza piena (240px).
+                  // Niente layout-pass per frame: la sidebar parent cambia
+                  // larghezza, ClipRect taglia ciò che eccede. Gli item
+                  // ricevono `t` per fare fade della label.
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: KyboColors.surface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(2, 0),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+                          child: _buildSidebarLogo(l10n, t),
+                        ),
+                        Container(
+                          height: 1,
+                          margin: const EdgeInsets.symmetric(horizontal: 12),
+                          color: KyboColors.border,
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                            itemCount: navItems.length,
+                            itemBuilder: (context, index) {
+                              final item = navItems[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: _SidebarNavItem(
+                                  label: item.label,
+                                  icon: item.icon,
+                                  isSelected: _selectedIndex == index,
+                                  badgeCount: item.badgeCount,
+                                  onTap: () => _onNavSelected(index),
+                                  t: t,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  /// Logo per la sidebar. Usa LayoutBuilder per scegliere la variante in base
-  /// alla larghezza REALE disponibile in ogni frame dell'animazione.
-  /// Necessario perché durante l'animazione di espansione (380ms) la sidebar
-  /// è larga ~72-240px in tempo reale, ma il flag hover flip istantaneamente
-  /// → senza LayoutBuilder vedremmo brevemente il logo espanso comprimersi
-  /// e generare RenderFlex overflow.
-  Widget _buildSidebarLogo(AppLocalizations l10n) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final showCompact = constraints.maxWidth < 160;
-        if (showCompact) {
-          return Center(
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: KyboColors.primary.withValues(alpha: 0.1),
-                borderRadius: KyboBorderRadius.medium,
-              ),
-              child: const Center(
-                child: DietLogo(size: 26, isDarkBackground: false),
+  /// Logo per la sidebar. Riceve `t` (0=compatto, 1=esteso) dal parent.
+  /// Niente LayoutBuilder: fade tra logo solo e logo+testo via opacity.
+  Widget _buildSidebarLogo(AppLocalizations l10n, double t) {
+    return SizedBox(
+      height: 56,
+      child: Stack(
+        children: [
+          // Icona logo sempre presente nella stessa posizione (left-aligned)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: KyboColors.primary.withValues(alpha: 0.1),
+                  borderRadius: KyboBorderRadius.medium,
+                ),
+                child: const Center(
+                  child: DietLogo(size: 26, isDarkBackground: false),
+                ),
               ),
             ),
-          );
-        }
-        return _buildLogo(l10n);
-      },
+          ),
+          // Testo "Kybo" + sottotitolo: fade-in via opacity, sempre nella
+          // stessa posizione layout (no shift).
+          Positioned(
+            left: 52,
+            top: 0,
+            bottom: 0,
+            right: 0,
+            child: Opacity(
+              opacity: t,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Kybo",
+                    style: TextStyle(
+                      color: KyboColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    l10n.adminPanel,
+                    style: TextStyle(
+                      color: KyboColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -753,21 +811,23 @@ class _DashboardContentState extends State<_DashboardContent> {
 }
 
 /// [LAYOUT A — SIDEBAR] Voce di navigazione della sidebar verticale.
-/// Sceglie automaticamente layout compatto (solo icona + dot badge) o esteso
-/// (icona + label + badge numerico) in base alla larghezza disponibile,
-/// via `LayoutBuilder`. Tooltip in modalità compatta.
+/// Riceve `t` (0..1) dal parent e lo usa per interpolare opacity della
+/// label/badge numerico. NIENTE LayoutBuilder, NIENTE AnimatedSwitcher:
+/// l'unico animation source è il TweenAnimationBuilder del parent.
 class _SidebarNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final int? badgeCount;
+  final double t;
 
   const _SidebarNavItem({
     required this.label,
     required this.icon,
     required this.isSelected,
     required this.onTap,
+    required this.t,
     this.badgeCount,
   });
 
@@ -783,6 +843,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     final selected = widget.isSelected;
     final hover = _isHovered && !selected;
     final hasBadge = widget.badgeCount != null && widget.badgeCount! > 0;
+    final t = widget.t;
 
     final Color bgColor = selected
         ? KyboColors.primary
@@ -792,145 +853,114 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         ? Colors.white
         : (hover ? KyboColors.primary : KyboColors.textSecondary);
 
+    // Larghezza fissa interna del row (sempre 240px-meno-padding indipendente
+    // dalla larghezza visibile della sidebar). Il parent fa il clipping.
+    // L'item NON si ridisegna in layout, solo opacity cambia con t.
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: KyboBorderRadius.medium,
+        boxShadow: selected ? KyboColors.softShadow : null,
+      ),
+      child: Row(
+        children: [
+          // Icona + eventuale dot badge (visibile solo quando label nascosta)
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Center(child: Icon(widget.icon, size: 20, color: fgColor)),
+                if (hasBadge)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Opacity(
+                      opacity: 1 - t,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: KyboColors.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected ? KyboColors.primary : KyboColors.surface,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Label sempre presente in layout (non cambia shape della Row),
+          // solo opacity varia con t.
+          Expanded(
+            child: Opacity(
+              opacity: t,
+              child: Text(
+                widget.label,
+                style: TextStyle(
+                  color: fgColor,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                maxLines: 1,
+              ),
+            ),
+          ),
+          // Badge numerico: sempre presente in layout, opacity con t.
+          if (hasBadge) ...[
+            const SizedBox(width: 6),
+            Opacity(
+              opacity: t,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : KyboColors.error,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                child: Center(
+                  child: Text(
+                    widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                    style: TextStyle(
+                      color: selected ? KyboColors.primary : Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    // Tooltip solo quando la sidebar è collassata abbastanza da nascondere
+    // la label.
+    if (t < 0.3) {
+      content = Tooltip(
+        message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
+        waitDuration: const Duration(milliseconds: 400),
+        child: content,
+      );
+    }
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        // [FIX overflow + smoothness] LayoutBuilder dà la larghezza reale per
-        // frame durante l'animazione (evita overflow su Row espansa quando
-        // sidebar parent è ancora stretta). AnimatedSwitcher con FadeTransition
-        // rende il passaggio compact↔extended un crossfade dolce invece di uno
-        // snap secco al superamento della soglia.
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Soglia 150px: dopo 150px di larghezza c'è spazio sufficiente
-            // per icona + label "Analytics" / "Settings" / nomi medi.
-            final showCompact = constraints.maxWidth < 150;
-            final modeKey = showCompact ? 'compact' : 'extended';
-
-            // ---- VARIANTE COMPATTA ----
-            Widget compactView() {
-              Widget icon = Icon(widget.icon, size: 20, color: fgColor);
-              if (hasBadge) {
-                icon = SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Center(child: Icon(widget.icon, size: 20, color: fgColor)),
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          width: 9,
-                          height: 9,
-                          decoration: BoxDecoration(
-                            color: KyboColors.error,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selected ? KyboColors.primary : KyboColors.surface,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return Center(key: const ValueKey('compact'), child: icon);
-            }
-
-            // ---- VARIANTE ESTESA ----
-            Widget extendedView() {
-              return Row(
-                key: const ValueKey('extended'),
-                children: [
-                  Icon(widget.icon, size: 20, color: fgColor),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.label,
-                      style: TextStyle(
-                        color: fgColor,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      softWrap: false,
-                    ),
-                  ),
-                  if (hasBadge) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: selected ? Colors.white : KyboColors.error,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                      child: Center(
-                        child: Text(
-                          widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
-                          style: TextStyle(
-                            color: selected ? KyboColors.primary : Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              );
-            }
-
-            final container = Container(
-              // Padding fisso (niente AnimatedContainer interno): l'unica
-              // animazione che ci interessa è quella della sidebar parent +
-              // il crossfade tra compact/extended via AnimatedSwitcher sotto.
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: KyboBorderRadius.medium,
-                boxShadow: selected ? KyboColors.softShadow : null,
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, anim) =>
-                    FadeTransition(opacity: anim, child: child),
-                // Layout=SizeTransition fa sì che durante il crossfade non ci
-                // siano salti di altezza tra compact (centrato) ed extended.
-                layoutBuilder: (currentChild, previousChildren) => Stack(
-                  alignment: Alignment.centerLeft,
-                  children: <Widget>[
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                ),
-                child: KeyedSubtree(
-                  key: ValueKey(modeKey),
-                  child: showCompact ? compactView() : extendedView(),
-                ),
-              ),
-            );
-
-            if (showCompact) {
-              return Tooltip(
-                message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
-                waitDuration: const Duration(milliseconds: 400),
-                child: container,
-              );
-            }
-            return container;
-          },
-        ),
+        child: content,
       ),
     );
   }
