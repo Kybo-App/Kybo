@@ -529,21 +529,23 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
-  /// Carica una dieta dallo storico in modalità VIEW-ONLY.
+  /// Imposta una dieta dallo storico come "current" — sia in locale che su Firestore.
   ///
-  /// [FIX 2026-05-25] Prima qui si chiamavano `_storage.saveDiet(...)` e
-  /// `_storage.saveSwaps(...)`: il primo stampava `diet_local_updated_at_ms = NOW`,
-  /// e al prossimo `syncFromFirebase` il check "last-write-wins" vedeva il local
-  /// più recente del `diets/current` cloud e PUSHAVA la dieta storica come current,
-  /// sovrascrivendo quella vera. Risultato per l'utente: chiudo l'app dopo aver
-  /// sfogliato lo storico, riapro, e mi ritrovo una vecchia versione al posto
-  /// della current. Fix: niente scritture in cache, niente avanzamento del
-  /// timestamp, e set di `_isViewingHistorical = true` per bloccare anche
-  /// scritture incidentali da consume/swap/update mentre l'utente sfoglia.
-  void loadHistoricalDiet(Map<String, dynamic> dietData, String docId) {
-    debugPrint("📂 Caricamento dieta storica (view-only) ID: $docId");
+  /// [FIX 2026-05-25 v2] Prima questa funzione salvava la dieta storica solo nella
+  /// cache locale stampando `diet_local_updated_at_ms = NOW`, ma NON la pushava
+  /// subito in `diets/current` su Firestore. Al prossimo `syncFromFirebase` il
+  /// check "last-write-wins" vedeva il local più recente del cloud current
+  /// (vecchio) e pushava la storica al posto della current — bug giusto, ma a
+  /// scoppio ritardato e impredicibile. Inoltre, se l'utente uccideva l'app
+  /// prima del sync, alla riapertura `loadFromCache` riprendeva la storica
+  /// dalla cache come se fosse la current, creando ambiguità.
+  ///
+  /// Fix: push immediato e sincrono a Firestore `diets/current` con i nuovi
+  /// dati. Cache locale e cloud rimangono allineati senza race.
+  Future<void> loadHistoricalDiet(Map<String, dynamic> dietData, String docId) async {
+    debugPrint("📂 Restore dieta storica come current — ID: $docId");
 
-    _isViewingHistorical = true;
+    _isViewingHistorical = false;
     _dietPlan = DietPlan.fromJson(dietData);
     _currentFirestoreId = docId;
     _selectedWeek = 0;
@@ -560,21 +562,47 @@ class DietProvider extends ChangeNotifier {
             _activeSwaps[key.toString()] = swapObj;
           }
         });
-        debugPrint("✅ Ripristinati ${_activeSwaps.length} scambi attivi (storico, view-only).");
+        debugPrint("✅ Ripristinati ${_activeSwaps.length} scambi attivi.");
       } catch (e) {
         debugPrint("⚠️ Errore critico ripristino swap: $e");
       }
     }
 
-    // VIEW-ONLY: niente saveDiet/saveSwaps qui — vedi commento in cima.
-    // _storage.saveDiet(_dietPlan!.toJson());   ← rimosso (era il bug)
-    // _storage.saveSwaps(_activeSwaps);          ← rimosso (era il bug)
-
     final jsonMap = _dietPlan!.toJson();
     _lastSyncedDiet = _deepCopy(jsonMap['plan']);
+    _lastSyncedSubstitutions = _deepCopy(jsonMap['substitutions']);
 
-    _recalcAvailability();
+    // UI snappy: notifica subito, prima delle scritture lente.
     notifyListeners();
+    _recalcAvailability();
+
+    // Local cache (saveDiet stampa diet_local_updated_at_ms = NOW).
+    await _storage.saveDiet(_dietPlan!.toJson());
+    await _storage.saveSwaps(_activeSwaps);
+
+    // [FIX] Push immediato in Firestore `diets/current` per allineare
+    // cloud e local. Senza questo, il client locale sarebbe stampato NOW
+    // e il cloud current resterebbe la dieta vecchia → last-write-wins al
+    // prossimo sync recupererebbe in qualche modo, ma con race nel mezzo
+    // (e se l'utente killasse subito l'app, il loadFromCache successivo
+    // ricaricherebbe lo stato giusto dal local, però il sync background
+    // potrebbe ancora vedere disallineamenti).
+    if (_auth.currentUser != null) {
+      try {
+        final swapsMap = <String, dynamic>{};
+        _activeSwaps.forEach((k, v) => swapsMap[k] = v.toMap());
+        await _firestore.saveCurrentDiet(
+          _sanitize(jsonMap['plan'] as Map<String, dynamic>),
+          _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
+          swapsMap,
+          weeks: jsonMap['weeks'] as List<dynamic>?,
+        );
+        _lastCloudSave = DateTime.now();
+        debugPrint("☁️ Storica pushata in diets/current.");
+      } catch (e) {
+        debugPrint("⚠️ Push storica → current fallito: $e (local è comunque corretto, sync futuro recupera)");
+      }
+    }
   }
 
   Future<void> refreshAvailability() async {
