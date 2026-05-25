@@ -113,12 +113,15 @@ class DietProvider extends ChangeNotifier {
     final Map<String, dynamic> swapsToSave = {};
     _activeSwaps.forEach((k, v) => swapsToSave[k] = v.toMap());
 
+    final configJson = _dietPlan!.config?.toJson();
+
     if (!forceSync && now.difference(_lastCloudSave).inHours < 3) {
       await _firestore.saveCurrentDiet(
         _sanitize(currentPlanJson),
         _sanitize(currentSubsJson),
         swapsToSave,
         weeks: currentWeeksJson,
+        config: configJson,
       );
       return "☁️ Modifiche sincronizzate.";
     }
@@ -129,6 +132,7 @@ class DietProvider extends ChangeNotifier {
         _sanitize(currentSubsJson),
         swapsToSave,
         weeks: currentWeeksJson,
+        config: configJson,
       );
 
       if (_currentFirestoreId == null) {
@@ -137,6 +141,7 @@ class DietProvider extends ChangeNotifier {
           _sanitize(currentSubsJson),
           swapsToSave,
           weeks: currentWeeksJson,
+          config: configJson,
         );
         _currentFirestoreId = newId;
       } else {
@@ -146,6 +151,7 @@ class DietProvider extends ChangeNotifier {
           _sanitize(currentSubsJson),
           swapsToSave,
           weeks: currentWeeksJson,
+          config: configJson,
         );
       }
 
@@ -467,9 +473,18 @@ class DietProvider extends ChangeNotifier {
                 data['weeks'] = decryptedWeeks['weeks'];
               }
             }
+            // [FIX 2026-05-25] `config` (days/meals/relaxable_foods) è
+            // memorizzata in chiaro accanto ai campi crittografati. Senza
+            // questa lettura, l'app dopo il sync aveva `_dietPlan.config = null`
+            // e cadeva nel fallback fragile dell'ordine giorni/pasti
+            // (vedi bug "venerdì invece di lunedì" + "pasti disordinati").
+            if (rawData['config'] != null) {
+              data['config'] = rawData['config'];
+            }
             debugPrint("🔓 Sync cloud: decifrati campi crittografati "
                 "(plan ${(data['plan'] as Map?)?.keys.length ?? 0} giorni, "
-                "subs ${(data['substitutions'] as Map?)?.keys.length ?? 0} gruppi)");
+                "subs ${(data['substitutions'] as Map?)?.keys.length ?? 0} gruppi, "
+                "config=${data['config'] != null})");
           } catch (e) {
             debugPrint("❌ Sync cloud: errore decifratura: $e");
             return;
@@ -502,6 +517,7 @@ class DietProvider extends ChangeNotifier {
             _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
             swapsMap,
             weeks: jsonMap['weeks'] as List<dynamic>?,
+            config: jsonMap['config'] as Map<String, dynamic>?,
           );
           _lastSyncedDiet = _deepCopy(jsonMap['plan'] as Map<String, dynamic>);
           _lastSyncedSubstitutions =
@@ -644,6 +660,7 @@ class DietProvider extends ChangeNotifier {
           _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
           swapsMap,
           weeks: jsonMap['weeks'] as List<dynamic>?,
+          config: jsonMap['config'] as Map<String, dynamic>?,
         );
         _lastCloudSave = DateTime.now();
         debugPrint("☁️ Storica pushata in diets/current.");
@@ -1201,6 +1218,7 @@ class DietProvider extends ChangeNotifier {
       _sanitize(dietJson['substitutions'] as Map<String, dynamic>),
       {},
       weeks: dietJson['weeks'] as List<dynamic>?,
+      config: dietJson['config'] as Map<String, dynamic>?,
     );
 
     _lastSyncedDiet = _deepCopy(dietJson['plan'] as Map<String, dynamic>);

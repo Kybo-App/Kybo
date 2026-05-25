@@ -289,9 +289,28 @@ class _MainScreenContentState extends State<MainScreenContent>
     final todayWeekday = DateTime.now().weekday;
     final todayName = italianWeekdays[todayWeekday - 1];
 
+    // [FIX 2026-05-25] Confronto accento-insensitive. Le diete parsate dal
+    // PDF dall'AI possono avere giorni senza accenti ("Lunedi" vs "Lunedì").
+    // Senza normalizzazione, il match fallisce silenziosamente e
+    // initialIndex resta 0 → vedi il primo giorno dell'array invece di
+    // quello di oggi (es. "Venerdì invece di Lunedì" se days[0] era Ven
+    // per ordine non-standard).
+    String stripAccents(String s) {
+      return s
+          .toLowerCase()
+          .trim()
+          .replaceAll('à', 'a')
+          .replaceAll('è', 'e')
+          .replaceAll('é', 'e')
+          .replaceAll('ì', 'i')
+          .replaceAll('ò', 'o')
+          .replaceAll('ù', 'u');
+    }
+
+    final todayNameNorm = stripAccents(todayName);
     int initialIndex = 0;
     for (int i = 0; i < days.length; i++) {
-      if (days[i].toLowerCase() == todayName) {
+      if (stripAccents(days[i]) == todayNameNorm) {
         initialIndex = i;
         break;
       }

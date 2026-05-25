@@ -14,6 +14,7 @@ class FirestoreService {
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
     List<dynamic>? weeks,
+    Map<String, dynamic>? config,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -48,6 +49,20 @@ class FirestoreService {
             encryptionService.encryptData({'weeks': weeks}, user.uid);
       }
 
+      // [FIX 2026-05-25] Persisti la `config` (days/meals/relaxable_foods)
+      // accanto ai campi crittografati. Senza questo, l'ordine esplicito di
+      // giorni/pasti veniva perso al primo sync da cloud, e l'app cadeva nel
+      // fallback fragile (sort tramite _globalDays, iterazione Map keys, etc.)
+      // → giorni nell'ordine sbagliato in TabController, pasti disordinati.
+      //
+      // Nota: `config` è scritta in chiaro (non `config_encrypted`). I dati
+      // contenuti (nomi dei giorni, dei pasti, alimenti rilassati come "mela")
+      // non sono PII, e in chiaro mantengono compatibilità con il fossile
+      // top-level già presente sui doc pre-encryption esistenti.
+      if (config != null) {
+        docData['config'] = config;
+      }
+
       await _db
           .collection('users')
           .doc(user.uid)
@@ -55,7 +70,7 @@ class FirestoreService {
           .doc('current')
           .set(docData, SetOptions(merge: true));
 
-      debugPrint("✅ Dieta 'current' aggiornata (encrypted, ${weeks?.length ?? 1} settimane).");
+      debugPrint("✅ Dieta 'current' aggiornata (encrypted, ${weeks?.length ?? 1} settimane, config=${config != null}).");
     } catch (e) {
       debugPrint("⚠️ Errore salvataggio current: $e");
     }
@@ -66,6 +81,7 @@ class FirestoreService {
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
     List<dynamic>? weeks,
+    Map<String, dynamic>? config,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -91,10 +107,17 @@ class FirestoreService {
             encryptionService.encryptData({'weeks': weeks}, user.uid);
       }
 
+      // [FIX 2026-05-25] Vedi commento in saveCurrentDiet. Persistiamo `config`
+      // anche nello storico così le diete storiche restaurate via Ripristina
+      // hanno ordine giorni/pasti corretto al volo.
+      if (config != null) {
+        docData['config'] = config;
+      }
+
       final docRef =
           await _db.collection('users').doc(user.uid).collection('diets').add(docData);
 
-      debugPrint("✅ Dieta salvata nello storico (encrypted, ${weeks?.length ?? 1} settimane).");
+      debugPrint("✅ Dieta salvata nello storico (encrypted, ${weeks?.length ?? 1} settimane, config=${config != null}).");
       return docRef.id;
     } catch (e) {
       debugPrint("⚠️ Errore storico: $e");
@@ -108,6 +131,7 @@ class FirestoreService {
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
     List<dynamic>? weeks,
+    Map<String, dynamic>? config,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -132,6 +156,11 @@ class FirestoreService {
             encryptionService.encryptData({'weeks': weeks}, user.uid);
       }
 
+      // [FIX 2026-05-25] Vedi saveCurrentDiet.
+      if (config != null) {
+        updateData['config'] = config;
+      }
+
       await _db
           .collection('users')
           .doc(user.uid)
@@ -139,7 +168,7 @@ class FirestoreService {
           .doc(docId)
           .update(updateData);
 
-      debugPrint("🔄 Dieta $docId aggiornata su Cloud (encrypted, ${weeks?.length ?? 1} settimane).");
+      debugPrint("🔄 Dieta $docId aggiornata su Cloud (encrypted, ${weeks?.length ?? 1} settimane, config=${config != null}).");
     } catch (e) {
       debugPrint("⚠️ Errore aggiornamento storico: $e");
       rethrow;
