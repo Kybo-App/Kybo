@@ -536,9 +536,11 @@ class _DashboardContentState extends State<_DashboardContent> {
         }
       },
       child: AnimatedContainer(
-        // 380ms = animazione più rilassata vs 220ms iniziale (sembrava nervosa).
-        duration: const Duration(milliseconds: 380),
-        curve: Curves.easeInOutCubic,
+        // 450ms + fastOutSlowIn = sensazione "Material": accelerazione veloce
+        // all'inizio, decelerazione morbida verso la fine. Riduce la
+        // percezione di "scatto" sia in apertura che in chiusura.
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.fastOutSlowIn,
         width: collapsed ? _sidebarCollapsedWidth : _sidebarExpandedWidth,
         decoration: BoxDecoration(
           color: KyboColors.surface,
@@ -796,106 +798,129 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        // [FIX overflow] LayoutBuilder ci dà la larghezza REALE disponibile in
-        // ogni frame dell'animazione. Senza questo, durante i 380ms di
-        // transizione la sidebar parent è larga in modo intermedio (72px →
-        // 240px) ma noi renderizzeremmo sempre la Row espansa basandoci sul
-        // flag `collapsed` (che flip istantaneo al hover) → RenderFlex
-        // overflow di 8/32/81px nei frame intermedi.
+        // [FIX overflow + smoothness] LayoutBuilder dà la larghezza reale per
+        // frame durante l'animazione (evita overflow su Row espansa quando
+        // sidebar parent è ancora stretta). AnimatedSwitcher con FadeTransition
+        // rende il passaggio compact↔extended un crossfade dolce invece di uno
+        // snap secco al superamento della soglia.
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Soglia: serve almeno ~140px per renderizzare icona + label
-            // breve. Sotto questa, mostriamo solo l'icona centrata.
-            final showCompact = constraints.maxWidth < 140;
+            // Soglia 150px: dopo 150px di larghezza c'è spazio sufficiente
+            // per icona + label "Analytics" / "Settings" / nomi medi.
+            final showCompact = constraints.maxWidth < 150;
+            final modeKey = showCompact ? 'compact' : 'extended';
 
-            // Icona, con dot-badge in alto a destra in modalità compatta.
-            Widget iconWidget = Icon(widget.icon, size: 20, color: fgColor);
-            if (showCompact && hasBadge) {
-              iconWidget = SizedBox(
-                width: 24,
-                height: 24,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(child: Icon(widget.icon, size: 20, color: fgColor)),
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: BoxDecoration(
-                          color: KyboColors.error,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: selected ? KyboColors.primary : KyboColors.surface,
-                            width: 1.5,
+            // ---- VARIANTE COMPATTA ----
+            Widget compactView() {
+              Widget icon = Icon(widget.icon, size: 20, color: fgColor);
+              if (hasBadge) {
+                icon = SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(child: Icon(widget.icon, size: 20, color: fgColor)),
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: KyboColors.error,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selected ? KyboColors.primary : KyboColors.surface,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return Center(key: const ValueKey('compact'), child: icon);
+            }
+
+            // ---- VARIANTE ESTESA ----
+            Widget extendedView() {
+              return Row(
+                key: const ValueKey('extended'),
+                children: [
+                  Icon(widget.icon, size: 20, color: fgColor),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: fgColor,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
+                  ),
+                  if (hasBadge) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: selected ? Colors.white : KyboColors.error,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                      child: Center(
+                        child: Text(
+                          widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                          style: TextStyle(
+                            color: selected ? KyboColors.primary : Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ),
                   ],
-                ),
+                ],
               );
             }
 
-            final container = AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              padding: showCompact
-                  ? const EdgeInsets.symmetric(horizontal: 10, vertical: 12)
-                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            final container = Container(
+              // Padding fisso (niente AnimatedContainer interno): l'unica
+              // animazione che ci interessa è quella della sidebar parent +
+              // il crossfade tra compact/extended via AnimatedSwitcher sotto.
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: KyboBorderRadius.medium,
                 boxShadow: selected ? KyboColors.softShadow : null,
               ),
-              child: showCompact
-                  ? Center(child: iconWidget)
-                  : Row(
-                      children: [
-                        iconWidget,
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            widget.label,
-                            style: TextStyle(
-                              color: fgColor,
-                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ),
-                        if (hasBadge) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: selected ? Colors.white : KyboColors.error,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                            child: Center(
-                              child: Text(
-                                widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
-                                style: TextStyle(
-                                  color: selected ? KyboColors.primary : Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) =>
+                    FadeTransition(opacity: anim, child: child),
+                // Layout=SizeTransition fa sì che durante il crossfade non ci
+                // siano salti di altezza tra compact (centrato) ed extended.
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.centerLeft,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(modeKey),
+                  child: showCompact ? compactView() : extendedView(),
+                ),
+              ),
             );
 
-            // Tooltip solo in modalità compatta così l'utente identifica
-            // l'icona prima di cliccarla.
             if (showCompact) {
               return Tooltip(
                 message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
