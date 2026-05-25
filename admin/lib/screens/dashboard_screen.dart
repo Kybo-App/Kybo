@@ -50,6 +50,15 @@ class _DashboardContent extends StatefulWidget {
 }
 
 class _DashboardContentState extends State<_DashboardContent> {
+  // [LAYOUT 2026-05-25] Switch tra:
+  //   true  → nuova sidebar verticale a sinistra (Layout A)
+  //   false → vecchio top-bar orizzontale con tab scrollabili (Layout B / legacy)
+  // Per revertire al layout precedente in caso il nuovo non convincesse,
+  // basta cambiare questo flag a false. Tutti i metodi di entrambi i layout
+  // sono mantenuti nel file (vedi _buildSidebar / _buildTopBarMinimal per
+  // il nuovo, _buildTopBar / _buildNavigation per il legacy).
+  static const bool _useSidebar = true;
+
   int _selectedIndex = 0;
   String _userName = "";
   String _userRole = "Utente";
@@ -355,27 +364,46 @@ class _DashboardContentState extends State<_DashboardContent> {
 
     if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
+    // Content area condiviso dai due layout: PillCard con la vista corrente.
+    final contentArea = Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PillCard(
+          key: ValueKey('content_card_$themeKey'),
+          padding: const EdgeInsets.all(24),
+          child: navItems[_selectedIndex].view,
+        ),
+      ),
+    );
+
     return Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
       onKeyEvent: (node, event) => _handleKeyEvent(node, event, navItems),
       child: Scaffold(
         backgroundColor: KyboColors.background,
-        body: Column(
-          children: [
-            _buildTopBar(navItems, l10n),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: PillCard(
-                  key: ValueKey('content_card_$themeKey'),
-                  padding: const EdgeInsets.all(24),
-                  child: navItems[_selectedIndex].view,
-                ),
+        body: _useSidebar
+            // [LAYOUT A — SIDEBAR VERTICALE]
+            ? Row(
+                children: [
+                  _buildSidebar(navItems, l10n),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildTopBarMinimal(navItems, l10n),
+                        contentArea,
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            // [LAYOUT B — TOP BAR LEGACY] vecchio comportamento orizzontale
+            : Column(
+                children: [
+                  _buildTopBar(navItems, l10n),
+                  contentArea,
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -480,6 +508,89 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 
+  // ============================================================
+  // [LAYOUT A — SIDEBAR] Nuovo layout aggiunto 2026-05-25.
+  // Per disattivarlo, cambia _useSidebar a false in cima alla classe.
+  // ============================================================
+
+  /// Sidebar verticale con logo in cima e nav items in colonna.
+  /// Larghezza fissa 240px. Background = surface con shadow leggera sul bordo
+  /// destro per staccarla dal content area.
+  Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Logo + branding in cima
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+            child: _buildLogo(l10n),
+          ),
+          // Separatore visivo tra logo e nav
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            color: KyboColors.border,
+          ),
+          // Lista nav items, scrollabile se la lista cresce oltre l'altezza disponibile
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              itemCount: navItems.length,
+              itemBuilder: (context, index) {
+                final item = navItems[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _SidebarNavItem(
+                    label: item.label,
+                    icon: item.icon,
+                    isSelected: _selectedIndex == index,
+                    badgeCount: item.badgeCount,
+                    onTap: () => _onNavSelected(index),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Top bar minimale: solo controlli a destra (search, lingua, tema, user,
+  /// shortcuts, logout). La nav è nella sidebar a sinistra.
+  Widget _buildTopBarMinimal(List<_NavItem> navItems, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        boxShadow: KyboColors.softShadow,
+      ),
+      child: Row(
+        children: [
+          // Spacer prende lo spazio a sinistra (logo è già nella sidebar)
+          const Spacer(),
+          _buildUserSection(navItems, l10n),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // [LAYOUT B — TOP BAR LEGACY] Vecchio top bar orizzontale.
+  // Lasciato attivo come fallback se _useSidebar = false.
+  // ============================================================
+
   Widget _buildUserSection(List<_NavItem> navItems, AppLocalizations l10n) {
     final langProvider = LanguageProvider();
     return Row(
@@ -579,6 +690,105 @@ class _DashboardContentState extends State<_DashboardContent> {
           onPressed: _logout,
         ),
       ],
+    );
+  }
+}
+
+/// [LAYOUT A — SIDEBAR] Voce di navigazione full-width per la sidebar verticale.
+/// A differenza di `PillNavItem` del design system (che è min-width e va in
+/// row orizzontale), questo widget occupa tutta la larghezza della sidebar e
+/// allinea icona-a-sinistra + label + badge-a-destra come una riga di menu.
+class _SidebarNavItem extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final int? badgeCount;
+
+  const _SidebarNavItem({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  @override
+  State<_SidebarNavItem> createState() => _SidebarNavItemState();
+}
+
+class _SidebarNavItemState extends State<_SidebarNavItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.isSelected;
+    final hover = _isHovered && !selected;
+
+    final Color bgColor = selected
+        ? KyboColors.primary
+        : (hover ? KyboColors.primary.withValues(alpha: 0.12) : Colors.transparent);
+
+    final Color fgColor = selected
+        ? Colors.white
+        : (hover ? KyboColors.primary : KyboColors.textSecondary);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: KyboBorderRadius.medium,
+            boxShadow: selected ? KyboColors.softShadow : null,
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 20, color: fgColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: fgColor,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              if (widget.badgeCount != null && widget.badgeCount! > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: selected ? Colors.white : KyboColors.error,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  child: Center(
+                    child: Text(
+                      widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                      style: TextStyle(
+                        color: selected ? KyboColors.primary : Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
