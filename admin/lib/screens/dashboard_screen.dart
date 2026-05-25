@@ -67,6 +67,12 @@ class _DashboardContentState extends State<_DashboardContent> {
   bool _isPT = false;
   bool _isLoading = true;
 
+  // [LAYOUT A — SIDEBAR] Stato hover per espandere la sidebar collassata.
+  // collapsed = solo icone (72px), expanded = icone + label + badge (240px).
+  bool _isSidebarHovered = false;
+  static const double _sidebarCollapsedWidth = 72;
+  static const double _sidebarExpandedWidth = 240;
+
   final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
@@ -513,58 +519,99 @@ class _DashboardContentState extends State<_DashboardContent> {
   // Per disattivarlo, cambia _useSidebar a false in cima alla classe.
   // ============================================================
 
-  /// Sidebar verticale con logo in cima e nav items in colonna.
-  /// Larghezza fissa 240px. Background = surface con shadow leggera sul bordo
-  /// destro per staccarla dal content area.
+  /// Sidebar verticale. Default = collassata (72px, solo icone).
+  /// Su mouse hover si espande a 240px mostrando label + badge.
+  /// Background surface con leggera shadow sul bordo destro.
   Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
-    return Container(
-      width: 240,
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(2, 0),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Logo + branding in cima
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-            child: _buildLogo(l10n),
-          ),
-          // Separatore visivo tra logo e nav
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            color: KyboColors.border,
-          ),
-          // Lista nav items, scrollabile se la lista cresce oltre l'altezza disponibile
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              itemCount: navItems.length,
-              itemBuilder: (context, index) {
-                final item = navItems[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: _SidebarNavItem(
-                    label: item.label,
-                    icon: item.icon,
-                    isSelected: _selectedIndex == index,
-                    badgeCount: item.badgeCount,
-                    onTap: () => _onNavSelected(index),
-                  ),
-                );
-              },
+    final collapsed = !_isSidebarHovered;
+    return MouseRegion(
+      onEnter: (_) {
+        if (!_isSidebarHovered) {
+          setState(() => _isSidebarHovered = true);
+        }
+      },
+      onExit: (_) {
+        if (_isSidebarHovered) {
+          setState(() => _isSidebarHovered = false);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        width: collapsed ? _sidebarCollapsedWidth : _sidebarExpandedWidth,
+        decoration: BoxDecoration(
+          color: KyboColors.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(2, 0),
             ),
+          ],
+        ),
+        // ClipRect impedisce che contenuti larghi (riga icona+label) generino
+        // overflow warning mentre la sidebar si contrae verso 72px.
+        child: ClipRect(
+          child: Column(
+            children: [
+              // Logo (compatto se collapsed)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+                child: _buildSidebarLogo(l10n, collapsed),
+              ),
+              // Separatore
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                color: KyboColors.border,
+              ),
+              // Lista nav items
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  itemCount: navItems.length,
+                  itemBuilder: (context, index) {
+                    final item = navItems[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: _SidebarNavItem(
+                        label: item.label,
+                        icon: item.icon,
+                        isSelected: _selectedIndex == index,
+                        badgeCount: item.badgeCount,
+                        onTap: () => _onNavSelected(index),
+                        collapsed: collapsed,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+  }
+
+  /// Logo per la sidebar. In modalità collapsed mostra solo l'icona centrata.
+  /// In modalità espansa mostra l'intera intestazione (icona + "Kybo" + "Admin Panel").
+  Widget _buildSidebarLogo(AppLocalizations l10n, bool collapsed) {
+    if (collapsed) {
+      return Center(
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: KyboColors.primary.withValues(alpha: 0.1),
+            borderRadius: KyboBorderRadius.medium,
+          ),
+          child: const Center(
+            child: DietLogo(size: 26, isDarkBackground: false),
+          ),
+        ),
+      );
+    }
+    return _buildLogo(l10n);
   }
 
   /// Top bar minimale: solo controlli a destra (search, lingua, tema, user,
@@ -694,16 +741,18 @@ class _DashboardContentState extends State<_DashboardContent> {
   }
 }
 
-/// [LAYOUT A — SIDEBAR] Voce di navigazione full-width per la sidebar verticale.
-/// A differenza di `PillNavItem` del design system (che è min-width e va in
-/// row orizzontale), questo widget occupa tutta la larghezza della sidebar e
-/// allinea icona-a-sinistra + label + badge-a-destra come una riga di menu.
+/// [LAYOUT A — SIDEBAR] Voce di navigazione della sidebar verticale.
+/// Supporta due modalità via flag `collapsed`:
+/// - collapsed=true  → solo icona centrata, label nascosta, badge come dot
+/// - collapsed=false → row con icona + label + badge numerico full
+/// Tooltip mostrato in modalità collapsed così l'utente capisce dove sta cliccando.
 class _SidebarNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final int? badgeCount;
+  final bool collapsed;
 
   const _SidebarNavItem({
     required this.label,
@@ -711,6 +760,7 @@ class _SidebarNavItem extends StatefulWidget {
     required this.isSelected,
     required this.onTap,
     this.badgeCount,
+    this.collapsed = false,
   });
 
   @override
@@ -724,6 +774,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
   Widget build(BuildContext context) {
     final selected = widget.isSelected;
     final hover = _isHovered && !selected;
+    final hasBadge = widget.badgeCount != null && widget.badgeCount! > 0;
 
     final Color bgColor = selected
         ? KyboColors.primary
@@ -733,7 +784,39 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         ? Colors.white
         : (hover ? KyboColors.primary : KyboColors.textSecondary);
 
-    return MouseRegion(
+    // Icona con eventuale dot-badge in alto a destra (modalità collapsed).
+    Widget iconWidget = Icon(widget.icon, size: 20, color: fgColor);
+    if (widget.collapsed && hasBadge) {
+      iconWidget = SizedBox(
+        width: 24,
+        height: 24,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Center(child: Icon(widget.icon, size: 20, color: fgColor)),
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: KyboColors.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? KyboColors.primary : KyboColors.surface,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Wrap con Tooltip solo quando collapsed così l'utente sa che voce è.
+    Widget content = MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
@@ -742,54 +825,72 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: widget.collapsed
+              ? const EdgeInsets.symmetric(horizontal: 10, vertical: 12)
+              : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: KyboBorderRadius.medium,
             boxShadow: selected ? KyboColors.softShadow : null,
           ),
-          child: Row(
-            children: [
-              Icon(widget.icon, size: 20, color: fgColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: fgColor,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              if (widget.badgeCount != null && widget.badgeCount! > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: selected ? Colors.white : KyboColors.error,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                  child: Center(
-                    child: Text(
-                      widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
-                      style: TextStyle(
-                        color: selected ? KyboColors.primary : Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+          // Quando collapsed: solo icona centrata. Quando expanded: row completa.
+          // Il contenuto cambia istantaneamente al hover, mentre la sidebar
+          // (parent) anima la sua larghezza in modo smooth.
+          child: widget.collapsed
+              ? Center(child: iconWidget)
+              : Row(
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        widget.label,
+                        style: TextStyle(
+                          color: fgColor,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        softWrap: false,
                       ),
                     ),
-                  ),
+                    if (hasBadge) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: selected ? Colors.white : KyboColors.error,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Center(
+                          child: Text(
+                            widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                            style: TextStyle(
+                              color: selected ? KyboColors.primary : Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ],
-          ),
         ),
       ),
     );
+
+    if (widget.collapsed) {
+      content = Tooltip(
+        message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
+        waitDuration: const Duration(milliseconds: 400),
+        child: content,
+      );
+    }
+
+    return content;
   }
 }
 
