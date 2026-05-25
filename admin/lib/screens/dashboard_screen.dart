@@ -536,8 +536,9 @@ class _DashboardContentState extends State<_DashboardContent> {
         }
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
+        // 380ms = animazione più rilassata vs 220ms iniziale (sembrava nervosa).
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeInOutCubic,
         width: collapsed ? _sidebarCollapsedWidth : _sidebarExpandedWidth,
         decoration: BoxDecoration(
           color: KyboColors.surface,
@@ -554,10 +555,10 @@ class _DashboardContentState extends State<_DashboardContent> {
         child: ClipRect(
           child: Column(
             children: [
-              // Logo (compatto se collapsed)
+              // Logo (la variante compatta/estesa la sceglie il widget stesso via LayoutBuilder)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                child: _buildSidebarLogo(l10n, collapsed),
+                child: _buildSidebarLogo(l10n),
               ),
               // Separatore
               Container(
@@ -580,7 +581,6 @@ class _DashboardContentState extends State<_DashboardContent> {
                         isSelected: _selectedIndex == index,
                         badgeCount: item.badgeCount,
                         onTap: () => _onNavSelected(index),
-                        collapsed: collapsed,
                       ),
                     );
                   },
@@ -593,25 +593,34 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 
-  /// Logo per la sidebar. In modalità collapsed mostra solo l'icona centrata.
-  /// In modalità espansa mostra l'intera intestazione (icona + "Kybo" + "Admin Panel").
-  Widget _buildSidebarLogo(AppLocalizations l10n, bool collapsed) {
-    if (collapsed) {
-      return Center(
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: KyboColors.primary.withValues(alpha: 0.1),
-            borderRadius: KyboBorderRadius.medium,
-          ),
-          child: const Center(
-            child: DietLogo(size: 26, isDarkBackground: false),
-          ),
-        ),
-      );
-    }
-    return _buildLogo(l10n);
+  /// Logo per la sidebar. Usa LayoutBuilder per scegliere la variante in base
+  /// alla larghezza REALE disponibile in ogni frame dell'animazione.
+  /// Necessario perché durante l'animazione di espansione (380ms) la sidebar
+  /// è larga ~72-240px in tempo reale, ma il flag hover flip istantaneamente
+  /// → senza LayoutBuilder vedremmo brevemente il logo espanso comprimersi
+  /// e generare RenderFlex overflow.
+  Widget _buildSidebarLogo(AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showCompact = constraints.maxWidth < 160;
+        if (showCompact) {
+          return Center(
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: KyboColors.primary.withValues(alpha: 0.1),
+                borderRadius: KyboBorderRadius.medium,
+              ),
+              child: const Center(
+                child: DietLogo(size: 26, isDarkBackground: false),
+              ),
+            ),
+          );
+        }
+        return _buildLogo(l10n);
+      },
+    );
   }
 
   /// Top bar minimale: solo controlli a destra (search, lingua, tema, user,
@@ -742,17 +751,15 @@ class _DashboardContentState extends State<_DashboardContent> {
 }
 
 /// [LAYOUT A — SIDEBAR] Voce di navigazione della sidebar verticale.
-/// Supporta due modalità via flag `collapsed`:
-/// - collapsed=true  → solo icona centrata, label nascosta, badge come dot
-/// - collapsed=false → row con icona + label + badge numerico full
-/// Tooltip mostrato in modalità collapsed così l'utente capisce dove sta cliccando.
+/// Sceglie automaticamente layout compatto (solo icona + dot badge) o esteso
+/// (icona + label + badge numerico) in base alla larghezza disponibile,
+/// via `LayoutBuilder`. Tooltip in modalità compatta.
 class _SidebarNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final int? badgeCount;
-  final bool collapsed;
 
   const _SidebarNavItem({
     required this.label,
@@ -760,7 +767,6 @@ class _SidebarNavItem extends StatefulWidget {
     required this.isSelected,
     required this.onTap,
     this.badgeCount,
-    this.collapsed = false,
   });
 
   @override
@@ -784,113 +790,124 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         ? Colors.white
         : (hover ? KyboColors.primary : KyboColors.textSecondary);
 
-    // Icona con eventuale dot-badge in alto a destra (modalità collapsed).
-    Widget iconWidget = Icon(widget.icon, size: 20, color: fgColor);
-    if (widget.collapsed && hasBadge) {
-      iconWidget = SizedBox(
-        width: 24,
-        height: 24,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(child: Icon(widget.icon, size: 20, color: fgColor)),
-            Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  color: KyboColors.error,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: selected ? KyboColors.primary : KyboColors.surface,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Wrap con Tooltip solo quando collapsed così l'utente sa che voce è.
-    Widget content = MouseRegion(
+    return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          padding: widget.collapsed
-              ? const EdgeInsets.symmetric(horizontal: 10, vertical: 12)
-              : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: KyboBorderRadius.medium,
-            boxShadow: selected ? KyboColors.softShadow : null,
-          ),
-          // Quando collapsed: solo icona centrata. Quando expanded: row completa.
-          // Il contenuto cambia istantaneamente al hover, mentre la sidebar
-          // (parent) anima la sua larghezza in modo smooth.
-          child: widget.collapsed
-              ? Center(child: iconWidget)
-              : Row(
+        // [FIX overflow] LayoutBuilder ci dà la larghezza REALE disponibile in
+        // ogni frame dell'animazione. Senza questo, durante i 380ms di
+        // transizione la sidebar parent è larga in modo intermedio (72px →
+        // 240px) ma noi renderizzeremmo sempre la Row espansa basandoci sul
+        // flag `collapsed` (che flip istantaneo al hover) → RenderFlex
+        // overflow di 8/32/81px nei frame intermedi.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Soglia: serve almeno ~140px per renderizzare icona + label
+            // breve. Sotto questa, mostriamo solo l'icona centrata.
+            final showCompact = constraints.maxWidth < 140;
+
+            // Icona, con dot-badge in alto a destra in modalità compatta.
+            Widget iconWidget = Icon(widget.icon, size: 20, color: fgColor);
+            if (showCompact && hasBadge) {
+              iconWidget = SizedBox(
+                width: 24,
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    iconWidget,
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: fgColor,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        softWrap: false,
-                      ),
-                    ),
-                    if (hasBadge) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    Center(child: Icon(widget.icon, size: 20, color: fgColor)),
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 9,
+                        height: 9,
                         decoration: BoxDecoration(
-                          color: selected ? Colors.white : KyboColors.error,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                        child: Center(
-                          child: Text(
-                            widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
-                            style: TextStyle(
-                              color: selected ? KyboColors.primary : Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          color: KyboColors.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected ? KyboColors.primary : KyboColors.surface,
+                            width: 1.5,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
+              );
+            }
+
+            final container = AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              padding: showCompact
+                  ? const EdgeInsets.symmetric(horizontal: 10, vertical: 12)
+                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: KyboBorderRadius.medium,
+                boxShadow: selected ? KyboColors.softShadow : null,
+              ),
+              child: showCompact
+                  ? Center(child: iconWidget)
+                  : Row(
+                      children: [
+                        iconWidget,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            style: TextStyle(
+                              color: fgColor,
+                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
+                        if (hasBadge) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: selected ? Colors.white : KyboColors.error,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Center(
+                              child: Text(
+                                widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                                style: TextStyle(
+                                  color: selected ? KyboColors.primary : Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+            );
+
+            // Tooltip solo in modalità compatta così l'utente identifica
+            // l'icona prima di cliccarla.
+            if (showCompact) {
+              return Tooltip(
+                message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
+                waitDuration: const Duration(milliseconds: 400),
+                child: container,
+              );
+            }
+            return container;
+          },
         ),
       ),
     );
-
-    if (widget.collapsed) {
-      content = Tooltip(
-        message: hasBadge ? '${widget.label} (${widget.badgeCount})' : widget.label,
-        waitDuration: const Duration(milliseconds: 400),
-        child: content,
-      );
-    }
-
-    return content;
   }
 }
 
