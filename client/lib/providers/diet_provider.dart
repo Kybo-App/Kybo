@@ -48,6 +48,17 @@ class DietProvider extends ChangeNotifier {
   bool _isCalculating = false;
   DateTime? _calculationStartTime;
 
+  /// True quando l'utente sta sfogliando una dieta storica (read-only).
+  /// In questo stato:
+  /// - Le scritture locali (saveDiet) sono inibite per non sporcare la cache
+  ///   con dati storici e non far avanzare il `diet_local_updated_at_ms` —
+  ///   altrimenti il prossimo syncFromFirebase pusherebbe lo storico in
+  ///   `diets/current` sovrascrivendo la dieta vera.
+  /// - Le sync verso cloud (runSmartSyncCheck) sono inibite per lo stesso motivo.
+  /// Cleared automaticamente da loadFromCache / syncFromFirebase / uploadDiet.
+  bool _isViewingHistorical = false;
+  bool get isViewingHistorical => _isViewingHistorical;
+
   DateTime _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _lastSyncedDiet;
   Map<String, dynamic>? _lastSyncedSubstitutions;
@@ -79,6 +90,10 @@ class DietProvider extends ChangeNotifier {
   Future<String> runSmartSyncCheck({bool forceSync = false}) async {
     final user = _auth.currentUser;
     if (user == null || _dietPlan == null) return "Errore: Dati mancanti.";
+    if (_isViewingHistorical) {
+      debugPrint("⏭️ Sync skip: stiamo visualizzando una dieta storica (view-only).");
+      return "ℹ️ Visualizzazione storica — nessuna sincronizzazione.";
+    }
 
     final currentDietJson = _dietPlan!.toJson();
     final currentPlanJson = currentDietJson['plan'] as Map<String, dynamic>;
@@ -371,6 +386,10 @@ class DietProvider extends ChangeNotifier {
 
   Future<bool> loadFromCache() async {
     bool hasData = false;
+    // Fresh startup: la cache rappresenta la dieta corrente reale, non
+    // uno storico. Reset esplicito del flag — altrimenti se l'app è
+    // crashata mentre era in view-only mode resteremmo bloccati.
+    _isViewingHistorical = false;
     try {
       _setLoading(true);
       final savedDiet = await _storage.loadDiet();
@@ -446,6 +465,9 @@ class DietProvider extends ChangeNotifier {
       if (docSnapshot.exists) {
         final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
+          // Sync da cloud → torniamo allo stato "current vera". Esci dalla
+          // view-only mode (se eravamo in storico).
+          _isViewingHistorical = false;
           final Map<String, bool> localConsumedStates = {};
           if (_dietPlan != null) {
             for (final weekPlan in _dietPlan!.weeks) {
@@ -507,9 +529,21 @@ class DietProvider extends ChangeNotifier {
     }
   }
 
+  /// Carica una dieta dallo storico in modalità VIEW-ONLY.
+  ///
+  /// [FIX 2026-05-25] Prima qui si chiamavano `_storage.saveDiet(...)` e
+  /// `_storage.saveSwaps(...)`: il primo stampava `diet_local_updated_at_ms = NOW`,
+  /// e al prossimo `syncFromFirebase` il check "last-write-wins" vedeva il local
+  /// più recente del `diets/current` cloud e PUSHAVA la dieta storica come current,
+  /// sovrascrivendo quella vera. Risultato per l'utente: chiudo l'app dopo aver
+  /// sfogliato lo storico, riapro, e mi ritrovo una vecchia versione al posto
+  /// della current. Fix: niente scritture in cache, niente avanzamento del
+  /// timestamp, e set di `_isViewingHistorical = true` per bloccare anche
+  /// scritture incidentali da consume/swap/update mentre l'utente sfoglia.
   void loadHistoricalDiet(Map<String, dynamic> dietData, String docId) {
-    debugPrint("📂 Caricamento dieta ID: $docId");
+    debugPrint("📂 Caricamento dieta storica (view-only) ID: $docId");
 
+    _isViewingHistorical = true;
     _dietPlan = DietPlan.fromJson(dietData);
     _currentFirestoreId = docId;
     _selectedWeek = 0;
@@ -526,14 +560,15 @@ class DietProvider extends ChangeNotifier {
             _activeSwaps[key.toString()] = swapObj;
           }
         });
-        debugPrint("✅ Ripristinati ${_activeSwaps.length} scambi attivi.");
+        debugPrint("✅ Ripristinati ${_activeSwaps.length} scambi attivi (storico, view-only).");
       } catch (e) {
         debugPrint("⚠️ Errore critico ripristino swap: $e");
       }
     }
 
-    _storage.saveDiet(_dietPlan!.toJson());
-    _storage.saveSwaps(_activeSwaps);
+    // VIEW-ONLY: niente saveDiet/saveSwaps qui — vedi commento in cima.
+    // _storage.saveDiet(_dietPlan!.toJson());   ← rimosso (era il bug)
+    // _storage.saveSwaps(_activeSwaps);          ← rimosso (era il bug)
 
     final jsonMap = _dietPlan!.toJson();
     _lastSyncedDiet = _deepCopy(jsonMap['plan']);
@@ -549,6 +584,12 @@ class DietProvider extends ChangeNotifier {
   /// Controlla se il giorno è cambiato e resetta tutti i flag isConsumed su tutte le settimane.
   Future<void> _checkDailyReset() async {
     if (_dietPlan == null) return;
+    if (_isViewingHistorical) {
+      // In view-only non resettare nulla né stampare timestamp.
+      // Quando torneremo alla current, sarà la sync (o un nuovo loadFromCache)
+      // a riprendere lo stato giusto.
+      return;
+    }
 
     final todayStr = TimeHelper().getLogicalTodayString();
 
@@ -586,6 +627,10 @@ class DietProvider extends ChangeNotifier {
     String? instanceId,
     int? cadCode,
   }) async {
+    if (_isViewingHistorical) {
+      debugPrint("⏭️ updateDietMeal skip: dieta storica view-only.");
+      return;
+    }
     if (_dietPlan == null ||
         !currentWeekPlan.containsKey(day) ||
         !currentWeekPlan[day]!.containsKey(meal)) {
@@ -643,6 +688,10 @@ class DietProvider extends ChangeNotifier {
     String? instanceId,
     int? cadCode,
   }) async {
+    if (_isViewingHistorical) {
+      debugPrint("⏭️ consumeMeal skip: dieta storica view-only.");
+      return;
+    }
     if (_dietPlan == null) return;
 
     final mealsMap = currentWeekPlan[day];
@@ -826,6 +875,8 @@ class DietProvider extends ChangeNotifier {
     _setLoading(true);
     _uploadProgress = 0.0;
     clearError();
+    // Nuova dieta in arrivo → diventa la nuova "current". Esci dalla view-only.
+    _isViewingHistorical = false;
 
     try {
       String? token;
@@ -1042,6 +1093,10 @@ class DietProvider extends ChangeNotifier {
   }
 
   Future<void> swapMeal(String key, ActiveSwap swap) async {
+    if (_isViewingHistorical) {
+      debugPrint("⏭️ swapMeal skip: dieta storica view-only.");
+      return;
+    }
     _activeSwaps[key] = swap;
     _storage.saveSwaps(_activeSwaps);
     notifyListeners();
@@ -1049,6 +1104,10 @@ class DietProvider extends ChangeNotifier {
   }
 
   Future<void> swapDays(String day1, String day2, int weekIndex) async {
+    if (_isViewingHistorical) {
+      debugPrint("⏭️ swapDays skip: dieta storica view-only.");
+      return;
+    }
     if (_dietPlan == null) return;
     if (weekIndex < 0 || weekIndex >= _dietPlan!.weeks.length) return;
     final week = _dietPlan!.weeks[weekIndex];
@@ -1101,6 +1160,7 @@ class DietProvider extends ChangeNotifier {
     _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
     _lastSyncedDiet = null;
     _lastSyncedSubstitutions = null;
+    _isViewingHistorical = false;
     notifyListeners();
   }
 
