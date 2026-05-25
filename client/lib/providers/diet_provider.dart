@@ -12,6 +12,7 @@ import '../repositories/diet_repository.dart';
 import '../services/storage_service.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
+import '../services/encryption_service.dart';
 import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
 import '../core/error_handler.dart';
@@ -431,6 +432,54 @@ class DietProvider extends ChangeNotifier {
           .doc('current')
           .get();
 
+      // [FIX 2026-05-25] Il doc `diets/current` può avere campi legacy non
+      // crittografati (`plan`, `substitutions`, `activeSwaps`) lasciati da
+      // scritture pre-encryption. `saveCurrentDiet` usa `SetOptions(merge: true)`
+      // e non li rimuove → convivono coi campi `_encrypted` recenti.
+      //
+      // Prima qui si leggeva `data['plan']` direttamente, prendendo quindi il
+      // fossile vecchio (senza sostituzioni) e ignorando `plan_encrypted`
+      // (la dieta attuale). Risultato: ogni sync sovrascriveva la cache
+      // locale corretta con la dieta vecchia.
+      //
+      // Fix: se `encrypted == true`, decifra i campi `_encrypted` e costruisci
+      // un payload coerente con la stessa shape attesa da DietPlan.fromJson.
+      // I campi legacy vengono completamente ignorati.
+      final rawData = docSnapshot.data();
+      Map<String, dynamic>? data;
+      if (rawData != null) {
+        if (rawData['encrypted'] == true) {
+          try {
+            final encSvc = EncryptionService();
+            data = <String, dynamic>{
+              'plan': encSvc.decryptData(rawData['plan_encrypted'] as String, uid),
+              'substitutions': encSvc.decryptData(rawData['substitutions_encrypted'] as String, uid),
+              'activeSwaps': encSvc.decryptData(rawData['activeSwaps_encrypted'] as String, uid),
+              'lastUpdated': rawData['lastUpdated'],
+              'uploadedAt': rawData['uploadedAt'],
+            };
+            if (rawData['weeks_encrypted'] != null) {
+              final decryptedWeeks = encSvc.decryptData(
+                rawData['weeks_encrypted'] as String,
+                uid,
+              );
+              if (decryptedWeeks['weeks'] is List) {
+                data['weeks'] = decryptedWeeks['weeks'];
+              }
+            }
+            debugPrint("🔓 Sync cloud: decifrati campi crittografati "
+                "(plan ${(data['plan'] as Map?)?.keys.length ?? 0} giorni, "
+                "subs ${(data['substitutions'] as Map?)?.keys.length ?? 0} gruppi)");
+          } catch (e) {
+            debugPrint("❌ Sync cloud: errore decifratura: $e");
+            return;
+          }
+        } else {
+          // Legacy: doc senza encrypted flag → usa campi in chiaro come prima.
+          data = rawData;
+        }
+      }
+
       // Last-write-wins: se la cache locale è più recente del doc `current`
       // su Firestore, non sovrascriviamo la dieta locale — sarebbe un regresso
       // (es. swap/sostituzioni fatte tra due flutter run prima che il throttle
@@ -438,7 +487,7 @@ class DietProvider extends ChangeNotifier {
       // verso il cloud così le due repliche tornano allineate.
       final localUpdatedAt = await _storage.loadDietLocalUpdatedAt();
       if (docSnapshot.exists && _dietPlan != null && localUpdatedAt != null) {
-        final cloudTs = docSnapshot.data()?['lastUpdated'];
+        final cloudTs = data?['lastUpdated'];
         DateTime? cloudUpdatedAt;
         if (cloudTs is Timestamp) cloudUpdatedAt = cloudTs.toDate();
         if (cloudUpdatedAt == null ||
@@ -463,7 +512,6 @@ class DietProvider extends ChangeNotifier {
       }
 
       if (docSnapshot.exists) {
-        final data = docSnapshot.data();
         if (data != null && data['plan'] != null) {
           // Sync da cloud → torniamo allo stato "current vera". Esci dalla
           // view-only mode (se eravamo in storico).

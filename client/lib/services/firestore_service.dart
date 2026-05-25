@@ -31,6 +31,16 @@ class FirestoreService {
         'substitutions_encrypted': encryptedSubs,
         'activeSwaps_encrypted': encryptedSwaps,
         'encrypted': true,
+        // [FIX 2026-05-25] Cancella esplicitamente i campi legacy in chiaro
+        // che potrebbero essere rimasti nel doc da scritture pre-encryption.
+        // Con SetOptions(merge: true) i campi non menzionati restano lì come
+        // fossili — e `syncFromFirebase` prima del fix li leggeva al posto
+        // dei campi `_encrypted` (vedi bug "dieta vecchia senza sostituzioni
+        // dopo kill+reopen"). Queste delete sono no-op se i campi non esistono.
+        'plan': FieldValue.delete(),
+        'substitutions': FieldValue.delete(),
+        'activeSwaps': FieldValue.delete(),
+        'weeks': FieldValue.delete(),
       };
 
       if (weeks != null && weeks.length > 1) {
