@@ -514,9 +514,10 @@ class _DashboardContentState extends State<_DashboardContent>
                     width: _sidebarExpandedWidth - 24,
                     child: Column(
                       children: [
-                        // Logo come card standalone
+                        // Logo come card standalone, gap stretto con le nav
+                        // card sotto (stesso 3px) così tutto sembra un blocco.
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: _buildSidebarLogo(l10n, globalT),
                         ),
                         // Nav items: lista di card singole separate da gap
@@ -528,7 +529,7 @@ class _DashboardContentState extends State<_DashboardContent>
                               final item = navItems[index];
                               final itemT = _itemCascadeT(index);
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.only(bottom: 3),
                                 child: _SidebarNavItem(
                                   label: item.label,
                                   icon: item.icon,
@@ -563,13 +564,9 @@ class _DashboardContentState extends State<_DashboardContent>
       decoration: BoxDecoration(
         color: KyboColors.surface,
         borderRadius: KyboBorderRadius.medium,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        // Niente shadow: con gap stretto (3-8px) tra logo card e nav cards
+        // sotto, l'aggiunta di shadow individuali creerebbe linee scure
+        // tra le card. Resta solo lo stacco di colore (surface su body bg).
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Stack(
@@ -816,10 +813,13 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     // pill è dimensionato esplicitamente e cresce smooth con l'animazione.
     Widget content = Stack(
       children: [
-        // Background pill animato. Shadow per TUTTI gli item (anche non
-        // selezionati): senza un container sidebar attorno, ogni pill ha
-        // bisogno della sua piccola ombra per "staccarsi" dal background
-        // e leggersi come elemento individuale floating.
+        // Background pill animato.
+        // Non-selected: SHADOW ASSENTE. Le card sono impilate strette (gap
+        // 3px) e una shadow per ognuna creerebbe "linee scure" tra le card,
+        // facendole sembrare un elenco a righe. Visivamente leggono come un
+        // "blocco" anche senza essere fisicamente un container.
+        // Selected: shadow primary più pronunciata → pop out, focus visivo
+        // chiaro su quale tab è attiva.
         Positioned(
           left: 0,
           top: 0,
@@ -837,13 +837,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                         offset: const Offset(0, 4),
                       ),
                     ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                  : null,
             ),
           ),
         ),
