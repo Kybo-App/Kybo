@@ -1,15 +1,18 @@
 // Schermata cronologia: switch per categoria (Diete / Allenamenti).
+// [DISABLED workout feature 2026-05-25] Sezione "Allenamenti" nascosta.
+// La cronologia mostra solo le diete. Per riattivare il segmented switch,
+// scommentare il SegmentedButton e il branch del Workouts qui sotto.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../providers/diet_provider.dart';
-import '../providers/workout_provider.dart';
+// [DISABLED workout feature 2026-05-25] import '../providers/workout_provider.dart';
 import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
 import '../widgets/skeleton_loaders.dart';
 
-enum _HistoryCategory { diets, workouts }
+// [DISABLED workout feature 2026-05-25] enum _HistoryCategory { diets, workouts }
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -19,7 +22,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  _HistoryCategory _category = _HistoryCategory.diets;
+  // [DISABLED workout feature 2026-05-25] _HistoryCategory _category = _HistoryCategory.diets;
 
   @override
   Widget build(BuildContext context) {
@@ -33,35 +36,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         iconTheme: IconThemeData(color: KyboColors.textPrimary(context)),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: SegmentedButton<_HistoryCategory>(
-              segments: const [
-                ButtonSegment(
-                  value: _HistoryCategory.diets,
-                  label: Text('Diete'),
-                  icon: Icon(Icons.restaurant_menu),
-                ),
-                ButtonSegment(
-                  value: _HistoryCategory.workouts,
-                  label: Text('Allenamenti'),
-                  icon: Icon(Icons.fitness_center),
-                ),
-              ],
-              selected: {_category},
-              onSelectionChanged: (s) =>
-                  setState(() => _category = s.first),
-            ),
-          ),
-          Expanded(
-            child: _category == _HistoryCategory.diets
-                ? const _DietsHistoryList()
-                : const _WorkoutsHistoryList(),
-          ),
-        ],
-      ),
+      // [DISABLED workout feature 2026-05-25] Senza segmented button mostriamo
+      // direttamente la lista diete. Quando ripristineremo workouts:
+      // - Decommentare enum + _category + l'intero Column con SegmentedButton
+      // - Sostituire il body con quella struttura
+      body: const _DietsHistoryList(),
     );
   }
 }
@@ -189,6 +168,12 @@ class _DietsHistoryList extends StatelessWidget {
   }
 }
 
+// [DISABLED workout feature 2026-05-25] Lista cronologia allenamenti
+// nascosta dal segmented switch in HistoryScreen. Wrappata in block comment
+// per evitare warning di tipo "WorkoutProvider non importato".
+// Per riattivare: rimuovere il blocco /* */ qui sotto e ripristinare
+// l'import in cima al file.
+/*
 class _WorkoutsHistoryList extends StatefulWidget {
   const _WorkoutsHistoryList();
 
@@ -331,6 +316,7 @@ class _WorkoutsHistoryListState extends State<_WorkoutsHistoryList> {
     );
   }
 }
+*/
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.icon, required this.color, required this.text});

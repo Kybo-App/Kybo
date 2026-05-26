@@ -22,7 +22,7 @@ import 'gdpr_privacy_view.dart';
 import 'reports_view.dart';
 import 'server_metrics_view.dart';
 import 'rewards_catalog_view.dart';
-import 'workout_management_view.dart';
+// [DISABLED workout feature 2026-05-25] import 'workout_management_view.dart';
 import 'matchmaking_board_view.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -50,15 +50,6 @@ class _DashboardContent extends StatefulWidget {
 }
 
 class _DashboardContentState extends State<_DashboardContent> {
-  // [LAYOUT 2026-05-25] Switch tra:
-  //   true  → nuova sidebar verticale a sinistra (Layout A)
-  //   false → vecchio top-bar orizzontale con tab scrollabili (Layout B / legacy)
-  // Per revertire al layout precedente in caso il nuovo non convincesse,
-  // basta cambiare questo flag a false. Tutti i metodi di entrambi i layout
-  // sono mantenuti nel file (vedi _buildSidebar / _buildTopBarMinimal per
-  // il nuovo, _buildTopBar / _buildNavigation per il legacy).
-  static const bool _useSidebar = true;
-
   int _selectedIndex = 0;
   String _userName = "";
   String _userRole = "Utente";
@@ -67,7 +58,7 @@ class _DashboardContentState extends State<_DashboardContent> {
   bool _isPT = false;
   bool _isLoading = true;
 
-  // [LAYOUT A — SIDEBAR] Stato hover per espandere la sidebar collassata.
+  // Stato hover per espandere la sidebar collassata.
   // collapsed = solo icone (72px), expanded = icone + label + badge (240px).
   bool _isSidebarHovered = false;
   static const double _sidebarCollapsedWidth = 72;
@@ -348,12 +339,14 @@ class _DashboardContentState extends State<_DashboardContent> {
           label: l10n.navRewards,
           view: RewardsCatalogView(key: ValueKey('rewards_$themeKey')),
         ),
-      if (_isPT || _isAdmin)
-        _NavItem(
-          icon: Icons.fitness_center_rounded,
-          label: l10n.navWorkout,
-          view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
-        ),
+      // [DISABLED workout feature 2026-05-25] Per ora la sezione "Allenamento"
+      // è nascosta dalla nav admin. Per riattivarla, decommentare il blocco.
+      // if (_isPT || _isAdmin)
+      //   _NavItem(
+      //     icon: Icons.fitness_center_rounded,
+      //     label: l10n.navWorkout,
+      //     view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
+      //   ),
       if (_isNutritionist || _isAdmin)
         _NavItem(
           icon: Icons.bookmark_rounded,
@@ -393,136 +386,27 @@ class _DashboardContentState extends State<_DashboardContent> {
       onKeyEvent: (node, event) => _handleKeyEvent(node, event, navItems),
       child: Scaffold(
         backgroundColor: KyboColors.background,
-        body: _useSidebar
-            // [LAYOUT A — SIDEBAR VERTICALE]
-            ? Row(
+        body: Row(
+          children: [
+            _buildSidebar(navItems, l10n),
+            Expanded(
+              child: Column(
                 children: [
-                  _buildSidebar(navItems, l10n),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _buildTopBarMinimal(navItems, l10n),
-                        contentArea,
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            // [LAYOUT B — TOP BAR LEGACY] vecchio comportamento orizzontale
-            : Column(
-                children: [
-                  _buildTopBar(navItems, l10n),
+                  _buildTopBarMinimal(navItems, l10n),
                   contentArea,
                 ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(List<_NavItem> navItems, AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        boxShadow: KyboColors.softShadow,
-      ),
-      // Nav items + user section possono superare la larghezza dello schermo
-      // su viewport strette: la nav prende lo spazio residuo e scrolla in
-      // orizzontale, così i pulsanti a destra (search/lingua/tema/utente/logout)
-      // restano sempre visibili e non vengono sovrascritti.
-      child: Row(
-        children: [
-          _buildLogo(l10n),
-          const SizedBox(width: 32),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _buildNavigation(navItems),
-            ),
-          ),
-          const SizedBox(width: 16),
-          _buildUserSection(navItems, l10n),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogo(AppLocalizations l10n) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: KyboColors.primary.withValues(alpha: 0.1),
-            borderRadius: KyboBorderRadius.medium,
-          ),
-          child: const Center(
-            child: DietLogo(size: 28, isDarkBackground: false),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Kybo",
-              style: TextStyle(
-                color: KyboColors.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-              ),
-            ),
-            Text(
-              l10n.adminPanel,
-              style: TextStyle(
-                color: KyboColors.textMuted,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildNavigation(List<_NavItem> navItems) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: KyboColors.background,
-        borderRadius: KyboBorderRadius.pill,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: navItems.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(
-              right: index < navItems.length - 1 ? 8 : 0,
-            ),
-            child: PillNavItem(
-              label: item.label,
-              icon: item.icon,
-              isSelected: _selectedIndex == index,
-              badgeCount: item.badgeCount,
-              onTap: () => _onNavSelected(index),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
 
-  // ============================================================
-  // [LAYOUT A — SIDEBAR] Nuovo layout aggiunto 2026-05-25.
-  // Per disattivarlo, cambia _useSidebar a false in cima alla classe.
-  // ============================================================
+  // [REMOVED 2026-05-25] Layout B (top bar orizzontale legacy) eliminato dopo
+  // conferma utente del nuovo Layout A (sidebar). Cronologia git tiene il
+  // codice precedente accessibile via blame/log se mai servisse riferimento.
+  // Rimossi: _buildTopBar, _buildLogo, _buildNavigation.
 
   /// Sidebar verticale. Architettura ottimizzata per fluidità su Flutter web:
   /// - 1 solo `TweenAnimationBuilder` driva un `t` (0..1) per tutto il sottotree
@@ -702,11 +586,6 @@ class _DashboardContentState extends State<_DashboardContent> {
     );
   }
 
-  // ============================================================
-  // [LAYOUT B — TOP BAR LEGACY] Vecchio top bar orizzontale.
-  // Lasciato attivo come fallback se _useSidebar = false.
-  // ============================================================
-
   Widget _buildUserSection(List<_NavItem> navItems, AppLocalizations l10n) {
     final langProvider = LanguageProvider();
     return Row(
@@ -810,7 +689,7 @@ class _DashboardContentState extends State<_DashboardContent> {
   }
 }
 
-/// [LAYOUT A — SIDEBAR] Voce di navigazione della sidebar verticale.
+/// Voce di navigazione della sidebar verticale.
 /// Riceve `t` (0..1) dal parent e lo usa per interpolare opacity della
 /// label/badge numerico. NIENTE LayoutBuilder, NIENTE AnimatedSwitcher:
 /// l'unico animation source è il TweenAnimationBuilder del parent.

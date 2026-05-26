@@ -34,7 +34,7 @@ import 'statistics_screen.dart';
 import 'badges_screen.dart';
 import 'meal_suggestions_screen.dart';
 import 'rewards_screen.dart';
-import 'workout_screen.dart';
+// [DISABLED workout feature 2026-05-25] import 'workout_screen.dart';
 import 'matchmaking_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
@@ -98,7 +98,7 @@ class _MainScreenContentState extends State<MainScreenContent>
   final GlobalKey _drawerSettingsKey = GlobalKey();
   final GlobalKey _drawerStatsKey = GlobalKey();
   final GlobalKey _drawerSuggestionsKey = GlobalKey();
-  final GlobalKey _drawerWorkoutKey = GlobalKey();
+  // [DISABLED workout feature 2026-05-25] final GlobalKey _drawerWorkoutKey = GlobalKey();
   final GlobalKey _drawerRewardsKey = GlobalKey();
   final GlobalKey _drawerMatchmakingKey = GlobalKey();
 
@@ -470,12 +470,13 @@ class _MainScreenContentState extends State<MainScreenContent>
         await Future.delayed(const Duration(milliseconds: 450));
         if (!mounted) return;
         // Ordine aggiornato: Impostazioni promosse, Cronologia in fondo (v12).
+        // [DISABLED workout feature 2026-05-25] _drawerWorkoutKey rimosso
+        // dal tour del tutorial. Per riattivare, reinserire la key nelle liste.
         final drawerKeys = _hasNutritionistForTutorial
             ? [
                 _drawerAvatarKey,
                 _drawerChatKey,
                 _drawerSettingsKey,
-                _drawerWorkoutKey,
                 _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
@@ -487,7 +488,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                 _drawerAvatarKey,
                 _drawerUploadKey,
                 _drawerSettingsKey,
-                _drawerWorkoutKey,
                 _drawerBadgesKey,
                 _drawerStatsKey,
                 _drawerSuggestionsKey,
@@ -1190,16 +1190,18 @@ class _MainScreenContentState extends State<MainScreenContent>
                 MaterialPageRoute(builder: (_) => const RewardsScreen()),
               ),
             ),
-            _buildSidebarMenuItem(
-              context: context,
-              icon: Icons.fitness_center_rounded,
-              label: 'Allenamento',
-              iconColor: KyboColors.accent,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
-              ),
-            ),
+            // [DISABLED workout feature 2026-05-25] Voce "Allenamento" del
+            // side menu nascosta. Per riattivare, scommentare.
+            // _buildSidebarMenuItem(
+            //   context: context,
+            //   icon: Icons.fitness_center_rounded,
+            //   label: 'Allenamento',
+            //   iconColor: KyboColors.accent,
+            //   onTap: () => Navigator.push(
+            //     context,
+            //     MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+            //   ),
+            // ),
             _buildSidebarMenuItem(
               context: context,
               icon: Icons.settings_rounded,
@@ -1908,30 +1910,33 @@ class _MainScreenContentState extends State<MainScreenContent>
                           ),
                           ),
 
-                          Showcase(
-                            key: _drawerWorkoutKey,
-                            title: 'Allenamento',
-                            description: 'La tua scheda personalizzata\ncreata dal tuo PT.',
-                            child: PillListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: KyboColors.accent.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.fitness_center_rounded, color: KyboColors.accent, size: 20),
-                            ),
-                            title: "Allenamento",
-                            subtitle: "La tua scheda e i tuoi esercizi",
-                            onTap: () {
-                              Navigator.pop(drawerCtx);
-                              Navigator.push(
-                                drawerCtx,
-                                MaterialPageRoute(builder: (_) => const WorkoutScreen()),
-                              );
-                            },
-                          ),
-                          ),
+                          // [DISABLED workout feature 2026-05-25] Voce
+                          // "Allenamento" del drawer nascosta. Per riattivare,
+                          // scommentare.
+                          // Showcase(
+                          //   key: _drawerWorkoutKey,
+                          //   title: 'Allenamento',
+                          //   description: 'La tua scheda personalizzata\ncreata dal tuo PT.',
+                          //   child: PillListTile(
+                          //   leading: Container(
+                          //     padding: const EdgeInsets.all(8),
+                          //     decoration: BoxDecoration(
+                          //       color: KyboColors.accent.withValues(alpha: 0.1),
+                          //       shape: BoxShape.circle,
+                          //     ),
+                          //     child: const Icon(Icons.fitness_center_rounded, color: KyboColors.accent, size: 20),
+                          //   ),
+                          //   title: "Allenamento",
+                          //   subtitle: "La tua scheda e i tuoi esercizi",
+                          //   onTap: () {
+                          //     Navigator.pop(drawerCtx);
+                          //     Navigator.push(
+                          //       drawerCtx,
+                          //       MaterialPageRoute(builder: (_) => const WorkoutScreen()),
+                          //     );
+                          //   },
+                          // ),
+                          // ),
 
                           Showcase(
                             key: _drawerBadgesKey,
