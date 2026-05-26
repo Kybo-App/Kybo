@@ -49,7 +49,8 @@ class _DashboardContent extends StatefulWidget {
   State<_DashboardContent> createState() => _DashboardContentState();
 }
 
-class _DashboardContentState extends State<_DashboardContent> {
+class _DashboardContentState extends State<_DashboardContent>
+    with TickerProviderStateMixin {
   int _selectedIndex = 0;
   String _userName = "";
   String _userRole = "Utente";
@@ -64,18 +65,58 @@ class _DashboardContentState extends State<_DashboardContent> {
   static const double _sidebarCollapsedWidth = 72;
   static const double _sidebarExpandedWidth = 240;
 
+  // [FASE 1 — CASCADE EXPAND] AnimationController che piloti l'animazione
+  // della sidebar. Ogni item calcolerà un proprio `t locale` in base alla
+  // distanza dalla tab selezionata, creando un effetto "onda" che parte
+  // dalla selezionata e si propaga simmetricamente sopra/sotto.
+  //
+  // Param tuning:
+  // - itemStaggerMs: ritardo tra item adiacenti (60ms = onda chiaramente
+  //   percepibile ma non troppo lenta)
+  // - itemAnimMs: durata dell'espansione del singolo item (300ms = morbido)
+  // - controllerDurationMs: tempo totale = itemAnimMs + max_distance*stagger.
+  //   Con 13 item e selected al centro, max_distance ~ 7, totale ~ 720ms.
+  late final AnimationController _sidebarAnim;
+  static const int _itemStaggerMs = 60;
+  static const int _itemAnimMs = 300;
+  static const int _sidebarTotalMs = 800;
+
   final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    _sidebarAnim = AnimationController(
+      duration: const Duration(milliseconds: _sidebarTotalMs),
+      vsync: this,
+    );
     _fetchCurrentUser();
   }
 
   @override
   void dispose() {
+    _sidebarAnim.dispose();
     _keyboardFocusNode.dispose();
     super.dispose();
+  }
+
+  /// Calcola il `t locale` di un singolo nav item della sidebar in base al
+  /// progresso globale del controller e alla distanza dalla tab selezionata.
+  ///
+  /// L'item selezionato ha delay=0 → inizia subito.
+  /// Gli item adiacenti hanno delay=stagger → partono dopo `stagger`ms.
+  /// E così via simmetricamente.
+  double _itemCascadeT(int index) {
+    final globalT = _sidebarAnim.value; // 0..1
+    final distance = (index - _selectedIndex).abs();
+    final delayMs = distance * _itemStaggerMs;
+
+    final elapsedMs = globalT * _sidebarTotalMs;
+    final localProgress =
+        ((elapsedMs - delayMs) / _itemAnimMs).clamp(0.0, 1.0);
+
+    // Curva easeInOut applicata localmente per dolcezza
+    return Curves.easeInOut.transform(localProgress);
   }
 
   Future<void> _fetchCurrentUser() async {
@@ -408,33 +449,34 @@ class _DashboardContentState extends State<_DashboardContent> {
   // codice precedente accessibile via blame/log se mai servisse riferimento.
   // Rimossi: _buildTopBar, _buildLogo, _buildNavigation.
 
-  /// Sidebar verticale. Architettura ottimizzata per fluidità su Flutter web:
-  /// - 1 solo `TweenAnimationBuilder` driva un `t` (0..1) per tutto il sottotree
-  /// - I navItem ricevono `t` come prop, NON usano LayoutBuilder
-  ///   (LayoutBuilder forza rebuild su ogni constraint change → 13 rebuild
-  ///    × 60fps durante animazione = troppo)
-  /// - Width della sidebar = lerp(72, 240, t) calcolato una volta per frame
-  /// - Curva slowMiddle = accelera in apertura/chiusura, rallenta nel mezzo
-  ///   per far percepire smoothness
+  /// Sidebar verticale con cascade expand dalla tab selezionata.
+  /// Architettura:
+  /// - `_sidebarAnim` (AnimationController) → progresso globale 0..1.
+  /// - Larghezza sidebar = lerp(72, 240, globalT).
+  /// - Ogni nav item riceve un `t locale` calcolato in `_itemCascadeT(index)`,
+  ///   con delay proporzionale a `|index - _selectedIndex|`.
+  /// - Effetto: la selezionata si espande per prima, le altre seguono come
+  ///   un'onda che si propaga simmetricamente sopra/sotto.
   Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
-    final target = _isSidebarHovered ? 1.0 : 0.0;
     return MouseRegion(
       onEnter: (_) {
-        if (!_isSidebarHovered) setState(() => _isSidebarHovered = true);
+        if (!_isSidebarHovered) {
+          setState(() => _isSidebarHovered = true);
+          _sidebarAnim.forward();
+        }
       },
       onExit: (_) {
-        if (_isSidebarHovered) setState(() => _isSidebarHovered = false);
+        if (_isSidebarHovered) {
+          setState(() => _isSidebarHovered = false);
+          _sidebarAnim.reverse();
+        }
       },
-      child: TweenAnimationBuilder<double>(
-        // 600ms = abbastanza lento da percepire la transizione come continua.
-        // easeInOut = simmetrico, accelera dolce dall'inizio e decelera dolce
-        // alla fine, senza "scatti" tipici di easeOutCubic verso la fine.
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOut,
-        tween: Tween<double>(begin: target, end: target),
-        builder: (context, t, _) {
+      child: AnimatedBuilder(
+        animation: _sidebarAnim,
+        builder: (context, _) {
+          final globalT = _sidebarAnim.value; // 0..1
           final width = _sidebarCollapsedWidth +
-              (_sidebarExpandedWidth - _sidebarCollapsedWidth) * t;
+              (_sidebarExpandedWidth - _sidebarCollapsedWidth) * globalT;
           return SizedBox(
             width: width,
             child: ClipRect(
@@ -444,10 +486,6 @@ class _DashboardContentState extends State<_DashboardContent> {
                 alignment: Alignment.centerLeft,
                 child: SizedBox(
                   width: _sidebarExpandedWidth,
-                  // Contenuto SEMPRE renderizzato in larghezza piena (240px).
-                  // Niente layout-pass per frame: la sidebar parent cambia
-                  // larghezza, ClipRect taglia ciò che eccede. Gli item
-                  // ricevono `t` per fare fade della label.
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: KyboColors.surface,
@@ -463,7 +501,10 @@ class _DashboardContentState extends State<_DashboardContent> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                          child: _buildSidebarLogo(l10n, t),
+                          // Logo: usa globalT (no cascade). È l'header
+                          // della sidebar, animarlo in cascade lo farebbe
+                          // arrivare con ritardo rispetto al primo item.
+                          child: _buildSidebarLogo(l10n, globalT),
                         ),
                         Container(
                           height: 1,
@@ -476,6 +517,9 @@ class _DashboardContentState extends State<_DashboardContent> {
                             itemCount: navItems.length,
                             itemBuilder: (context, index) {
                               final item = navItems[index];
+                              // Ogni item ha il suo t locale, con delay
+                              // simmetrico rispetto alla selezionata.
+                              final itemT = _itemCascadeT(index);
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: _SidebarNavItem(
@@ -484,7 +528,7 @@ class _DashboardContentState extends State<_DashboardContent> {
                                   isSelected: _selectedIndex == index,
                                   badgeCount: item.badgeCount,
                                   onTap: () => _onNavSelected(index),
-                                  t: t,
+                                  t: itemT,
                                 ),
                               );
                             },
