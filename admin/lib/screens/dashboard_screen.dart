@@ -70,16 +70,15 @@ class _DashboardContentState extends State<_DashboardContent>
   // distanza dalla tab selezionata, creando un effetto "onda" che parte
   // dalla selezionata e si propaga simmetricamente sopra/sotto.
   //
-  // Param tuning:
-  // - itemStaggerMs: ritardo tra item adiacenti (60ms = onda chiaramente
-  //   percepibile ma non troppo lenta)
-  // - itemAnimMs: durata dell'espansione del singolo item (300ms = morbido)
-  // - controllerDurationMs: tempo totale = itemAnimMs + max_distance*stagger.
-  //   Con 13 item e selected al centro, max_distance ~ 7, totale ~ 720ms.
+  // Param tuning aggiornato 2026-05-26: aumentato lo stagger a 110ms per
+  // rendere la cascata visibile (a 60ms era troppo veloce per percepirla).
+  // itemAnimMs allungato a 380ms così ogni item ha più "presence", e il
+  // tempo totale 1300ms permette al wave di completare anche con max_distance
+  // di 7-8 senza troncare il fade dell'ultimo item.
   late final AnimationController _sidebarAnim;
-  static const int _itemStaggerMs = 60;
-  static const int _itemAnimMs = 300;
-  static const int _sidebarTotalMs = 800;
+  static const int _itemStaggerMs = 110;
+  static const int _itemAnimMs = 380;
+  static const int _sidebarTotalMs = 1300;
 
   final FocusNode _keyboardFocusNode = FocusNode();
 
@@ -449,14 +448,19 @@ class _DashboardContentState extends State<_DashboardContent>
   // codice precedente accessibile via blame/log se mai servisse riferimento.
   // Rimossi: _buildTopBar, _buildLogo, _buildNavigation.
 
-  /// Sidebar verticale con cascade expand dalla tab selezionata.
-  /// Architettura:
-  /// - `_sidebarAnim` (AnimationController) → progresso globale 0..1.
-  /// - Larghezza sidebar = lerp(72, 240, globalT).
-  /// - Ogni nav item riceve un `t locale` calcolato in `_itemCascadeT(index)`,
-  ///   con delay proporzionale a `|index - _selectedIndex|`.
-  /// - Effetto: la selezionata si espande per prima, le altre seguono come
-  ///   un'onda che si propaga simmetricamente sopra/sotto.
+  /// Sidebar verticale con cascade expand dalla tab selezionata + "fluid card"
+  /// look-and-feel.
+  ///
+  /// Componenti visivi:
+  /// 1. **Floating card**: la sidebar è un container "fluttuante" con margin
+  ///    8px attorno, border-radius animato (10→20 con globalT), shadow che
+  ///    cresce con l'apertura (effetto "card che si stacca dal background").
+  /// 2. **Cascade items**: ogni item ha il suo `t locale` calcolato in
+  ///    `_itemCascadeT(index)` con delay proporzionale alla distanza dalla
+  ///    tab selezionata.
+  /// 3. **Selection indicator**: pillina verticale colorata sul bordo destro
+  ///    della card, alla Y della tab selezionata. Si muove smooth quando
+  ///    cambi selezione (AnimatedPositioned).
   Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
     return MouseRegion(
       onEnter: (_) {
@@ -477,71 +481,143 @@ class _DashboardContentState extends State<_DashboardContent>
           final globalT = _sidebarAnim.value; // 0..1
           final width = _sidebarCollapsedWidth +
               (_sidebarExpandedWidth - _sidebarCollapsedWidth) * globalT;
-          return SizedBox(
-            width: width,
-            child: ClipRect(
-              child: OverflowBox(
-                minWidth: _sidebarExpandedWidth,
-                maxWidth: _sidebarExpandedWidth,
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: _sidebarExpandedWidth,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: KyboColors.surface,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(2, 0),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                          // Logo: usa globalT (no cascade). È l'header
-                          // della sidebar, animarlo in cascade lo farebbe
-                          // arrivare con ritardo rispetto al primo item.
-                          child: _buildSidebarLogo(l10n, globalT),
-                        ),
-                        Container(
-                          height: 1,
-                          margin: const EdgeInsets.symmetric(horizontal: 12),
-                          color: KyboColors.border,
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                            itemCount: navItems.length,
-                            itemBuilder: (context, index) {
-                              final item = navItems[index];
-                              // Ogni item ha il suo t locale, con delay
-                              // simmetrico rispetto alla selezionata.
-                              final itemT = _itemCascadeT(index);
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: _SidebarNavItem(
-                                  label: item.label,
-                                  icon: item.icon,
-                                  isSelected: _selectedIndex == index,
-                                  badgeCount: item.badgeCount,
-                                  onTap: () => _onNavSelected(index),
-                                  t: itemT,
+
+          // Borderradius cresce con l'espansione: 10px chiuso, 20px aperto.
+          // Tutti e 4 i corner sono uguali → card flottante perfetta.
+          final radius = 10.0 + 10.0 * globalT;
+
+          // Shadow respira con l'espansione: più pronunciata da aperta.
+          final shadowAlpha = 0.06 + 0.06 * globalT;
+          final shadowBlur = 12.0 + 8.0 * globalT;
+          final shadowOffsetY = 4.0 + 2.0 * globalT;
+
+          return Padding(
+            // Margin 8px attorno → effetto "floating card" che si stacca dal
+            // background. Anche il bordo sinistro per simmetria visiva.
+            padding: const EdgeInsets.all(8),
+            child: SizedBox(
+              width: width,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Card principale con borderRadius e shadow animati
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(radius),
+                    child: SizedBox(
+                      width: width,
+                      child: OverflowBox(
+                        minWidth: _sidebarExpandedWidth,
+                        maxWidth: _sidebarExpandedWidth,
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: _sidebarExpandedWidth,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: KyboColors.surface,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: shadowAlpha),
+                                  blurRadius: shadowBlur,
+                                  offset: Offset(0, shadowOffsetY),
                                 ),
-                              );
-                            },
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+                                  child: _buildSidebarLogo(l10n, globalT),
+                                ),
+                                Container(
+                                  height: 1,
+                                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                                  color: KyboColors.border,
+                                ),
+                                Expanded(
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                    itemCount: navItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = navItems[index];
+                                      final itemT = _itemCascadeT(index);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 4),
+                                        child: _SidebarNavItem(
+                                          label: item.label,
+                                          icon: item.icon,
+                                          isSelected: _selectedIndex == index,
+                                          badgeCount: item.badgeCount,
+                                          onTap: () => _onNavSelected(index),
+                                          t: itemT,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  // Selection indicator: pill verticale sul bordo destro
+                  // della card, alla Y della tab selezionata. Si muove
+                  // smooth quando cambia _selectedIndex.
+                  _buildSelectionIndicator(width),
+                ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Pillina verticale colorata sul bordo destro della card, alla Y della
+  /// tab selezionata. Scivola smooth quando cambi selezione via
+  /// AnimatedPositioned.
+  Widget _buildSelectionIndicator(double sidebarWidth) {
+    // Calcola la Y del centro della tab selezionata.
+    // Struttura della sidebar (dall'alto):
+    //   header logo: padding(24) + logo(56) + padding(20) = 100
+    //   separator: 1px
+    //   ListView padding top: 12px
+    //   Items: ogni item = 48px height + 4px bottom padding = 52px
+    // Centro item N = 100 + 1 + 12 + N*52 + 24 = 137 + N*52
+    const double headerHeight = 100;
+    const double separatorHeight = 1;
+    const double listPaddingTop = 12;
+    const double itemHeight = 48;
+    const double itemSpacing = 4;
+    final double indicatorCenterY = headerHeight +
+        separatorHeight +
+        listPaddingTop +
+        _selectedIndex * (itemHeight + itemSpacing) +
+        itemHeight / 2;
+
+    const double indicatorHeight = 28;
+    const double indicatorTopOffset = indicatorHeight / 2;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      left: sidebarWidth - 6,
+      top: indicatorCenterY - indicatorTopOffset,
+      child: Container(
+        width: 4,
+        height: indicatorHeight,
+        decoration: BoxDecoration(
+          color: KyboColors.primary,
+          borderRadius: BorderRadius.circular(2),
+          boxShadow: [
+            BoxShadow(
+              color: KyboColors.primary.withValues(alpha: 0.4),
+              blurRadius: 6,
+              offset: const Offset(-1, 0),
+            ),
+          ],
+        ),
       ),
     );
   }
