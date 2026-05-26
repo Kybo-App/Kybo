@@ -462,19 +462,20 @@ class _DashboardContentState extends State<_DashboardContent>
   // codice precedente accessibile via blame/log se mai servisse riferimento.
   // Rimossi: _buildTopBar, _buildLogo, _buildNavigation.
 
-  /// Sidebar verticale con cascade expand dalla tab selezionata + "fluid card"
-  /// look-and-feel.
+  /// Sidebar verticale "card individuali" — NIENTE container sidebar.
   ///
-  /// Componenti visivi:
-  /// 1. **Floating card**: la sidebar è un container "fluttuante" con margin
-  ///    8px attorno, border-radius animato (10→20 con globalT), shadow che
-  ///    cresce con l'apertura (effetto "card che si stacca dal background").
-  /// 2. **Cascade items**: ogni item ha il suo `t locale` calcolato in
-  ///    `_itemCascadeT(index)` con delay proporzionale alla distanza dalla
-  ///    tab selezionata.
-  /// 3. **Selection indicator**: pillina verticale colorata sul bordo destro
-  ///    della card, alla Y della tab selezionata. Si muove smooth quando
-  ///    cambi selezione (AnimatedPositioned).
+  /// Ogni elemento (logo + ogni nav item) è una mini-card floating
+  /// indipendente sul background del body. Niente rettangolo sidebar che le
+  /// imbusta. Questo rende la cascata davvero visibile: vedi pill singole
+  /// che crescono una alla volta dalla selezionata, invece di un blocco che
+  /// si allarga.
+  ///
+  /// Componenti:
+  /// 1. Logo: card pill standalone in cima
+  /// 2. Nav items: 13 card pill individuali, ognuna con il suo bg/shadow
+  /// 3. Spazio verticale ampio tra le item (12px) per "respirare"
+  /// 4. Niente container sidebar, niente shadow di gruppo, niente bordo
+  ///    verticale visibile tra sidebar e content
   Widget _buildSidebar(List<_NavItem> navItems, AppLocalizations l10n) {
     return MouseRegion(
       onEnter: (_) {
@@ -496,90 +497,54 @@ class _DashboardContentState extends State<_DashboardContent>
           final width = _sidebarCollapsedWidth +
               (_sidebarExpandedWidth - _sidebarCollapsedWidth) * globalT;
 
-          // Borderradius cresce con l'espansione: 10px chiuso, 20px aperto.
-          // Tutti e 4 i corner sono uguali → card flottante perfetta.
-          final radius = 10.0 + 10.0 * globalT;
-
-          // Shadow respira con l'espansione: più pronunciata da aperta.
-          final shadowAlpha = 0.06 + 0.06 * globalT;
-          final shadowBlur = 12.0 + 8.0 * globalT;
-          final shadowOffsetY = 4.0 + 2.0 * globalT;
-
           return Padding(
-            // Margin 8px attorno → effetto "floating card" che si stacca dal
-            // background. Anche il bordo sinistro per simmetria visiva.
-            padding: const EdgeInsets.all(8),
+            // Margin 12 attorno: spazio tra le card e i bordi schermo.
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             child: SizedBox(
               width: width,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Card principale con borderRadius e shadow animati
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(radius),
-                    child: SizedBox(
-                      width: width,
-                      child: OverflowBox(
-                        minWidth: _sidebarExpandedWidth,
-                        maxWidth: _sidebarExpandedWidth,
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: _sidebarExpandedWidth,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: KyboColors.surface,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: shadowAlpha),
-                                  blurRadius: shadowBlur,
-                                  offset: Offset(0, shadowOffsetY),
+              // OverflowBox + SizedBox(240): contenuto sempre renderizzato a
+              // larghezza piena, parent SizedBox(width) controlla la
+              // larghezza visibile, ClipRect (sotto) taglia ciò che eccede.
+              child: ClipRect(
+                child: OverflowBox(
+                  minWidth: _sidebarExpandedWidth - 24, // -24 = -margin
+                  maxWidth: _sidebarExpandedWidth - 24,
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: _sidebarExpandedWidth - 24,
+                    child: Column(
+                      children: [
+                        // Logo come card standalone
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildSidebarLogo(l10n, globalT),
+                        ),
+                        // Nav items: lista di card singole separate da gap
+                        Expanded(
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: navItems.length,
+                            itemBuilder: (context, index) {
+                              final item = navItems[index];
+                              final itemT = _itemCascadeT(index);
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _SidebarNavItem(
+                                  label: item.label,
+                                  icon: item.icon,
+                                  isSelected: _selectedIndex == index,
+                                  badgeCount: item.badgeCount,
+                                  onTap: () => _onNavSelected(index),
+                                  t: itemT,
                                 ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                                  child: _buildSidebarLogo(l10n, globalT),
-                                ),
-                                Container(
-                                  height: 1,
-                                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                                  color: KyboColors.border,
-                                ),
-                                Expanded(
-                                  child: ListView.builder(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                                    itemCount: navItems.length,
-                                    itemBuilder: (context, index) {
-                                      final item = navItems[index];
-                                      final itemT = _itemCascadeT(index);
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 4),
-                                        child: _SidebarNavItem(
-                                          label: item.label,
-                                          icon: item.icon,
-                                          isSelected: _selectedIndex == index,
-                                          badgeCount: item.badgeCount,
-                                          onTap: () => _onNavSelected(index),
-                                          t: itemT,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                  // Selection indicator: pill verticale sul bordo destro
-                  // della card, alla Y della tab selezionata. Si muove
-                  // smooth quando cambia _selectedIndex.
-                  _buildSelectionIndicator(width),
-                ],
+                ),
               ),
             ),
           );
@@ -588,59 +553,25 @@ class _DashboardContentState extends State<_DashboardContent>
     );
   }
 
-  /// Pillina verticale colorata sul bordo destro della card, alla Y della
-  /// tab selezionata. Scivola smooth quando cambi selezione via
-  /// AnimatedPositioned.
-  Widget _buildSelectionIndicator(double sidebarWidth) {
-    // Calcola la Y del centro della tab selezionata.
-    // Struttura della sidebar (dall'alto):
-    //   header logo: padding(24) + logo(56) + padding(20) = 100
-    //   separator: 1px
-    //   ListView padding top: 12px
-    //   Items: ogni item = 48px height + 4px bottom padding = 52px
-    // Centro item N = 100 + 1 + 12 + N*52 + 24 = 137 + N*52
-    const double headerHeight = 100;
-    const double separatorHeight = 1;
-    const double listPaddingTop = 12;
-    const double itemHeight = 48;
-    const double itemSpacing = 4;
-    final double indicatorCenterY = headerHeight +
-        separatorHeight +
-        listPaddingTop +
-        _selectedIndex * (itemHeight + itemSpacing) +
-        itemHeight / 2;
-
-    const double indicatorHeight = 28;
-    const double indicatorTopOffset = indicatorHeight / 2;
-
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-      left: sidebarWidth - 6,
-      top: indicatorCenterY - indicatorTopOffset,
-      child: Container(
-        width: 4,
-        height: indicatorHeight,
-        decoration: BoxDecoration(
-          color: KyboColors.primary,
-          borderRadius: BorderRadius.circular(2),
-          boxShadow: [
-            BoxShadow(
-              color: KyboColors.primary.withValues(alpha: 0.4),
-              blurRadius: 6,
-              offset: const Offset(-1, 0),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Logo per la sidebar. Riceve `t` (0=compatto, 1=esteso) dal parent.
-  /// Niente LayoutBuilder: fade tra logo solo e logo+testo via opacity.
+  /// Logo per la sidebar come card individuale floating. Stesso linguaggio
+  /// visivo delle nav item card sotto: bg surface, radius medium, shadow
+  /// sottile. Animation: l'icona è always-on, il testo "Kybo + Admin Panel"
+  /// fade-in via opacity con t.
   Widget _buildSidebarLogo(AppLocalizations l10n, double t) {
-    return SizedBox(
+    return Container(
       height: 56,
+      decoration: BoxDecoration(
+        color: KyboColors.surface,
+        borderRadius: KyboBorderRadius.medium,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Stack(
         children: [
           // Icona logo sempre presente nella stessa posizione (left-aligned)
@@ -650,14 +581,14 @@ class _DashboardContentState extends State<_DashboardContent>
             bottom: 0,
             child: Center(
               child: Container(
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: KyboColors.primary.withValues(alpha: 0.1),
-                  borderRadius: KyboBorderRadius.medium,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Center(
-                  child: DietLogo(size: 26, isDarkBackground: false),
+                  child: DietLogo(size: 22, isDarkBackground: false),
                 ),
               ),
             ),
@@ -665,7 +596,7 @@ class _DashboardContentState extends State<_DashboardContent>
           // Testo "Kybo" + sottotitolo: fade-in via opacity, sempre nella
           // stessa posizione layout (no shift).
           Positioned(
-            left: 52,
+            left: 44,
             top: 0,
             bottom: 0,
             right: 0,
@@ -679,7 +610,7 @@ class _DashboardContentState extends State<_DashboardContent>
                     "Kybo",
                     style: TextStyle(
                       color: KyboColors.textPrimary,
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
                     ),
@@ -688,7 +619,7 @@ class _DashboardContentState extends State<_DashboardContent>
                     l10n.adminPanel,
                     style: TextStyle(
                       color: KyboColors.textMuted,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -859,9 +790,12 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     final hasBadge = widget.badgeCount != null && widget.badgeCount! > 0;
     final t = widget.t;
 
+    // Ogni nav item è una CARD INDIVIDUALE che fluttua nel layout.
+    // Non più transparent quando non selezionato — ha sempre un bg surface
+    // così è visibilmente "una pill a sé stante" sul background del body.
     final Color bgColor = selected
         ? KyboColors.primary
-        : (hover ? KyboColors.primary.withValues(alpha: 0.12) : Colors.transparent);
+        : (hover ? KyboColors.primary.withValues(alpha: 0.08) : KyboColors.surface);
 
     final Color fgColor = selected
         ? Colors.white
@@ -882,7 +816,10 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     // pill è dimensionato esplicitamente e cresce smooth con l'animazione.
     Widget content = Stack(
       children: [
-        // Background pill animato
+        // Background pill animato. Shadow per TUTTI gli item (anche non
+        // selezionati): senza un container sidebar attorno, ogni pill ha
+        // bisogno della sua piccola ombra per "staccarsi" dal background
+        // e leggersi come elemento individuale floating.
         Positioned(
           left: 0,
           top: 0,
@@ -892,7 +829,21 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: KyboBorderRadius.medium,
-              boxShadow: selected ? KyboColors.softShadow : null,
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: KyboColors.primary.withValues(alpha: 0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
           ),
         ),
