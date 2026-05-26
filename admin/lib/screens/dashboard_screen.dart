@@ -70,15 +70,13 @@ class _DashboardContentState extends State<_DashboardContent>
   // distanza dalla tab selezionata, creando un effetto "onda" che parte
   // dalla selezionata e si propaga simmetricamente sopra/sotto.
   //
-  // Param tuning aggiornato 2026-05-26: aumentato lo stagger a 110ms per
-  // rendere la cascata visibile (a 60ms era troppo veloce per percepirla).
-  // itemAnimMs allungato a 380ms così ogni item ha più "presence", e il
-  // tempo totale 1300ms permette al wave di completare anche con max_distance
-  // di 7-8 senza troncare il fade dell'ultimo item.
+  // Param tuning 2026-05-26: stagger ridotto da 110 a 80ms (110 era percepito
+  // troppo lento). itemAnim 320ms, totale 950ms — la cascata resta visibile
+  // ma l'animazione complessiva è più "snappy".
   late final AnimationController _sidebarAnim;
-  static const int _itemStaggerMs = 110;
-  static const int _itemAnimMs = 380;
-  static const int _sidebarTotalMs = 1300;
+  static const int _itemStaggerMs = 80;
+  static const int _itemAnimMs = 320;
+  static const int _sidebarTotalMs = 950;
 
   final FocusNode _keyboardFocusNode = FocusNode();
 
@@ -403,18 +401,34 @@ class _DashboardContentState extends State<_DashboardContent>
 
     if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
-    // Content area condiviso dai due layout: PillCard con la vista corrente.
-    // [PERF] RepaintBoundary isola il content così che durante l'animazione
-    // della sidebar (parent) il browser non debba ridisegnare l'intera vista
-    // (utenti, analytics, ecc.) ad ogni frame — solo la sidebar si ridipinge.
+    // Content area: floating card con stesso "fluid feel" della sidebar.
+    // - Margin: 8 dal sidebar (a sx, allineato col padding 8 della sidebar),
+    //   16 dx/bottom, 8 top (gap stretto col top bar per continuità visiva).
+    // - Border-radius 20px (= sidebar quando aperta) → coerenza tra elementi
+    //   floating della UI.
+    // - RepaintBoundary isola il content così durante l'animazione della
+    //   sidebar la vista corrente non si ridipinge ogni frame.
     final contentArea = Expanded(
       child: RepaintBoundary(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: PillCard(
+          padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
+          child: Container(
             key: ValueKey('content_card_$themeKey'),
-            padding: const EdgeInsets.all(24),
-            child: navItems[_selectedIndex].view,
+            decoration: BoxDecoration(
+              color: KyboColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: navItems[_selectedIndex].view,
+            ),
           ),
         ),
       ),
@@ -689,13 +703,14 @@ class _DashboardContentState extends State<_DashboardContent>
 
   /// Top bar minimale: solo controlli a destra (search, lingua, tema, user,
   /// shortcuts, logout). La nav è nella sidebar a sinistra.
+  ///
+  /// [FLUID] Niente background né shadow: i singoli controlli (search pill,
+  /// language pill, user pill, ecc.) sono già pillole con la loro decorazione
+  /// e fluttuano direttamente sul background dell'app, senza essere imbustati
+  /// in un rettangolo solido che imporrebbe bordi dritti al layout.
   Widget _buildTopBarMinimal(List<_NavItem> navItems, AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        boxShadow: KyboColors.softShadow,
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
           // Spacer prende lo spazio a sinistra (logo è già nella sidebar)
