@@ -853,95 +853,118 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
         ? Colors.white
         : (hover ? KyboColors.primary : KyboColors.textSecondary);
 
-    // Larghezza fissa interna del row (sempre 240px-meno-padding indipendente
-    // dalla larghezza visibile della sidebar). Il parent fa il clipping.
-    // L'item NON si ridisegna in layout, solo opacity cambia con t.
-    Widget content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: KyboBorderRadius.medium,
-        boxShadow: selected ? KyboColors.softShadow : null,
-      ),
-      child: Row(
-        children: [
-          // Icona + eventuale dot badge (visibile solo quando label nascosta)
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Center(child: Icon(widget.icon, size: 20, color: fgColor)),
-                if (hasBadge)
-                  Positioned(
-                    top: -2,
-                    right: -2,
-                    child: Opacity(
-                      opacity: 1 - t,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: BoxDecoration(
-                          color: KyboColors.error,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: selected ? KyboColors.primary : KyboColors.surface,
-                            width: 1.5,
+    // Larghezza del background "pill" sotto l'item, interpolata con t.
+    // Quando t=0 (compatto): pill di 52px (icona centrata in essa, simmetrica
+    // rispetto al padding 14 dell'item → 14 a sx, 24 icona, 14 a dx = 52).
+    // Quando t=1 (esteso): pill copre tutto l'item visibile (220px = 240 - 10*2 padding ListView).
+    const compactPillWidth = 52.0;
+    const expandedPillWidth = 220.0;
+    final pillWidth = compactPillWidth + (expandedPillWidth - compactPillWidth) * t;
+
+    // Stack: background pill (Positioned, larghezza dinamica) + Row contenuto.
+    // Cosa risolve: prima il bgColor era sul Container outer (sempre 220px
+    // wide), e il ClipRect parent lo tagliava al bordo della sidebar
+    // collassata, creando l'effetto "selezione tagliata a destra". Ora il
+    // pill è dimensionato esplicitamente e cresce smooth con l'animazione.
+    Widget content = Stack(
+      children: [
+        // Background pill animato
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: Container(
+            width: pillWidth,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: KyboBorderRadius.medium,
+              boxShadow: selected ? KyboColors.softShadow : null,
+            ),
+          ),
+        ),
+        // Contenuto sopra (icona + label + badge numerico)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              // Icona + eventuale dot badge (visibile solo quando label nascosta)
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Center(child: Icon(widget.icon, size: 20, color: fgColor)),
+                    if (hasBadge)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Opacity(
+                          opacity: 1 - t,
+                          child: Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: KyboColors.error,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: selected ? KyboColors.primary : KyboColors.surface,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Label sempre presente in layout, solo opacity varia con t.
+              Expanded(
+                child: Opacity(
+                  opacity: t,
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: fgColor,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.fade,
+                    softWrap: false,
+                    maxLines: 1,
+                  ),
+                ),
+              ),
+              // Badge numerico: sempre presente in layout, opacity con t.
+              if (hasBadge) ...[
+                const SizedBox(width: 6),
+                Opacity(
+                  opacity: t,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: selected ? Colors.white : KyboColors.error,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
+                        style: TextStyle(
+                          color: selected ? KyboColors.primary : Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ),
+                ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          // Label sempre presente in layout (non cambia shape della Row),
-          // solo opacity varia con t.
-          Expanded(
-            child: Opacity(
-              opacity: t,
-              child: Text(
-                widget.label,
-                style: TextStyle(
-                  color: fgColor,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 14,
-                ),
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                maxLines: 1,
-              ),
-            ),
-          ),
-          // Badge numerico: sempre presente in layout, opacity con t.
-          if (hasBadge) ...[
-            const SizedBox(width: 6),
-            Opacity(
-              opacity: t,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: selected ? Colors.white : KyboColors.error,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                child: Center(
-                  child: Text(
-                    widget.badgeCount! > 99 ? '99+' : '${widget.badgeCount}',
-                    style: TextStyle(
-                      color: selected ? KyboColors.primary : Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
 
     // Tooltip solo quando la sidebar è collassata abbastanza da nascondere
