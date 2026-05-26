@@ -401,35 +401,21 @@ class _DashboardContentState extends State<_DashboardContent>
 
     if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
-    // Content area: floating card con stesso "fluid feel" della sidebar.
-    // - Margin: 8 dal sidebar (a sx, allineato col padding 8 della sidebar),
-    //   16 dx/bottom, 8 top (gap stretto col top bar per continuità visiva).
-    // - Border-radius 20px (= sidebar quando aperta) → coerenza tra elementi
-    //   floating della UI.
-    // - RepaintBoundary isola il content così durante l'animazione della
-    //   sidebar la vista corrente non si ridipinge ogni frame.
+    // Content area: NESSUN wrapper card. Le viste interne (MyDayView,
+    // UserManagementView, ecc.) gestiscono già la propria struttura visiva
+    // con card interne (KPI, liste, sezioni). Avvolgerle in un container
+    // unico creerebbe quella linea verticale dritta sul bordo sinistro che
+    // l'utente ha segnalato.
+    //
+    // Solo padding per separare il contenuto dai bordi schermo. Il body
+    // background sta sotto, e le card interne galleggiano direttamente
+    // su di esso.
     final contentArea = Expanded(
       child: RepaintBoundary(
+        key: ValueKey('content_$themeKey'),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
-          child: Container(
-            key: ValueKey('content_card_$themeKey'),
-            decoration: BoxDecoration(
-              color: KyboColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: navItems[_selectedIndex].view,
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
+          child: navItems[_selectedIndex].view,
         ),
       ),
     );
@@ -528,6 +514,16 @@ class _DashboardContentState extends State<_DashboardContent>
                             itemBuilder: (context, index) {
                               final item = navItems[index];
                               final itemT = _itemCascadeT(index);
+                              // Stagger ciclico delle larghezze finali per
+                              // rompere l'allineamento verticale dei bordi
+                              // destri. Variazione max 12px → subtle ma
+                              // sufficiente a destrutturare la linea visiva.
+                              const widthOffsets = [
+                                0.0, 6.0, 12.0, 3.0, 9.0, 2.0,
+                                8.0, 4.0, 11.0, 1.0, 7.0, 5.0, 10.0,
+                              ];
+                              final stagger =
+                                  widthOffsets[index % widthOffsets.length];
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 3),
                                 child: _SidebarNavItem(
@@ -537,6 +533,7 @@ class _DashboardContentState extends State<_DashboardContent>
                                   badgeCount: item.badgeCount,
                                   onTap: () => _onNavSelected(index),
                                   t: itemT,
+                                  widthStagger: stagger,
                                 ),
                               );
                             },
@@ -756,6 +753,11 @@ class _DashboardContentState extends State<_DashboardContent>
 /// Riceve `t` (0..1) dal parent e lo usa per interpolare opacity della
 /// label/badge numerico. NIENTE LayoutBuilder, NIENTE AnimatedSwitcher:
 /// l'unico animation source è il TweenAnimationBuilder del parent.
+///
+/// `widthStagger`: piccolo offset (positivo, in px) sottratto dalla larghezza
+/// finale della pill espansa. Serve a rompere l'allineamento dei bordi destri
+/// di tutte le card (altrimenti creano una linea verticale implicita).
+/// Valori tipici 0-12px, applicati ciclicamente dall'index.
 class _SidebarNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -763,6 +765,7 @@ class _SidebarNavItem extends StatefulWidget {
   final VoidCallback onTap;
   final int? badgeCount;
   final double t;
+  final double widthStagger;
 
   const _SidebarNavItem({
     required this.label,
@@ -771,6 +774,7 @@ class _SidebarNavItem extends StatefulWidget {
     required this.onTap,
     required this.t,
     this.badgeCount,
+    this.widthStagger = 0,
   });
 
   @override
@@ -801,9 +805,12 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     // Larghezza del background "pill" sotto l'item, interpolata con t.
     // Quando t=0 (compatto): pill di 52px (icona centrata in essa, simmetrica
     // rispetto al padding 14 dell'item → 14 a sx, 24 icona, 14 a dx = 52).
-    // Quando t=1 (esteso): pill copre tutto l'item visibile (220px = 240 - 10*2 padding ListView).
+    // Quando t=1 (esteso): pill copre tutto l'item visibile (220px = 240 - 10*2 padding ListView)
+    // MENO `widthStagger` che varia per item — così i bordi destri delle card
+    // della sidebar non si allineano tutti allo stesso X (no linea verticale
+    // implicita).
     const compactPillWidth = 52.0;
-    const expandedPillWidth = 220.0;
+    final expandedPillWidth = 220.0 - widget.widthStagger;
     final pillWidth = compactPillWidth + (expandedPillWidth - compactPillWidth) * t;
 
     // Stack: background pill (Positioned, larghezza dinamica) + Row contenuto.
