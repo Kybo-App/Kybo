@@ -9,10 +9,13 @@
 // La view nutri/PT/independent originale resta in `my_day_view.dart` e
 // continua ad essere utilizzata per quei ruoli.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
@@ -94,6 +97,12 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Status sistema in cima → primo segnale visivo all'admin appena
+          // entra: "tutto OK" o "qualcosa è giù".
+          _ServerHealthBanner(
+            onTap: () => widget.onNavigateTo?.call('server'),
+          ),
+          const SizedBox(height: 16),
           _buildHeader(l10n),
           const SizedBox(height: 24),
           _buildStatsRow(l10n),
@@ -145,6 +154,7 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
       builder: (ctx, usersSnap) {
         int total = 0;
         int newSignups7d = 0;
+        int newSignupsPrev7d = 0; // giorni 8-14 indietro, per trend WoW
         int nutritionists = 0;
         int activeClients = 0;
 
@@ -170,11 +180,20 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
             DateTime? createdDt;
             if (createdAt is Timestamp) createdDt = createdAt.toDate();
             if (createdAt is String) createdDt = DateTime.tryParse(createdAt);
-            if (createdDt != null && now.difference(createdDt).inDays < 7) {
-              newSignups7d++;
+            if (createdDt != null) {
+              final daysAgo = now.difference(createdDt).inDays;
+              if (daysAgo < 7) {
+                newSignups7d++;
+              } else if (daysAgo < 14) {
+                newSignupsPrev7d++;
+              }
             }
           }
         }
+
+        // Trend WoW per "Nuove iscrizioni": +N rispetto alla settimana
+        // precedente (8-14 gg fa). Positivo verde, negativo rosso.
+        final signupsDelta = newSignups7d - newSignupsPrev7d;
 
         return Row(
           children: [
@@ -195,6 +214,8 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
                 subtitle: 'Ultimi 7 giorni',
                 icon: Icons.person_add_rounded,
                 color: KyboColors.success,
+                trend: signupsDelta,
+                trendLabel: 'vs sett. scorsa',
               ),
             ),
             const SizedBox(width: 16),
@@ -419,6 +440,10 @@ class _AdminStatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+  /// Delta numerico rispetto al periodo precedente (es. -3, 0, +5).
+  /// Quando null o quando trendLabel è null, l'indicatore non viene mostrato.
+  final int? trend;
+  final String? trendLabel;
 
   const _AdminStatCard({
     required this.title,
@@ -427,22 +452,283 @@ class _AdminStatCard extends StatelessWidget {
     required this.color,
     this.subtitle,
     this.onTap,
+    this.trend,
+    this.trendLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    final card = StatCard(
+    Widget result = StatCard(
       title: title,
       value: value,
       icon: icon,
       color: color,
       subtitle: subtitle,
     );
-    if (onTap == null) return card;
+
+    // Sovrappongo il trend pill in basso a destra della card.
+    if (trend != null && trendLabel != null) {
+      final t = trend!;
+      final isPositive = t > 0;
+      final isFlat = t == 0;
+      final trendColor = isFlat
+          ? KyboColors.textMuted
+          : (isPositive ? KyboColors.success : KyboColors.error);
+      final arrow = isFlat
+          ? Icons.remove_rounded
+          : (isPositive
+              ? Icons.arrow_upward_rounded
+              : Icons.arrow_downward_rounded);
+      final sign = isPositive ? '+' : '';
+      result = Stack(
+        children: [
+          result,
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: trendColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(arrow, size: 12, color: trendColor),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$sign$t',
+                    style: TextStyle(
+                      color: trendColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    trendLabel!,
+                    style: TextStyle(
+                      color: trendColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (onTap == null) return result;
     return InkWell(
       onTap: onTap,
       borderRadius: KyboBorderRadius.large,
-      child: card,
+      child: result,
+    );
+  }
+}
+
+/// Banner in cima alla AdminMyDayView con lo stato di salute dei servizi
+/// backend (Firebase, Gemini, Redis, Tesseract, Sentry). Polla /system/status
+/// ogni 60 secondi. Click → naviga a Server Metrics per dettagli.
+class _ServerHealthBanner extends StatefulWidget {
+  final VoidCallback? onTap;
+  const _ServerHealthBanner({this.onTap});
+
+  @override
+  State<_ServerHealthBanner> createState() => _ServerHealthBannerState();
+}
+
+class _ServerHealthBannerState extends State<_ServerHealthBanner> {
+  final _repo = AdminRepository();
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  bool _errored = false;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _load(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _repo.getHealthDetailed();
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _loading = false;
+          _errored = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _errored = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return _bannerShell(
+        color: KyboColors.textMuted,
+        icon: Icons.hourglass_top_rounded,
+        title: 'Verifico stato servizi…',
+        subtitle: '',
+      );
+    }
+
+    if (_errored || _data == null) {
+      return _bannerShell(
+        color: KyboColors.error,
+        icon: Icons.cloud_off_rounded,
+        title: 'Backend non raggiungibile',
+        subtitle: 'Impossibile contattare /system/status',
+      );
+    }
+
+    final data = _data!;
+    final status = (data['status'] ?? 'unknown').toString();
+    final checks = (data['checks'] as Map<String, dynamic>?) ?? {};
+    final env = (data['environment'] ?? '').toString();
+
+    int ok = 0, errors = 0, warnings = 0;
+    final issuesNames = <String>[];
+    checks.forEach((name, value) {
+      final s = (value is Map ? value['status'] : '').toString();
+      switch (s) {
+        case 'ok':
+          ok++;
+          break;
+        case 'error':
+          errors++;
+          issuesNames.add(name);
+          break;
+        case 'warning':
+          warnings++;
+          issuesNames.add(name);
+          break;
+        // 'disabled' (es. redis non configurato): non conta come problema,
+        // semplicemente non incluso nei totali ok/error/warning.
+      }
+    });
+
+    final total = checks.length;
+    final isHealthy = status == 'healthy';
+    final color = errors > 0
+        ? KyboColors.error
+        : (warnings > 0 || !isHealthy
+            ? KyboColors.warning
+            : KyboColors.success);
+    final icon = errors > 0
+        ? Icons.error_rounded
+        : (warnings > 0 || !isHealthy
+            ? Icons.warning_amber_rounded
+            : Icons.check_circle_rounded);
+
+    final title = errors > 0
+        ? 'Sistema: $errors servizi giù'
+        : (warnings > 0
+            ? 'Sistema: $warnings warning'
+            : 'Sistema: tutto OK');
+    final subtitle = errors > 0 || warnings > 0
+        ? 'Problemi: ${issuesNames.join(", ")} • $ok/$total servizi OK'
+        : '$ok/$total servizi OK${env.isNotEmpty ? " • $env" : ""}';
+
+    return _bannerShell(
+      color: color,
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      onTap: widget.onTap,
+    );
+  }
+
+  Widget _bannerShell({
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(color: color.withValues(alpha: 0.30), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: KyboBorderRadius.medium,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: KyboColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: KyboColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (onTap != null)
+            Icon(
+              Icons.chevron_right_rounded,
+              color: color,
+              size: 24,
+            ),
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: KyboBorderRadius.medium,
+      child: content,
     );
   }
 }
