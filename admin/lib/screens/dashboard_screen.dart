@@ -375,7 +375,10 @@ class _DashboardContentState extends State<_DashboardContent>
         icon: Icons.people_alt_rounded,
         label: l10n.navUsers,
         view: UserManagementView(key: ValueKey('users_$themeKey')),
-        badgeCount: notifProvider.expiringDiets,
+        // [HIERARCHY 2026-05-26] Il badge "diete scadute" riguarda i
+        // clienti del nutrizionista. All'admin non interessa: il pallino
+        // rosso sarebbe rumore visivo non azionabile per il suo ruolo.
+        badgeCount: _isAdmin ? 0 : notifProvider.expiringDiets,
       ),
       _NavItem(
         icon: Icons.chat_bubble_rounded,
@@ -434,9 +437,11 @@ class _DashboardContentState extends State<_DashboardContent>
       //     label: l10n.navWorkout,
       //     view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
       //   ),
-      // [HIERARCHY 2026-05-26] Diet Templates rimosso dalla nav admin:
-      // l'admin non crea/cura template di diete (è un task da nutrizionista).
-      if (_isNutritionist)
+      // [HIERARCHY 2026-05-26] Diet Templates visibile SOLO ai nutrizionisti
+      // puri, non agli admin. `_isNutritionist` di default è true anche per
+      // admin (eredita le capability), quindi serve l'esclusione esplicita
+      // di _isAdmin per nasconderlo.
+      if (_isNutritionist && !_isAdmin)
         _NavItem(
           icon: Icons.bookmark_rounded,
           label: l10n.dietTemplatesTab,
