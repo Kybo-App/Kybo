@@ -77,33 +77,40 @@ class AdminNotificationProvider with ChangeNotifier {
       }
     });
 
-    Query userQuery = _firestore.collection('users');
+    // [HIERARCHY 2026-05-26] Expiring diets listener:
+    // - admin: badge nascosto in UI (dashboard_screen badgeCount=0 per admin)
+    //   → NIENTE listener, niente lavoro Firestore inutile su tutti gli utenti
+    // - nutritionist / personal_trainer: clienti propri filtrati per parent_id
+    //   (prima il PT non era filtrato → bug: contava TUTTI gli utenti del
+    //   sistema invece dei suoi clienti)
+    // - altri ruoli: nessun listener (nessun caso valido per il badge)
+    if (_userRole == 'nutritionist' || _userRole == 'personal_trainer') {
+      final userQuery = _firestore
+          .collection('users')
+          .where('parent_id', isEqualTo: uid);
 
-    if (_userRole == 'nutritionist') {
-      userQuery = userQuery.where('parent_id', isEqualTo: uid);
-    }
+      userQuery.snapshots().listen((snapshot) {
+        int expiring = 0;
+        final now = DateTime.now();
+        final threshold = now.subtract(const Duration(days: 30));
 
-    userQuery.snapshots().listen((snapshot) {
-      int expiring = 0;
-      final now = DateTime.now();
-      final threshold = now.subtract(const Duration(days: 30));
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final lastUpdateTs = data['last_diet_update'] as Timestamp?;
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final lastUpdateTs = data['last_diet_update'] as Timestamp?;
-
-        if (lastUpdateTs != null) {
-          final lastUpdate = lastUpdateTs.toDate();
-          if (lastUpdate.isBefore(threshold)) {
-            expiring++;
+          if (lastUpdateTs != null) {
+            final lastUpdate = lastUpdateTs.toDate();
+            if (lastUpdate.isBefore(threshold)) {
+              expiring++;
+            }
           }
         }
-      }
 
-      if (_expiringDiets != expiring) {
-        _expiringDiets = expiring;
-        notifyListeners();
-      }
-    });
+        if (_expiringDiets != expiring) {
+          _expiringDiets = expiring;
+          notifyListeners();
+        }
+      });
+    }
   }
 }
