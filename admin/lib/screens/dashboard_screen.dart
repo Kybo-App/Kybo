@@ -1,5 +1,6 @@
 // Schermata principale del dashboard admin: top bar con navigazione pill, ricerca globale e scorciatoie da tastiera.
 // _handleKeyEvent — gestisce Ctrl+K/N/1-8 e Shift+7; _openGlobalSearch — dialog ricerca utenti Firestore.
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -70,21 +71,39 @@ class _DashboardContentState extends State<_DashboardContent>
   // distanza dalla tab selezionata, creando un effetto "onda" che parte
   // dalla selezionata e si propaga simmetricamente sopra/sotto.
   //
-  // Param tuning 2026-05-26: stagger ridotto da 110 a 80ms (110 era percepito
-  // troppo lento). itemAnim 320ms, totale 950ms — la cascata resta visibile
-  // ma l'animazione complessiva è più "snappy".
+  // Param tuning 2026-05-26:
+  // - stagger 80ms tra item adiacenti (cascata visibile, animazione snappy)
+  // - itemAnim 320ms per il singolo item
+  // - durata totale del controller = DINAMICA, calcolata in base a
+  //   `maxDistance = max(selectedIndex, n_items - 1 - selectedIndex)` così
+  //   anche quando la selezionata è a un estremo della lista, l'item più
+  //   lontano ha tempo sufficiente per completare la sua animazione.
+  //   Formula: maxDistance * stagger + itemAnimMs.
   late final AnimationController _sidebarAnim;
   static const int _itemStaggerMs = 80;
   static const int _itemAnimMs = 320;
-  static const int _sidebarTotalMs = 950;
+
+  /// Calcola la durata totale dell'animazione sidebar in funzione di quanti
+  /// item ci sono e di quale è selezionato. Garantisce che anche l'item
+  /// più lontano abbia tempo di completare il suo `_itemAnimMs`.
+  Duration _computeSidebarDuration(int itemCount) {
+    final maxDistance = math.max(
+      _selectedIndex,
+      itemCount - 1 - _selectedIndex,
+    );
+    return Duration(milliseconds: maxDistance * _itemStaggerMs + _itemAnimMs);
+  }
 
   final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    // Durata iniziale = worst case (13 item, selected al primo): ~1280ms.
+    // Verrà sovrascritta a ogni hover entry con il valore corretto basato
+    // sull'item count reale e sull'_selectedIndex corrente.
     _sidebarAnim = AnimationController(
-      duration: const Duration(milliseconds: _sidebarTotalMs),
+      duration: const Duration(milliseconds: 1280),
       vsync: this,
     );
     _fetchCurrentUser();
@@ -103,12 +122,17 @@ class _DashboardContentState extends State<_DashboardContent>
   /// L'item selezionato ha delay=0 → inizia subito.
   /// Gli item adiacenti hanno delay=stagger → partono dopo `stagger`ms.
   /// E così via simmetricamente.
+  ///
+  /// Usa la durata CORRENTE del controller (dinamica in base a maxDistance
+  /// e item count) invece di una costante. Senza questo, quando la selezionata
+  /// era a un estremo, l'item più lontano si fermava prima di completare.
   double _itemCascadeT(int index) {
     final globalT = _sidebarAnim.value; // 0..1
+    final totalMs = _sidebarAnim.duration?.inMilliseconds ?? 1280;
     final distance = (index - _selectedIndex).abs();
     final delayMs = distance * _itemStaggerMs;
 
-    final elapsedMs = globalT * _sidebarTotalMs;
+    final elapsedMs = globalT * totalMs;
     final localProgress =
         ((elapsedMs - delayMs) / _itemAnimMs).clamp(0.0, 1.0);
 
@@ -464,6 +488,10 @@ class _DashboardContentState extends State<_DashboardContent>
     return MouseRegion(
       onEnter: (_) {
         if (!_isSidebarHovered) {
+          // Ricalcola la durata del controller in base alla maxDistance
+          // corrente: anche se la selezionata è a un estremo, l'item più
+          // lontano avrà il tempo necessario per completare l'animazione.
+          _sidebarAnim.duration = _computeSidebarDuration(navItems.length);
           setState(() => _isSidebarHovered = true);
           _sidebarAnim.forward();
         }
