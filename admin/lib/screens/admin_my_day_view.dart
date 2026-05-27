@@ -108,6 +108,10 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
           _buildStatsRow(l10n),
           const SizedBox(height: 24),
           _buildRecentActivity(l10n),
+          const SizedBox(height: 16),
+          _ServerMetricsCard(
+            onTap: () => widget.onNavigateTo?.call('server'),
+          ),
           const SizedBox(height: 24),
           _buildQuickActions(l10n),
         ],
@@ -828,6 +832,265 @@ class _QuickActionCard extends StatelessWidget {
               Icons.arrow_forward_ios_rounded,
               size: 12,
               color: KyboColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Card compatta con metriche operative del backend lette da /metrics/api.
+/// 4 mini-KPI in riga orizzontale: chiamate Gemini, errori Gemini, cache
+/// hit ratio, durata media parsing diete. Polling ogni 60s. Click → naviga
+/// a Server Metrics per la dashboard completa.
+class _ServerMetricsCard extends StatefulWidget {
+  final VoidCallback? onTap;
+  const _ServerMetricsCard({this.onTap});
+
+  @override
+  State<_ServerMetricsCard> createState() => _ServerMetricsCardState();
+}
+
+class _ServerMetricsCardState extends State<_ServerMetricsCard> {
+  final _repo = AdminRepository();
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  bool _errored = false;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _load(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await _repo.getServerMetrics();
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _loading = false;
+          _errored = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _errored = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _content();
+    if (widget.onTap == null) return content;
+    return InkWell(
+      onTap: widget.onTap,
+      borderRadius: KyboBorderRadius.large,
+      child: content,
+    );
+  }
+
+  Widget _content() {
+    if (_loading) {
+      return PillCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: const SizedBox(
+          height: 60,
+          child: Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_errored || _data == null) {
+      return PillCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Icon(Icons.cloud_off_rounded,
+                color: KyboColors.textMuted, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Metriche server non disponibili',
+              style: TextStyle(
+                color: KyboColors.textMuted,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final data = _data!;
+    final diet = (data['diet_parser'] as Map?) ?? {};
+    final sug = (data['meal_suggestions'] as Map?) ?? {};
+
+    // Somma chiamate Gemini totali (diet + suggestions)
+    final geminiCalls = ((diet['gemini_calls'] as num?) ?? 0).toInt() +
+        ((sug['gemini_calls'] as num?) ?? 0).toInt();
+    final geminiErrors = ((diet['gemini_errors'] as num?) ?? 0).toInt() +
+        ((sug['gemini_errors'] as num?) ?? 0).toInt();
+
+    // Hit ratio cache L1 (RAM) per diet — la più rappresentativa
+    final dietCache = (diet['cache'] as Map?) ?? {};
+    final l1 = (dietCache['L1_ram'] as Map?) ?? {};
+    final l1Ratio = (l1['ratio'] ?? 'n/a').toString();
+
+    // Tempo medio parse diete (in secondi → ms o s leggibile)
+    final avgParseS = (diet['avg_parse_duration_s'] as num?)?.toDouble() ?? 0.0;
+    final avgParseLabel = avgParseS > 0
+        ? (avgParseS < 1
+            ? '${(avgParseS * 1000).toStringAsFixed(0)}ms'
+            : '${avgParseS.toStringAsFixed(1)}s')
+        : 'n/a';
+
+    final errorColor = geminiErrors > 0 ? KyboColors.error : KyboColors.success;
+
+    return PillCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.rocket_launch_rounded,
+                size: 16,
+                color: KyboColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Metriche server',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: KyboColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              if (widget.onTap != null)
+                Text(
+                  'Dettagli →',
+                  style: TextStyle(
+                    color: KyboColors.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _MiniServerStat(
+                label: 'Gemini',
+                value: '$geminiCalls',
+                hint: 'chiamate',
+                color: KyboColors.primary,
+              ),
+              const SizedBox(width: 8),
+              _MiniServerStat(
+                label: 'Errori',
+                value: '$geminiErrors',
+                hint: 'gemini',
+                color: errorColor,
+              ),
+              const SizedBox(width: 8),
+              _MiniServerStat(
+                label: 'Cache hit',
+                value: l1Ratio,
+                hint: 'L1 diet',
+                color: KyboColors.accent,
+              ),
+              const SizedBox(width: 8),
+              _MiniServerStat(
+                label: 'Parse',
+                value: avgParseLabel,
+                hint: 'avg dieta',
+                color: KyboColors.warning,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mini-stat box usato dentro _ServerMetricsCard. Compatto, 4 vanno in riga.
+class _MiniServerStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String hint;
+  final Color color;
+
+  const _MiniServerStat({
+    required this.label,
+    required this.value,
+    required this.hint,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: KyboBorderRadius.small,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: KyboColors.textMuted,
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+            Text(
+              hint,
+              style: TextStyle(
+                fontSize: 10,
+                color: KyboColors.textMuted,
+              ),
             ),
           ],
         ),
