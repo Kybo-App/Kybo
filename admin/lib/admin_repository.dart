@@ -686,8 +686,13 @@ class AdminRepository {
   }
 
   Future<Map<String, dynamic>> getHealthDetailed() async {
+    // [2026-05-26] Endpoint rinominato lato server da /health/detailed →
+    // /system/status. Il nome precedente faceva scattare i filter list
+    // di ad blocker aggressivi (uBlock, Brave, AdGuard), bloccando il
+    // caricamento della vista Server Metrics nell'admin. Il vecchio
+    // endpoint è ancora attivo come alias backward-compatible.
     final response = await http.get(
-      Uri.parse('$_baseUrl/health/detailed'),
+      Uri.parse('$_baseUrl/system/status'),
     );
 
     if (response.statusCode == 200 || response.statusCode == 503) {

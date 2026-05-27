@@ -246,11 +246,20 @@ async def ping():
     return {"ok": True}
 
 
-@app.get("/health/detailed")
+@app.get("/system/status")
+@app.get("/health/detailed", include_in_schema=False)
 async def health_check_detailed():
     """
     Health check avanzato che verifica tutti i servizi dipendenti.
     Usato per debugging e monitoring dettagliato.
+
+    [2026-05-26] L'endpoint è esposto a due URL:
+    - `/system/status` (preferito) — nome neutro, non scatta i filter list
+      degli ad blocker (uBlock/Brave/AdGuard hanno regole aggressive su
+      pattern come `/health/detailed`).
+    - `/health/detailed` (alias, hidden in OpenAPI) — mantenuto per
+      retrocompatibilità con smoke test, vecchi client, sistemi di
+      monitoring esterni che già lo chiamavano.
     """
     import subprocess
     import shutil
