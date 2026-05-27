@@ -649,25 +649,25 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
     final checks = (data['checks'] as Map<String, dynamic>?) ?? {};
     final env = (data['environment'] ?? '').toString();
 
-    int ok = 0, errors = 0, warnings = 0;
-    final issuesNames = <String>[];
-    checks.forEach((name, value) {
-      final s = (value is Map ? value['status'] : '').toString();
-      switch (s) {
-        case 'ok':
-          ok++;
-          break;
-        case 'error':
-          errors++;
-          issuesNames.add(name);
-          break;
-        case 'warning':
-          warnings++;
-          issuesNames.add(name);
-          break;
-        // 'disabled' (es. redis non configurato): non conta come problema,
-        // semplicemente non incluso nei totali ok/error/warning.
-      }
+    // [FIX 2026-05-27] Usiamo la classificazione del SERVER (top-level
+    // `errors` / `warnings` array) invece di contare ogni `status: 'error'`
+    // dei singoli check. Il server promuove a "warning" gli error nei
+    // servizi OPTIONAL_SERVICES (tesseract, redis), così il status overall
+    // resta "healthy" se non manca nulla di critico. Prima il client
+    // contava tesseract come "1 servizio giù" → banner rosso ingiustamente.
+    final serverErrors = (data['errors'] as List<dynamic>?) ?? [];
+    final serverWarnings = (data['warnings'] as List<dynamic>?) ?? [];
+    final errors = serverErrors.length;
+    final warnings = serverWarnings.length;
+    final issuesNames = [
+      ...serverErrors.map((e) => e.toString()),
+      ...serverWarnings.map((w) => w.toString()),
+    ];
+
+    // Conta servizi OK (per la stringa "X/N servizi OK").
+    int ok = 0;
+    checks.forEach((_, value) {
+      if (value is Map && value['status'] == 'ok') ok++;
     });
 
     final total = checks.length;
@@ -683,14 +683,18 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
             ? Icons.warning_amber_rounded
             : Icons.check_circle_rounded);
 
+    // Helper plurale italiano: 1 servizio / N servizi
+    String servizi(int n) => n == 1 ? 'servizio' : 'servizi';
+    String warningPlural(int n) => n == 1 ? 'warning' : 'warning';
+
     final title = errors > 0
-        ? 'Sistema: $errors servizi giù'
+        ? 'Sistema: $errors ${servizi(errors)} giù'
         : (warnings > 0
-            ? 'Sistema: $warnings warning'
+            ? 'Sistema: $warnings ${warningPlural(warnings)}'
             : 'Sistema: tutto OK');
     final subtitle = errors > 0 || warnings > 0
-        ? 'Problemi: ${issuesNames.join(", ")} • $ok/$total servizi OK'
-        : '$ok/$total servizi OK${env.isNotEmpty ? " • $env" : ""}';
+        ? 'Problemi: ${issuesNames.join(", ")} • $ok/$total ${servizi(ok)} OK'
+        : '$ok/$total ${servizi(ok)} OK${env.isNotEmpty ? " • $env" : ""}';
 
     return _bannerShell(
       color: color,
