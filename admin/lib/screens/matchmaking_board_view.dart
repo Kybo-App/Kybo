@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kybo_admin/admin_repository.dart';
 import 'package:kybo_admin/core/app_localizations.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
@@ -21,9 +23,32 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   List<dynamic> _requests = [];
   String _filterType = 'all';
 
+  // [MONITOR MODE 2026-05-26] Admin osserva la bacheca matchmaking ma non
+  // dovrebbe fare proposte (è una operazione da nutrizionista/PT).
+  // _isAdminMonitor=true → banner in alto + bottoni "Make proposal" /
+  // "Withdraw" nascosti.
+  bool _isAdminMonitor = false;
+
   @override
   void initState() {
     super.initState();
+    _loadRoleAndFetch();
+  }
+
+  Future<void> _loadRoleAndFetch() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final role = (doc.data()?['role'] ?? '').toString();
+        if (mounted) {
+          setState(() => _isAdminMonitor = role == 'admin');
+        }
+      } catch (_) {/* fallback: assume non-admin → tutto visibile */}
+    }
     _fetchBoard();
   }
 
@@ -168,6 +193,16 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_isAdminMonitor) ...[
+          _MonitorModeBanner(
+            message: l10n.locale.languageCode == 'it'
+                ? 'Modalità monitor: stai osservando la bacheca come admin. '
+                    'Le azioni di proposta sono riservate a nutrizionisti e PT.'
+                : 'Monitor mode: viewing the board as admin. Proposal actions '
+                    'are reserved to nutritionists and PTs.',
+          ),
+          const SizedBox(height: 16),
+        ],
          Row(
           children: [
             Text(
@@ -265,26 +300,31 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                                 fontWeight: FontWeight.w600, fontSize: 13)),
                         Text(req['notes'], style: const TextStyle(fontSize: 14)),
                       ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () => _withdrawOffer(req['id']),
-                            icon: const Icon(Icons.undo_rounded, size: 16),
-                            label: Text(l10n.matchmakingWithdrawOffer),
-                            style: TextButton.styleFrom(
-                              foregroundColor: KyboColors.textSecondary,
+                      // Azioni nascoste in modalità monitor (admin) —
+                      // l'admin non fa proposte, le osserva soltanto.
+                      if (!_isAdminMonitor) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _withdrawOffer(req['id']),
+                              icon: const Icon(Icons.undo_rounded, size: 16),
+                              label: Text(l10n.matchmakingWithdrawOffer),
+                              style: TextButton.styleFrom(
+                                foregroundColor: KyboColors.textSecondary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.icon(
-                            onPressed: () => _showOfferDialog(req['id'], req['coach_type']),
-                            icon: const Icon(Icons.handshake),
-                            label: Text(l10n.matchmakingMakeProposal),
-                          ),
-                        ],
-                      )
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  _showOfferDialog(req['id'], req['coach_type']),
+                              icon: const Icon(Icons.handshake),
+                              label: Text(l10n.matchmakingMakeProposal),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -293,6 +333,49 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Banner che appare in cima a una view quando l'admin la sta visualizzando
+/// in modalità "osservatore". Spiega che le azioni operative sono nascoste/
+/// disabilitate perché riservate ad altri ruoli (nutrizionista, PT).
+class _MonitorModeBanner extends StatelessWidget {
+  final String message;
+  const _MonitorModeBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: KyboColors.warning.withValues(alpha: 0.10),
+        borderRadius: KyboBorderRadius.medium,
+        border: Border.all(
+          color: KyboColors.warning.withValues(alpha: 0.30),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.visibility_rounded,
+            color: KyboColors.warning,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: KyboColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
