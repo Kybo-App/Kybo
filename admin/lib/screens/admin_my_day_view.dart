@@ -246,126 +246,160 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
 
   Widget _buildRecentActivity(AppLocalizations l10n) {
     final isItalian = l10n.locale.languageCode == 'it';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              isItalian ? 'Attività recente' : 'Recent activity',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: KyboColors.textPrimary,
+    // [2026-05-26] Sezione molto compattata. L'admin nota cosa è successo
+    // a colpo d'occhio ma non occupa metà schermo. Per il dettaglio di
+    // tutti gli eventi c'è Audit Log dedicato (linkato a destra).
+    return PillCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.history_rounded,
+                size: 16,
+                color: KyboColors.textSecondary,
               ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () => widget.onNavigateTo?.call('audit'),
-              child: Text(
-                isItalian ? 'Log completo →' : 'Full log →',
-                style: TextStyle(color: KyboColors.primary, fontSize: 13),
+              const SizedBox(width: 8),
+              Text(
+                isItalian ? 'Attività recente' : 'Recent activity',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: KyboColors.textPrimary,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: _firestore
-              .collection('access_logs')
-              .orderBy('timestamp', descending: true)
-              .limit(5)
-              .snapshots(),
-          builder: (ctx, snap) {
-            if (!snap.hasData) {
-              return const SizedBox(
-                height: 100,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (snap.data!.docs.isEmpty) {
-              return PillCard(
-                padding: const EdgeInsets.all(24),
-                child: Center(
+              const Spacer(),
+              InkWell(
+                onTap: () => widget.onNavigateTo?.call('audit'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  child: Text(
+                    isItalian ? 'Log completo →' : 'Full log →',
+                    style: TextStyle(
+                      color: KyboColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _firestore
+                .collection('access_logs')
+                .orderBy('timestamp', descending: true)
+                .limit(3)
+                .snapshots(),
+            builder: (ctx, snap) {
+              if (!snap.hasData) {
+                return const SizedBox(
+                  height: 60,
+                  child: Center(
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+              if (snap.data!.docs.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     isItalian
                         ? 'Nessuna attività recente'
                         : 'No recent activity',
-                    style: TextStyle(color: KyboColors.textMuted),
+                    style: TextStyle(
+                      color: KyboColors.textMuted,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              );
-            }
-            return Column(
-              children: snap.data!.docs.map((doc) {
-                final data = doc.data();
-                final action = (data['action'] ?? '-').toString();
-                final actor = (data['actor_email'] ??
-                        data['user_email'] ??
-                        data['actor'] ??
-                        '-')
-                    .toString();
-                final ts = data['timestamp'];
-                DateTime? when;
-                if (ts is Timestamp) when = ts.toDate();
-                final whenLabel = when != null
-                    ? timeago.format(when,
-                        locale: isItalian ? 'it' : 'en')
-                    : '';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: PillCard(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                );
+              }
+              return Column(
+                children: snap.data!.docs.map((doc) {
+                  final data = doc.data();
+                  final action = (data['action'] ?? '-').toString();
+                  final actor = (data['actor_email'] ??
+                          data['user_email'] ??
+                          data['actor'] ??
+                          '-')
+                      .toString();
+                  final ts = data['timestamp'];
+                  DateTime? when;
+                  if (ts is Timestamp) when = ts.toDate();
+                  final whenLabel = when != null
+                      ? timeago.format(when,
+                          locale: isItalian ? 'it' : 'en')
+                      : '';
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
+                        // bullet point a sinistra
                         Container(
-                          width: 36,
-                          height: 36,
+                          width: 6,
+                          height: 6,
                           decoration: BoxDecoration(
-                            color:
-                                KyboColors.accent.withValues(alpha: 0.12),
-                            borderRadius: KyboBorderRadius.medium,
-                          ),
-                          child: Icon(
-                            Icons.history_rounded,
-                            size: 18,
-                            color: KyboColors.accent,
+                            color: KyboColors.accent.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
+                        // action name
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                action,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: KyboColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '$actor • $whenLabel',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: KyboColors.textMuted,
-                                ),
-                              ),
-                            ],
+                          flex: 3,
+                          child: Text(
+                            action,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: KyboColors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // actor (truncato se troppo lungo)
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            actor,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: KyboColors.textMuted,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // when
+                        Text(
+                          whenLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: KyboColors.textMuted,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              }).toList(),
-            );
-          },
-        ),
-      ],
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
