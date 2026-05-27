@@ -404,31 +404,15 @@ class _DashboardContentState extends State<_DashboardContent>
     // Content area: NESSUN wrapper card. Le viste interne (MyDayView,
     // UserManagementView, ecc.) gestiscono già la propria struttura visiva
     // con card interne (KPI, liste, sezioni).
-    //
-    // [LAYOUT 2026-05-26] Switch da Row a Stack/overlay: nella Row
-    // precedente, sidebar e content si dividevano lo spazio orizzontale, e
-    // l'espansione della sidebar restringeva il content → il bordo sinistro
-    // del content viaggiava verso destra durante l'animazione, disegnando
-    // una linea verticale visibile. Con Stack/overlay:
-    // - Il content occupa la full width con un padding-left fisso pari alla
-    //   larghezza della sidebar collassata (+ gap). Il suo bordo sinistro
-    //   non si muove MAI.
-    // - La sidebar è un overlay Positioned a sx=0, che cresce/decresce
-    //   "passando sopra" il content. Il content non subisce reflow.
-    // - Quando la sidebar è espansa, copre la parte sinistra del content
-    //   (~168px aggiuntivi). Pattern hover-rail standard (Discord, VSCode).
-    final contentArea = RepaintBoundary(
-      key: ValueKey('content_$themeKey'),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
-        child: navItems[_selectedIndex].view,
+    final contentArea = Expanded(
+      child: RepaintBoundary(
+        key: ValueKey('content_$themeKey'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
+          child: navItems[_selectedIndex].view,
+        ),
       ),
     );
-
-    // Larghezza totale occupata dalla sidebar collassata, INCLUSO il suo
-    // padding orizzontale 12+12=24. Il content avrà questo come padding-left
-    // fisso, così non c'è mai overlap tra sidebar collassata e content.
-    const sidebarRailWidth = _sidebarCollapsedWidth + 24;
 
     return Focus(
       focusNode: _keyboardFocusNode,
@@ -436,30 +420,20 @@ class _DashboardContentState extends State<_DashboardContent>
       onKeyEvent: (node, event) => _handleKeyEvent(node, event, navItems),
       child: Scaffold(
         backgroundColor: KyboColors.background,
-        body: Stack(
+        // Row layout: sidebar e content sullo stesso piano. Quando la
+        // sidebar si espande, il content si restringe in proporzione (il
+        // bordo sinistro del content si sposta verso destra). Comportamento
+        // "tradizionale" — l'utente lo preferisce per spiegarci sopra.
+        body: Row(
           children: [
-            // Layer 1: Top bar + content area, occupano TUTTA la larghezza
-            // dello schermo (con padding-left fisso per la sidebar rail).
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.only(left: sidebarRailWidth),
-                child: Column(
-                  children: [
-                    _buildTopBarMinimal(navItems, l10n),
-                    Expanded(child: contentArea),
-                  ],
-                ),
+            _buildSidebar(navItems, l10n),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTopBarMinimal(navItems, l10n),
+                  contentArea,
+                ],
               ),
-            ),
-            // Layer 2: Sidebar OVERLAY a sinistra. Quando espande, scorre
-            // sopra il content sottostante. Il body bg (sotto la sidebar)
-            // è dello stesso colore del body bg generale, quindi i gap
-            // tra le card della sidebar non rivelano contrasti strani.
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: _buildSidebar(navItems, l10n),
             ),
           ],
         ),
@@ -507,14 +481,7 @@ class _DashboardContentState extends State<_DashboardContent>
           final width = _sidebarCollapsedWidth +
               (_sidebarExpandedWidth - _sidebarCollapsedWidth) * globalT;
 
-          return Container(
-            // [OVERLAY FILL] Background dello stesso colore del body bg.
-            // Quando la sidebar è overlay sopra il content (Stack), questo
-            // riempimento copre il content sottostante uniformemente. I gap
-            // tra le card mostrano questo bg (= body bg) invece di rivelare
-            // il content sotto, evitando flickering/contrasti durante
-            // l'animazione di espansione.
-            color: KyboColors.background,
+          return Padding(
             // Margin 12 attorno: spazio tra le card e i bordi schermo.
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             child: SizedBox(
