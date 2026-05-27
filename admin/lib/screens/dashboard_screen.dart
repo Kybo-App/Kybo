@@ -16,6 +16,7 @@ import 'config_view.dart';
 import 'audit_log_view.dart';
 import 'chat_management_view.dart';
 import 'my_day_view.dart';
+import 'admin_my_day_view.dart';
 import 'diet_templates_view.dart';
 
 import 'analytics_view.dart';
@@ -322,17 +323,32 @@ class _DashboardContentState extends State<_DashboardContent>
     final themeKey = KyboColors.isDark ? 'dark' : 'light';
     final notifProvider = context.watch<AdminNotificationProvider>();
 
-    // Calcolo lazy degli indici delle tab "chat" e "users" per permettere
-    // a MyDayView di saltare a quelle tab tramite onNavigateTo.
+    // onMyDayNav: deep link da una card della MyDayView (o AdminMyDayView)
+    // verso un'altra tab del dashboard. Le label sono dichiarate qui per
+    // tutti i possibili target. Tab fisse → 'users'=1, 'chat'=2. Le altre
+    // dipendono dal ruolo (vedi navItems sotto, cresce condizionalmente):
+    // per un admin l'ordine è users(1), chat(2), analytics(3), reports(4),
+    // settings(5), gdpr(6), audit(7), server(8), rewards(9), match(10).
     void onMyDayNav(String label) {
-      // navItems viene costruito sotto, quindi calcoliamo qui post-build:
-      // tab fisse → 'myday'=0, 'users'=1, 'chat'=2 (vedi ordine sotto).
       switch (label) {
         case 'users':
           _onNavSelected(1);
           break;
         case 'chat':
           _onNavSelected(2);
+          break;
+        // Le quick-action della AdminMyDayView mappano qui:
+        case 'analytics':
+          if (_isAdmin || _isNutritionist) _onNavSelected(3);
+          break;
+        case 'reports':
+          if (_isAdmin || _isNutritionist) _onNavSelected(4);
+          break;
+        case 'audit':
+          if (_isAdmin) _onNavSelected(7);
+          break;
+        case 'server':
+          if (_isAdmin) _onNavSelected(8);
           break;
       }
     }
@@ -341,10 +357,19 @@ class _DashboardContentState extends State<_DashboardContent>
       _NavItem(
         icon: Icons.today_rounded,
         label: l10n.myDayTab,
-        view: MyDayView(
-          key: ValueKey('myday_$themeKey'),
-          onNavigateTo: onMyDayNav,
-        ),
+        // [HIERARCHY 2026-05-26] Admin ottiene una view diversa: pannello di
+        // controllo superiore (panoramica sistema + scorciatoie alle aree
+        // di osservazione) invece della view operativa di nutri/PT con
+        // "diete scadute" e "clienti da ricontattare".
+        view: _isAdmin
+            ? AdminMyDayView(
+                key: ValueKey('admin_myday_$themeKey'),
+                onNavigateTo: onMyDayNav,
+              )
+            : MyDayView(
+                key: ValueKey('myday_$themeKey'),
+                onNavigateTo: onMyDayNav,
+              ),
       ),
       _NavItem(
         icon: Icons.people_alt_rounded,
@@ -409,7 +434,9 @@ class _DashboardContentState extends State<_DashboardContent>
       //     label: l10n.navWorkout,
       //     view: WorkoutManagementView(key: ValueKey('workout_$themeKey')),
       //   ),
-      if (_isNutritionist || _isAdmin)
+      // [HIERARCHY 2026-05-26] Diet Templates rimosso dalla nav admin:
+      // l'admin non crea/cura template di diete (è un task da nutrizionista).
+      if (_isNutritionist)
         _NavItem(
           icon: Icons.bookmark_rounded,
           label: l10n.dietTemplatesTab,
