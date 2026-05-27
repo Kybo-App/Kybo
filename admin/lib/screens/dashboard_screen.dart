@@ -572,16 +572,11 @@ class _DashboardContentState extends State<_DashboardContent>
                             itemBuilder: (context, index) {
                               final item = navItems[index];
                               final itemT = _itemCascadeT(index);
-                              // Stagger ciclico delle larghezze finali per
-                              // rompere l'allineamento verticale dei bordi
-                              // destri. Variazione max 12px → subtle ma
-                              // sufficiente a destrutturare la linea visiva.
-                              const widthOffsets = [
-                                0.0, 6.0, 12.0, 3.0, 9.0, 2.0,
-                                8.0, 4.0, 11.0, 1.0, 7.0, 5.0, 10.0,
-                              ];
-                              final stagger =
-                                  widthOffsets[index % widthOffsets.length];
+                              // [2026-05-27] Stagger delle larghezze rimosso.
+                              // L'utente vuole tutte le tab della STESSA
+                              // larghezza al termine dell'animazione (per
+                              // l'effetto "strip continue per riga Y" che
+                              // verrà implementato dopo).
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 3),
                                 child: _SidebarNavItem(
@@ -591,7 +586,6 @@ class _DashboardContentState extends State<_DashboardContent>
                                   badgeCount: item.badgeCount,
                                   onTap: () => _onNavSelected(index),
                                   t: itemT,
-                                  widthStagger: stagger,
                                 ),
                               );
                             },
@@ -812,10 +806,6 @@ class _DashboardContentState extends State<_DashboardContent>
 /// label/badge numerico. NIENTE LayoutBuilder, NIENTE AnimatedSwitcher:
 /// l'unico animation source è il TweenAnimationBuilder del parent.
 ///
-/// `widthStagger`: piccolo offset (positivo, in px) sottratto dalla larghezza
-/// finale della pill espansa. Serve a rompere l'allineamento dei bordi destri
-/// di tutte le card (altrimenti creano una linea verticale implicita).
-/// Valori tipici 0-12px, applicati ciclicamente dall'index.
 class _SidebarNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -823,7 +813,6 @@ class _SidebarNavItem extends StatefulWidget {
   final VoidCallback onTap;
   final int? badgeCount;
   final double t;
-  final double widthStagger;
 
   const _SidebarNavItem({
     required this.label,
@@ -832,7 +821,6 @@ class _SidebarNavItem extends StatefulWidget {
     required this.onTap,
     required this.t,
     this.badgeCount,
-    this.widthStagger = 0,
   });
 
   @override
@@ -863,12 +851,12 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     // Larghezza del background "pill" sotto l'item, interpolata con t.
     // Quando t=0 (compatto): pill di 52px (icona centrata in essa, simmetrica
     // rispetto al padding 14 dell'item → 14 a sx, 24 icona, 14 a dx = 52).
-    // Quando t=1 (esteso): pill copre tutto l'item visibile (220px = 240 - 10*2 padding ListView)
-    // MENO `widthStagger` che varia per item — così i bordi destri delle card
-    // della sidebar non si allineano tutti allo stesso X (no linea verticale
-    // implicita).
+    // Quando t=1 (esteso): pill copre tutto l'item visibile (220px =
+    // 240 - 10*2 padding ListView). Tutti gli item hanno la stessa larghezza
+    // finale (lo stagger è stato rimosso per coerenza con l'idea di "strip
+    // continue per riga Y").
     const compactPillWidth = 52.0;
-    final expandedPillWidth = 220.0 - widget.widthStagger;
+    const expandedPillWidth = 220.0;
     final pillWidth = compactPillWidth + (expandedPillWidth - compactPillWidth) * t;
 
     // Stack: background pill (Positioned, larghezza dinamica) + Row contenuto.
