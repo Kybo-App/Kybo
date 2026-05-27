@@ -199,50 +199,56 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
         // precedente (8-14 gg fa). Positivo verde, negativo rosso.
         final signupsDelta = newSignups7d - newSignupsPrev7d;
 
-        return Row(
-          children: [
-            Expanded(
-              child: _AdminStatCard(
-                title: 'Utenti totali',
-                value: '$total',
-                icon: Icons.group_rounded,
-                color: KyboColors.primary,
-                onTap: () => widget.onNavigateTo?.call('users'),
+        // Tutte le card hanno la stessa struttura (title + value + subtitle)
+        // così l'altezza è uniforme — anche dove non c'è una vera sottoscritta,
+        // riempiamo lo slot con uno spazio "filler" per coerenza visiva.
+        return IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _CompactKpiCard(
+                  title: 'Utenti totali',
+                  value: '$total',
+                  subtitle: 'registrati',
+                  icon: Icons.group_rounded,
+                  color: KyboColors.primary,
+                  onTap: () => widget.onNavigateTo?.call('users'),
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _AdminStatCard(
-                title: 'Nuove iscrizioni',
-                value: '$newSignups7d',
-                subtitle: 'Ultimi 7 giorni',
-                icon: Icons.person_add_rounded,
-                color: KyboColors.success,
-                trend: signupsDelta,
-                trendLabel: 'vs sett. scorsa',
+              const SizedBox(width: 12),
+              Expanded(
+                child: _CompactKpiCard(
+                  title: 'Nuove iscrizioni',
+                  value: '$newSignups7d',
+                  subtitle: 'ultimi 7 giorni',
+                  icon: Icons.person_add_rounded,
+                  color: KyboColors.success,
+                  trend: signupsDelta,
+                  trendLabel: 'vs sett.',
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _AdminStatCard(
-                title: 'Professionisti',
-                value: '$nutritionists',
-                subtitle: 'Nutrizionisti + PT',
-                icon: Icons.medical_services_rounded,
-                color: KyboColors.accent,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _CompactKpiCard(
+                  title: 'Professionisti',
+                  value: '$nutritionists',
+                  subtitle: 'nutri + PT',
+                  icon: Icons.medical_services_rounded,
+                  color: KyboColors.accent,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _AdminStatCard(
-                title: 'Clienti attivi',
-                value: '$activeClients',
-                subtitle: 'Ultimi 14 giorni',
-                icon: Icons.bolt_rounded,
-                color: KyboColors.warning,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _CompactKpiCard(
+                  title: 'Clienti attivi',
+                  value: '$activeClients',
+                  subtitle: 'ultimi 14 gg',
+                  icon: Icons.bolt_rounded,
+                  color: KyboColors.warning,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -471,24 +477,33 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
   }
 }
 
-class _AdminStatCard extends StatelessWidget {
+/// KPI card compatta usata in AdminMyDayView. Tutte e 4 le KPI hanno la
+/// stessa struttura (icona + title + valore + subtitle) così l'altezza è
+/// uniforme e l'header di MyDay sta in viewport senza scroll.
+///
+/// Dimensioni ridotte rispetto a `StatCard` del design system:
+/// - padding 14 (vs 24)
+/// - icon 36px (vs 56)
+/// - valore 22px (vs 28)
+/// - title 11px (vs 13)
+class _CompactKpiCard extends StatelessWidget {
   final String title;
   final String value;
-  final String? subtitle;
+  final String subtitle;
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
-  /// Delta numerico rispetto al periodo precedente (es. -3, 0, +5).
-  /// Quando null o quando trendLabel è null, l'indicatore non viene mostrato.
+  /// Trend numerico rispetto al periodo precedente (es. -3, 0, +5).
+  /// Se null o trendLabel null, nessun pill mostrato.
   final int? trend;
   final String? trendLabel;
 
-  const _AdminStatCard({
+  const _CompactKpiCard({
     required this.title,
     required this.value,
+    required this.subtitle,
     required this.icon,
     required this.color,
-    this.subtitle,
     this.onTap,
     this.trend,
     this.trendLabel,
@@ -496,76 +511,144 @@ class _AdminStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget result = StatCard(
-      title: title,
-      value: value,
-      icon: icon,
-      color: color,
-      subtitle: subtitle,
-    );
-
-    // Sovrappongo il trend pill in basso a destra della card.
-    if (trend != null && trendLabel != null) {
-      final t = trend!;
-      final isPositive = t > 0;
-      final isFlat = t == 0;
-      final trendColor = isFlat
-          ? KyboColors.textMuted
-          : (isPositive ? KyboColors.success : KyboColors.error);
-      final arrow = isFlat
-          ? Icons.remove_rounded
-          : (isPositive
-              ? Icons.arrow_upward_rounded
-              : Icons.arrow_downward_rounded);
-      final sign = isPositive ? '+' : '';
-      result = Stack(
+    Widget card = PillCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          result,
-          Positioned(
-            right: 12,
-            bottom: 12,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: trendColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(arrow, size: 12, color: trendColor),
-                  const SizedBox(width: 2),
-                  Text(
-                    '$sign$t',
-                    style: TextStyle(
-                      color: trendColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
+          // Icona (più piccola)
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: KyboBorderRadius.medium,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          // Title / value / subtitle in colonna
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: KyboColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.2,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    trendLabel!,
-                    style: TextStyle(
-                      color: trendColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: KyboColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1.0,
                   ),
-                ],
-              ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 2),
+                // Subtitle SEMPRE presente nella struttura → altezza uniforme
+                // tra tutte le 4 card, anche quelle senza trend.
+                Row(
+                  children: [
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    if (trend != null && trendLabel != null) ...[
+                      const SizedBox(width: 6),
+                      _TrendPill(
+                        trend: trend!,
+                        label: trendLabel!,
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
         ],
-      );
-    }
+      ),
+    );
 
-    if (onTap == null) return result;
+    if (onTap == null) return card;
     return InkWell(
       onTap: onTap,
       borderRadius: KyboBorderRadius.large,
-      child: result,
+      child: card,
+    );
+  }
+}
+
+/// Pill compatto "↑+N vs sett." da inserire accanto al subtitle della
+/// _CompactKpiCard. Verde se positivo, rosso se negativo, neutro se 0.
+class _TrendPill extends StatelessWidget {
+  final int trend;
+  final String label;
+
+  const _TrendPill({required this.trend, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = trend > 0;
+    final isFlat = trend == 0;
+    final trendColor = isFlat
+        ? KyboColors.textMuted
+        : (isPositive ? KyboColors.success : KyboColors.error);
+    final arrow = isFlat
+        ? Icons.remove_rounded
+        : (isPositive
+            ? Icons.arrow_upward_rounded
+            : Icons.arrow_downward_rounded);
+    final sign = isPositive ? '+' : '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: trendColor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(arrow, size: 10, color: trendColor),
+          const SizedBox(width: 1),
+          Text(
+            '$sign$trend',
+            style: TextStyle(
+              color: trendColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: trendColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
