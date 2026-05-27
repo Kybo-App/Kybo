@@ -1846,7 +1846,13 @@ class _UserCardState extends State<_UserCard> {
     bool showParser =
         isAdmin &&
         (role == 'nutritionist' || role == 'independent' || role == 'admin');
+    // showDiet abilita la SEZIONE "storico diete" (sola lettura). Visibile a
+    // tutti i ruoli che la possono guardare (admin compreso → monitora).
     bool showDiet = (role == 'user' || role == 'independent');
+    // canUploadDiet: il caricamento di una nuova dieta per il cliente è
+    // operazione da nutrizionista. Admin guarda lo storico, non carica
+    // diete personalmente.
+    bool canUploadDiet = showDiet && !isAdmin;
     bool canDelete =
         isAdmin ||
         (role == 'user' && data['parent_id'] == widget.currentUserId);
@@ -1854,7 +1860,11 @@ class _UserCardState extends State<_UserCard> {
         (data['created_by'] == widget.currentUserId);
     bool canAssign =
         (role == 'independent' || role == 'user') && widget.onAssign != null;
-    bool showNotes = (role == 'user' || role == 'independent') && widget.onNotes != null;
+    // showNotes: le "note interne" sono appunti clinici del nutrizionista
+    // sul cliente. Admin non scrive note (è osservatore).
+    bool showNotes = (role == 'user' || role == 'independent')
+        && widget.onNotes != null
+        && !isAdmin;
 
     String dateStr = '-';
     if (data['created_at'] != null) {
@@ -2133,13 +2143,15 @@ class _UserCardState extends State<_UserCard> {
                     onPressed: () => widget.onHistory(uid),
                     size: 36,
                   ),
-                  PillIconButton(
-                    icon: Icons.upload_file_rounded,
-                    color: KyboColors.textSecondary,
-                    tooltip: "Carica Dieta",
-                    onPressed: () => widget.onUploadDiet(uid),
-                    size: 36,
-                  ),
+                  // Upload nascosto per admin (operazione da nutrizionista).
+                  if (canUploadDiet)
+                    PillIconButton(
+                      icon: Icons.upload_file_rounded,
+                      color: KyboColors.textSecondary,
+                      tooltip: "Carica Dieta",
+                      onPressed: () => widget.onUploadDiet(uid),
+                      size: 36,
+                    ),
                   if (widget.onExportReport != null)
                     PillIconButton(
                       icon: Icons.picture_as_pdf_rounded,
