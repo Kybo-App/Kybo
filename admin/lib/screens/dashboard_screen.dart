@@ -530,20 +530,11 @@ class _DashboardContentState extends State<_DashboardContent>
                   children: [
                     _buildTopBarMinimal(navItems, l10n),
                     Expanded(
-                      child: AnimatedBuilder(
+                      child: CascadeStripSlicer(
+                        sliceHeight: 6,
                         animation: _sidebarAnim,
-                        // child: il content view è costruito una volta e
-                        // passato come `child` così non viene ricostruito
-                        // ad ogni tick (solo ridipinto/affettato dal slicer).
+                        offsetAt: _contentOffsetAt,
                         child: contentView,
-                        builder: (context, child) {
-                          return CascadeStripSlicer(
-                            sliceHeight: 6,
-                            repaintTick: _sidebarAnim.value,
-                            offsetAt: _contentOffsetAt,
-                            child: child!,
-                          );
-                        },
                       ),
                     ),
                   ],

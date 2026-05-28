@@ -1,180 +1,204 @@
-// CascadeStripSlicer — widget custom che "affetta" il proprio child in fasce
-// orizzontali e dipinge ognuna traslata orizzontalmente di una quantità che
-// dipende dalla sua posizione Y, secondo una funzione continua.
+// CascadeStripSlicer — affetta il proprio child in fasce orizzontali e dipinge
+// ognuna traslata orizzontalmente di una quantità che dipende dalla sua Y,
+// secondo una funzione continua. Serve all'effetto "cascata": durante
+// l'animazione ogni riga Y della pagina viene spinta a destra in base alla
+// distanza dalla tab selezionata → onda che attraversa la pagina.
 //
-// Serve per l'effetto "cascata sidebar": durante l'animazione, ogni riga Y
-// della pagina viene spinta a destra di una quantità che dipende dalla sua
-// distanza dalla tab selezionata. Il risultato è un'onda che attraversa la
-// pagina.
+// APPROCCIO A SNAPSHOT (texture):
+// Il content reale contiene layer di compositing (Opacity, ombre, ecc.).
+// Ridipingerlo N volte (uno per fascia) non è possibile: un layer non può
+// avere più genitori → il content sparirebbe. Quindi catturiamo il child
+// in una ui.Image UNA volta (via SnapshotWidget) e disegniamo le fasce
+// dell'immagine con drawImageRect — blit GPU economici, nessun problema di
+// layer, e fasce sottili (sliceHeight piccolo) danno un'onda liscissima a
+// costo quasi costante.
 //
-// SFUMATURA: invece di affettare all'altezza della tab (52px → scalini netti),
-// affettiamo a granularità fine (`sliceHeight`, default ~12px) e calcoliamo
-// l'offset di ogni fascia tramite `offsetAt(centerY)` — una funzione continua.
-// Con fasce sottili + funzione continua, l'onda appare come una curva liscia
-// invece che a gradini, "sfumando" il taglio tra una fascia e l'altra.
-//
-// Implementazione: il child viene laid-out UNA volta. In paint, per ogni
-// fascia: clip alla fascia destinazione + dipinge il child traslato di dx.
-//
-// VINCOLO: il child NON deve essere un RepaintBoundary (né contenerne ai
-// livelli alti), perché viene ridipinto N volte e un layer non può avere
-// più genitori. Il paint multiplo avviene solo durante l'animazione.
+// - Quando l'animazione è ferma (idle): NON si fa snapshot → il child è
+//   dipinto live e interattivo, con un eventuale offset uniforme (es. 168px
+//   da sidebar espansa) applicato come semplice translate.
+// - Quando l'animazione è in corso: snapshot + slicing. Il content non è
+//   interattivo per quel ~1s, ma è solo hover quindi va bene.
+
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-class CascadeStripSlicer extends SingleChildRenderObjectWidget {
-  /// Altezza di ogni fascia di slicing in px. Più piccola = onda più liscia
-  /// ma più paint per frame. ~12px è un buon compromesso.
+class CascadeStripSlicer extends StatefulWidget {
+  /// Altezza di ogni fascia di slicing (px). Più piccola = onda più liscia.
   final double sliceHeight;
 
-  /// Funzione continua: dato il centro Y di una fascia (in coordinate locali),
+  /// Funzione continua: dato il centro Y di una fascia (coord. locali),
   /// restituisce l'offset orizzontale (px verso destra) da applicare.
   final double Function(double centerY) offsetAt;
 
-  /// Valore che cambia ad ogni frame dell'animazione (es. controller.value).
-  /// Forza il re-paint del RenderObject quando l'animazione avanza.
-  final double repaintTick;
+  /// Animazione che pilota la cascata. Usata per:
+  /// - sapere quando fare snapshot (status running) vs live (idle)
+  /// - forzare il repaint del painter ad ogni tick
+  final Animation<double> animation;
+
+  final Widget child;
 
   const CascadeStripSlicer({
     super.key,
     required this.sliceHeight,
     required this.offsetAt,
-    required this.repaintTick,
-    required Widget super.child,
+    required this.animation,
+    required this.child,
   });
 
   @override
-  RenderCascadeStripSlicer createRenderObject(BuildContext context) {
-    return RenderCascadeStripSlicer(
-      sliceHeight: sliceHeight,
-      offsetAt: offsetAt,
-      repaintTick: repaintTick,
+  State<CascadeStripSlicer> createState() => _CascadeStripSlicerState();
+}
+
+class _CascadeStripSlicerState extends State<CascadeStripSlicer> {
+  final SnapshotController _snapshotController =
+      SnapshotController(allowSnapshotting: false);
+  late final _CascadeSnapshotPainter _painter;
+
+  @override
+  void initState() {
+    super.initState();
+    _painter = _CascadeSnapshotPainter(
+      animation: widget.animation,
+      offsetAt: widget.offsetAt,
+      sliceHeight: widget.sliceHeight,
     );
+    widget.animation.addStatusListener(_onStatus);
+    // Stato iniziale: se l'animazione è già in movimento, abilita snapshot.
+    _snapshotController.allowSnapshotting = widget.animation.isAnimating;
+  }
+
+  void _onStatus(AnimationStatus status) {
+    final running = status == AnimationStatus.forward ||
+        status == AnimationStatus.reverse;
+    if (_snapshotController.allowSnapshotting != running) {
+      _snapshotController.allowSnapshotting = running;
+    }
   }
 
   @override
-  void updateRenderObject(
-      BuildContext context, RenderCascadeStripSlicer renderObject) {
-    renderObject
-      ..sliceHeight = sliceHeight
-      ..offsetAt = offsetAt
-      ..repaintTick = repaintTick;
+  void didUpdateWidget(CascadeStripSlicer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animation != widget.animation) {
+      oldWidget.animation.removeStatusListener(_onStatus);
+      widget.animation.addStatusListener(_onStatus);
+    }
+    _painter
+      ..offsetAt = widget.offsetAt
+      ..sliceHeight = widget.sliceHeight
+      ..animation = widget.animation;
+  }
+
+  @override
+  void dispose() {
+    widget.animation.removeStatusListener(_onStatus);
+    _painter.dispose();
+    _snapshotController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SnapshotWidget(
+      controller: _snapshotController,
+      painter: _painter,
+      child: widget.child,
+    );
   }
 }
 
-class RenderCascadeStripSlicer extends RenderProxyBox {
-  RenderCascadeStripSlicer({
-    required double sliceHeight,
+class _CascadeSnapshotPainter extends SnapshotPainter {
+  _CascadeSnapshotPainter({
+    required Animation<double> animation,
     required double Function(double centerY) offsetAt,
-    required double repaintTick,
-  })  : _sliceHeight = sliceHeight,
+    required double sliceHeight,
+  })  : _animation = animation,
         _offsetAt = offsetAt,
-        _repaintTick = repaintTick;
+        _sliceHeight = sliceHeight {
+    _animation.addListener(notifyListeners);
+  }
 
-  double _sliceHeight;
-  double get sliceHeight => _sliceHeight;
-  set sliceHeight(double value) {
-    if (_sliceHeight == value) return;
-    _sliceHeight = value;
-    markNeedsPaint();
+  Animation<double> _animation;
+  set animation(Animation<double> value) {
+    if (_animation == value) return;
+    _animation.removeListener(notifyListeners);
+    _animation = value;
+    _animation.addListener(notifyListeners);
   }
 
   double Function(double centerY) _offsetAt;
-  double Function(double centerY) get offsetAt => _offsetAt;
-  set offsetAt(double Function(double centerY) value) {
-    _offsetAt = value;
-    markNeedsPaint();
-  }
+  set offsetAt(double Function(double centerY) value) => _offsetAt = value;
 
-  double _repaintTick;
-  double get repaintTick => _repaintTick;
-  set repaintTick(double value) {
-    if (_repaintTick == value) return;
-    _repaintTick = value;
-    markNeedsPaint();
-  }
+  double _sliceHeight;
+  set sliceHeight(double value) => _sliceHeight = value;
 
-  // Layer di clip riutilizzati tra i frame (uno per fascia) per efficienza.
-  final List<ClipRectLayer?> _clipLayers = [];
-
+  /// Disegna l'immagine catturata del child in fasce orizzontali, ognuna
+  /// traslata di `offsetAt(centerY)`. Usato DURANTE l'animazione.
   @override
-  void paint(PaintingContext context, Offset offset) {
-    final child = this.child;
-    if (child == null) return;
-
-    final h = _sliceHeight;
-    if (h <= 0 || size.height <= 0) {
-      context.paintChild(child, offset);
-      return;
-    }
-
+  void paintSnapshot(
+    PaintingContext context,
+    Offset offset,
+    Size size,
+    ui.Image image,
+    Size sourceSize,
+    double pixelRatio,
+  ) {
+    final canvas = context.canvas;
+    final paint = ui.Paint()..filterQuality = FilterQuality.low;
+    final h = _sliceHeight <= 0 ? size.height : _sliceHeight;
     final numSlices = (size.height / h).ceil();
 
-    // Ottimizzazione: se tutte le fasce hanno (praticamente) lo stesso offset
-    // — caso idle, animazione ferma — dipingiamo il child una volta sola con
-    // un singolo translate, evitando N paint.
-    final firstOffset = _offsetAt(h / 2);
-    bool uniform = true;
-    for (int i = 1; i < numSlices; i++) {
-      final o = _offsetAt(i * h + h / 2);
-      if ((o - firstOffset).abs() > 0.5) {
-        uniform = false;
-        break;
-      }
-    }
-    if (uniform) {
-      _clipLayers.clear();
-      context.paintChild(child, offset + Offset(firstOffset, 0));
-      return;
-    }
-
-    while (_clipLayers.length < numSlices) {
-      _clipLayers.add(null);
-    }
-    while (_clipLayers.length > numSlices) {
-      _clipLayers.removeLast();
-    }
-
     for (int i = 0; i < numSlices; i++) {
-      final sliceTop = i * h;
-      final sliceH =
-          (sliceTop + h > size.height) ? size.height - sliceTop : h;
-      final dx = _offsetAt(sliceTop + sliceH / 2);
+      final y = i * h;
+      final sliceH = math.min(h, size.height - y);
+      if (sliceH <= 0) break;
+      final dx = _offsetAt(y + sliceH / 2);
 
-      final clipRect = Rect.fromLTWH(dx, sliceTop, size.width, sliceH);
-
-      _clipLayers[i] = context.pushClipRect(
-        needsCompositing,
-        offset,
-        clipRect,
-        (PaintingContext innerCtx, Offset innerOffset) {
-          innerCtx.paintChild(child, innerOffset + Offset(dx, 0));
-        },
-        oldLayer: _clipLayers[i],
+      // Sorgente: la fascia [y, y+sliceH] dell'immagine (in px immagine,
+      // quindi moltiplicata per pixelRatio).
+      final src = Rect.fromLTWH(
+        0,
+        y * pixelRatio,
+        sourceSize.width * pixelRatio,
+        sliceH * pixelRatio,
       );
+      // Destinazione: stessa fascia ma spostata a destra di dx.
+      final dst = Rect.fromLTWH(
+        offset.dx + dx,
+        offset.dy + y,
+        sourceSize.width,
+        sliceH,
+      );
+      canvas.drawImageRect(image, src, dst, paint);
     }
   }
 
+  /// Dipinge il child LIVE (interattivo) quando NON si sta facendo snapshot
+  /// (stato idle). Applica un offset uniforme se la cascata è "a riposo
+  /// espanso" (tutte le fasce allo stesso X). In idle-collassato l'offset è 0.
   @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    final child = this.child;
-    if (child == null) return false;
+  void paint(
+    PaintingContext context,
+    Offset offset,
+    Size size,
+    PaintingContextCallback painter,
+  ) {
+    final dx = _offsetAt(size.height / 2);
+    painter(context, offset + Offset(dx, 0));
+  }
 
-    final h = _sliceHeight;
-    if (h <= 0) {
-      return super.hitTestChildren(result, position: position);
-    }
+  @override
+  bool shouldRepaint(covariant _CascadeSnapshotPainter oldDelegate) {
+    return oldDelegate._animation.value != _animation.value ||
+        oldDelegate._sliceHeight != _sliceHeight ||
+        oldDelegate._offsetAt != _offsetAt;
+  }
 
-    // Inverti l'offset orizzontale della fascia che contiene la Y del puntatore.
-    final dx = _offsetAt(position.dy);
-
-    return result.addWithPaintOffset(
-      offset: Offset(dx, 0),
-      position: position,
-      hitTest: (BoxHitTestResult result, Offset transformed) {
-        return child.hitTest(result, position: transformed);
-      },
-    );
+  @override
+  void dispose() {
+    _animation.removeListener(notifyListeners);
+    super.dispose();
   }
 }
