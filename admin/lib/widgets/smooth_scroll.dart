@@ -1,9 +1,17 @@
-// SmoothScroll — wrapper che rende fluido lo scroll a rotella su Flutter web.
+// SmoothScroll — smooth scroll "alla Lenis" per Flutter web.
 //
-// Di default su web la rotella del mouse muove lo scroll a "scatti": ogni
-// notch salta di ~100px senza animazione, dando una sensazione a gradini.
-// Questo wrapper intercetta l'evento PointerScroll, accumula la destinazione
-// e fa `animateTo` con una curva di easing → scroll morbido e continuo.
+// Di default su web la rotella muove lo scroll a scatti. Le librerie JS come
+// Lenis / Locomotive (usate anche sul sito Kybo via GSAP) danno invece quel
+// feeling fluido e "pesante" con un loop continuo: ad ogni frame la posizione
+// corrente fa lerp verso un target, che la rotella aggiorna. La posizione
+// "insegue" il target con easing esponenziale → movimento continuo e morbido,
+// non una serie di animazioni discrete.
+//
+// Questo widget replica quel comportamento:
+// - mantiene un `_target` aggiornato dagli eventi rotella
+// - un Ticker (un tick per frame) avvicina la posizione corrente al target
+//   con un fattore esponenziale time-based (framerate-independent)
+// - drag / scrollbar / fling restano nativi; solo la rotella è "guidata".
 //
 // USO:
 //   SmoothScroll(
@@ -12,34 +20,30 @@
 //       child: ...,
 //     ),
 //   )
-//
-// Il builder DEVE passare il `controller` ricevuto allo scrollable, così
-// SmoothScroll può animarne la posizione. Drag, scrollbar e fling continuano
-// a funzionare normalmente (gestiti dallo scrollable nativo); solo la rotella
-// viene "intercettata" e animata.
+
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 class SmoothScroll extends StatefulWidget {
   /// Costruisce lo scrollable usando il [ScrollController] fornito.
   final Widget Function(BuildContext context, ScrollController controller)
       builder;
 
-  /// Durata dell'animazione per ogni "passo" di rotella.
-  final Duration duration;
+  /// "Rigidità" del lerp: più alto = insegue il target più velocemente
+  /// (meno "pesante"), più basso = più morbido e fluttuante.
+  /// ~10 è un buon valore "Lenis-like". Range utile ~6 (molto soft) – 16 (snappy).
+  final double stiffness;
 
-  /// Curva di easing dell'animazione.
-  final Curve curve;
-
-  /// Moltiplicatore del delta di rotella. >1 scrolla più velocemente.
+  /// Moltiplicatore del delta di rotella. >1 = ogni rotellata copre più spazio.
   final double speedFactor;
 
   const SmoothScroll({
     super.key,
     required this.builder,
-    this.duration = const Duration(milliseconds: 220),
-    this.curve = Curves.easeOutCubic,
+    this.stiffness = 10.0,
     this.speedFactor = 1.0,
   });
 
@@ -47,46 +51,90 @@ class SmoothScroll extends StatefulWidget {
   State<SmoothScroll> createState() => _SmoothScrollState();
 }
 
-class _SmoothScrollState extends State<SmoothScroll> {
+class _SmoothScrollState extends State<SmoothScroll>
+    with SingleTickerProviderStateMixin {
   final ScrollController _controller = ScrollController();
-  double _targetOffset = 0;
-  bool _animating = false;
+  late final Ticker _ticker;
+
+  double _target = 0;
+  bool _hasTarget = false;
+  Duration _lastElapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_onTick);
+  }
 
   @override
   void dispose() {
+    _ticker.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onTick(Duration elapsed) {
+    if (!_controller.hasClients) {
+      _stop();
+      return;
+    }
+
+    final dtMicros = (elapsed - _lastElapsed).inMicroseconds;
+    _lastElapsed = elapsed;
+    // Primo tick (dt enorme/0): salta, aspetta il prossimo per un dt valido.
+    if (dtMicros <= 0) return;
+    final dt = dtMicros / 1e6; // secondi
+
+    final current = _controller.offset;
+    final diff = _target - current;
+
+    // Arrivati: aggancia esatto e ferma il loop.
+    if (diff.abs() < 0.5) {
+      _controller.jumpTo(_target);
+      _stop();
+      return;
+    }
+
+    // Lerp esponenziale framerate-independent:
+    //   factor = 1 - e^(-stiffness * dt)
+    // a 60fps con stiffness=10 → ~15% per frame.
+    final factor = 1 - math.exp(-widget.stiffness * dt);
+    final next = current + diff * factor;
+
+    final min = _controller.position.minScrollExtent;
+    final max = _controller.position.maxScrollExtent;
+    _controller.jumpTo(next.clamp(min, max));
+  }
+
+  void _stop() {
+    if (_ticker.isActive) _ticker.stop();
+    _hasTarget = false;
+    _lastElapsed = Duration.zero;
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     if (!_controller.hasClients) return;
 
-    // Claim dell'evento tramite il resolver: impedisce allo scrollable
-    // nativo di gestire ANCHE lui la rotella (eviterebbe doppio scroll).
+    // Claim dell'evento: impedisce allo scrollable nativo di gestire ANCHE
+    // lui la rotella (eviterebbe doppio scroll).
     GestureBinding.instance.pointerSignalResolver.register(event, (_) {
       if (!_controller.hasClients) return;
 
-      final position = _controller.position;
-      final maxExtent = position.maxScrollExtent;
-      final minExtent = position.minScrollExtent;
+      final min = _controller.position.minScrollExtent;
+      final max = _controller.position.maxScrollExtent;
 
-      // Se non stiamo già animando, parti dalla posizione corrente reale.
-      final base = _animating ? _targetOffset : _controller.offset;
+      // Base = il target in volo se stiamo già scorrendo, altrimenti la
+      // posizione reale corrente (così rotellate rapide si accumulano).
+      final base = _hasTarget ? _target : _controller.offset;
       final delta = event.scrollDelta.dy * widget.speedFactor;
-      _targetOffset = (base + delta).clamp(minExtent, maxExtent);
+      _target = (base + delta).clamp(min, max);
+      _hasTarget = true;
 
-      // Niente da fare se siamo già al limite.
-      if ((_targetOffset - _controller.offset).abs() < 0.5) return;
-
-      _animating = true;
-      _controller
-          .animateTo(
-            _targetOffset,
-            duration: widget.duration,
-            curve: widget.curve,
-          )
-          .whenComplete(() => _animating = false);
+      if (!_ticker.isActive) {
+        _lastElapsed = Duration.zero;
+        _ticker.start();
+      }
     });
   }
 
