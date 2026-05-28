@@ -150,28 +150,64 @@ class _CascadeSnapshotPainter extends SnapshotPainter {
     final h = _sliceHeight <= 0 ? size.height : _sliceHeight;
     final numSlices = (size.height / h).ceil();
 
+    // Overlap verticale tra strisce: copre eventuali hairline (gap sub-pixel)
+    // ai bordi shearati. Tenuto a 1px → disallineamento impercettibile.
+    const overlap = 1.0;
+
     for (int i = 0; i < numSlices; i++) {
       final y = i * h;
       final sliceH = math.min(h, size.height - y);
       if (sliceH <= 0) break;
-      final dx = _offsetAt(y + sliceH / 2);
 
-      // Sorgente: la fascia [y, y+sliceH] dell'immagine (in px immagine,
-      // quindi moltiplicata per pixelRatio).
+      // Offset orizzontale al bordo SUPERIORE e INFERIORE della fascia.
+      // Disegnando la striscia come parallelogramma (shear lineare tra i due),
+      // il suo bordo basso combacia col bordo alto della striscia successiva
+      // → i lati del contenuto diventano una linea continua, non una scaletta.
+      final dxTop = _offsetAt(y);
+      final dxBottom = _offsetAt(y + sliceH);
+
+      // Estende la fascia di `overlap` px in basso (clampato all'immagine).
+      final drawH = math.min(sliceH + overlap, sourceSize.height - y);
+
       final src = Rect.fromLTWH(
         0,
         y * pixelRatio,
         sourceSize.width * pixelRatio,
-        sliceH * pixelRatio,
+        drawH * pixelRatio,
       );
-      // Destinazione: stessa fascia ma spostata a destra di dx.
+      // Destinazione SENZA offset orizzontale: lo spostamento viene applicato
+      // dalla matrice di shear qui sotto.
       final dst = Rect.fromLTWH(
-        offset.dx + dx,
+        offset.dx,
         offset.dy + y,
         sourceSize.width,
-        sliceH,
+        drawH,
       );
+
+      // Shear in X funzione di Y: x' = x + k*y + tx, con
+      //   k  = (dxBottom - dxTop) / sliceH   (pendenza dell'onda nella fascia)
+      //   tx = dxTop - k*y0                  (al bordo alto → x' = x + dxTop)
+      final y0 = offset.dy + y;
+      final k = (dxBottom - dxTop) / sliceH;
+      final tx = dxTop - k * y0;
+      final m = Matrix4.identity()
+        ..setEntry(0, 1, k)
+        ..setEntry(0, 3, tx);
+
+      canvas.save();
+      // Clip alla banda ESATTA [y0, y0+sliceH] (lo shear è solo orizzontale,
+      // quindi la Y non cambia): l'`overlap` riempie i gap sub-pixel ai bordi
+      // inclinati ma la sua parte eccedente viene tagliata → nessuna doppia
+      // composizione, quindi niente righe scure che attraversano la pagina.
+      canvas.clipRect(Rect.fromLTWH(
+        offset.dx - 1,
+        y0,
+        sourceSize.width + 2000,
+        sliceH,
+      ));
+      canvas.transform(m.storage);
       canvas.drawImageRect(image, src, dst, paint);
+      canvas.restore();
     }
   }
 
