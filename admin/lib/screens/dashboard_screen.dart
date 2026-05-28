@@ -24,6 +24,7 @@ import 'gdpr_privacy_view.dart';
 import 'reports_view.dart';
 import 'server_metrics_view.dart';
 import 'rewards_catalog_view.dart';
+import '../widgets/cascade_strip_slicer.dart';
 // [DISABLED workout feature 2026-05-25] import 'workout_management_view.dart';
 import 'matchmaking_board_view.dart';
 
@@ -140,6 +141,38 @@ class _DashboardContentState extends State<_DashboardContent>
     // Curva easeInOut applicata localmente per dolcezza
     return Curves.easeInOut.transform(localProgress);
   }
+
+  /// Offset orizzontale (px) da applicare a una fascia di contenuto alla
+  /// coordinata Y locale `contentY` (0 = top del content view). Usa la
+  /// stessa matematica a cascata delle tab: la fascia alla Y "della tab
+  /// selezionata" parte per prima e spinge di più, le altre seguono con
+  /// delay proporzionale alla distanza.
+  ///
+  /// A fine animazione tutte le fasce sono spinte di `maxPush` = differenza
+  /// tra sidebar espansa e collassata, allineando il content col bordo
+  /// destro della sidebar aperta.
+  double _contentOffsetAt(double contentY) {
+    final globalT = _sidebarAnim.value;
+    if (globalT <= 0) return 0; // collassata: nessuna spinta
+    final totalMs = _sidebarAnim.duration?.inMilliseconds ?? 1280;
+    // Mappa Y → indice di fascia (altezza tab = stessa cadenza visiva).
+    // _contentCascadeOriginOffset allinea l'origine dell'onda alla tab
+    // selezionata, compensando lo scostamento tra top-content e top-tablist.
+    final stripFloat =
+        (contentY + _contentCascadeOriginOffset) / _tabHeightForCascade;
+    final distance = (stripFloat - _selectedIndex).abs();
+    final delayMs = distance * _itemStaggerMs;
+    final elapsedMs = globalT * totalMs;
+    final localT = ((elapsedMs - delayMs) / _itemAnimMs).clamp(0.0, 1.0);
+    final eased = Curves.easeInOut.transform(localT);
+    return (_sidebarExpandedWidth - _sidebarCollapsedWidth) * eased;
+  }
+
+  // Altezza nominale di una "fascia tab" usata per la matematica cascata.
+  static const double _tabHeightForCascade = 52;
+  // Offset (px) per allineare l'origine dell'onda del CONTENT con la tab
+  // selezionata. Negativo = sposta l'origine verso l'alto. Tunabile a vista.
+  static const double _contentCascadeOriginOffset = 0;
 
   Future<void> _fetchCurrentUser() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -457,18 +490,20 @@ class _DashboardContentState extends State<_DashboardContent>
 
     if (_selectedIndex >= navItems.length) _selectedIndex = 0;
 
-    // Content area: NESSUN wrapper card. Le viste interne (MyDayView,
-    // UserManagementView, ecc.) gestiscono già la propria struttura visiva
-    // con card interne (KPI, liste, sezioni).
-    final contentArea = Expanded(
-      child: RepaintBoundary(
-        key: ValueKey('content_$themeKey'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
-          child: navItems[_selectedIndex].view,
-        ),
-      ),
+    // Content view (senza Expanded/RepaintBoundary: il RepaintBoundary
+    // romperebbe il multi-paint del CascadeStripSlicer perché un layer non
+    // può avere più genitori).
+    final contentView = Padding(
+      key: ValueKey('content_$themeKey'),
+      padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
+      child: navItems[_selectedIndex].view,
     );
+
+    // Larghezza totale occupata dalla sidebar collassata (SizedBox 72 +
+    // padding orizzontale 12*2 = 96). Il content parte da qui; le sue fasce
+    // vengono spinte a destra dalla cascata fino ad allinearsi con la
+    // sidebar espansa.
+    const sidebarCollapsedTotal = _sidebarCollapsedWidth + 24;
 
     return Focus(
       focusNode: _keyboardFocusNode,
@@ -476,20 +511,51 @@ class _DashboardContentState extends State<_DashboardContent>
       onKeyEvent: (node, event) => _handleKeyEvent(node, event, navItems),
       child: Scaffold(
         backgroundColor: KyboColors.background,
-        // Row layout: sidebar e content sullo stesso piano. Quando la
-        // sidebar si espande, il content si restringe in proporzione (il
-        // bordo sinistro del content si sposta verso destra). Comportamento
-        // "tradizionale" — l'utente lo preferisce per spiegarci sopra.
-        body: Row(
+        // [CASCADE 2026-05-27] Layout a Stack:
+        // - Layer content (sotto): top bar + content sliced. Parte da
+        //   x = larghezza sidebar collassata. Ogni fascia Y del content
+        //   viene spinta a destra dalla cascata (CascadeStripSlicer),
+        //   in sync con l'espansione della tab allo stesso livello Y.
+        // - Layer sidebar (sopra): le tab cascade-expand a sinistra,
+        //   sovrapposte al content. Poiché la fascia di content si sposta
+        //   esattamente di quanto la tab si espande, tab e content si
+        //   muovono insieme (la tab "spinge" la sua riga).
+        body: Stack(
           children: [
-            _buildSidebar(navItems, l10n),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBarMinimal(navItems, l10n),
-                  contentArea,
-                ],
+            // LAYER 1 — top bar + content sliced
+            Positioned.fill(
+              child: Padding(
+                padding: const EdgeInsets.only(left: sidebarCollapsedTotal),
+                child: Column(
+                  children: [
+                    _buildTopBarMinimal(navItems, l10n),
+                    Expanded(
+                      child: AnimatedBuilder(
+                        animation: _sidebarAnim,
+                        // child: il content view è costruito una volta e
+                        // passato come `child` così non viene ricostruito
+                        // ad ogni tick (solo ridipinto/affettato dal slicer).
+                        child: contentView,
+                        builder: (context, child) {
+                          return CascadeStripSlicer(
+                            sliceHeight: 6,
+                            repaintTick: _sidebarAnim.value,
+                            offsetAt: _contentOffsetAt,
+                            child: child!,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
+            // LAYER 2 — sidebar overlay
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: _buildSidebar(navItems, l10n),
             ),
           ],
         ),
@@ -537,9 +603,14 @@ class _DashboardContentState extends State<_DashboardContent>
       child: AnimatedBuilder(
         animation: _sidebarAnim,
         builder: (context, _) {
-          final globalT = _sidebarAnim.value; // 0..1
+          final globalT = _sidebarAnim.value; // per il fade del logo
+          // La larghezza del container segue la tab PIÙ espansa (la
+          // selezionata, sempre la più avanti nella cascata) invece di
+          // globalT uniforme. Così la selezionata non viene mai clippata
+          // dal ClipRect mentre è già larga ma le altre sono ancora strette.
+          final widestT = _itemCascadeT(_selectedIndex);
           final width = _sidebarCollapsedWidth +
-              (_sidebarExpandedWidth - _sidebarCollapsedWidth) * globalT;
+              (_sidebarExpandedWidth - _sidebarCollapsedWidth) * widestT;
 
           return Padding(
             // Margin 12 attorno: spazio tra le card e i bordi schermo.
