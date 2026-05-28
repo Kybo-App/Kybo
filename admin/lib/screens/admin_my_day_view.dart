@@ -18,6 +18,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
+import '../widgets/smooth_scroll.dart';
 
 class AdminMyDayView extends StatefulWidget {
   /// Callback per saltare a un'altra tab nav. Etichette supportate:
@@ -93,28 +94,31 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
     }
 
     final l10n = AppLocalizations.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Status sistema in cima → primo segnale visivo all'admin appena
-          // entra: "tutto OK" o "qualcosa è giù".
-          _ServerHealthBanner(
-            onTap: () => widget.onNavigateTo?.call('server'),
-          ),
-          const SizedBox(height: 16),
-          _buildHeader(l10n),
-          const SizedBox(height: 24),
-          _buildStatsRow(l10n),
-          const SizedBox(height: 24),
-          _buildRecentActivity(l10n),
-          const SizedBox(height: 16),
-          _ServerMetricsCard(
-            onTap: () => widget.onNavigateTo?.call('server'),
-          ),
-          const SizedBox(height: 24),
-          _buildQuickActions(l10n),
-        ],
+    return SmoothScroll(
+      builder: (context, controller) => SingleChildScrollView(
+        controller: controller,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status sistema in cima → primo segnale visivo all'admin appena
+            // entra: "tutto OK" o "qualcosa è giù".
+            _ServerHealthBanner(
+              onTap: () => widget.onNavigateTo?.call('server'),
+            ),
+            const SizedBox(height: 16),
+            _buildHeader(l10n),
+            const SizedBox(height: 24),
+            _buildStatsRow(l10n),
+            const SizedBox(height: 24),
+            _buildRecentActivity(l10n),
+            const SizedBox(height: 16),
+            _ServerMetricsCard(
+              onTap: () => widget.onNavigateTo?.call('server'),
+            ),
+            const SizedBox(height: 24),
+            _buildQuickActions(l10n),
+          ],
+        ),
       ),
     );
   }
