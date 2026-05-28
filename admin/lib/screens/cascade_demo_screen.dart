@@ -24,7 +24,7 @@ class _CascadeDemoScreenState extends State<CascadeDemoScreen>
 
   // Parametri cascata (stessi del dashboard reale)
   static const double _stripHeight = 52; // altezza tab (per la cascade math)
-  static const double _sliceHeight = 12; // granularità slicing fine (sfuma)
+  static const double _sliceHeight = 6; // granularità slicing — più piccola = più liscia
   static const int _staggerMs = 80;
   static const int _itemAnimMs = 320;
   static const double _maxPush = 168; // 240 - 72 (sidebar expanded - collapsed)
