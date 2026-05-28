@@ -100,13 +100,20 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status sistema in cima → primo segnale visivo all'admin appena
-            // entra: "tutto OK" o "qualcosa è giù".
-            _ServerHealthBanner(
-              onTap: () => widget.onNavigateTo?.call('server'),
+            // Header con saluto a sinistra e, a destra, il pill compatto
+            // dello stato sistema → primo segnale visivo ("tutto OK" o
+            // "qualcosa è giù") senza occupare una fascia a tutta larghezza.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildHeader(l10n)),
+                const SizedBox(width: 16),
+                _ServerHealthBanner(
+                  compact: true,
+                  onTap: () => widget.onNavigateTo?.call('server'),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildHeader(l10n),
             const SizedBox(height: 24),
             _buildStatsRow(l10n),
             const SizedBox(height: 24),
@@ -662,7 +669,10 @@ class _TrendPill extends StatelessWidget {
 /// ogni 60 secondi. Click → naviga a Server Metrics per dettagli.
 class _ServerHealthBanner extends StatefulWidget {
   final VoidCallback? onTap;
-  const _ServerHealthBanner({this.onTap});
+  /// compact=true → pill stretto (icona + titolo breve) da mettere a destra
+  /// dell'header. compact=false → fascia larga (icona + titolo + sottotitolo).
+  final bool compact;
+  const _ServerHealthBanner({this.onTap, this.compact = false});
 
   @override
   State<_ServerHealthBanner> createState() => _ServerHealthBannerState();
@@ -714,19 +724,21 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return _bannerShell(
+      return _shell(
         color: KyboColors.textMuted,
         icon: Icons.hourglass_top_rounded,
         title: 'Verifico stato servizi…',
+        compactLabel: '…',
         subtitle: '',
       );
     }
 
     if (_errored || _data == null) {
-      return _bannerShell(
+      return _shell(
         color: KyboColors.error,
         icon: Icons.cloud_off_rounded,
         title: 'Backend non raggiungibile',
+        compactLabel: 'Backend KO',
         subtitle: 'Impossibile contattare /system/status',
       );
     }
@@ -740,8 +752,7 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
     // `errors` / `warnings` array) invece di contare ogni `status: 'error'`
     // dei singoli check. Il server promuove a "warning" gli error nei
     // servizi OPTIONAL_SERVICES (tesseract, redis), così il status overall
-    // resta "healthy" se non manca nulla di critico. Prima il client
-    // contava tesseract come "1 servizio giù" → banner rosso ingiustamente.
+    // resta "healthy" se non manca nulla di critico.
     final serverErrors = (data['errors'] as List<dynamic>?) ?? [];
     final serverWarnings = (data['warnings'] as List<dynamic>?) ?? [];
     final errors = serverErrors.length;
@@ -751,7 +762,6 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
       ...serverWarnings.map((w) => w.toString()),
     ];
 
-    // Conta servizi OK (per la stringa "X/N servizi OK").
     int ok = 0;
     checks.forEach((_, value) {
       if (value is Map && value['status'] == 'ok') ok++;
@@ -770,25 +780,102 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
             ? Icons.warning_amber_rounded
             : Icons.check_circle_rounded);
 
-    // Helper plurale italiano: 1 servizio / N servizi
     String servizi(int n) => n == 1 ? 'servizio' : 'servizi';
-    String warningPlural(int n) => n == 1 ? 'warning' : 'warning';
 
     final title = errors > 0
         ? 'Sistema: $errors ${servizi(errors)} giù'
         : (warnings > 0
-            ? 'Sistema: $warnings ${warningPlural(warnings)}'
+            ? 'Sistema: $warnings warning'
             : 'Sistema: tutto OK');
+    // Etichetta breve per la modalità compatta (pill stretto a destra header).
+    final compactLabel = errors > 0
+        ? '$errors ${servizi(errors)} giù'
+        : (warnings > 0 ? '$warnings warning' : 'Tutto OK');
     final subtitle = errors > 0 || warnings > 0
         ? 'Problemi: ${issuesNames.join(", ")} • $ok/$total ${servizi(ok)} OK'
         : '$ok/$total ${servizi(ok)} OK${env.isNotEmpty ? " • $env" : ""}';
 
+    return _shell(
+      color: color,
+      icon: icon,
+      title: title,
+      compactLabel: compactLabel,
+      subtitle: subtitle,
+      onTap: widget.onTap,
+    );
+  }
+
+  /// Sceglie tra pill compatto (header destra) e fascia larga.
+  Widget _shell({
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String compactLabel,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    if (widget.compact) {
+      return _compactShell(
+        color: color,
+        icon: icon,
+        label: compactLabel,
+        tooltip: subtitle.isNotEmpty ? '$title — $subtitle' : title,
+        onTap: onTap,
+      );
+    }
     return _bannerShell(
       color: color,
       icon: icon,
       title: title,
       subtitle: subtitle,
-      onTap: widget.onTap,
+      onTap: onTap,
+    );
+  }
+
+  /// Pill compatto: icona + label breve, larghezza intrinseca. Tooltip con
+  /// i dettagli completi. Da mettere a destra dell'header.
+  Widget _compactShell({
+    required Color color,
+    required IconData icon,
+    required String label,
+    required String tooltip,
+    VoidCallback? onTap,
+  }) {
+    final content = Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: KyboBorderRadius.pill,
+          border: Border.all(color: color.withValues(alpha: 0.30), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: KyboColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: color, size: 16),
+            ],
+          ],
+        ),
+      ),
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: KyboBorderRadius.pill,
+      child: content,
     );
   }
 
