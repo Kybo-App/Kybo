@@ -1,50 +1,55 @@
-// CascadeStripSlicer — widget custom che "affetta" il proprio child in strip
-// orizzontali di altezza fissa e dipinge ognuna traslata orizzontalmente di
-// una quantità diversa.
+// CascadeStripSlicer — widget custom che "affetta" il proprio child in fasce
+// orizzontali e dipinge ognuna traslata orizzontalmente di una quantità che
+// dipende dalla sua posizione Y, secondo una funzione continua.
 //
 // Serve per l'effetto "cascata sidebar": durante l'animazione, ogni riga Y
 // della pagina viene spinta a destra di una quantità che dipende dalla sua
 // distanza dalla tab selezionata. Il risultato è un'onda che attraversa la
-// pagina, perché strip a Y diverse sono a stadi diversi dell'animazione.
+// pagina.
 //
-// Implementazione: il child viene laid-out UNA volta alla sua dimensione
-// naturale. In fase di paint, per ogni strip:
-//   1. clip al rettangolo destinazione (Y della strip, X spostato di offset)
-//   2. dipinge il child traslato orizzontalmente di `offset`
-// Solo la fascia Y della strip è visibile grazie al clip.
+// SFUMATURA: invece di affettare all'altezza della tab (52px → scalini netti),
+// affettiamo a granularità fine (`sliceHeight`, default ~12px) e calcoliamo
+// l'offset di ogni fascia tramite `offsetAt(centerY)` — una funzione continua.
+// Con fasce sottili + funzione continua, l'onda appare come una curva liscia
+// invece che a gradini, "sfumando" il taglio tra una fascia e l'altra.
 //
-// NB: il child viene dipinto N volte (N = numero di strip). Per contenuti
-// moderatamente complessi va bene perché il paint avviene solo durante
-// l'animazione (~1s), poi tutte le strip hanno lo stesso offset e l'effetto
-// è statico. IMPORTANTE: il child NON deve essere un RepaintBoundary né
-// contenerne ai livelli alti, altrimenti il layer verrebbe agganciato a più
-// genitori (non permesso da Flutter).
+// Implementazione: il child viene laid-out UNA volta. In paint, per ogni
+// fascia: clip alla fascia destinazione + dipinge il child traslato di dx.
+//
+// VINCOLO: il child NON deve essere un RepaintBoundary (né contenerne ai
+// livelli alti), perché viene ridipinto N volte e un layer non può avere
+// più genitori. Il paint multiplo avviene solo durante l'animazione.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 class CascadeStripSlicer extends SingleChildRenderObjectWidget {
-  /// Altezza di ogni strip in px (tipicamente = altezza di una tab sidebar).
-  final double stripHeight;
+  /// Altezza di ogni fascia di slicing in px. Più piccola = onda più liscia
+  /// ma più paint per frame. ~12px è un buon compromesso.
+  final double sliceHeight;
 
-  /// Offset orizzontale (px verso destra) per ogni strip, indicizzato per
-  /// numero di strip dall'alto (0 = prima strip). Se la lista è più corta del
-  /// numero di strip rese, le strip eccedenti usano l'ultimo valore.
-  final List<double> offsets;
+  /// Funzione continua: dato il centro Y di una fascia (in coordinate locali),
+  /// restituisce l'offset orizzontale (px verso destra) da applicare.
+  final double Function(double centerY) offsetAt;
+
+  /// Valore che cambia ad ogni frame dell'animazione (es. controller.value).
+  /// Forza il re-paint del RenderObject quando l'animazione avanza.
+  final double repaintTick;
 
   const CascadeStripSlicer({
     super.key,
-    required this.stripHeight,
-    required this.offsets,
+    required this.sliceHeight,
+    required this.offsetAt,
+    required this.repaintTick,
     required Widget super.child,
   });
 
   @override
   RenderCascadeStripSlicer createRenderObject(BuildContext context) {
     return RenderCascadeStripSlicer(
-      stripHeight: stripHeight,
-      offsets: offsets,
+      sliceHeight: sliceHeight,
+      offsetAt: offsetAt,
+      repaintTick: repaintTick,
     );
   }
 
@@ -52,80 +57,98 @@ class CascadeStripSlicer extends SingleChildRenderObjectWidget {
   void updateRenderObject(
       BuildContext context, RenderCascadeStripSlicer renderObject) {
     renderObject
-      ..stripHeight = stripHeight
-      ..offsets = offsets;
+      ..sliceHeight = sliceHeight
+      ..offsetAt = offsetAt
+      ..repaintTick = repaintTick;
   }
 }
 
 class RenderCascadeStripSlicer extends RenderProxyBox {
   RenderCascadeStripSlicer({
-    required double stripHeight,
-    required List<double> offsets,
-  })  : _stripHeight = stripHeight,
-        _offsets = offsets;
+    required double sliceHeight,
+    required double Function(double centerY) offsetAt,
+    required double repaintTick,
+  })  : _sliceHeight = sliceHeight,
+        _offsetAt = offsetAt,
+        _repaintTick = repaintTick;
 
-  double _stripHeight;
-  double get stripHeight => _stripHeight;
-  set stripHeight(double value) {
-    if (_stripHeight == value) return;
-    _stripHeight = value;
+  double _sliceHeight;
+  double get sliceHeight => _sliceHeight;
+  set sliceHeight(double value) {
+    if (_sliceHeight == value) return;
+    _sliceHeight = value;
     markNeedsPaint();
   }
 
-  List<double> _offsets;
-  List<double> get offsets => _offsets;
-  set offsets(List<double> value) {
-    if (listEquals(_offsets, value)) return;
-    _offsets = value;
+  double Function(double centerY) _offsetAt;
+  double Function(double centerY) get offsetAt => _offsetAt;
+  set offsetAt(double Function(double centerY) value) {
+    _offsetAt = value;
     markNeedsPaint();
   }
 
-  // Layer di clip riutilizzati tra i frame (uno per strip) per efficienza.
+  double _repaintTick;
+  double get repaintTick => _repaintTick;
+  set repaintTick(double value) {
+    if (_repaintTick == value) return;
+    _repaintTick = value;
+    markNeedsPaint();
+  }
+
+  // Layer di clip riutilizzati tra i frame (uno per fascia) per efficienza.
   final List<ClipRectLayer?> _clipLayers = [];
-
-  double _offsetForStrip(int i) {
-    if (_offsets.isEmpty) return 0.0;
-    if (i < _offsets.length) return _offsets[i];
-    return _offsets.last;
-  }
 
   @override
   void paint(PaintingContext context, Offset offset) {
     final child = this.child;
     if (child == null) return;
 
-    final h = _stripHeight;
-    // Fallback: senza strip valide, dipingi normalmente.
+    final h = _sliceHeight;
     if (h <= 0 || size.height <= 0) {
       context.paintChild(child, offset);
       return;
     }
 
-    final numStrips = (size.height / h).ceil();
+    final numSlices = (size.height / h).ceil();
 
-    // Adatta la lista di clip layer al numero di strip corrente.
-    while (_clipLayers.length < numStrips) {
+    // Ottimizzazione: se tutte le fasce hanno (praticamente) lo stesso offset
+    // — caso idle, animazione ferma — dipingiamo il child una volta sola con
+    // un singolo translate, evitando N paint.
+    final firstOffset = _offsetAt(h / 2);
+    bool uniform = true;
+    for (int i = 1; i < numSlices; i++) {
+      final o = _offsetAt(i * h + h / 2);
+      if ((o - firstOffset).abs() > 0.5) {
+        uniform = false;
+        break;
+      }
+    }
+    if (uniform) {
+      _clipLayers.clear();
+      context.paintChild(child, offset + Offset(firstOffset, 0));
+      return;
+    }
+
+    while (_clipLayers.length < numSlices) {
       _clipLayers.add(null);
     }
-    while (_clipLayers.length > numStrips) {
+    while (_clipLayers.length > numSlices) {
       _clipLayers.removeLast();
     }
 
-    for (int i = 0; i < numStrips; i++) {
-      final stripTop = i * h;
-      final dx = _offsetForStrip(i);
+    for (int i = 0; i < numSlices; i++) {
+      final sliceTop = i * h;
+      final sliceH =
+          (sliceTop + h > size.height) ? size.height - sliceTop : h;
+      final dx = _offsetAt(sliceTop + sliceH / 2);
 
-      // Clip al rettangolo destinazione: la fascia Y della strip, partendo
-      // da X = dx (dove appare il contenuto spostato).
-      final clipRect = Rect.fromLTWH(dx, stripTop, size.width, h);
+      final clipRect = Rect.fromLTWH(dx, sliceTop, size.width, sliceH);
 
       _clipLayers[i] = context.pushClipRect(
         needsCompositing,
         offset,
         clipRect,
         (PaintingContext innerCtx, Offset innerOffset) {
-          // Dipingi il child spostato a destra di dx. Solo la fascia Y
-          // della strip è visibile grazie al clip sopra.
           innerCtx.paintChild(child, innerOffset + Offset(dx, 0));
         },
         oldLayer: _clipLayers[i],
@@ -138,16 +161,13 @@ class RenderCascadeStripSlicer extends RenderProxyBox {
     final child = this.child;
     if (child == null) return false;
 
-    final h = _stripHeight;
+    final h = _sliceHeight;
     if (h <= 0) {
       return super.hitTestChildren(result, position: position);
     }
 
-    // Trova la strip che contiene la Y del puntatore e inverti il suo offset
-    // orizzontale per il hit test (così i click finiscono sull'elemento
-    // visivamente cliccato anche durante l'animazione).
-    final stripIdx = (position.dy / h).floor();
-    final dx = _offsetForStrip(stripIdx);
+    // Inverti l'offset orizzontale della fascia che contiene la Y del puntatore.
+    final dx = _offsetAt(position.dy);
 
     return result.addWithPaintOffset(
       offset: Offset(dx, 0),

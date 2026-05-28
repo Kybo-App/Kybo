@@ -23,7 +23,8 @@ class _CascadeDemoScreenState extends State<CascadeDemoScreen>
   late final AnimationController _anim;
 
   // Parametri cascata (stessi del dashboard reale)
-  static const double _stripHeight = 52;
+  static const double _stripHeight = 52; // altezza tab (per la cascade math)
+  static const double _sliceHeight = 12; // granularità slicing fine (sfuma)
   static const int _staggerMs = 80;
   static const int _itemAnimMs = 320;
   static const double _maxPush = 168; // 240 - 72 (sidebar expanded - collapsed)
@@ -62,14 +63,15 @@ class _CascadeDemoScreenState extends State<CascadeDemoScreen>
     _anim.reverse();
   }
 
-  /// Offset orizzontale per la strip i, in base alla distanza dalla
-  /// selezionata e al progresso globale (con delay a cascata).
-  double _offsetForStrip(int i, double globalT, int totalMs) {
-    final distance = (i - _selectedStrip).abs();
+  /// Offset orizzontale CONTINUO data una Y (in px). La "distanza" dalla
+  /// strip selezionata è calcolata in modo continuo (Y/altezzaStrip), così
+  /// l'offset varia con continuità e l'onda è liscia invece che a scalini.
+  double _offsetAtY(double centerY, double globalT, int totalMs) {
+    final stripFloat = centerY / _stripHeight;
+    final distance = (stripFloat - _selectedStrip).abs();
     final delayMs = distance * _staggerMs;
     final elapsedMs = globalT * totalMs;
-    final localT =
-        ((elapsedMs - delayMs) / _itemAnimMs).clamp(0.0, 1.0);
+    final localT = ((elapsedMs - delayMs) / _itemAnimMs).clamp(0.0, 1.0);
     final eased = Curves.easeInOut.transform(localT);
     return _maxPush * eased;
   }
@@ -123,14 +125,12 @@ class _CascadeDemoScreenState extends State<CascadeDemoScreen>
                 final globalT = _anim.value;
                 final totalMs = _anim.duration?.inMilliseconds ??
                     _computeDuration().inMilliseconds;
-                final offsets = List<double>.generate(
-                  _numStrips,
-                  (i) => _offsetForStrip(i, globalT, totalMs),
-                );
 
                 return CascadeStripSlicer(
-                  stripHeight: _stripHeight,
-                  offsets: offsets,
+                  sliceHeight: _sliceHeight,
+                  repaintTick: globalT,
+                  offsetAt: (centerY) =>
+                      _offsetAtY(centerY, globalT, totalMs),
                   child: _DemoContent(
                     stripHeight: _stripHeight,
                     numStrips: _numStrips,
