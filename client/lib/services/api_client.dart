@@ -111,6 +111,32 @@ class ApiClient {
     }
   }
 
+  Future<dynamic> delete(String endpoint, {Map<String, String>? headers}) async {
+    try {
+      final uri = Uri.parse('${Env.apiUrl}$endpoint');
+      final user = FirebaseAuth.instance.currentUser;
+      final token = user != null ? await user.getIdToken() : null;
+
+      final response = await _retryableRequest(() async {
+        return await http.delete(
+          uri,
+          headers: {
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+            ...?headers,
+          },
+        ).timeout(const Duration(seconds: 30));
+      });
+
+      return await _parseResponse(response);
+    } on SocketException {
+      throw NetworkException("Nessuna connessione internet.");
+    } catch (e) {
+      if (e is ApiException || e is NetworkException) rethrow;
+      throw ApiException("Errore DELETE: $e", 500);
+    }
+  }
+
   Future<dynamic> _parseResponse(http.Response response) async {
     // [SECURITY] 401 → forza signOut: il token è scaduto/revocato.
     // authStateChanges() in AuthGate reindirizza automaticamente al login.
@@ -141,7 +167,6 @@ class ApiClient {
     String endpoint,
     String filePath, {
     Map<String, String>? fields,
-    Function(int sent, int total)? onProgress,
   }) async {
     final r = RetryOptions(
       maxAttempts: 3,

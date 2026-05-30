@@ -1,18 +1,15 @@
 // Schermata Shop Premi: mostra il catalogo reward con saldo XP, riscatto e storico.
 // _loadCatalog — carica i premi attivi dal backend.
 // _claimReward — riscatta un premio spendendo XP con conferma.
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/api_client.dart';
 import '../services/xp_service.dart';
 import '../widgets/design_system.dart';
 import '../widgets/skeleton_loaders.dart';
-import '../core/env.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -23,6 +20,7 @@ class RewardsScreen extends StatefulWidget {
 
 class _RewardsScreenState extends State<RewardsScreen>
     with SingleTickerProviderStateMixin {
+  final ApiClient _api = ApiClient();
   late TabController _tabController;
   List<Map<String, dynamic>> _catalog = [];
   List<Map<String, dynamic>> _claims = [];
@@ -44,31 +42,14 @@ class _RewardsScreenState extends State<RewardsScreen>
     super.dispose();
   }
 
-  Future<String?> _getToken() async {
-    return await FirebaseAuth.instance.currentUser?.getIdToken();
-  }
-
   Future<void> _loadCatalog() async {
     try {
-      final token = await _getToken();
-      if (token == null) return;
-
-      final response = await http.get(
-        Uri.parse('${Env.apiUrl}/rewards/catalog'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (mounted) {
-          setState(() {
-            _catalog =
-                List<Map<String, dynamic>>.from(data['rewards'] ?? []);
-            _isLoadingCatalog = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isLoadingCatalog = false);
+      final data = await _api.get('/rewards/catalog') as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _catalog = List<Map<String, dynamic>>.from(data['rewards'] ?? []);
+          _isLoadingCatalog = false;
+        });
       }
     } catch (e) {
       debugPrint("Error loading rewards catalog: $e");
@@ -78,25 +59,12 @@ class _RewardsScreenState extends State<RewardsScreen>
 
   Future<void> _loadClaims() async {
     try {
-      final token = await _getToken();
-      if (token == null) return;
-
-      final response = await http.get(
-        Uri.parse('${Env.apiUrl}/rewards/my-claims'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        if (mounted) {
-          setState(() {
-            _claims =
-                List<Map<String, dynamic>>.from(data['claims'] ?? []);
-            _isLoadingClaims = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isLoadingClaims = false);
+      final data = await _api.get('/rewards/my-claims') as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _claims = List<Map<String, dynamic>>.from(data['claims'] ?? []);
+          _isLoadingClaims = false;
+        });
       }
     } catch (e) {
       debugPrint("Error loading claims: $e");
@@ -213,99 +181,90 @@ class _RewardsScreenState extends State<RewardsScreen>
     setState(() => _isClaiming = true);
 
     try {
-      final token = await _getToken();
-      if (token == null) return;
-
-      final response = await http.post(
-        Uri.parse('${Env.apiUrl}/rewards/claim/${reward['id']}'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final data = await _api.post('/rewards/claim/${reward['id']}')
+          as Map<String, dynamic>;
 
       if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        final newXpTotal = (data['new_xp_total'] as num?)?.toInt();
+      final newXpTotal = (data['new_xp_total'] as num?)?.toInt();
 
-        HapticFeedback.mediumImpact();
+      HapticFeedback.mediumImpact();
 
-        // Aggiorna XP locale
-        if (newXpTotal != null) {
-          xpService.spendXp(xpCost, 'reward_claimed');
-        }
+      // Aggiorna XP locale
+      if (newXpTotal != null) {
+        xpService.spendXp(xpCost, 'reward_claimed');
+      }
 
-        // Ricarica catalogo e storico
-        _loadCatalog();
-        _loadClaims();
+      // Ricarica catalogo e storico
+      _loadCatalog();
+      _loadClaims();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text('🎉 Premio "${reward['name']}" riscattato!'),
-                ],
-              ),
-              backgroundColor: KyboColors.success,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: KyboBorderRadius.medium),
-            ),
-          );
-        }
-
-        // Se il premio ha un URL esterno associato (pagina sconto, shop
-        // partner...), proponiamo al cliente di aprirlo subito.
-        final redirect = (reward['redirect_url'] as String?)?.trim();
-        if (mounted && redirect != null && redirect.isNotEmpty) {
-          final open = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              backgroundColor: KyboColors.surface(context),
-              shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-              title: Text('Completa il riscatto', style: TextStyle(color: KyboColors.textPrimary(context))),
-              content: Text(
-                'Apri il link del premio per completare il riscatto.',
-                style: TextStyle(color: KyboColors.textSecondary(context)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Dopo'),
-                ),
-                PillButton(
-                  label: 'Apri',
-                  icon: Icons.open_in_new_rounded,
-                  backgroundColor: KyboColors.primary,
-                  textColor: Colors.white,
-                  height: 40,
-                  onPressed: () => Navigator.pop(ctx, true),
-                ),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text('🎉 Premio "${reward['name']}" riscattato!'),
               ],
             ),
-          );
-          if (open == true) {
-            final uri = Uri.tryParse(redirect);
-            if (uri != null) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
+            backgroundColor: KyboColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: KyboBorderRadius.medium),
+          ),
+        );
+      }
+
+      // Se il premio ha un URL esterno associato (pagina sconto, shop
+      // partner...), proponiamo al cliente di aprirlo subito.
+      final redirect = (reward['redirect_url'] as String?)?.trim();
+      if (mounted && redirect != null && redirect.isNotEmpty) {
+        final open = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: KyboColors.surface(context),
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: Text('Completa il riscatto', style: TextStyle(color: KyboColors.textPrimary(context))),
+            content: Text(
+              'Apri il link del premio per completare il riscatto.',
+              style: TextStyle(color: KyboColors.textSecondary(context)),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Dopo'),
+              ),
+              PillButton(
+                label: 'Apri',
+                icon: Icons.open_in_new_rounded,
+                backgroundColor: KyboColors.primary,
+                textColor: Colors.white,
+                height: 40,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          ),
+        );
+        if (open == true) {
+          final uri = Uri.tryParse(redirect);
+          if (uri != null) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
           }
         }
-      } else {
-        final detail = _parseError(response);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(detail),
-              backgroundColor: KyboColors.error,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: KyboBorderRadius.medium),
-            ),
-          );
-        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: KyboColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: KyboBorderRadius.medium),
+          ),
+        );
       }
     } catch (e) {
       debugPrint("Error claiming reward: $e");
@@ -322,15 +281,6 @@ class _RewardsScreenState extends State<RewardsScreen>
       }
     } finally {
       if (mounted) setState(() => _isClaiming = false);
-    }
-  }
-
-  String _parseError(http.Response response) {
-    try {
-      final data = jsonDecode(response.body);
-      return data['detail'] ?? 'Errore ${response.statusCode}';
-    } catch (_) {
-      return 'Errore ${response.statusCode}';
     }
   }
 

@@ -2,19 +2,17 @@
 // _generateListFromSelection — aggrega ingredienti dai pasti selezionati sottraendo la dispensa.
 // _categorizeItem — assegna una categoria merceologica italiana a un nome ingrediente.
 // _shareLinkList — crea uno snapshot condiviso su Kybo backend e condivide il link via share_plus.
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kybo/models/diet_models.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show Share;
-import 'package:http/http.dart' as http;
-import '../core/env.dart';
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
 import '../widgets/design_system.dart';
 import '../logic/diet_calculator.dart';
+import '../services/api_client.dart';
 import '../services/badge_service.dart';
 import '../services/pricing_service.dart';
 
@@ -379,48 +377,40 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     );
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('Non autenticato');
-      final token = await user.getIdToken();
+      if (FirebaseAuth.instance.currentUser == null) {
+        throw Exception('Non autenticato');
+      }
 
-      final response = await http.post(
-        Uri.parse('${Env.apiUrl}/shopping-list/share'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
+      final data = await ApiClient().post(
+        '/shopping-list/share',
+        body: {
           'items': widget.shoppingList,
           'title': 'Lista della Spesa',
-        }),
-      );
+        },
+      ) as Map<String, dynamic>;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final shareUrl = data['url'] as String;
+      final shareUrl = data['url'] as String;
 
-        await Share.share(
-          '🛒 Lista della Spesa Kybo\n\n$shareUrl\n\n(Link valido 7 giorni)',
-          subject: 'Lista della Spesa',
-        );
+      await Share.share(
+        '🛒 Lista della Spesa Kybo\n\n$shareUrl\n\n(Link valido 7 giorni)',
+        subject: 'Lista della Spesa',
+      );
 
-        if (mounted) {
-          context.read<BadgeService>().onShoppingListShared();
-        }
-      } else {
-        final detail = _extractDetail(response.body);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Errore: $detail'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+      if (mounted) {
+        context.read<BadgeService>().onShoppingListShared();
       }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore: ${e.message}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -431,15 +421,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         ),
       );
     }
-  }
-
-  String _extractDetail(String body) {
-    try {
-      final data = jsonDecode(body) as Map<String, dynamic>;
-      final detail = data['detail'];
-      if (detail is String) return detail.length > 120 ? detail.substring(0, 120) : detail;
-    } catch (_) {}
-    return 'Errore ${body.length > 20 ? body.substring(0, 20) : body}';
   }
 
   /// Restituisce i giorni dalla config della dieta usando il Provider per consistenza

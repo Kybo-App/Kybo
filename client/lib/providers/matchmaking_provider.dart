@@ -1,13 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:kybo/core/env.dart';
+import '../services/api_client.dart';
 
 class MatchmakingProvider extends ChangeNotifier {
-  // Usa Env.apiUrl come tutti gli altri provider: rispetta l'override via .env
-  // e mantiene un'unica fonte di verità per l'URL API.
-  String get _baseUrl => Env.apiUrl;
+  final ApiClient _api = ApiClient();
 
   List<dynamic> _myRequests = [];
   bool _isLoading = false;
@@ -17,39 +12,16 @@ class MatchmakingProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<String?> _getToken() async {
-    return await FirebaseAuth.instance.currentUser?.getIdToken();
-  }
-
-  String _safeBody(http.Response response) {
-    try {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final detail = data['detail'];
-      if (detail is String) {
-        return detail.length > 200 ? detail.substring(0, 200) : detail;
-      }
-    } catch (_) {}
-    return 'Errore ${response.statusCode}';
-  }
-
   Future<void> loadMyRequests() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final token = await _getToken();
-      final response = await http.get(
-        Uri.parse('$_baseUrl/matchmaking/my-requests'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        _myRequests = data['requests'] as List<dynamic>? ?? [];
-      } else {
-        _error = _safeBody(response);
-      }
+      final data = await _api.get('/matchmaking/my-requests') as Map<String, dynamic>;
+      _myRequests = data['requests'] as List<dynamic>? ?? [];
+    } on ApiException catch (e) {
+      _error = e.message;
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -64,26 +36,14 @@ class MatchmakingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/matchmaking/requests'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'coach_type': coachType,
-          'goal': goal,
-          'notes': notes,
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception(_safeBody(response));
-      }
+      await _api.post('/matchmaking/requests', body: {
+        'coach_type': coachType,
+        'goal': goal,
+        'notes': notes,
+      });
       await loadMyRequests();
     } catch (e) {
-      _error = e.toString();
+      _error = e is ApiException ? e.message : e.toString();
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);
@@ -96,22 +56,13 @@ class MatchmakingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/matchmaking/requests/$reqId/accept'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json'
-        },
-        body: jsonEncode({'offer_id': offerId}),
+      await _api.post(
+        '/matchmaking/requests/$reqId/accept',
+        body: {'offer_id': offerId},
       );
-
-      if (response.statusCode != 200) {
-        throw Exception(_safeBody(response));
-      }
       await loadMyRequests();
     } catch (e) {
-      _error = e.toString();
+      _error = e is ApiException ? e.message : e.toString();
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);
@@ -126,18 +77,10 @@ class MatchmakingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
-      final response = await http.delete(
-        Uri.parse('$_baseUrl/matchmaking/requests/$reqId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception(_safeBody(response));
-      }
+      await _api.delete('/matchmaking/requests/$reqId');
       await loadMyRequests();
     } catch (e) {
-      _error = e.toString();
+      _error = e is ApiException ? e.message : e.toString();
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);
