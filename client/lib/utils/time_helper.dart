@@ -1,6 +1,4 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/storage_service.dart';
 
 class TimeHelper {
   static final TimeHelper _instance = TimeHelper._internal();
@@ -21,31 +19,24 @@ class TimeHelper {
 
   /// Ricalcola l'offset di rollover basandosi sugli allarmi configurati
   Future<void> reloadAlarms() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? savedJson = prefs.getString('meal_alarms');
-    
+    final alarms = await StorageService().loadMealAlarms();
+
     int maxMealMinutes = -1;
 
-    if (savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson) as Map<String, dynamic>;
-        for (var val in decoded.values) {
-          final parts = val.toString().split(':');
-          if (parts.length == 2) {
-            int h = int.parse(parts[0]);
-            int m = int.parse(parts[1]);
-            // I pasti molto tardivi (es. 01:00 AM, 02:00 AM) appartengono
-            // logicamente al "giorno" corrente secondo la mente dell'utente.
-            // Aggiungiamo 24h virtuali in modo che diventino il "maxMealMinutes".
-            int logicalHour = h < 5 ? h + 24 : h;
-            int totalMins = logicalHour * 60 + m;
-            if (totalMins > maxMealMinutes) {
-              maxMealMinutes = totalMins;
-            }
-          }
+    for (var val in alarms.values) {
+      final parts = val.split(':');
+      if (parts.length == 2) {
+        final h = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        if (h == null || m == null) continue;
+        // I pasti molto tardivi (es. 01:00 AM, 02:00 AM) appartengono
+        // logicamente al "giorno" corrente secondo la mente dell'utente.
+        // Aggiungiamo 24h virtuali in modo che diventino il "maxMealMinutes".
+        final logicalHour = h < 5 ? h + 24 : h;
+        final totalMins = logicalHour * 60 + m;
+        if (totalMins > maxMealMinutes) {
+          maxMealMinutes = totalMins;
         }
-      } catch (e) {
-        debugPrint("TimeHelper error parsing alarms: $e");
       }
     }
 

@@ -1,10 +1,9 @@
 // Dialog per configurare i promemoria pasti: mostra i pasti disponibili dalla dieta corrente con orari personalizzabili.
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/diet_provider.dart';
 import '../services/notification_service.dart';
+import '../services/storage_service.dart';
 import '../services/xp_service.dart';
 import '../services/challenge_service.dart';
 import '../utils/time_helper.dart';
@@ -25,6 +24,7 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
     'Spuntino': '16:00',
   };
 
+  final StorageService _storage = StorageService();
   final Map<String, bool> _enabled = {};
   final Map<String, TimeOfDay> _times = {};
   bool _isLoading = true;
@@ -37,16 +37,7 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? savedJson = prefs.getString('meal_alarms');
-    Map<String, String> currentAlarms = {};
-
-    if (savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson) as Map<String, dynamic>;
-        decoded.forEach((k, v) => currentAlarms[k] = v.toString());
-      } catch (_) {}
-    }
+    final currentAlarms = await _storage.loadMealAlarms();
 
     if (mounted) {
       final provider = Provider.of<DietProvider>(context, listen: false);
@@ -100,7 +91,6 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
   }
 
   Future<void> _saveSettings() async {
-    final prefs = await SharedPreferences.getInstance();
     Map<String, String> toSave = {};
 
     for (var meal in _availableMeals) {
@@ -110,7 +100,7 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
       }
     }
 
-    await prefs.setString('meal_alarms', jsonEncode(toSave));
+    await _storage.saveMealAlarms(toSave);
     await TimeHelper().reloadAlarms();
 
     if (mounted) {

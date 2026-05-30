@@ -2156,9 +2156,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
 
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-      final token = await user.getIdToken();
+      final token = await _auth.getToken();
       if (token == null) return;
 
       if (ctx.mounted) {
@@ -2322,11 +2320,9 @@ class _MainScreenContentState extends State<MainScreenContent>
   }
 
   Future<void> _exportDietPdf(BuildContext ctx) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
     try {
-      final token = await user.getIdToken();
+      final token = await _auth.getToken();
+      if (token == null) return;
 
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(

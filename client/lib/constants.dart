@@ -22,6 +22,5 @@ class DietUnits {
   static const String TAZZA = "tazza";
   static const String BICCHIERE = "bicchiere";
   static const String FETTE = "fette";
-  // [DEAD 2026-05-30] PIECE — mai referenziato nel repo
-  // static const String PIECE = "pz";
+  static const String PIECE = "pz";
 }

@@ -1,5 +1,6 @@
 // Vista dispensa: aggiunta manuale, rimozione swipe, griglia tablet, accesso a ricette AI.
 import 'package:flutter/material.dart';
+import '../constants.dart';
 import '../models/pantry_item.dart';
 import '../screens/meal_suggestions_screen.dart';
 import '../widgets/design_system.dart';
@@ -25,7 +26,7 @@ class PantryView extends StatefulWidget {
 class _PantryViewState extends State<PantryView> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _qtyController = TextEditingController();
-  String _unit = 'g';
+  String _unit = DietUnits.GRAMS;
 
   void _handleAdd() {
     if (_nameController.text.isNotEmpty) {
@@ -182,7 +183,13 @@ class _PantryViewState extends State<PantryView> {
                       Icons.keyboard_arrow_down,
                       color: KyboColors.textMuted(context),
                     ),
-                    items: ['g', 'ml', 'pz', 'vasetto', 'fette']
+                    items: const [
+                      DietUnits.GRAMS,
+                      DietUnits.ML,
+                      DietUnits.PIECE,
+                      DietUnits.VASETTO,
+                      DietUnits.FETTE,
+                    ]
                         .map(
                           (e) => DropdownMenuItem(
                             value: e,
@@ -350,7 +357,7 @@ class _PantryViewState extends State<PantryView> {
               borderRadius: KyboBorderRadius.medium,
             ),
             child: Text(
-              "${item.quantity.toStringAsFixed(item.unit == 'pz' ? 0 : 1)} ${item.unit}",
+              "${item.quantity.toStringAsFixed(item.unit == DietUnits.PIECE ? 0 : 1)} ${item.unit}",
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: KyboColors.primary,

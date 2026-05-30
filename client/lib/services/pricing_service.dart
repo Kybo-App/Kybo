@@ -2,6 +2,8 @@
 // estimatePrice — stima il prezzo di una stringa item nel formato Kybo; _toKg — converte qualsiasi unità in kg per confronto uniforme.
 library;
 
+import '../constants.dart';
+
 class PricingService {
   PricingService._();
 
@@ -214,7 +216,9 @@ class PricingService {
   static double _calculatePrice(String name, double qty, String unit) {
     final lowerName = name.toLowerCase().trim();
 
-    if (unit == 'pz' || unit == 'vasetto' || unit == 'fette') {
+    if (unit == DietUnits.PIECE ||
+        unit == DietUnits.VASETTO ||
+        unit == DietUnits.FETTE) {
       final pzPrice = _findPiecePrice(lowerName);
       return pzPrice * qty;
     }

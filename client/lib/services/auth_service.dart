@@ -13,6 +13,12 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
+  /// Token Firebase ID dell'utente corrente, o null se non loggato.
+  /// Usato da tutti i caller HTTP che chiamano il backend autenticato.
+  Future<String?> getToken() async {
+    return await currentUser?.getIdToken();
+  }
+
   Future<void> _ensureUserDoc(User user, {String role = 'independent', Map<String, dynamic>? additionalData}) async {
     try {
       final docRef = _db.collection('users').doc(user.uid);

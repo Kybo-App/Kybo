@@ -1,6 +1,5 @@
 // Gestisce notifiche locali e push Firebase: inizializzazione, schedulazione pasti e permessi.
 // scheduleDietNotifications — schedula notifiche settimanali per ogni pasto/giorno del piano dieta.
-import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -11,6 +10,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/diet_models.dart';
+import 'storage_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -124,24 +124,16 @@ class NotificationService {
 
     await cancelAllNotifications();
 
-    final prefs = await SharedPreferences.getInstance();
-    final alarmsJson = prefs.getString('meal_alarms');
-    Map<String, TimeOfDay> alarmSettings = {};
-
-    if (alarmsJson != null) {
-      try {
-        final decoded = jsonDecode(alarmsJson) as Map<String, dynamic>;
-        decoded.forEach((key, val) {
-          final parts = val.toString().split(':');
-          alarmSettings[key] = TimeOfDay(
-            hour: int.parse(parts[0]),
-            minute: int.parse(parts[1]),
-          );
-        });
-      } catch (e) {
-        debugPrint("⚠️ Errore parsing orari: $e");
-      }
-    }
+    final rawAlarms = await StorageService().loadMealAlarms();
+    final Map<String, TimeOfDay> alarmSettings = {};
+    rawAlarms.forEach((key, val) {
+      final parts = val.split(':');
+      if (parts.length != 2) return;
+      final h = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      if (h == null || m == null) return;
+      alarmSettings[key] = TimeOfDay(hour: h, minute: m);
+    });
 
     if (alarmSettings.isEmpty) return;
 

@@ -102,6 +102,27 @@ class StorageService {
     }
   }
 
+  /// Promemoria pasti: mappa `{nomePasto: "HH:mm"}`.
+  ///
+  /// [TODO security] Attualmente persistiti su SharedPreferences per non
+  /// rompere i dati esistenti. Andrebbero migrati su FlutterSecureStorage
+  /// come gli altri dati comportamentali (vedi loadAlarms sopra).
+  Future<Map<String, String>> loadMealAlarms() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('meal_alarms');
+    if (raw == null) return {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map((k, v) => MapEntry(k, v.toString()));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> saveMealAlarms(Map<String, String> alarms) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('meal_alarms', jsonEncode(alarms));
+  }
 
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();

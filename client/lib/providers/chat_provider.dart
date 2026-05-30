@@ -12,10 +12,12 @@ import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/env.dart';
 import '../models/chat_message.dart';
+import '../services/auth_service.dart';
 
 class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
 
   int _unreadCount = 0;
   int get unreadCount => _unreadCount;
@@ -286,7 +288,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
-    final token = await _auth.currentUser?.getIdToken();
+    final token = await _authService.getToken();
     if (token == null) throw Exception('Non autenticato');
 
     final uri = Uri.parse('${Env.apiUrl}/chat/upload-attachment');
