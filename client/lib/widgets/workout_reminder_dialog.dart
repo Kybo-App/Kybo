@@ -1,7 +1,11 @@
 // Dialog per configurare il promemoria allenamento (locale, ricorrente).
 // Salva preferenze in SharedPreferences e (ri)schedula le notifiche
 // settimanali tramite NotificationService.saveWorkoutReminder.
-
+//
+// [DISABLED workout feature 2026-05-25] L'unico entry point è
+// WorkoutScreen, anch'essa parcheggiata. Quando la feature workout sarà
+// riattivata, ripristinare insieme a workout_screen.dart e a
+// _WorkoutsHistoryList in history_screen.dart.
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
 import '../widgets/design_system.dart';

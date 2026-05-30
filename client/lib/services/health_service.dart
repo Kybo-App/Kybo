@@ -17,7 +17,6 @@ class HealthData {
 
   const HealthData({this.steps, this.activeCalories, this.weightKg});
 
-  bool get isEmpty => steps == null && activeCalories == null && weightKg == null;
 }
 
 class HealthService {

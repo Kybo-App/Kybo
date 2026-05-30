@@ -83,12 +83,4 @@ class EncryptionService {
     }
   }
 
-  String encryptList(List<String> items, String uid) {
-    return encryptData({'items': items}, uid);
-  }
-
-  List<String> decryptList(String encryptedBase64, String uid) {
-    final data = decryptData(encryptedBase64, uid);
-    return (data['items'] as List).cast<String>();
-  }
 }

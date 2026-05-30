@@ -8,38 +8,27 @@ class JailbreakService {
   factory JailbreakService() => _instance;
   JailbreakService._internal();
 
-  bool? _isJailbroken;
-  bool? _isRealDevice;
-
   Future<bool> checkDevice() async {
     try {
-      _isJailbroken = await SafeDevice.isJailBroken;
-      _isRealDevice = await SafeDevice.isRealDevice;
+      final isJailbroken = await SafeDevice.isJailBroken;
+      final isRealDevice = await SafeDevice.isRealDevice;
 
       debugPrint('🔐 Device Security Check:');
-      debugPrint('  Jailbroken/Rooted: $_isJailbroken');
-      debugPrint('  Real Device: $_isRealDevice');
+      debugPrint('  Jailbroken/Rooted: $isJailbroken');
+      debugPrint('  Real Device: $isRealDevice');
 
       await FirebaseAnalytics.instance.logEvent(
         name: 'device_security_check',
         parameters: {
-          'jailbroken': (_isJailbroken ?? false).toString(),
-          'real_device': (_isRealDevice ?? true).toString(),
+          'jailbroken': isJailbroken.toString(),
+          'real_device': isRealDevice.toString(),
         },
       );
 
-      return _isJailbroken ?? false;
+      return isJailbroken;
     } catch (e) {
       debugPrint('⚠️ Jailbreak detection error: $e');
       return false;
     }
-  }
-
-  bool get isJailbroken => _isJailbroken ?? false;
-
-  bool get isRealDevice => _isRealDevice ?? true;
-
-  bool get isDeviceAtRisk {
-    return isJailbroken;
   }
 }

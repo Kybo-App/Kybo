@@ -56,34 +56,6 @@ class BadgeModel {
     this.family,
   });
 
-  factory BadgeModel.fromJson(Map<String, dynamic> json) {
-    return BadgeModel(
-      id: json['id'] as String? ?? '',
-      title: json['title'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      icon: IconData(
-        json['icon_code'] as int? ?? Icons.star.codePoint,
-        fontFamily: 'MaterialIcons',
-      ),
-      type: BadgeType.values.firstWhere(
-        (e) => e.name == json['type'],
-        orElse: () => BadgeType.action,
-      ),
-      isUnlocked: json['is_unlocked'] ?? false,
-      unlockedAt: json['unlocked_at'] != null
-          ? DateTime.tryParse(json['unlocked_at'])
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'is_unlocked': isUnlocked,
-      'unlocked_at': unlockedAt?.toIso8601String(),
-    };
-  }
-
   /// Colore del tier per la visualizzazione.
   Color get tierColor {
     if (tier == null) return const Color(0xFF2E7D32); // primary green

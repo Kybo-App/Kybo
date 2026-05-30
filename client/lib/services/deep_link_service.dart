@@ -16,7 +16,6 @@ class DeepLinkService {
   DeepLinkService._internal();
 
   final AppLinks _appLinks = AppLinks();
-  StreamSubscription<Uri>? _linkSubscription;
 
   final StreamController<String> _navigationController =
       StreamController<String>.broadcast();
@@ -41,7 +40,7 @@ class DeepLinkService {
   }
 
   void _listenToLinks() {
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+    _appLinks.uriLinkStream.listen((uri) {
       debugPrint("DeepLink Received: $uri");
       _lastUri = uri;
       final target = getNavigationTarget(uri);
@@ -51,11 +50,6 @@ class DeepLinkService {
     }, onError: (err) {
       debugPrint("DeepLink Stream Error: $err");
     });
-  }
-
-  void dispose() {
-    _linkSubscription?.cancel();
-    _navigationController.close();
   }
 
   static String? getNavigationTarget(Uri? uri) {

@@ -299,18 +299,21 @@ class BadgeService extends ChangeNotifier {
     await _incrementCounter('shopping_shares');
   }
 
-  Future<void> checkWeeklyChallenge(Map<String, dynamic> consumptionData) async {
-    int daysWithEnoughMeals = 0;
-    for (final entry in consumptionData.entries) {
-      final dayCount = entry.value;
-      if (dayCount is int && dayCount >= 3) {
-        daysWithEnoughMeals++;
-      }
-    }
-    if (daysWithEnoughMeals >= 5) {
-      await unlockBadge('weekly_challenge');
-    }
-  }
+  // [DEAD 2026-05-30] checkWeeklyChallenge — trigger mai chiamato. Il
+  // badge 'weekly_challenge' resta non sbloccabile finché un caller non
+  // invoca questo metodo passando i consumi della settimana.
+  // Future<void> checkWeeklyChallenge(Map<String, dynamic> consumptionData) async {
+  //   int daysWithEnoughMeals = 0;
+  //   for (final entry in consumptionData.entries) {
+  //     final dayCount = entry.value;
+  //     if (dayCount is int && dayCount >= 3) {
+  //       daysWithEnoughMeals++;
+  //     }
+  //   }
+  //   if (daysWithEnoughMeals >= 5) {
+  //     await unlockBadge('weekly_challenge');
+  //   }
+  // }
 
   // ── Feature-discovery triggers ───────────────
 
@@ -339,9 +342,12 @@ class BadgeService extends ChangeNotifier {
     await _incrementCounter('stats_views');
   }
 
-  Future<void> onMealSwapped() async {
-    await _incrementCounter('meal_swaps');
-  }
+  // [DEAD 2026-05-30] onMealSwapped — trigger mai chiamato. Il badge
+  // segreto 'swap_master' non è raggiungibile finché un caller (es. dentro
+  // diet_provider.swapMeal) invoca questo metodo.
+  // Future<void> onMealSwapped() async {
+  //   await _incrementCounter('meal_swaps');
+  // }
 
   // ── Weight-goal triggers ─────────────────────
 
@@ -368,9 +374,12 @@ class BadgeService extends ChangeNotifier {
     if (percentage >= 100) await unlockBadge('weight_goal_100');
   }
 
-  Future<void> checkPerfectWeek(int consecutivePerfectDays) async {
-    if (consecutivePerfectDays >= 7) {
-      await unlockBadge('perfect_week');
-    }
-  }
+  // [DEAD 2026-05-30] checkPerfectWeek — trigger mai chiamato. Il badge
+  // 'perfect_week' non è raggiungibile finché un caller (es. tracking
+  // service quando aggrega la settimana) invoca questo metodo.
+  // Future<void> checkPerfectWeek(int consecutivePerfectDays) async {
+  //   if (consecutivePerfectDays >= 7) {
+  //     await unlockBadge('perfect_week');
+  //   }
+  // }
 }

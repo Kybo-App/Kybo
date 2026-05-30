@@ -4,9 +4,8 @@ import 'design_system.dart';
 
 class DietLogo extends StatelessWidget {
   final double size;
-  final bool isDarkBackground;
 
-  const DietLogo({super.key, this.size = 100, this.isDarkBackground = false});
+  const DietLogo({super.key, this.size = 100});
 
   @override
   Widget build(BuildContext context) {

@@ -43,9 +43,6 @@ class DailyMealStats {
     required this.mealCompletion,
   });
 
-  double get adherencePercent =>
-      mealsPlanned > 0 ? (mealsConsumed / mealsPlanned) * 100 : 0;
-
   factory DailyMealStats.fromJson(Map<String, dynamic> json) {
     return DailyMealStats(
       date: DateTime.parse(json['date']),
@@ -82,23 +79,6 @@ class WeeklyStats {
   double get weeklyAdherencePercent =>
       totalMealsPlanned > 0 ? (totalMealsConsumed / totalMealsPlanned) * 100 : 0;
 
-  factory WeeklyStats.fromJson(Map<String, dynamic> json) {
-    return WeeklyStats(
-      weekStart: DateTime.parse(json['week_start']),
-      totalMealsPlanned: json['total_meals_planned'] ?? 0,
-      totalMealsConsumed: json['total_meals_consumed'] ?? 0,
-      daysWithFullAdherence: json['days_with_full_adherence'] ?? 0,
-      currentStreak: json['current_streak'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-        'week_start': weekStart.toIso8601String(),
-        'total_meals_planned': totalMealsPlanned,
-        'total_meals_consumed': totalMealsConsumed,
-        'days_with_full_adherence': daysWithFullAdherence,
-        'current_streak': currentStreak,
-      };
 }
 
 /// Obiettivo personalizzato dell'utente.

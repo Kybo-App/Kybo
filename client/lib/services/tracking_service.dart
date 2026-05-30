@@ -51,21 +51,6 @@ class TrackingService {
             .toList());
   }
 
-  Future<WeightEntry?> getLatestWeight() async {
-    final user = _auth.currentUser;
-    if (user == null) return null;
-
-    final snapshot = await _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('weight_history')
-        .orderBy('date', descending: true)
-        .limit(1)
-        .get();
-
-    if (snapshot.docs.isEmpty) return null;
-    return WeightEntry.fromJson(snapshot.docs.first.data());
-  }
 
   Future<void> saveDailyStats(DailyMealStats stats) async {
     try {
@@ -88,23 +73,6 @@ class TrackingService {
     }
   }
 
-  Stream<List<DailyMealStats>> getWeeklyStats() {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value([]);
-
-    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
-    final weekAgoStr = weekAgo.toIso8601String().split('T')[0];
-
-    return _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('daily_stats')
-        .where(FieldPath.documentId, isGreaterThanOrEqualTo: weekAgoStr)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => DailyMealStats.fromJson({...doc.data(), 'date': doc.id}))
-            .toList());
-  }
 
   Future<WeeklyStats> calculateWeeklyStats() async {
     final user = _auth.currentUser;
@@ -236,38 +204,4 @@ class TrackingService {
     }
   }
 
-  Future<MealNote?> getMealNote(String day, String mealType) async {
-    final user = _auth.currentUser;
-    if (user == null) return null;
-
-    final today = DateTime.now().toIso8601String().split('T')[0];
-    final noteId = '${today}_${day}_$mealType';
-
-    final doc = await _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('meal_notes')
-        .doc(noteId)
-        .get();
-
-    if (!doc.exists) return null;
-    return MealNote.fromJson(doc.data()!);
-  }
-
-  Stream<List<MealNote>> getTodayNotes() {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value([]);
-
-    final today = DateTime.now().toIso8601String().split('T')[0];
-
-    return _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('meal_notes')
-        .where('date', isGreaterThanOrEqualTo: today)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => MealNote.fromJson(doc.data())).toList());
-  }
 }

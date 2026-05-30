@@ -23,8 +23,6 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin =>
-      _localNotifications;
 
   bool _isInitialized = false;
   static const String _iconName = '@mipmap/launcher_icon';
@@ -93,14 +91,6 @@ class NotificationService {
     }
   }
 
-  Future<String?> getFCMToken() async {
-    try {
-      return await _firebaseMessaging.getToken();
-    } catch (e) {
-      debugPrint("FCM Token Error: $e");
-      return null;
-    }
-  }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
     RemoteNotification? notification = message.notification;

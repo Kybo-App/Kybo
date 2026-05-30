@@ -49,10 +49,6 @@ class StorageService {
     await prefs.setInt('diet_local_updated_at_ms', ts.millisecondsSinceEpoch);
   }
 
-  Future<void> clearDietLocalUpdatedAt() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('diet_local_updated_at_ms');
-  }
 
   Future<List<PantryItem>> loadPantry() async {
     try {
@@ -106,9 +102,6 @@ class StorageService {
     }
   }
 
-  Future<void> saveAlarms(List<Map<String, dynamic>> alarms) async {
-    await _storage.write(key: 'custom_alarms', value: jsonEncode(alarms));
-  }
 
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();

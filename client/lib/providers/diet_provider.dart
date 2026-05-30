@@ -15,7 +15,6 @@ import '../services/auth_service.dart';
 import '../services/encryption_service.dart';
 import '../models/pantry_item.dart';
 import '../models/active_swap.dart';
-import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/notification_service.dart';
@@ -58,7 +57,6 @@ class DietProvider extends ChangeNotifier {
   /// - Le sync verso cloud (runSmartSyncCheck) sono inibite per lo stesso motivo.
   /// Cleared automaticamente da loadFromCache / syncFromFirebase / uploadDiet.
   bool _isViewingHistorical = false;
-  bool get isViewingHistorical => _isViewingHistorical;
 
   DateTime _lastCloudSave = DateTime.fromMillisecondsSinceEpoch(0);
   Map<String, dynamic>? _lastSyncedDiet;
@@ -76,7 +74,6 @@ class DietProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isTranquilMode = false;
-  String? _error;
   double _uploadProgress = 0.0;
   final NotificationService _notificationService =
       NotificationService();
@@ -207,9 +204,7 @@ class DietProvider extends ChangeNotifier {
   Map<String, bool> get availabilityMap => _availabilityMap;
   bool get isLoading => _isLoading;
   bool get isTranquilMode => _isTranquilMode;
-  String? get error => _error;
   double get uploadProgress => _uploadProgress;
-  bool get hasError => _error != null;
 
   /// Settimana attualmente visualizzata (0-indexed)
   int get selectedWeek => _selectedWeek;
@@ -881,30 +876,6 @@ class DietProvider extends ChangeNotifier {
     await _updateDailyStats();
   }
 
-  void consumeSmart(String name, String qty) {
-    try {
-      DietLogic.validateItem(
-        name: name,
-        rawQtyString: qty,
-        pantryItems: _pantryItems,
-        conversions: _conversions,
-      );
-
-      bool changed = DietLogic.consumeItem(
-        name: name,
-        rawQtyString: qty,
-        pantryItems: _pantryItems,
-        conversions: _conversions,
-      );
-
-      if (changed) {
-        _storage.savePantry(_pantryItems);
-        notifyListeners();
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   /// Calcola e salva le statistiche giornaliere tramite TrackingService.
   Future<void> _updateDailyStats() async {
@@ -967,7 +938,6 @@ class DietProvider extends ChangeNotifier {
   Future<void> uploadDiet(String path) async {
     _setLoading(true);
     _uploadProgress = 0.0;
-    clearError();
     // Nuova dieta in arrivo → diventa la nuova "current". Esci dalla view-only.
     _isViewingHistorical = false;
 
@@ -1007,7 +977,6 @@ class DietProvider extends ChangeNotifier {
 
       _recalcAvailability();
     } catch (e) {
-      _error = ErrorMapper.toUserMessage(e);
       rethrow;
     } finally {
       _setLoading(false);
@@ -1016,7 +985,6 @@ class DietProvider extends ChangeNotifier {
 
   Future<int> scanReceipt(String path) async {
     _setLoading(true);
-    clearError();
     int count = 0;
     try {
       final items = await _repository.scanReceipt(path, _extractAllowedFoods());
@@ -1035,7 +1003,6 @@ class DietProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      _error = ErrorMapper.toUserMessage(e);
       rethrow;
     } finally {
       _setLoading(false);
@@ -1154,10 +1121,6 @@ class DietProvider extends ChangeNotifier {
     return foods.toList();
   }
 
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
 
   void _setLoading(bool val) {
     _isLoading = val;

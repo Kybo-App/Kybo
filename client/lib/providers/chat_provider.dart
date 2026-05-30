@@ -21,7 +21,6 @@ class ChatProvider extends ChangeNotifier {
   int get unreadCount => _unreadCount;
 
   String? _currentChatId;
-  String? get chatId => _currentChatId;
 
   String? _nutritionistId;
   String? _nutritionistName;
@@ -32,7 +31,6 @@ class ChatProvider extends ChangeNotifier {
 
   String get nutritionistName => _nutritionistName ?? 'Nutrizionista';
   String? get studioName => _studioName;
-  String? get nutritionistId => _nutritionistId;
 
   StreamSubscription? _unreadSubscription;
 
@@ -427,7 +425,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  bool get isChatAvailable => _currentChatId != null && _nutritionistId != null;
 
   void clearChat() {
     _unreadSubscription?.cancel();

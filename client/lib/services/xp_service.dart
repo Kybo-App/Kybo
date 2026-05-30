@@ -11,8 +11,6 @@ class XpRewards {
   static const int mealConsumed = 10;
   static const int weightLogged = 15;
   static const int allMealsComplete = 50;
-  static const int streakDay = 5;
-  static const int shoppingListUsed = 10;
   static const int badgeUnlocked = 25;
   static const int challengeCompleted = 20;
   static const int allChallengesBonus = 30;
@@ -50,12 +48,10 @@ class XpService extends ChangeNotifier {
   int _todayXp = 0;
   String _todayDate = '';
   List<XpEntry> _recentEntries = [];
-  bool _isLoaded = false;
 
   int get totalXp => _totalXp;
   int get todayXp => _todayXp;
   List<XpEntry> get recentEntries => List.unmodifiable(_recentEntries);
-  bool get isLoaded => _isLoaded;
 
   /// Livello corrente basato su XP.
   BadgeLevel get currentLevel => badgeLevelFor(_totalXp);
@@ -109,11 +105,9 @@ class XpService extends ChangeNotifier {
         await _loadRecentEntries();
       }
 
-      _isLoaded = true;
       notifyListeners();
     } catch (e) {
       debugPrint("Error loading XP: $e");
-      _isLoaded = true;
       notifyListeners();
     }
   }

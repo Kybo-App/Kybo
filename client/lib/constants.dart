@@ -5,7 +5,6 @@
 /// Tutti i valori sono espressi in grammi/ml equivalenti.
 class UnitConversions {
   static const double kgToGrams = 1000.0;
-  static const double literToMl = 1000.0;
   static const double vasettoGrams = 125.0;
   static const double cucchiainoMl = 5.0;
   static const double cucchiaioMl = 15.0;
@@ -23,5 +22,6 @@ class DietUnits {
   static const String TAZZA = "tazza";
   static const String BICCHIERE = "bicchiere";
   static const String FETTE = "fette";
-  static const String PIECE = "pz";
+  // [DEAD 2026-05-30] PIECE — mai referenziato nel repo
+  // static const String PIECE = "pz";
 }

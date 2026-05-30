@@ -119,6 +119,9 @@ class KyboColors {
       isDarkFromContextRead(context) ? textMutedDark : textMutedLight;
 }
 
+// [DEAD 2026-05-30] KyboSpacing — mai usato. I padding/margin sono
+// hardcoded ovunque. Tenuto come reference per standardizzare in futuro.
+/*
 class KyboSpacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -127,6 +130,7 @@ class KyboSpacing {
   static const double xl = 32;
   static const double xxl = 48;
 }
+*/
 
 class KyboBorderRadius {
   static BorderRadius get pill => BorderRadius.circular(100);
@@ -252,66 +256,6 @@ class PillButton extends StatelessWidget {
   }
 }
 
-class PillIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final Color? color;
-  final Color? backgroundColor;
-  final String? tooltip;
-  final double size;
-
-  const PillIconButton({
-    super.key,
-    required this.icon,
-    this.onPressed,
-    this.color,
-    this.backgroundColor,
-    this.tooltip,
-    this.size = 48,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final iconColor = color ?? KyboColors.textSecondary(context);
-    final bgColor = backgroundColor ?? iconColor.withValues(alpha: 0.1);
-
-    final button = Material(
-      color: bgColor,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: size * 0.5,
-          ),
-        ),
-      ),
-    );
-
-    if (tooltip != null) {
-      return Tooltip(
-        message: tooltip!,
-        child: Semantics(
-          button: true,
-          label: tooltip,
-          enabled: onPressed != null,
-          child: button,
-        ),
-      );
-    }
-    return Semantics(
-      button: true,
-      label: 'Icona',
-      enabled: onPressed != null,
-      child: button,
-    );
-  }
-}
 
 class PillCard extends StatelessWidget {
   final Widget child;
@@ -354,89 +298,11 @@ class PillCard extends StatelessWidget {
   }
 }
 
-class PillBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final IconData? icon;
-  final bool small;
 
-  const PillBadge({
-    super.key,
-    required this.label,
-    required this.color,
-    this.icon,
-    this.small = false,
-  });
-
-  factory PillBadge.status(String status) {
-    Color color;
-    IconData icon;
-
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'completato':
-      case 'done':
-        color = KyboColors.success;
-        icon = Icons.check_circle;
-        break;
-      case 'pending':
-      case 'in_attesa':
-        color = KyboColors.warning;
-        icon = Icons.schedule;
-        break;
-      case 'error':
-      case 'errore':
-        color = KyboColors.error;
-        icon = Icons.error;
-        break;
-      default:
-        color = KyboColors.accent;
-        icon = Icons.info;
-    }
-
-    return PillBadge(
-      label: status.toUpperCase(),
-      color: color,
-      icon: icon,
-      small: true,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: "Stato: $label",
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: small ? 10 : 14,
-          vertical: small ? 4 : 6,
-        ),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: KyboBorderRadius.pill,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: small ? 12 : 14, color: color),
-              SizedBox(width: small ? 4 : 6),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: small ? 10 : 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// [DEAD 2026-05-30] PillSearch — mai usato. Le ricerche nelle screen
+// usano TextField inline (pantry, shopping). Tenuto come componente
+// reusable se serve standardizzare la barra di ricerca.
+/*
 class PillSearch extends StatelessWidget {
   final TextEditingController? controller;
   final String hintText;
@@ -485,6 +351,7 @@ class PillSearch extends StatelessWidget {
     );
   }
 }
+*/
 
 class PillTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -693,6 +560,9 @@ class PillListTile extends StatelessWidget {
   }
 }
 
+// [DEAD 2026-05-30] PillChip — mai usato. I chip nelle screen sono
+// implementati inline (matchmaking, suggestions). Tenuto come standard.
+/*
 class PillChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -737,6 +607,7 @@ class PillChip extends StatelessWidget {
     );
   }
 }
+*/
 
 class PillTabBar extends StatelessWidget {
   final List<String> tabs;
@@ -800,6 +671,9 @@ class PillTabBar extends StatelessWidget {
   }
 }
 
+// [DEAD 2026-05-30] PillBottomNavItem + PillBottomNav — mai usati. La
+// home_screen ha una nav bar implementata inline. Tenuti come standard.
+/*
 class PillBottomNavItem {
   final IconData icon;
   final IconData? activeIcon;
@@ -893,7 +767,11 @@ class PillBottomNav extends StatelessWidget {
     );
   }
 }
+*/
 
+// [DEAD 2026-05-30] showPillDialog / showPillSnackbar — helper top-level
+// mai chiamati. Le UI usano showDialog/ScaffoldMessenger direttamente.
+/*
 Future<T?> showPillDialog<T>({
   required BuildContext context,
   required String title,
@@ -989,56 +867,11 @@ void showPillSnackbar({
     ),
   );
 }
+*/
 
-class PillLoadingOverlay extends StatelessWidget {
-  final bool isLoading;
-  final Widget child;
-  final String? message;
-
-  const PillLoadingOverlay({
-    super.key,
-    required this.isLoading,
-    required this.child,
-    this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        child,
-        if (isLoading)
-          Container(
-            color: Colors.black.withValues(alpha: 0.5),
-            child: Center(
-              child: PillCard(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: KyboColors.primary,
-                    ),
-                    if (message != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        message!,
-                        style: TextStyle(
-                          color: KyboColors.textSecondary(context),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
+// PillEmptyState e i widget seguenti restano in /* */ perché potrebbero
+// essere usati in futuro come rifattorizzazione di stati vuoti inline.
+/*
 class PillEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1105,7 +938,11 @@ class PillEmptyState extends StatelessWidget {
     );
   }
 }
+*/
 
+// [DEAD 2026-05-30] PillSectionHeader — mai usato. Le sezioni hanno
+// header inline ad-hoc nelle screen. Tenuto come standard di design.
+/*
 class PillSectionHeader extends StatelessWidget {
   final String title;
   final Widget? trailing;
@@ -1140,3 +977,4 @@ class PillSectionHeader extends StatelessWidget {
     );
   }
 }
+*/

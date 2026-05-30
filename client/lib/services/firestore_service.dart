@@ -175,60 +175,6 @@ class FirestoreService {
     }
   }
 
-  Stream<Map<String, dynamic>?> getDietStream() {
-    final user = _auth.currentUser;
-    if (user == null) return Stream.value(null);
-
-    return _db
-        .collection('users')
-        .doc(user.uid)
-        .collection('diets')
-        .doc('current')
-        .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists) return null;
-
-      final data = snapshot.data()!;
-
-      final isEncrypted = data['encrypted'] == true;
-
-      if (isEncrypted) {
-        try {
-          final encryptionService = EncryptionService();
-
-          final decryptedPlan = encryptionService.decryptData(
-            data['plan_encrypted'] as String,
-            user.uid,
-          );
-
-          final decryptedSubs = encryptionService.decryptData(
-            data['substitutions_encrypted'] as String,
-            user.uid,
-          );
-
-          final decryptedSwaps = encryptionService.decryptData(
-            data['activeSwaps_encrypted'] as String,
-            user.uid,
-          );
-
-          return {
-            'plan': decryptedPlan,
-            'substitutions': decryptedSubs,
-            'activeSwaps': decryptedSwaps,
-            'lastUpdated': data['lastUpdated'],
-            'uploadedAt': data['uploadedAt'],
-          };
-        } catch (e) {
-          debugPrint('❌ Errore decryption stream: $e');
-          return null;
-        }
-      } else {
-        debugPrint('⚠️ Stream data (unencrypted - legacy format)');
-        return data;
-      }
-    });
-  }
-
   Stream<List<Map<String, dynamic>>> getDietHistory() {
     final user = _auth.currentUser;
     if (user == null) return Stream.value([]);
@@ -312,48 +258,4 @@ class FirestoreService {
     return null;
   }
 
-  Future<void> uploadDefaultGlobalConfig() async {
-    try {
-      final List<String> foods = [
-        "mela", "mele", "pera", "pere", "banana", "banane", "arancia", "arance",
-        "mandarino", "mandarini", "clementina", "clementine", "pompelmo", "pompelmi",
-        "limone", "limoni", "succo di limone", "lime",
-        "ananas", "kiwi", "pesca", "pesche", "albicocca", "albicocche", "prugna", "prugne",
-        "fragola", "fragole", "ciliegia", "ciliegie", "frutti di bosco", "mirtilli", "lamponi", "more",
-        "fichi", "uva", "caco", "cachi", "anguria", "melone", "melone giallo", "melone retato",
-        "zucchina", "zucchine", "melanzana", "melanzane", "pomodoro", "pomodori", "pomodorini",
-        "cetriolo", "cetrioli", "finocchio", "finocchi", "sedano", "gambo di sedano",
-        "lattuga", "insalata", "insalata mista", "iceberg", "rucola", "valeriana", "radicchio", "indivia", "scarola",
-        "spinaci", "bieta", "bietole", "cicoria", "cime di rapa", "friarielli",
-        "broccolo", "broccoli", "cavolfiore", "cavolfiori", "verza", "cavolo cappuccio", "cavolo nero", "cavoletti di bruxelles",
-        "fagiolini", "taccole", "asparagi", "carciofo", "carciofi",
-        "zucca", "fiori di zucca",
-        "peperone", "peperoni", "friggitelli",
-        "carota", "carote", "ravanelli",
-        "funghi", "champignon", "porcini",
-        "minestrone", "minestrone di verdure", "passato di verdure", "vellutata di verdure", "ortaggi", "verdure grigliate",
-        "caffè", "caffe", "caffe amaro", "caffè senza zucchero",
-        "tè", "the", "tè verde", "tisana", "infuso",
-        "acqua", "acqua naturale", "acqua frizzante",
-        "aceto", "aceto di mele", "aceto balsamico", "succo di limone", "spezie", "erbe aromatiche"
-      ];
-
-      final List<String> days = [
-        "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"
-      ];
-
-      final List<String> meals = [
-        "Colazione", "Spuntino", "Pranzo", "Merenda", "Cena"
-      ];
-
-      await _db.collection('app_config').doc('constants').set({
-        'relaxable_foods': foods,
-        'default_days': days,
-        'default_meals': meals,
-      });
-      debugPrint("✅ Configurazione Globale caricata su Firestore!");
-    } catch (e) {
-      debugPrint("❌ Errore upload config: $e");
-    }
-  }
 }

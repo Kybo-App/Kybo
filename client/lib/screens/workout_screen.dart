@@ -1,5 +1,11 @@
 // Schermata Workout: mostra la scheda allenamento assegnata dal Personal Trainer.
 // Usa tab per i giorni e mostra gli esercizi con sets/reps/rest.
+//
+// [DISABLED workout feature 2026-05-25] L'intera schermata è parcheggiata:
+// l'unico entry point (sidebar in home_screen.dart) è racchiuso in un blocco
+// `// _buildSidebarMenuItem(...)` commentato. Quando la feature workout sarà
+// riattivata, decommentare quel blocco insieme a `_WorkoutsHistoryList` in
+// history_screen.dart.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';

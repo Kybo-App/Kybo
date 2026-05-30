@@ -35,8 +35,6 @@ class DietConfig {
         'relaxable_foods': relaxableFoods.toList(),
       };
 
-  /// Verifica se la config è vuota (fallback necessario).
-  bool get isEmpty => days.isEmpty && meals.isEmpty;
 }
 
 class Ingredient {
@@ -155,10 +153,6 @@ class DietPlan {
     required this.substitutions,
     this.config,
   });
-
-  /// Restituisce il piano della prima settimana (backward compat).
-  Map<String, Map<String, List<Dish>>> get plan =>
-      weeks.isNotEmpty ? weeks[0] : {};
 
   /// Numero totale di settimane nel piano.
   int get weekCount => weeks.length;

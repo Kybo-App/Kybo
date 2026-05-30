@@ -172,18 +172,6 @@ class PricingService {
     'pane': 0.50,
   };
 
-  static const Map<String, double> _categoryFallback = {
-    'Frutta & Verdura': 2.50,
-    'Carne & Pesce': 12.00,
-    'Latticini & Uova': 6.00,
-    'Cereali & Pane': 3.00,
-    'Legumi': 3.00,
-    'Condimenti & Oli': 6.00,
-    'Frutta Secca & Semi': 15.00,
-    'Bevande': 2.00,
-    'Altro': 3.00,
-  };
-
   static const double _defaultFallback = 3.00;
 
   static double estimatePrice(String itemString) {
@@ -201,19 +189,6 @@ class PricingService {
     return items.fold(0.0, (sum, item) => sum + estimatePrice(item));
   }
 
-  static String formatEstimatedPrice(String itemString) {
-    final price = estimatePrice(itemString);
-    if (price <= 0) return '';
-    return '~€ ${price.toStringAsFixed(2).replaceAll('.', ',')}';
-  }
-
-  static double estimateFromParts(String name, double qty, String unit) {
-    return _calculatePrice(name, qty, unit);
-  }
-
-  static double fallbackForCategory(String category) {
-    return _categoryFallback[category] ?? _defaultFallback;
-  }
 
   static Map<String, dynamic>? _parseItem(String itemString) {
     final cleaned = itemString

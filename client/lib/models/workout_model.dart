@@ -55,16 +55,12 @@ class WorkoutDay {
 }
 
 class WorkoutPlan {
-  final String? planId;
   final String planName;
   final List<WorkoutDay> days;
-  final String? assignedBy;
 
   WorkoutPlan({
-    this.planId,
     required this.planName,
     required this.days,
-    this.assignedBy,
   });
 
   factory WorkoutPlan.fromMap(Map<String, dynamic> map) {
@@ -73,10 +69,8 @@ class WorkoutPlan {
         .toList();
 
     return WorkoutPlan(
-      planId: map['plan_id'] as String?,
       planName: map['plan_name'] ?? 'Scheda',
       days: days,
-      assignedBy: map['assigned_by'] as String?,
     );
   }
 }

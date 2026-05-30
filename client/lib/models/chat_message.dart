@@ -55,27 +55,4 @@ class ChatMessage {
     };
   }
 
-  ChatMessage copyWith({
-    String? id,
-    String? message,
-    String? senderId,
-    String? senderType,
-    DateTime? timestamp,
-    bool? read,
-    String? attachmentUrl,
-    String? attachmentType,
-    String? fileName,
-  }) {
-    return ChatMessage(
-      id: id ?? this.id,
-      message: message ?? this.message,
-      senderId: senderId ?? this.senderId,
-      senderType: senderType ?? this.senderType,
-      timestamp: timestamp ?? this.timestamp,
-      read: read ?? this.read,
-      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
-      attachmentType: attachmentType ?? this.attachmentType,
-      fileName: fileName ?? this.fileName,
-    );
-  }
 }
