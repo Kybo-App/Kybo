@@ -413,6 +413,27 @@ class AdminRepository {
     }
   }
 
+  /// Dettagli completi di un singolo utente con AUDIT LOG automatico.
+  /// Da preferire a una read Firestore diretta quando si apre un profilo PII:
+  /// il server registra `READ_USER_PROFILE` su `access_logs/` (compliance GDPR).
+  /// [TODO admin migration] Le viste user-detail attualmente leggono Firestore
+  /// diretto e non lasciano traccia in audit. Migrare a questo endpoint.
+  Future<Map<String, dynamic>> getSecureUserDetails(String uid) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/user-details-secure/$uid'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes))
+          as Map<String, dynamic>;
+    } else {
+      await _checkUnauthorized(response);
+      throw Exception("Errore Profilo Secure (${response.statusCode})");
+    }
+  }
+
   Future<Map<String, dynamic>> uploadChatAttachment(PlatformFile file) async {
     final token = await _getToken();
     var uri = Uri.parse('$_baseUrl/chat/upload-attachment');

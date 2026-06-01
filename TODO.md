@@ -247,6 +247,24 @@ New TODOs:
 - [x] in analytics vedo i dati in chiaro degli utenti , se sono admin non dovrei , come nutri o pt si 
 - [x] bisogna lavorare su come un new workout viene aggiunto ad un utente , deve funzionare come le diete secondo me
 
+## Follow-up dal cleanup audit (2026-06-01)
+
+Emersi durante la passata di pulizia: cose che esistono lato backend
+ma non sono ancora cablate lato UI / mai usate come dovrebbero.
+
+### 🚨 Compliance — alta priorità
+- [ ] **Migrare la lettura dei profili utente da Firestore diretto a `getSecureUserDetails`.** Il server espone `GET /admin/user-details-secure/{uid}` che fa audit log automatico (`READ_USER_PROFILE` su `access_logs/`). Ora `user_management_view._UserDetailPane` legge direttamente da Firestore e non lascia traccia: ogni operatore può leggere PII senza log, in violazione del design GDPR. Endpoint pronto, manca solo la migrazione lato Flutter.
+
+### 🟡 Feature mancanti — media priorità
+- [ ] **2FA: recovery dei backup codes persi.** Aggiungere a `two_factor_setup_screen` un pulsante "Rigenera backup codes" che chieda conferma con codice TOTP e chiami `POST /admin/2fa/backup-codes/regenerate`. Senza, chi perde i backup codes resta bloccato fuori senza alternative.
+- [ ] **Mood-aware meal suggestions.** Il server in `routers/suggestions.py` aggrega `recent_moods` nel payload utente ma NON li inietta nel prompt Gemini. Decidere se includerli (→ prompt più ricco) o rimuovere il fetch lato server.
+- [ ] **Cache management endpoint admin.** `RedisCache` ha `exists/ttl/flush_namespace` ma non c'è nessun endpoint admin che li sfrutti. Aggiungere route tipo `/admin/cache/keys/{key}` (GET stato), `/admin/cache/flush` (POST → flush_namespace), utile per debug e per forzare il refresh dopo una config change.
+
+### 🟢 Polish — bassa priorità
+- [ ] **Chat: indicator "ultimo messaggio da te".** Il campo `lastMessageSender` esiste in Firestore e veniva deserializzato in `Chat`. Lo possiamo usare per mostrare un ✓ piccolo sull'ultimo messaggio nell'elenco chat quando l'ho mandato io.
+- [ ] **LanguageProvider: load preference da Firestore.** Aggiungere una `setLocale(Locale)` esplicita e chiamarla al login leggendo `users/{uid}.preferred_lang`, così la lingua è persistente cross-device invece di ripartire ogni volta dal default italiano.
+- [ ] **Admin design system: usare gli standard invece di inline.** `KyboSpacing` per i padding, `PillSearch` per le barre di ricerca (matchmaking, user filter), `PillDropdown` per i dropdown (role filter, sort menu). Erano widget pronti ma le screen hanno reinventato inline. Da fare quando si tocca l'UI di una di quelle sezioni.
+
 ## Idee UX Client (da valutare)
 - [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
 - [x] Skeleton loading (history diete) — implementato con package shimmer

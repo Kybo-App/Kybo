@@ -662,6 +662,27 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
                 ],
               ),
             ),
+            // Countdown alla scadenza retention per gli utenti "approaching"
+            // (quelli ancora non scaduti). Aiuta a capire quanto tempo resta
+            // prima della purge automatica.
+            if (!isInactive && user['days_until_deadline'] != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: KyboColors.warning.withValues(alpha: 0.12),
+                  borderRadius: KyboBorderRadius.pill,
+                ),
+                child: Text(
+                  '${user['days_until_deadline']}gg',
+                  style: const TextStyle(
+                    color: KyboColors.warning,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             if (user['uid'] != null)
               PillIconButton(
                 icon: Icons.delete_outline_rounded,

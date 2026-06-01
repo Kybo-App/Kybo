@@ -42,6 +42,9 @@ class InactiveUser:
     last_activity: Optional[datetime]
     days_inactive: int
     retention_deadline: datetime
+    # Per gli utenti "approaching" (non ancora scaduti) indica i giorni
+    # mancanti alla scadenza retention; per gli "expired" è negativo o 0.
+    days_until_deadline: Optional[int] = None
 
 
 @dataclass
@@ -308,6 +311,7 @@ class GDPRRetentionService:
                 if cutoff_expired <= last_activity < cutoff_approaching:
                     days_inactive = (now - last_activity).days
                     retention_deadline = last_activity + timedelta(days=retention_months * 30)
+                    days_until_deadline = (retention_deadline - now).days
 
                     approaching_users.append(InactiveUser(
                         uid=uid,
@@ -315,7 +319,8 @@ class GDPRRetentionService:
                         role=role,
                         last_activity=last_activity,
                         days_inactive=days_inactive,
-                        retention_deadline=retention_deadline
+                        retention_deadline=retention_deadline,
+                        days_until_deadline=days_until_deadline,
                     ))
 
             if scanned_approaching >= self._MAX_SCAN:
@@ -644,7 +649,8 @@ class GDPRRetentionService:
                     "uid": u.uid,
                     "email": u.email,
                     "days_inactive": u.days_inactive,
-                    "retention_deadline": u.retention_deadline.isoformat() if u.retention_deadline else None
+                    "retention_deadline": u.retention_deadline.isoformat() if u.retention_deadline else None,
+                    "days_until_deadline": u.days_until_deadline,
                 }
                 for u in approaching_users[:50]
             ]
