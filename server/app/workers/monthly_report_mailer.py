@@ -14,9 +14,7 @@ Dati PDF inclusi:
 - Tempo di risposta medio
 """
 import asyncio
-import io
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 import firebase_admin
 from firebase_admin import firestore
@@ -24,7 +22,6 @@ from firebase_admin import firestore
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.report_service import ReportService
-from app.services.email_service import send_email
 
 
 async def monthly_report_mailer_worker():
@@ -164,7 +161,6 @@ async def _send_report_email(
     pdf_bytes: bytes,
 ) -> bool:
     """Invia l'email con il PDF allegato tramite aiosmtplib."""
-    import email as email_lib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.mime.application import MIMEApplication

@@ -5,7 +5,7 @@ Router per il sistema Reward (Shop Premi).
 - Riscatto premio con spesa XP (utente autenticato)
 - Storico premi riscattati
 """
-from typing import Optional, List, Literal
+from typing import Optional, Literal
 
 import firebase_admin
 from firebase_admin import firestore

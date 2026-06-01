@@ -17,11 +17,10 @@ Configurazione per-nutrizionista in Firestore:
     last_notified_chats: dict  {chatId: ISO timestamp ultima notifica}
 """
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 import firebase_admin
-from firebase_admin import firestore
 
 from app.core.config import settings
 from app.core.logging import logger

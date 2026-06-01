@@ -6,7 +6,6 @@ per estrarre gli alimenti corrispondenti alla lista consentita dalla dieta.
 import logging
 import pytesseract
 from PIL import Image, ImageFilter, ImageOps, ImageEnhance
-import io
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field

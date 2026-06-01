@@ -3,7 +3,6 @@ Servizio email asincrono per Kybo.
 Usa aiosmtplib per invio email non bloccante.
 Le email sono abilitate solo se SMTP_HOST è configurato in .env
 """
-import asyncio
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Optional

@@ -100,9 +100,12 @@ async def create_workout_plan(
     try:
         db = firebase_admin.firestore.client()
 
+        # I template non hanno target_uid: ignoriamo eventuale valore inviato
+        effective_target = None if body.is_template else body.target_uid
+
         # Se target_uid specificato, verifica che sia un utente del professionista
         if effective_target:
-            target_doc = db.collection('users').document(body.target_uid).get()
+            target_doc = db.collection('users').document(effective_target).get()
             if not target_doc.exists:
                 raise HTTPException(status_code=404, detail="Utente non trovato")
             target_data = target_doc.to_dict()
@@ -122,9 +125,6 @@ async def create_workout_plan(
         # [FIX W-3] body.dict() → body.model_dump() per Pydantic v2
         days_dump = [day.model_dump() for day in body.days]
 
-        # I template non hanno target_uid: ignoriamo eventuale valore inviato
-        # per evitare inconsistenze (template assegnato non è più un template).
-        effective_target = None if body.is_template else body.target_uid
         plan_data = {
             'name': body.name,
             'description': body.description or '',

@@ -151,30 +151,6 @@ class RedisCache:
             logger.warning("redis_delete_pattern_error", pattern=pattern, error=str(e))
             return 0
 
-    async def exists(self, key: str) -> bool:
-        """Verifica se una chiave esiste in Redis."""
-        if not await self._ensure_connected():
-            return False
-        try:
-            return bool(await self._client.exists(self._key(key)))
-        except Exception as e:
-            logger.warning("redis_exists_error", key=key, error=str(e))
-            return False
-
-    async def ttl(self, key: str) -> int:
-        """Ritorna il TTL restante in secondi (-1 se no TTL, -2 se non esiste)."""
-        if not await self._ensure_connected():
-            return -2
-        try:
-            return await self._client.ttl(self._key(key))
-        except Exception as e:
-            logger.warning("redis_ttl_error", key=key, error=str(e))
-            return -2
-
-    async def flush_namespace(self) -> int:
-        """Elimina tutte le chiavi del namespace kybo:*. Usare con cautela."""
-        return await self.delete_pattern("*")
-
     async def ping(self) -> bool:
         """Verifica che Redis sia raggiungibile."""
         if not await self._ensure_connected():

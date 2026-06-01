@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import firebase_admin
-from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 

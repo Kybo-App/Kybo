@@ -4,7 +4,7 @@ Router per funzionalità di comunicazione avanzata.
 - Note interne CRUD (visibili solo al professionista)
 - Configurazione alert email per messaggi non letti
 """
-from typing import Optional, List
+from typing import Optional
 
 import firebase_admin
 from firebase_admin import firestore

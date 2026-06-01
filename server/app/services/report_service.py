@@ -8,7 +8,7 @@ Genera report mensili per i nutrizionisti con metriche chiave:
 - Tempo di risposta medio
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 from dataclasses import dataclass, asdict
 import calendar

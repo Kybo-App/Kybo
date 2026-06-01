@@ -20,14 +20,6 @@ from app.core.metrics import (
     diet_cache_hits_total,
     diet_cache_misses_total,
     diet_parse_duration_seconds,
-    diet_uploads_total,
-)
-from app.models.schemas import (
-    DietResponse, 
-    Dish, 
-    Ingredient, 
-    SubstitutionGroup, 
-    SubstitutionOption
 )
 import typing_extensions as typing
 
@@ -387,7 +379,6 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         Ritorna il risultato se esiste, altrimenti None.
         """
         try:
-            import firebase_admin
             from firebase_admin import firestore
             from datetime import datetime, timedelta, timezone
 
@@ -424,7 +415,6 @@ Extract any allergens or intolerances EXPLICITLY mentioned in the document heade
         Cache valida per 30 giorni.
         """
         try:
-            import firebase_admin
             from firebase_admin import firestore
             from datetime import datetime, timezone
             

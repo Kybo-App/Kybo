@@ -15,10 +15,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from dataclasses import dataclass
 
-import firebase_admin
 from firebase_admin import auth, firestore
 
-from app.core.config import settings
 from app.core.logging import logger, sanitize_error_message
 
 
@@ -310,7 +308,6 @@ class GDPRRetentionService:
                 if cutoff_expired <= last_activity < cutoff_approaching:
                     days_inactive = (now - last_activity).days
                     retention_deadline = last_activity + timedelta(days=retention_months * 30)
-                    days_until_deadline = (retention_deadline - now).days
 
                     approaching_users.append(InactiveUser(
                         uid=uid,

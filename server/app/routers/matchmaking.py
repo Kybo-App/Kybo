@@ -1,7 +1,7 @@
 """
 Router per il Matchmaking (Professionisti <-> Utenti).
 """
-from typing import Optional, List
+from typing import Optional
 import firebase_admin
 from firebase_admin import firestore
 from fastapi import APIRouter, HTTPException, Depends, Request

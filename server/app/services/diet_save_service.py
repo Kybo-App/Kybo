@@ -4,7 +4,6 @@ Usata da routers/diet.py (sync fallback) e tasks/diet_tasks.py (RQ worker).
 save_diet_to_firestore: scrive users/{uid}/diets/current (opzionale),
   users/{uid}/diets/{auto}, aggiorna users/{uid}, e aggiunge a diet_history.
 """
-import firebase_admin
 from firebase_admin import firestore as fs
 
 

@@ -97,7 +97,6 @@ async def get_meal_suggestions(
         raise HTTPException(503, "Servizio AI non disponibile")
 
     # Carica dati utente da Firestore
-    import firebase_admin
     from firebase_admin import firestore as fb_firestore
     db = fb_firestore.client()
 
@@ -297,11 +296,10 @@ Formato JSON richiesto (rispetta ESATTAMENTE questa struttura):
   ]
 }}"""
     else:
-        moods_str = (
-            "; ".join(user_data["recent_moods"])
-            if user_data["recent_moods"]
-            else "nessuna nota recente"
-        )
+        # NOTA: in passato il prompt includeva anche `recent_moods` ma è stato
+        # rimosso perché Gemini ignorava il segnale e ridava sempre suggerimenti
+        # generici. Tenere `recent_moods` nel payload per analytics ma non
+        # iniettarlo qui.
         prompt = f"""Sei un nutrizionista AI. Rispondi SOLO con un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza commenti.
 
 CONTESTO UTENTE:
