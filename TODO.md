@@ -264,6 +264,7 @@ ma non sono ancora cablate lato UI / mai usate come dovrebbero.
 - [ ] **Chat: indicator "ultimo messaggio da te".** Il campo `lastMessageSender` esiste in Firestore e veniva deserializzato in `Chat`. Lo possiamo usare per mostrare un ✓ piccolo sull'ultimo messaggio nell'elenco chat quando l'ho mandato io.
 - [ ] **LanguageProvider: load preference da Firestore.** Aggiungere una `setLocale(Locale)` esplicita e chiamarla al login leggendo `users/{uid}.preferred_lang`, così la lingua è persistente cross-device invece di ripartire ogni volta dal default italiano.
 - [ ] **Admin design system: usare gli standard invece di inline.** `KyboSpacing` per i padding, `PillSearch` per le barre di ricerca (matchmaking, user filter), `PillDropdown` per i dropdown (role filter, sort menu). Erano widget pronti ma le screen hanno reinventato inline. Da fare quando si tocca l'UI di una di quelle sezioni.
+- [ ] **Landing: integrare `HorizontalGallery`.** Componente pronto in `landing/src/components/sections/HorizontalGallery.tsx` (sticky scroll + Lenis horizontal pan + CSS module dedicato) ma mai cablato a nessuna pagina. L'array `screenshots` ha solo placeholder colorati: prima servono i veri screenshot dell'app (6 viste), poi va aggiunto a `app/page.tsx` tra `FeatureCards` e `TestimonialsSection`.
 
 ## Idee UX Client (da valutare)
 - [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
