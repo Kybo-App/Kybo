@@ -39,20 +39,6 @@ class AdminRepository {
     return 'Errore ${response.statusCode}';
   }
 
-  Future<bool> getMaintenanceStatus() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/config/maintenance'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['enabled'] ?? false;
-    }
-    return false;
-  }
-
   Future<void> setMaintenanceStatus(bool enabled, {String? message}) async {
     final token = await _getToken();
     await http.post(
@@ -427,22 +413,6 @@ class AdminRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getSecureUserDetails(String uid) async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/user-details-secure/$uid'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes))
-          as Map<String, dynamic>;
-    } else {
-      await _checkUnauthorized(response);
-      throw Exception("Errore Profilo Secure (${response.statusCode})");
-    }
-  }
-
   Future<Map<String, dynamic>> uploadChatAttachment(PlatformFile file) async {
     final token = await _getToken();
     var uri = Uri.parse('$_baseUrl/chat/upload-attachment');
@@ -583,26 +553,6 @@ class AdminRepository {
     return false;
   }
 
-  Future<List<String>> regenerateBackupCodes(String code) async {
-    final token = await _getToken();
-    final response = await http.post(
-      Uri.parse('$_baseUrl/admin/2fa/backup-codes/regenerate'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'code': code}),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      return List<String>.from(data['backup_codes'] ?? []);
-    } else {
-      await _checkUnauthorized(response);
-      throw Exception("Errore Rigenera Backup (${response.statusCode}): ${_safeBody(response)}");
-    }
-  }
-
   Future<Map<String, dynamic>> getMonthlyReport({
     required String nutritionistId,
     required String month,
@@ -718,21 +668,6 @@ class AdminRepository {
   }
 
   /// Gets current retention configuration
-  Future<Map<String, dynamic>> getRetentionConfig() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/gdpr/admin/retention-config'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    } else {
-      await _checkUnauthorized(response);
-      throw Exception("Errore Retention Config (${response.statusCode}): ${_safeBody(response)}");
-    }
-  }
-
   /// Updates retention configuration
   Future<void> setRetentionConfig({
     required int retentionMonths,

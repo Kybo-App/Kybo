@@ -95,15 +95,6 @@ class KyboColors {
       : Colors.black.withValues(alpha: 0.08);
 }
 
-class KyboSpacing {
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 16;
-  static const double lg = 24;
-  static const double xl = 32;
-  static const double xxl = 48;
-}
-
 class KyboBorderRadius {
   static BorderRadius get pill => BorderRadius.circular(100);
   static BorderRadius get large => BorderRadius.circular(24);
@@ -416,58 +407,6 @@ class PillBadge extends StatelessWidget {
 }
 
 // =============================================================================
-// PILL SEARCH - Barra di ricerca ellittica
-// =============================================================================
-
-class PillSearch extends StatelessWidget {
-  final TextEditingController? controller;
-  final String hintText;
-  final ValueChanged<String>? onChanged;
-  final double? width;
-
-  const PillSearch({
-    super.key,
-    this.controller,
-    this.hintText = "Cerca...",
-    this.onChanged,
-    this.width,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: 48,
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        borderRadius: KyboBorderRadius.pill,
-        border: Border.all(color: KyboColors.border, width: 1),
-        boxShadow: KyboColors.softShadow,
-      ),
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: TextStyle(color: KyboColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: KyboColors.textMuted, fontSize: 14),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: KyboColors.textMuted,
-            size: 20,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 14,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
 // PILL CARD - Card con bordi arrotondati
 // =============================================================================
 
@@ -601,54 +540,6 @@ class _PillIconButtonState extends State<PillIconButton> {
       return Tooltip(message: widget.tooltip!, child: button);
     }
     return button;
-  }
-}
-
-// =============================================================================
-// PILL DROPDOWN - Dropdown con stile pill
-// =============================================================================
-
-class PillDropdown<T> extends StatelessWidget {
-  final T value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-  final String? hint;
-
-  const PillDropdown({
-    super.key,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-    this.hint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: KyboColors.surface,
-        borderRadius: KyboBorderRadius.pill,
-        border: Border.all(color: KyboColors.border, width: 1),
-        boxShadow: KyboColors.softShadow,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          items: items,
-          onChanged: onChanged,
-          hint: hint != null ? Text(hint!) : null,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: KyboColors.textSecondary,
-          ),
-          style: TextStyle(color: KyboColors.textPrimary, fontSize: 14),
-          dropdownColor: KyboColors.surface,
-          borderRadius: KyboBorderRadius.medium,
-        ),
-      ),
-    );
   }
 }
 

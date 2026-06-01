@@ -10,7 +10,6 @@ class Chat {
   final String clientEmail;
   final String lastMessage;
   final DateTime lastMessageTime;
-  final String lastMessageSender;
   final int unreadCountClient;
   final int unreadCountNutritionist;
   final String chatType;
@@ -23,7 +22,6 @@ class Chat {
     required this.clientEmail,
     required this.lastMessage,
     required this.lastMessageTime,
-    required this.lastMessageSender,
     required this.unreadCountClient,
     required this.unreadCountNutritionist,
     required this.chatType,
@@ -42,7 +40,6 @@ class Chat {
       clientEmail: data['clientEmail'] ?? '',
       lastMessage: data['lastMessage'] ?? '',
       lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastMessageSender: data['lastMessageSender'] ?? 'client',
       unreadCountClient: unreadCount['client'] ?? 0,
       unreadCountNutritionist: unreadCount['nutritionist'] ?? 0,
       chatType: data['chatType'] ?? 'nutritionist-client',

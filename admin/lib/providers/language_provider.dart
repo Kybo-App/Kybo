@@ -10,12 +10,6 @@ class LanguageProvider extends ChangeNotifier {
   Locale get locale => _locale;
   bool get isItalian => _locale.languageCode == 'it';
 
-  void setLocale(Locale locale) {
-    if (_locale == locale) return;
-    _locale = locale;
-    notifyListeners();
-  }
-
   void toggleLanguage() {
     _locale = isItalian ? const Locale('en') : const Locale('it');
     notifyListeners();
