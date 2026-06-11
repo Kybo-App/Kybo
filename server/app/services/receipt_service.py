@@ -13,6 +13,20 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# [SECURITY] Protezione decompression-bomb. Un file immagine piccolo (entro
+# il limite di 10MB sul body) può decodificarsi in dimensioni pixel enormi
+# — es. un PNG di tinta unita comprime miliardi di pixel in pochi KB — e
+# saturare la RAM durante convert/contrast/resize, PRIMA che l'OCR parta.
+# Il cap sul body NON protegge perché è il bitmap *decompresso* a esplodere.
+#
+# Pillow fa scattare DecompressionBombError oltre 2x MAX_IMAGE_PIXELS durante
+# il decode; lo impostiamo a ~40MP (abbondante per una foto di scontrino da
+# smartphone, tipicamente 12MP). In più controlliamo esplicitamente le
+# dimensioni e ridimensioniamo le immagini grandi prima di processarle.
+MAX_OCR_PIXELS = 40_000_000          # ~40 megapixel
+MAX_OCR_DIMENSION = 4000             # lato massimo dopo eventuale downscale
+Image.MAX_IMAGE_PIXELS = MAX_OCR_PIXELS
+
 class ReceiptItem(BaseModel):
     name: str = Field(description="Nome del prodotto alimentare trovato nello scontrino")
     quantity: str = Field(description="Quantità indicata (es. '1kg', '2pz', '300g')")
@@ -59,6 +73,12 @@ class ReceiptScanner:
         - Sharpening
         - Ridimensionamento se troppo piccola (Tesseract lavora meglio con DPI ≥ 200)
         """
+        # [SECURITY] Downscale le immagini grandi PRIMA di qualunque
+        # operazione costosa, così convert/contrast/sharpen lavorano su un
+        # bitmap di dimensioni note e limitate.
+        if max(image.width, image.height) > MAX_OCR_DIMENSION:
+            image.thumbnail((MAX_OCR_DIMENSION, MAX_OCR_DIMENSION), Image.LANCZOS)
+
         image = image.convert('L')
 
         image = ImageOps.autocontrast(image, cutoff=2)
@@ -84,6 +104,18 @@ class ReceiptScanner:
         try:
             # 1. OCR con Tesseract e pre-processing immagine
             image = Image.open(file_obj)
+
+            # [SECURITY] Rifiuta immagini con dimensioni pixel abnormi
+            # (decompression bomb). image.size è letto dall'header senza
+            # decodificare il bitmap, quindi il check è economico e avviene
+            # prima di qualsiasi allocazione pesante.
+            width, height = image.size
+            if width * height > MAX_OCR_PIXELS:
+                logger.warning(
+                    "receipt_image_too_large width=%d height=%d", width, height
+                )
+                return []
+
             processed = self._preprocess_image(image)
             custom_config = r'--oem 3 --psm 6'
             text = pytesseract.image_to_string(processed, lang='ita', config=custom_config)

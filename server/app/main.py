@@ -21,6 +21,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -100,6 +101,45 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# [SECURITY] Limite globale sulla dimensione del body della richiesta.
+# Rifiuta gli upload sovradimensionati guardando l'header Content-Length
+# PRIMA che Starlette bufferizzi/parsi il body. Senza questo, un attaccante
+# può inviare un file da molti GB che viene scritto su disco + caricato in
+# RAM prima che il check per-endpoint (10MB) lo rifiuti → memory/disk DoS.
+# Il limite globale è leggermente superiore a MAX_FILE_SIZE per lasciare
+# spazio al boundary multipart e ai campi del form; il check preciso a 10MB
+# resta nei singoli endpoint di upload.
+_MAX_REQUEST_BODY = settings.MAX_FILE_SIZE + 2 * 1024 * 1024  # 10MB + 2MB overhead
+
+
+class ContentSizeLimitMiddleware:
+    """ASGI middleware: blocca i body oltre `max_size` via Content-Length."""
+
+    def __init__(self, app, max_size: int):
+        self.app = app
+        self.max_size = max_size
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            for name, value in scope.get("headers", []):
+                if name == b"content-length":
+                    try:
+                        if int(value) > self.max_size:
+                            response = JSONResponse(
+                                {"detail": "Payload troppo grande."},
+                                status_code=413,
+                            )
+                            await response(scope, receive, send)
+                            return
+                    except ValueError:
+                        pass
+                    break
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(ContentSizeLimitMiddleware, max_size=_MAX_REQUEST_BODY)
 
 app.add_middleware(
     CORSMiddleware,
@@ -273,25 +313,29 @@ async def health_check_detailed():
         "sentry": {"status": "unknown", "message": ""},
     }
 
+    # [SECURITY] L'endpoint è pubblico (no auth): NON esporre il testo grezzo
+    # delle eccezioni (str(e)) né stringhe di versione precise. Un attaccante
+    # potrebbe usarle per fingerprinting (versioni librerie → CVE note) o per
+    # leakare percorsi/frammenti di connection string. Restituiamo solo
+    # status + messaggio generico. I dettagli completi restano nei log/Sentry.
     try:
         db = firebase_admin.firestore.client()
-        doc = db.collection("config").document("global").get()
-        if doc.exists:
-            checks["firebase"] = {"status": "ok", "message": "Connected"}
-        else:
-            checks["firebase"] = {"status": "ok", "message": "Connected (no config doc)"}
+        db.collection("config").document("global").get()
+        checks["firebase"] = {"status": "ok", "message": "Connected"}
     except Exception as e:
-        checks["firebase"] = {"status": "error", "message": str(e)[:100]}
+        logger.error("health_firebase_error", error=sanitize_error_message(e))
+        checks["firebase"] = {"status": "error", "message": "Unreachable"}
 
     try:
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         models = list(client.models.list())
         if models:
-            checks["gemini"] = {"status": "ok", "message": f"{len(models)} models available"}
+            checks["gemini"] = {"status": "ok", "message": "Available"}
         else:
             checks["gemini"] = {"status": "warning", "message": "No models found"}
     except Exception as e:
-        checks["gemini"] = {"status": "error", "message": str(e)[:100]}
+        logger.error("health_gemini_error", error=sanitize_error_message(e))
+        checks["gemini"] = {"status": "error", "message": "Unreachable"}
 
     if settings.REDIS_URL:
         try:
@@ -301,7 +345,8 @@ async def health_check_detailed():
                 "message": "Connected" if redis_ok else "Ping failed"
             }
         except Exception as e:
-            checks["redis"] = {"status": "error", "message": str(e)[:100]}
+            logger.error("health_redis_error", error=sanitize_error_message(e))
+            checks["redis"] = {"status": "error", "message": "Unreachable"}
     else:
         checks["redis"] = {"status": "disabled", "message": "REDIS_URL not configured"}
 
@@ -314,12 +359,15 @@ async def health_check_detailed():
                 text=True,
                 timeout=5
             )
-            version = result.stdout.split('\n')[0] if result.stdout else "unknown"
-            checks["tesseract"] = {"status": "ok", "message": version}
+            checks["tesseract"] = {
+                "status": "ok" if result.returncode == 0 else "error",
+                "message": "Available" if result.returncode == 0 else "Error",
+            }
         else:
             checks["tesseract"] = {"status": "error", "message": "Not found in PATH"}
     except Exception as e:
-        checks["tesseract"] = {"status": "error", "message": str(e)[:100]}
+        logger.error("health_tesseract_error", error=sanitize_error_message(e))
+        checks["tesseract"] = {"status": "error", "message": "Unreachable"}
 
     checks["sentry"] = {
         "status": "ok" if settings.SENTRY_DSN else "disabled",

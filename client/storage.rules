@@ -7,9 +7,30 @@ service firebase.storage {
       allow read, write: if false;
     }
 
-    // Regola Specifica Utenti: Ogni utente ha la sua sandbox privata
+    // Regola Specifica Utenti: Ogni utente ha la sua sandbox privata.
+    //
+    // [SECURITY 2026-06] Gli upload "veri" (foto profilo, allegati, diete,
+    // scontrini) passano TUTTI dal backend via Admin SDK, che valida i magic
+    // bytes e la dimensione. Questa regola client-side resta come sandbox di
+    // sicurezza, ma con limiti rigidi per impedire abuso costi (cost-DoS):
+    // - dimensione massima 10MB (allineata a MAX_FILE_SIZE dell'API)
+    // - solo immagini o PDF (niente eseguibili, HTML, archivi → no malware
+    //   hosting, no stored-XSS se mai serviti inline).
+    // NB: le Storage rules hanno solo `read` e `write` (write = create/
+    // update/delete). Su delete `request.resource` è null: lo consentiamo
+    // senza vincoli; su upload (resource non-null) imponiamo size + tipo.
+    function isAllowedUpload() {
+      return request.resource == null || (
+             request.resource.size < 10 * 1024 * 1024 &&
+             (request.resource.contentType.matches('image/.*') ||
+              request.resource.contentType == 'application/pdf'));
+    }
+
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isAllowedUpload();
     }
 
     // Regola per Allegati Chat (Read Only per partecipanti)
