@@ -278,6 +278,9 @@ richiedono config console o re-architecture e vanno fatti prima/al lancio.
 ### 🟡 Cifratura dati — media priorità
 - [ ] **Cifratura dieta server-side (chiave segreta reale).** L'attuale `encryption_service.dart` deriva la chiave AES solo dall'UID (non segreto, co-locato col ciphertext nel path Firestore) → è *offuscamento*, non cifratura forte (vedi commento esteso nel file). La protezione reale oggi è data dalle Firestore Rules + cifratura at-rest di Google. Per una cifratura davvero robusta contro un dump Firestore serve una chiave/pepper segreta NON co-locata: impossibile lato client (estraibile dall'APK), va spostata server-side (il server cifra/decifra con una master key in env, consegna in chiaro al client solo su TLS autenticato). Richiede schema versionato v3 + migrazione delle diete v2 esistenti. NON cambiare `_generateKeyFromUid` senza migrazione (romperebbe i dati salvati).
 
+### ⚪ Manutenzione — bassa priorità
+- [ ] **Aggiornare Next.js (landing).** `npm audit` segnala CVE su Next 14.1 (DoS Image Optimization, SSRF WebSocket, cache poisoning RSC, bypass middleware) + postcss XSS. NON sfruttabili nel deployment attuale: il landing è export statico (`output: 'export'`, `images.unoptimized`) servito da Firebase Hosting → niente runtime Next.js, quindi tutte le CVE server-side non si applicano; la postcss è build-time con CSS nostro. L'upgrade a next@16 è un major breaking change: farlo come manutenzione pianificata (testare il build + tutte le pagine), non urgente.
+
 ## Idee UX Client (da valutare)
 - [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
 - [x] Skeleton loading (history diete) — implementato con package shimmer
