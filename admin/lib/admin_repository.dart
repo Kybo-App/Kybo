@@ -645,13 +645,18 @@ class AdminRepository {
   }
 
   Future<Map<String, dynamic>> getServerMetrics() async {
+    // [SECURITY 2026-06] L'endpoint ora richiede ruolo admin: mandiamo il
+    // Bearer token come tutte le altre chiamate del repository.
+    final token = await _getToken();
     final response = await http.get(
       Uri.parse('$_baseUrl/metrics/api'),
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
+      await _checkUnauthorized(response);
       throw Exception("Errore Metriche Server (${response.statusCode})");
     }
   }
@@ -662,13 +667,17 @@ class AdminRepository {
     // di ad blocker aggressivi (uBlock, Brave, AdGuard), bloccando il
     // caricamento della vista Server Metrics nell'admin. Il vecchio
     // endpoint è ancora attivo come alias backward-compatible.
+    // [SECURITY 2026-06] Ora admin-only: serve il Bearer token.
+    final token = await _getToken();
     final response = await http.get(
       Uri.parse('$_baseUrl/system/status'),
+      headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200 || response.statusCode == 503) {
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } else {
+      await _checkUnauthorized(response);
       throw Exception("Errore Health Check (${response.statusCode})");
     }
   }

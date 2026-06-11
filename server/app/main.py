@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import credentials, firestore
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -29,6 +29,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import logger, sanitize_error_message
 from app.core.metrics import update_cache_size_gauges
+from app.core.dependencies import verify_admin
 
 from app.routers.diet import router as diet_router
 from app.routers.users import router as users_router
@@ -261,7 +262,21 @@ async def start_background_tasks():
     asyncio.create_task(monthly_report_mailer_worker())
     await redis_cache._ensure_connected()
     _start_inline_rq_worker()
-    _instrumentator.expose(app, endpoint="/metrics", include_in_schema=False)
+
+
+# [SECURITY 2026-06] L'endpoint Prometheus /metrics è esposto manualmente
+# con auth admin invece di instrumentator.expose() (che lo renderebbe
+# pubblico). I metrics grezzi elencano TUTTI i nomi degli endpoint,
+# latenze, conteggi richieste ed error rate → miniera d'oro per la
+# ricognizione di un attaccante. La strumentazione (raccolta metriche)
+# resta attiva via _instrumentator.instrument(app); qui pubblichiamo solo
+# l'output, protetto.
+# NB: se in futuro si configura uno scraper Prometheus esterno, dovrà
+# autenticarsi (token admin) oppure servirà un token di servizio dedicato.
+@app.get("/metrics", include_in_schema=False)
+async def metrics_prometheus(_admin: dict = Depends(verify_admin)):
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.on_event("shutdown")
@@ -288,18 +303,21 @@ async def ping():
 
 @app.get("/system/status")
 @app.get("/health/detailed", include_in_schema=False)
-async def health_check_detailed():
+async def health_check_detailed(_admin: dict = Depends(verify_admin)):
     """
     Health check avanzato che verifica tutti i servizi dipendenti.
-    Usato per debugging e monitoring dettagliato.
+    Usato per debugging e monitoring dettagliato dal pannello admin.
 
-    [2026-05-26] L'endpoint è esposto a due URL:
+    [SECURITY 2026-06] Richiede ruolo admin. Espone lo stato di ogni
+    servizio backend (Firebase/Gemini/Redis/Tesseract/Sentry) e l'ambiente:
+    informazione operativa sensibile che aiuterebbe la ricognizione di un
+    attaccante. Per il keep-alive pubblico / load balancer usare invece
+    `/health` (base) o `/ping`.
+
+    Esposto a due URL (entrambi admin-only):
     - `/system/status` (preferito) — nome neutro, non scatta i filter list
-      degli ad blocker (uBlock/Brave/AdGuard hanno regole aggressive su
-      pattern come `/health/detailed`).
-    - `/health/detailed` (alias, hidden in OpenAPI) — mantenuto per
-      retrocompatibilità con smoke test, vecchi client, sistemi di
-      monitoring esterni che già lo chiamavano.
+      degli ad blocker (uBlock/Brave/AdGuard).
+    - `/health/detailed` (alias, hidden in OpenAPI) — retrocompatibilità.
     """
     import subprocess
     import shutil
@@ -391,9 +409,13 @@ async def health_check_detailed():
 
 
 @app.get("/metrics/api", include_in_schema=False)
-async def metrics_api():
+async def metrics_api(_admin: dict = Depends(verify_admin)):
     """
-    Dashboard metriche API in formato JSON — leggibile da admin panel o tools interni.
+    Dashboard metriche API in formato JSON — admin-only.
+
+    [SECURITY 2026-06] Richiede ruolo admin: espone conteggi chiamate Gemini,
+    hit-ratio cache e stato Redis (pattern d'uso interni).
+    Leggibile da admin panel o tools interni.
     Espone un sottoinsieme human-friendly delle metriche Prometheus:
     - Cache hit/miss ratio per layer (diet + suggestions)
     - Dimensioni cache RAM correnti
