@@ -265,6 +265,18 @@ ma non sono ancora cablate lato UI / mai usate come dovrebbero.
 - [ ] **LanguageProvider: load preference da Firestore.** Aggiungere una `setLocale(Locale)` esplicita e chiamarla al login leggendo `users/{uid}.preferred_lang`, così la lingua è persistente cross-device invece di ripartire ogni volta dal default italiano.
 - [ ] **Admin design system: usare gli standard invece di inline.** `KyboSpacing` per i padding, `PillSearch` per le barre di ricerca (matchmaking, user filter), `PillDropdown` per i dropdown (role filter, sort menu). Erano widget pronti ma le screen hanno reinventato inline. Da fare quando si tocca l'UI di una di quelle sezioni.
 
+## Follow-up dal security audit (2026-06-11)
+
+Emersi durante l'audit di sicurezza (superficie d'attacco infrastruttura).
+I fix immediati sono già stati committati; qui restano i lavori che
+richiedono config console o re-architecture e vanno fatti prima/al lancio.
+
+### 🚨 Anti-abuso — alta priorità (fare prima del lancio pubblico)
+- [ ] **Firebase App Check.** Le chiavi Firebase nel client sono pubbliche per design: chiunque può scriptare richieste al backend Firebase FUORI dall'app (signup di massa, accesso Firestore entro le rules, generazione costi). Le Security Rules proteggono i *dati* ma non l'*abuso*. App Check (Play Integrity su Android, DeviceCheck/App Attest su iOS, reCAPTCHA su web) garantisce che solo istanze genuine dell'app usino Auth/Firestore/Storage. Steps: aggiungere `firebase_app_check`, registrare i provider in console, configurare debug token per lo sviluppo, attivare l'enforcement in modalità *monitor* prima e poi *enforce* (un enforcement affrettato blocca TUTTI gli utenti — testare bene). Alto valore per controllo costi (rilevante dopo l'incidente billing GCP).
+
+### 🟡 Cifratura dati — media priorità
+- [ ] **Cifratura dieta server-side (chiave segreta reale).** L'attuale `encryption_service.dart` deriva la chiave AES solo dall'UID (non segreto, co-locato col ciphertext nel path Firestore) → è *offuscamento*, non cifratura forte (vedi commento esteso nel file). La protezione reale oggi è data dalle Firestore Rules + cifratura at-rest di Google. Per una cifratura davvero robusta contro un dump Firestore serve una chiave/pepper segreta NON co-locata: impossibile lato client (estraibile dall'APK), va spostata server-side (il server cifra/decifra con una master key in env, consegna in chiaro al client solo su TLS autenticato). Richiede schema versionato v3 + migrazione delle diete v2 esistenti. NON cambiare `_generateKeyFromUid` senza migrazione (romperebbe i dati salvati).
+
 ## Idee UX Client (da valutare)
 - [x] Streak counter in home — GIÀ ESISTENTE (streak_badge_widget.dart)
 - [x] Skeleton loading (history diete) — implementato con package shimmer

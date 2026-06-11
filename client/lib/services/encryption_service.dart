@@ -1,5 +1,27 @@
-// Crittografia AES-256-CBC dei dati sensibili (GDPR). Formato v2: IV random prepeso al ciphertext.
-// encryptData — cripta una Map in Base64 con IV random; decryptData — supporta formato v1 (legacy IV deterministico) e v2.
+// Offuscamento AES-256-CBC dei dati dieta su Firestore. Formato v2: IV
+// random prepeso al ciphertext.
+//
+// ⚠️ [SECURITY — leggere prima di farci affidamento]
+// La chiave è derivata SOLO dall'UID Firebase (vedi _generateKeyFromUid):
+//   key = SHA256(uid + salt)  dove anche `salt` deriva da SHA256(uid).
+// L'UID NON è segreto — è il path del documento (`users/{uid}/diets/...`),
+// viaggia nei token, nelle richieste API e nei documenti stessi. Chi ottiene
+// un dump Firestero ha quindi ANCHE ogni UID, e con l'algoritmo (open source)
+// può ricavare ogni chiave e decifrare tutto.
+//
+// → Questo è OFFUSCAMENTO, non cifratura forte: ferma chi guarda casualmente
+//   la console Firestore in plaintext, NON un attaccante che conosce lo schema.
+//
+// La protezione REALE dei dati a riposo è data da:
+//   1. le Firestore Security Rules (owner/nutri/admin) — controllo accessi;
+//   2. la cifratura at-rest automatica di Firestore (chiavi gestite da Google).
+//
+// Una cifratura davvero robusta richiederebbe una chiave/pepper SEGRETA non
+// co-locata col ciphertext → impossibile lato client (estraibile dall'APK),
+// va fatta server-side. Tracciato in TODO.md ("Cifratura dieta server-side").
+//
+// NB: NON cambiare _generateKeyFromUid senza una migrazione: romperebbe la
+// decifratura di tutte le diete v2 già salvate.
 import 'dart:convert';
 import 'dart:math';
 import 'package:encrypt/encrypt.dart' as enc;
