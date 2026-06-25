@@ -2,8 +2,10 @@
 // MaintenanceGuard — legge config/global da Firestore e mostra schermata di manutenzione se attiva.
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/env.dart';
@@ -45,6 +47,35 @@ void main() {
 
         if (Firebase.apps.isEmpty) {
           await Firebase.initializeApp(options: firebaseOptions);
+        }
+
+        // [SECURITY] Firebase App Check — attesta che le richieste a
+        // Auth/Firestore/Storage arrivino da un'istanza GENUINA dell'app,
+        // non da uno script che usa le chiavi Firebase pubbliche. Difende il
+        // backend dall'abuso (signup di massa, scraping, generazione costi).
+        //
+        // In debug usa il provider `debug` (gli emulatori/dev non superano
+        // l'attestazione reale): registra il token di debug stampato in
+        // console su Firebase → App Check → App → "Manage debug tokens".
+        // In release usa Play Integrity (Android) e App Attest con fallback
+        // DeviceCheck (iOS).
+        //
+        // ⚠️ Questo NON blocca nulla finché l'enforcement non viene attivato
+        // in console (Firebase → App Check, per Auth/Firestore/Storage). Fino
+        // ad allora i token vengono solo raccolti per il monitoraggio. Attivare
+        // l'enforcement SOLO dopo aver verificato nella dashboard che il
+        // traffico legittimo invia token validi, altrimenti si bloccano gli
+        // utenti. L'errore di attivazione non è fatale: l'app continua.
+        try {
+          await FirebaseAppCheck.instance.activate(
+            androidProvider:
+                kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+            appleProvider: kDebugMode
+                ? AppleProvider.debug
+                : AppleProvider.appAttestWithDeviceCheckFallback,
+          );
+        } catch (e) {
+          debugPrint("App Check activation error (non-fatal): $e");
         }
 
         FirebaseFirestore.instance.settings = const Settings(
