@@ -167,6 +167,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  bool get _canLogin =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(_emailCtrl.text.trim()) &&
+      _passCtrl.text.isNotEmpty;
+
   Future<void> _login() async {
     setState(() => _isLoading = true);
     try {
@@ -247,6 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: TextField(
                   controller: _emailCtrl,
                   textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() {}),
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: t.email,
@@ -277,7 +282,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passCtrl,
                   obscureText: _obscurePassword,
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _login(),
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _canLogin ? _login() : null,
                   style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: t.password,
@@ -314,11 +320,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: PillButton(
                   label: t.loginButton,
                   icon: Icons.login_rounded,
-                  backgroundColor: KyboColors.primary,
-                  textColor: Colors.white,
+                  // Grigio finché email valida + password non vuota.
+                  backgroundColor:
+                      _canLogin ? KyboColors.primary : KyboColors.border,
+                  textColor: _canLogin ? Colors.white : KyboColors.textMuted,
                   height: 52,
                   isLoading: _isLoading,
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: (_isLoading || !_canLogin) ? null : _login,
                 ),
               ),
             ],
