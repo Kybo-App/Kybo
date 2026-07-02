@@ -263,6 +263,14 @@ class AppLocalizations {
       isItalian
           ? 'Errore durante il cambio password. Riprova.'
           : 'Error changing password. Please try again.';
+  // Requisiti password live (checklist)
+  String get pwdRuleLength =>
+      isItalian ? 'Almeno 12 caratteri' : 'At least 12 characters';
+  String get pwdRuleUpper =>
+      isItalian ? 'Una lettera maiuscola' : 'One uppercase letter';
+  String get pwdRuleLower =>
+      isItalian ? 'Una lettera minuscola' : 'One lowercase letter';
+  String get pwdRuleDigit => isItalian ? 'Un numero' : 'One number';
 
   // --- Audit log ---
   String get auditTitle => isItalian ? 'Audit Log' : 'Audit Log';

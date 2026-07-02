@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/app_localizations.dart';
+import '../widgets/design_system.dart';
+import '../widgets/password_checklist.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -16,6 +18,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+
+  bool get _canSubmit =>
+      KyboPasswordChecklist.isValid(_passCtrl.text) &&
+      _passCtrl.text == _confirmCtrl.text;
+
+  bool get _passwordsMismatch =>
+      _confirmCtrl.text.isNotEmpty && _passCtrl.text != _confirmCtrl.text;
 
   Future<void> _updatePassword() async {
     if (_passCtrl.text.isEmpty || _confirmCtrl.text.isEmpty) return;
@@ -94,28 +103,50 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 TextField(
                   controller: _passCtrl,
                   obscureText: true,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: l10n.pwdNew,
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.lock),
                   ),
                 ),
+                const SizedBox(height: 12),
+                // Requisiti password live — si spuntano mentre digiti.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: KyboPasswordChecklist(password: _passCtrl.text),
+                ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _confirmCtrl,
                   obscureText: true,
+                  onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     labelText: l10n.pwdConfirm,
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.lock_outline),
                   ),
                 ),
+                // Errore inline vicino al campo che non va.
+                if (_passwordsMismatch) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      l10n.pwdMismatch,
+                      style: const TextStyle(
+                          color: KyboColors.error, fontSize: 13),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: FilledButton(
-                    onPressed: _isLoading ? null : _updatePassword,
+                    // Grigio automatico finché non è tutto valido.
+                    onPressed:
+                        (_isLoading || !_canSubmit) ? null : _updatePassword,
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : Text(l10n.pwdSet),
