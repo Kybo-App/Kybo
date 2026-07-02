@@ -6,10 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/error_handler.dart';
 import '../services/api_client.dart';
 import '../services/xp_service.dart';
 import '../widgets/design_system.dart';
 import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 
 class RewardsScreen extends StatefulWidget {
   const RewardsScreen({super.key});
@@ -27,6 +29,8 @@ class _RewardsScreenState extends State<RewardsScreen>
   bool _isLoadingCatalog = true;
   bool _isLoadingClaims = true;
   bool _isClaiming = false;
+  String? _catalogError;
+  String? _claimsError;
 
   @override
   void initState() {
@@ -43,6 +47,7 @@ class _RewardsScreenState extends State<RewardsScreen>
   }
 
   Future<void> _loadCatalog() async {
+    if (mounted) setState(() => _catalogError = null);
     try {
       final data = await _api.get('/rewards/catalog') as Map<String, dynamic>;
       if (mounted) {
@@ -52,12 +57,20 @@ class _RewardsScreenState extends State<RewardsScreen>
         });
       }
     } catch (e) {
+      // [UX] Prima: solo debugPrint (invisibile in release) → il catalogo
+      // vuoto sembrava "nessun premio". Ora distinguiamo errore da vuoto.
       debugPrint("Error loading rewards catalog: $e");
-      if (mounted) setState(() => _isLoadingCatalog = false);
+      if (mounted) {
+        setState(() {
+          _catalogError = ErrorMapper.toUserMessage(e);
+          _isLoadingCatalog = false;
+        });
+      }
     }
   }
 
   Future<void> _loadClaims() async {
+    if (mounted) setState(() => _claimsError = null);
     try {
       final data = await _api.get('/rewards/my-claims') as Map<String, dynamic>;
       if (mounted) {
@@ -68,7 +81,12 @@ class _RewardsScreenState extends State<RewardsScreen>
       }
     } catch (e) {
       debugPrint("Error loading claims: $e");
-      if (mounted) setState(() => _isLoadingClaims = false);
+      if (mounted) {
+        setState(() {
+          _claimsError = ErrorMapper.toUserMessage(e);
+          _isLoadingClaims = false;
+        });
+      }
     }
   }
 
@@ -416,6 +434,10 @@ class _RewardsScreenState extends State<RewardsScreen>
       return const SkeletonCardList(itemCount: 6);
     }
 
+    if (_catalogError != null) {
+      return KyboErrorView(message: _catalogError!, onRetry: _loadCatalog);
+    }
+
     if (_catalog.isEmpty) {
       return Center(
         child: Padding(
@@ -667,6 +689,10 @@ class _RewardsScreenState extends State<RewardsScreen>
   Widget _buildClaimsTab() {
     if (_isLoadingClaims) {
       return const SkeletonCardList(itemCount: 4);
+    }
+
+    if (_claimsError != null) {
+      return KyboErrorView(message: _claimsError!, onRetry: _loadClaims);
     }
 
     if (_claims.isEmpty) {
