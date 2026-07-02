@@ -275,8 +275,17 @@ class _MyDayViewState extends State<MyDayView> {
             padding: const EdgeInsets.all(32),
             child: Column(
               children: [
-                Icon(Icons.celebration_rounded,
-                    size: 48, color: KyboColors.success),
+                // [UX ep8] Empty "positivo" gamificato: l'icona fa un pop
+                // d'entrata elastico per rendere lo stato desiderabile.
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.5, end: 1.0),
+                  duration: const Duration(milliseconds: 650),
+                  curve: Curves.elasticOut,
+                  builder: (context, scale, child) =>
+                      Transform.scale(scale: scale, child: child),
+                  child: Icon(Icons.celebration_rounded,
+                      size: 48, color: KyboColors.success),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   l10n.allUnderControl,

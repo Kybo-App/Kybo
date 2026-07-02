@@ -11,6 +11,7 @@ import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
 import '../widgets/design_system.dart';
+import '../widgets/state_views.dart';
 import '../logic/diet_calculator.dart';
 import '../services/api_client.dart';
 import '../services/badge_service.dart';
@@ -1238,25 +1239,17 @@ class _ShoppingListViewState extends State<ShoppingListView> {
             // LISTA (Design Coerente con MealCard)
             Expanded(
               child: widget.shoppingList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.list_alt,
-                            size: 60,
-                            color: KyboColors.textMuted(context),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Lista Vuota",
-                            style: TextStyle(
-                              color: KyboColors.textSecondary(context),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
+                  // [UX ep8] Empty "positivo": lista vuota = buona notizia
+                  // ("tutto in dispensa"), non un vicolo cieco. CTA per
+                  // generarla dalla dieta quando serve.
+                  ? KyboEmptyView(
+                      icon: Icons.check_circle_rounded,
+                      title: "Tutto in dispensa! 🎉",
+                      subtitle:
+                          "La tua lista della spesa è vuota. Quando ti serve, generala dalla dieta.",
+                      actionLabel: "Genera da dieta",
+                      onAction: _showImportDialog,
+                      accentColor: KyboColors.success,
                     )
                   : _groupByCategory
                       ? _buildGroupedList()
