@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../core/error_handler.dart';
 import '../widgets/diet_logo.dart';
 import '../widgets/design_system.dart';
+import '../widgets/password_checklist.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,6 +27,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _auth = AuthService();
   bool _isLogin = true;
   bool _isLoading = false;
+
+  bool _isValidEmail(String s) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s);
+
+  bool get _emailValid => _isValidEmail(_emailCtrl.text.trim());
+
+  /// Mostra l'errore inline solo se l'utente ha già scritto qualcosa (ep6.2:
+  /// validazione inline, ma senza urlare su un campo ancora vuoto).
+  bool get _emailError => _emailCtrl.text.trim().isNotEmpty && !_emailValid;
+
+  /// Submit abilitato-finché-valido (ep6.1). In login basta email valida +
+  /// password non vuota (gli utenti storici possono avere password vecchie).
+  /// In registrazione la password deve rispettare la policy.
+  bool get _canSubmit {
+    if (!_emailValid) return false;
+    return _isLogin
+        ? _passCtrl.text.isNotEmpty
+        : KyboPasswordChecklist.isValid(_passCtrl.text);
+  }
 
   @override
   void initState() {
@@ -199,7 +219,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    onChanged: (_) => setState(() {}),
                   ),
+                  // Errore email inline (ep6.2).
+                  if (_emailError) ...[
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline_rounded,
+                              size: 15, color: KyboColors.error),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Inserisci un'email valida",
+                            style: TextStyle(
+                                color: KyboColors.error, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   PillTextField(
@@ -210,16 +250,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: true,
                     showPasswordToggle: true,
                     textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _submit(),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _canSubmit ? _submit() : null,
                   ),
+                  // In registrazione: requisiti password live (ep6.5).
+                  if (!_isLogin) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: KyboPasswordChecklist(password: _passCtrl.text),
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   PillButton(
                     label: _isLogin ? "ACCEDI" : "REGISTRATI",
-                    onPressed: _submit,
+                    onPressed: (_isLoading || !_canSubmit) ? null : _submit,
                     isLoading: _isLoading,
-                    backgroundColor: KyboColors.primary,
-                    textColor: Colors.white,
+                    backgroundColor:
+                        _canSubmit ? KyboColors.primary : KyboColors.border(context),
+                    textColor:
+                        _canSubmit ? Colors.white : KyboColors.textMuted(context),
                     height: 56,
                     expanded: true,
                   ),
