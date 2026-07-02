@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
+import '../widgets/password_checklist.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -15,6 +16,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+
+  /// Submit abilitato solo se la password rispetta la policy E le due
+  /// password coincidono (ep6.1: niente submit finché non è tutto valido).
+  bool get _canSubmit =>
+      KyboPasswordChecklist.isValid(_passCtrl.text) &&
+      _passCtrl.text == _confirmCtrl.text;
+
+  bool get _passwordsMismatch =>
+      _confirmCtrl.text.isNotEmpty && _passCtrl.text != _confirmCtrl.text;
 
   @override
   void dispose() {
@@ -111,6 +121,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   showPasswordToggle: true,
                   labelText: "Nuova Password",
                   prefixIcon: Icons.lock,
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 12),
+                // Requisiti password live — si spuntano mentre digiti (ep6.5).
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: KyboPasswordChecklist(password: _passCtrl.text),
                 ),
                 const SizedBox(height: 16),
                 PillTextField(
@@ -118,14 +135,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   showPasswordToggle: true,
                   labelText: "Conferma Password",
                   prefixIcon: Icons.lock_outline,
+                  onChanged: (_) => setState(() {}),
                 ),
+                // Errore inline vicino al campo che non va (ep7).
+                if (_passwordsMismatch) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded,
+                            size: 16, color: KyboColors.error),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Le password non coincidono",
+                          style: TextStyle(
+                              color: KyboColors.error, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 PillButton(
                   label: "AGGIORNA PASSWORD",
                   isLoading: _isLoading,
-                  onPressed: _changePassword,
-                  backgroundColor: KyboColors.primary,
-                  textColor: Colors.white,
+                  onPressed: (_isLoading || !_canSubmit) ? null : _changePassword,
+                  // Grigio finché non è tutto valido (ep6.1).
+                  backgroundColor:
+                      _canSubmit ? KyboColors.primary : KyboColors.border(context),
+                  textColor:
+                      _canSubmit ? Colors.white : KyboColors.textMuted(context),
                   height: 50,
                 ),
               ],
