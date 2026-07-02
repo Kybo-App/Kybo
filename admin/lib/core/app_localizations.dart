@@ -263,6 +263,12 @@ class AppLocalizations {
       isItalian
           ? 'Errore durante il cambio password. Riprova.'
           : 'Error changing password. Please try again.';
+  // Password già cambiata su Firebase Auth ma finalizzazione lato server
+  // fallita (rete): basta ripremere, senza reinserire nulla.
+  String get pwdFinalizeRetry =>
+      isItalian
+          ? 'Password aggiornata, ma finalizzazione non riuscita. Controlla la connessione e premi di nuovo.'
+          : 'Password updated, but finalization failed. Check your connection and press again.';
   // Requisiti password live (checklist)
   String get pwdRuleLength =>
       isItalian ? 'Almeno 12 caratteri' : 'At least 12 characters';

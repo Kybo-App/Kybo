@@ -18,6 +18,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+  // Password già aggiornata su Firebase Auth ma finalizzazione lato server
+  // fallita (rete): al retry saltiamo updatePassword e riproviamo solo il server.
+  bool _passwordChanged = false;
 
   bool get _canSubmit =>
       KyboPasswordChecklist.isValid(_passCtrl.text) &&
@@ -55,15 +58,24 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await user.updatePassword(pass);
+      // Passo 1 (una sola volta): aggiorna la password su Firebase Auth.
+      if (!_passwordChanged) {
+        await user.updatePassword(pass);
+        _passwordChanged = true;
+      }
 
-      // Il flag va azzerato lato server (Admin SDK): le Firestore rules non
-      // permettono ai professionisti creati dall'admin di modificarlo da soli.
+      // Passo 2: il flag va azzerato lato server (Admin SDK): le Firestore
+      // rules non permettono ai professionisti creati dall'admin di modificarlo
+      // da soli. Se fallisce, _passwordChanged resta true e al retry si salta
+      // il passo 1.
       await AdminRepository().completePasswordChange();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.pwdChangeError)),
+        SnackBar(
+          content: Text(
+              _passwordChanged ? l10n.pwdFinalizeRetry : l10n.pwdChangeError),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

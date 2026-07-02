@@ -17,6 +17,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+  // La password è già stata aggiornata su Firebase Auth in un tentativo
+  // precedente ma la finalizzazione lato server è fallita (es. rete). Al
+  // retry NON ripetiamo updatePassword: riproviamo solo la chiamata server.
+  bool _passwordChanged = false;
 
   /// Submit abilitato solo se la password rispetta la policy E le due
   /// password coincidono (ep6.1: niente submit finché non è tutto valido).
@@ -58,11 +62,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("Utente non loggato");
 
-      await user.updatePassword(_passCtrl.text);
+      // Passo 1 (una sola volta): aggiorna la password su Firebase Auth.
+      if (!_passwordChanged) {
+        await user.updatePassword(_passCtrl.text);
+        _passwordChanged = true;
+      }
 
-      // Azzera requires_password_change lato server (Admin SDK): le Firestore
-      // rules non permettono al client di modificare questo campo da solo,
-      // quindi senza questa chiamata il PasswordGuard resterebbe in loop.
+      // Passo 2: azzera requires_password_change lato server (Admin SDK): le
+      // Firestore rules non permettono al client di modificare il campo da
+      // solo, quindi senza questa chiamata il PasswordGuard resterebbe in
+      // loop. Se questo passo fallisce (rete), _passwordChanged resta true e
+      // al retry saltiamo il passo 1.
       await ApiClient().post('/profile/complete-password-change');
 
       if (mounted) {
@@ -81,7 +91,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showError(ErrorMapper.toUserMessage(e));
+        // Se la password è già cambiata ma è saltata la finalizzazione,
+        // spieghiamo che basta ripremere (senza reinserire nulla).
+        _showError(_passwordChanged
+            ? "Password aggiornata, ma finalizzazione non riuscita. Controlla la connessione e premi di nuovo per completare."
+            : ErrorMapper.toUserMessage(e));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -167,7 +181,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ],
                 const SizedBox(height: 24),
                 PillButton(
-                  label: "AGGIORNA PASSWORD",
+                  label: _passwordChanged ? "COMPLETA" : "AGGIORNA PASSWORD",
                   isLoading: _isLoading,
                   onPressed: (_isLoading || !_canSubmit) ? null : _changePassword,
                   // Grigio finché non è tutto valido (ep6.1).
