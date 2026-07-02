@@ -58,6 +58,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                 TextField(
                   controller: notesCtrl,
                   maxLines: 3,
+                  maxLength: 500, // ep6.3: limite + contatore live nativo
                   decoration: const InputDecoration(
                     labelText: "Note (Opzionale)",
                     hintText: "Preferenze, intolleranze, etc.",

@@ -1,6 +1,7 @@
 // Sistema di design Kybo Client: componenti pill-shaped con supporto dark mode tramite ThemeProvider.
 // Colori identici alla webapp admin. KyboColors usa context.watch per i getter dinamici e context.read per quelli statici.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -369,6 +370,10 @@ class PillTextField extends StatefulWidget {
   final bool readOnly;
   final VoidCallback? onTap;
 
+  /// Se impostato: limita la lunghezza e mostra un contatore live dei
+  /// caratteri rimasti sotto al campo (ep6.3). Richiede un [controller].
+  final int? maxLength;
+
   const PillTextField({
     super.key,
     this.controller,
@@ -385,6 +390,7 @@ class PillTextField extends StatefulWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.maxLength,
   });
 
   @override
@@ -436,6 +442,9 @@ class _PillTextFieldState extends State<PillTextField> {
             maxLines: widget.maxLines,
             readOnly: widget.readOnly,
             onTap: widget.onTap,
+            inputFormatters: widget.maxLength != null
+                ? [LengthLimitingTextInputFormatter(widget.maxLength)]
+                : null,
             style: TextStyle(
               color: KyboColors.textPrimary(context),
               fontSize: 16,
@@ -474,6 +483,33 @@ class _PillTextFieldState extends State<PillTextField> {
             ),
           ),
         ),
+        // Contatore caratteri live (ep6.3): mostra quanti ne restano mentre
+        // l'utente digita. Diventa rosso quando si è al limite.
+        if (widget.maxLength != null && widget.controller != null) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: widget.controller!,
+                builder: (context, value, _) {
+                  final remaining = widget.maxLength! - value.text.length;
+                  return Text(
+                    '$remaining',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: remaining <= 0
+                          ? KyboColors.error
+                          : KyboColors.textMuted(context),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

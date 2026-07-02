@@ -476,6 +476,7 @@ class _DietViewState extends State<DietView> {
               TextField(
                 controller: noteController,
                 maxLines: 3,
+                maxLength: 500, // ep6.3: limite + contatore live nativo
                 decoration: InputDecoration(
                   hintText: 'Come ti sei sentito? Cosa hai mangiato?',
                   hintStyle: TextStyle(color: KyboColors.textMuted(context)),
