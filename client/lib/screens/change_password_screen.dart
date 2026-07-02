@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/error_handler.dart';
+import '../services/api_client.dart';
 import '../widgets/design_system.dart';
 import '../widgets/password_checklist.dart';
 
@@ -59,6 +60,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       await user.updatePassword(_passCtrl.text);
 
+      // Azzera requires_password_change lato server (Admin SDK): le Firestore
+      // rules non permettono al client di modificare questo campo da solo,
+      // quindi senza questa chiamata il PasswordGuard resterebbe in loop.
+      await ApiClient().post('/profile/complete-password-change');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -68,7 +74,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pop(context);
+        // Da Impostazioni la schermata è una rotta pushata → la chiudiamo.
+        // Dal PasswordGuard non c'è nulla da chiudere: si sgancia da solo
+        // quando il flag su Firestore diventa false.
+        if (Navigator.canPop(context)) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {

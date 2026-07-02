@@ -2,7 +2,7 @@
 // _updatePassword — aggiorna Auth e sblocca il flag requires_password_change su Firestore.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import '../widgets/password_checklist.dart';
@@ -57,9 +57,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
       await user.updatePassword(pass);
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
-        {'requires_password_change': false},
-      );
+      // Il flag va azzerato lato server (Admin SDK): le Firestore rules non
+      // permettono ai professionisti creati dall'admin di modificarlo da soli.
+      await AdminRepository().completePasswordChange();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

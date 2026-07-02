@@ -95,3 +95,35 @@ async def delete_profile_photo(
     except Exception as e:
         logger.error("profile_photo_delete_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore nella rimozione della foto.")
+
+
+@router.post("/complete-password-change")
+@limiter.limit("10/hour")
+async def complete_password_change(
+    request: Request,
+    requester: dict = Depends(verify_token),
+):
+    """
+    Azzera il flag `requires_password_change` sul documento del chiamante.
+
+    Va chiamato DOPO che l'utente ha aggiornato la password via Firebase Auth
+    (primo accesso con password temporanea). Gira con l'Admin SDK, quindi
+    bypassa le Firestore rules: solo così client (ruolo `user`) e professionisti
+    creati dall'admin possono completare il primo accesso — le rules non
+    permettono loro di modificare questo campo direttamente, altrimenti il
+    password-guard li terrebbe bloccati in loop sulla schermata di cambio.
+    """
+    try:
+        uid = requester['uid']
+        db = firebase_admin.firestore.client()
+        doc_ref = db.collection('users').document(uid)
+        # Non creiamo doc fantasma: aggiorniamo solo se l'utente esiste già.
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Utente non trovato.")
+        doc_ref.update({'requires_password_change': False})
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("complete_password_change_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante l'aggiornamento.")

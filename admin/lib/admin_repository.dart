@@ -92,6 +92,24 @@ class AdminRepository {
     }
   }
 
+  /// Azzera `requires_password_change` sul proprio documento, via Admin SDK
+  /// lato server. Le Firestore rules non permettono ai professionisti creati
+  /// dall'admin (nutritionist/PT) di toccare questo campo da soli: senza
+  /// questa chiamata la scrittura diretta fallirebbe e il password-guard li
+  /// terrebbe bloccati in loop sulla schermata di cambio password.
+  Future<void> completePasswordChange() async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/profile/complete-password-change'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw Exception('Cambio password non completato: ${_safeBody(response)}');
+    }
+  }
+
 
 
   Future<Map<String, dynamic>> getAppConfig() async {
