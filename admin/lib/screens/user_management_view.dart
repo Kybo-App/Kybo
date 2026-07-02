@@ -1006,8 +1006,9 @@ class _UserManagementViewState extends State<UserManagementView> {
               child: Text(l10n.cancel),
             ),
             FilledButton(
-              // Grigio finché email non vuota + password conforme alla policy.
-              onPressed: (emailCtrl.text.trim().isEmpty ||
+              // Grigio finché email valida (formato) + password conforme alla policy.
+              onPressed: (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                          .hasMatch(emailCtrl.text.trim()) ||
                       !KyboPasswordChecklist.isValid(passCtrl.text))
                   ? null
                   : () async {
