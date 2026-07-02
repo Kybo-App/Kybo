@@ -415,7 +415,8 @@ class _ChatListState extends State<_ChatList> {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                '${AppLocalizations.of(context).error}: ${snapshot.error}',
+                // [UX/SECURITY] Niente snapshot.error grezzo a schermo.
+                'Impossibile caricare le chat. Riprova più tardi.',
                 style: TextStyle(color: KyboColors.error),
               ),
             ),

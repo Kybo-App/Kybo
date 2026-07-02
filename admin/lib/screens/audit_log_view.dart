@@ -185,7 +185,8 @@ class AuditLogView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "${snapshot.error}",
+                    // [UX/SECURITY] Niente snapshot.error grezzo a schermo.
+                    "Impossibile caricare i log. Riprova più tardi.",
                     style: TextStyle(
                       color: KyboColors.textSecondary,
                       fontSize: 14,

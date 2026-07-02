@@ -1212,10 +1212,35 @@ class _UserManagementViewState extends State<UserManagementView> {
                 return const SkeletonUserList();
               }
               if (snapshot.hasError) {
+                // [UX/SECURITY] Prima esponeva snapshot.error grezzo a schermo
+                // (dettaglio backend + rischio info-disclosure). Ora messaggio
+                // pulito + azione di retry (ep5/ep7).
                 return Center(
-                  child: Text(
-                    'Errore Caricamento: ${snapshot.error}',
-                    style: TextStyle(color: Colors.red),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline_rounded,
+                            color: KyboColors.error, size: 40),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Impossibile caricare gli utenti. '
+                          'Controlla la connessione e riprova.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: KyboColors.textPrimary, fontSize: 15),
+                        ),
+                        const SizedBox(height: 16),
+                        PillButton(
+                          label: 'Riprova',
+                          icon: Icons.refresh_rounded,
+                          onPressed: _refreshList,
+                          backgroundColor: KyboColors.primary,
+                          textColor: Colors.white,
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
@@ -2402,10 +2427,35 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
+            // [UX/SECURITY] Niente snapshot.error grezzo a schermo: messaggio
+            // pulito + retry (ep5/ep7).
             return Center(
-              child: Text(
-                "${AppLocalizations.of(context).auditTitle}: ${snapshot.error}",
-                style: const TextStyle(color: Colors.red),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        color: KyboColors.error, size: 40),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Impossibile caricare lo storico. Riprova.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: KyboColors.textPrimary, fontSize: 15),
+                    ),
+                    const SizedBox(height: 16),
+                    PillButton(
+                      label: 'Riprova',
+                      icon: Icons.refresh_rounded,
+                      onPressed: () => setState(() =>
+                          _historyFuture =
+                              _repo.getSecureUserHistory(widget.targetUid)),
+                      backgroundColor: KyboColors.primary,
+                      textColor: Colors.white,
+                    ),
+                  ],
+                ),
               ),
             );
           }
