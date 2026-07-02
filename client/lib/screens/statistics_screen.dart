@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../core/error_handler.dart';
+import '../widgets/state_views.dart';
 import '../services/tracking_service.dart';
 import '../services/health_service.dart';
 import '../models/tracking_models.dart';
@@ -28,6 +30,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   List<WeightEntry> _weightHistory = [];
   List<UserGoal> _goals = [];
   bool _isLoading = true;
+  String? _error;
 
   final HealthService _healthService = HealthService();
   HealthData? _healthData;
@@ -56,39 +59,54 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-    final stats = await _trackingService.calculateWeeklyStats();
+    // [UX] try/catch: senza, un errore lasciava _isLoading=true per sempre →
+    // spinner infinito senza spiegazione (ep5: l'errore peggiore è quello che
+    // non esiste). Ora un fallimento mostra uno stato d'errore con "Riprova".
+    try {
+      final stats = await _trackingService.calculateWeeklyStats();
 
-    _subscriptions.add(
-      _trackingService.getWeightHistory(days: 30).listen((history) {
-        if (mounted) {
-          setState(() => _weightHistory = history);
-        }
-      }),
-    );
+      _subscriptions.add(
+        _trackingService.getWeightHistory(days: 30).listen((history) {
+          if (mounted) {
+            setState(() => _weightHistory = history);
+          }
+        }),
+      );
 
-    _subscriptions.add(
-      _trackingService.getGoals().listen((goals) {
-        if (mounted) {
-          setState(() => _goals = goals);
-        }
-      }),
-    );
+      _subscriptions.add(
+        _trackingService.getGoals().listen((goals) {
+          if (mounted) {
+            setState(() => _goals = goals);
+          }
+        }),
+      );
 
-    final healthAuthorized = await _healthService.isAuthorized();
-    if (healthAuthorized) {
-      final healthData = await _healthService.readToday();
-      if (mounted) setState(() { _healthData = healthData; _healthAuthorized = true; });
-    } else {
-      if (mounted) setState(() => _healthAuthorized = false);
-    }
+      final healthAuthorized = await _healthService.isAuthorized();
+      if (healthAuthorized) {
+        final healthData = await _healthService.readToday();
+        if (mounted) setState(() { _healthData = healthData; _healthAuthorized = true; });
+      } else {
+        if (mounted) setState(() => _healthAuthorized = false);
+      }
 
-    if (mounted) {
-      setState(() {
-        _weeklyStats = stats;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _weeklyStats = stats;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = ErrorMapper.toUserMessage(e);
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -110,6 +128,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Stato d'errore con retry, invece dello spinner infinito (ep5/ep7).
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Statistiche'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: KyboErrorView(message: _error!, onRetry: _loadData),
       );
     }
 
