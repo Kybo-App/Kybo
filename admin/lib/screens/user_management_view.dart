@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
+import '../widgets/password_checklist.dart';
 import '../widgets/skeleton_loaders.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -958,6 +959,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   ),
                   TextField(
                     controller: emailCtrl,
+                    onChanged: (_) => setDialogState(() {}),
                     decoration: const InputDecoration(
                       labelText: "Email",
                       prefixIcon: Icon(Icons.email),
@@ -965,6 +967,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   ),
                   TextField(
                     controller: passCtrl,
+                    onChanged: (_) => setDialogState(() {}),
                     decoration: InputDecoration(
                       labelText: l10n.locale.languageCode == 'it'
                           ? "Password temp"
@@ -972,6 +975,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                       prefixIcon: const Icon(Icons.key),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // La password temp deve comunque rispettare la policy
+                  // (l'utente la cambierà al primo accesso): checklist live.
+                  KyboPasswordChecklist(password: passCtrl.text),
                   DropdownButtonFormField<String>(
                     initialValue: role,
                     decoration: InputDecoration(labelText: l10n.role),
@@ -999,7 +1006,11 @@ class _UserManagementViewState extends State<UserManagementView> {
               child: Text(l10n.cancel),
             ),
             FilledButton(
-              onPressed: () async {
+              // Grigio finché email non vuota + password conforme alla policy.
+              onPressed: (emailCtrl.text.trim().isEmpty ||
+                      !KyboPasswordChecklist.isValid(passCtrl.text))
+                  ? null
+                  : () async {
                 Navigator.pop(ctx);
                 setState(() => _isLoading = true);
                 try {
