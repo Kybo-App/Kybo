@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/error_handler.dart';
 import '../services/api_client.dart';
 
 class MatchmakingProvider extends ChangeNotifier {
@@ -23,7 +24,7 @@ class MatchmakingProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = e.toString();
+      _error = ErrorMapper.toUserMessage(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -43,7 +44,7 @@ class MatchmakingProvider extends ChangeNotifier {
       });
       await loadMyRequests();
     } catch (e) {
-      _error = e is ApiException ? e.message : e.toString();
+      _error = e is ApiException ? e.message : ErrorMapper.toUserMessage(e);
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);
@@ -62,7 +63,7 @@ class MatchmakingProvider extends ChangeNotifier {
       );
       await loadMyRequests();
     } catch (e) {
-      _error = e is ApiException ? e.message : e.toString();
+      _error = e is ApiException ? e.message : ErrorMapper.toUserMessage(e);
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);
@@ -80,7 +81,7 @@ class MatchmakingProvider extends ChangeNotifier {
       await _api.delete('/matchmaking/requests/$reqId');
       await loadMyRequests();
     } catch (e) {
-      _error = e is ApiException ? e.message : e.toString();
+      _error = e is ApiException ? e.message : ErrorMapper.toUserMessage(e);
       _isLoading = false;
       notifyListeners();
       throw Exception(_error);

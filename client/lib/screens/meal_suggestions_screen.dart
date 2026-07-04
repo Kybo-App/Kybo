@@ -3,6 +3,7 @@
 // _fetchSuggestions — chiama /meal-suggestions con filtri tipo pasto e items dispensa.
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/error_handler.dart';
 import '../models/pantry_item.dart';
 import '../services/api_client.dart';
 import '../services/badge_service.dart';
@@ -127,7 +128,7 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
     } catch (e) {
       debugPrint('⚠️ Errore imprevisto suggerimenti: $e');
       setState(() {
-        _error = 'Errore imprevisto: $e';
+        _error = ErrorMapper.toUserMessage(e);
         _loading = false;
       });
     }

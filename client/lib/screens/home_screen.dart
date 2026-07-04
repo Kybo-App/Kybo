@@ -2224,7 +2224,7 @@ class _MainScreenContentState extends State<MainScreenContent>
     } catch (e) {
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(content: Text('Errore: $e'), backgroundColor: KyboColors.error),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
         );
       }
     }
@@ -2388,7 +2388,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
-            content: Text('Errore: ${e.toString()}'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );

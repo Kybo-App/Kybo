@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/error_handler.dart';
 import '../providers/chat_provider.dart';
 import '../models/chat_message.dart';
 import '../services/badge_service.dart';
@@ -108,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore invio: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -449,8 +450,38 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message});
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
+  // [FIX CH3] attachmentUrl è scritto da chi crea il messaggio (il
+  // professionista): un account compromesso/malevolo potrebbe impostare un
+  // link di phishing al posto del vero allegato. I signed URL legittimi
+  // generati dal backend (chat.py::blob.generate_signed_url) puntano sempre
+  // a Cloud Storage — per host diversi chiediamo conferma mostrando l'URL
+  // reale invece di aprirlo alla cieca.
+  static const _trustedAttachmentHosts = {
+    'storage.googleapis.com',
+    'firebasestorage.googleapis.com',
+  };
+
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+
+    if (!_trustedAttachmentHosts.contains(uri.host)) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Apri link esterno?'),
+          content: Text(
+            'Questo allegato punta a un indirizzo non riconosciuto:\n\n$url\n\nAprilo solo se ti fidi del mittente.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annulla')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Apri comunque')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       debugPrint('Could not launch $url');
     }
@@ -548,7 +579,7 @@ class _MessageBubble extends StatelessWidget {
 
     if (isImage) {
       return GestureDetector(
-        onTap: () => _openUrl(message.attachmentUrl!),
+        onTap: () => _openUrl(context, message.attachmentUrl!),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
@@ -591,7 +622,7 @@ class _MessageBubble extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => _openUrl(message.attachmentUrl!),
+      onTap: () => _openUrl(context, message.attachmentUrl!),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/error_handler.dart';
 import '../providers/matchmaking_provider.dart';
 import '../widgets/design_system.dart';
 import '../widgets/skeleton_loaders.dart';
@@ -49,6 +50,10 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: goalCtrl,
+                  // [FIX MM3] Nessuna validazione: si poteva pubblicare una
+                  // richiesta senza obiettivo. Il bottone si abilita solo con
+                  // testo non vuoto.
+                  onChanged: (_) => setDialogState(() {}),
                   decoration: const InputDecoration(
                     labelText: "Il tuo Obiettivo Principale",
                     hintText: "Es. Perdere peso, Aumentare massa...",
@@ -73,33 +78,40 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
               child: const Text("Annulla"),
             ),
             FilledButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                try {
-                  await context.read<MatchmakingProvider>().createRequest(
-                    type,
-                    goalCtrl.text,
-                    notesCtrl.text,
-                  );
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Richiesta pubblicata!")),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Errore: $e")),
-                    );
-                  }
-                }
-              },
+              onPressed: goalCtrl.text.trim().isEmpty
+                  ? null
+                  : () async {
+                      Navigator.pop(ctx);
+                      try {
+                        await context.read<MatchmakingProvider>().createRequest(
+                          type,
+                          goalCtrl.text,
+                          notesCtrl.text,
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Richiesta pubblicata!")),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
+                          );
+                        }
+                      }
+                    },
               child: const Text("Pubblica Richiesta"),
             ),
           ],
         ),
       ),
-    );
+      // [FIX] Controller di dialog mai disposati (pattern ricorrente
+      // F6/SL1/DV2/ST5).
+    ).then((_) {
+      goalCtrl.dispose();
+      notesCtrl.dispose();
+    });
   }
 
   void _acceptOffer(String reqId, String offerId) async {
@@ -113,7 +125,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e")),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
         );
       }
     }
@@ -152,7 +164,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Errore: $e")),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
         );
       }
     }
@@ -181,7 +193,9 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> {
           }
 
           if (provider.error != null && provider.myRequests.isEmpty) {
-            return Center(child: Text("Errore: ${provider.error}", style: const TextStyle(color: Colors.red)));
+            // provider.error è già un messaggio utente sanitizzato
+            // (ErrorMapper.toUserMessage applicato in MatchmakingProvider).
+            return Center(child: Text(provider.error!, style: const TextStyle(color: Colors.red)));
           }
 
           if (provider.myRequests.isEmpty) {

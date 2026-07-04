@@ -246,8 +246,11 @@ class _RewardsScreenState extends State<RewardsScreen>
             backgroundColor: KyboColors.surface(context),
             shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
             title: Text('Completa il riscatto', style: TextStyle(color: KyboColors.textPrimary(context))),
+            // [FIX RW2] Mostra l'URL reale prima di aprirlo esternamente
+            // (redirect_url è impostato dall'admin in catalogo — meno a
+            // rischio della chat, ma comunque non validato).
             content: Text(
-              'Apri il link del premio per completare il riscatto.',
+              'Apri il link del premio per completare il riscatto:\n\n$redirect',
               style: TextStyle(color: KyboColors.textSecondary(context)),
             ),
             actions: [
