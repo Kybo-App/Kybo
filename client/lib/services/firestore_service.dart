@@ -9,7 +9,11 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<void> saveCurrentDiet(
+  /// [FIX FS2] Ritorna true/false invece di ingoiare silenziosamente ogni
+  /// errore (prima solo un debugPrint): il chiamante (DietProvider) può
+  /// segnalare il fallimento tramite lo stesso banner "sync fallita" già
+  /// usato per syncFromFirebase (vedi fix D2).
+  Future<bool> saveCurrentDiet(
     Map<String, dynamic> plan,
     Map<String, dynamic> subs,
     Map<String, dynamic> swaps, {
@@ -18,7 +22,7 @@ class FirestoreService {
   }) async {
     try {
       final user = _auth.currentUser;
-      if (user == null) return;
+      if (user == null) return false;
 
       final encryptionService = EncryptionService();
 
@@ -71,8 +75,10 @@ class FirestoreService {
           .set(docData, SetOptions(merge: true));
 
       debugPrint("✅ Dieta 'current' aggiornata (encrypted, ${weeks?.length ?? 1} settimane, config=${config != null}).");
+      return true;
     } catch (e) {
       debugPrint("⚠️ Errore salvataggio current: $e");
+      return false;
     }
   }
 

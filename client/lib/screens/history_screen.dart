@@ -83,26 +83,38 @@ class _DietsHistoryList extends StatelessWidget {
             }
             final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(date);
 
+            // [FIX FS1] Un item con decryption_failed veniva mostrato come
+            // una dieta normale, e "Ripristina" passava dati privi di
+            // 'plan'/'substitutions' a DietPlan.fromJson, rompendo il
+            // ripristino. Mostralo come voce non ripristinabile ma comunque
+            // eliminabile.
+            final isCorrupted = diet['error'] == 'decryption_failed';
+
             return Card(
               elevation: 2,
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: KyboColors.surface(context),
               shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
               child: ListTile(
-                leading: Icon(Icons.cloud_done, color: KyboColors.primary),
+                leading: Icon(
+                  isCorrupted ? Icons.error_outline : Icons.cloud_done,
+                  color: isCorrupted ? KyboColors.error : KyboColors.primary,
+                ),
                 title: Text(
-                  "Dieta del $dateStr",
+                  isCorrupted ? "Dieta non leggibile" : "Dieta del $dateStr",
                   style: TextStyle(color: KyboColors.textPrimary(context), fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  "Tocca per ripristinare",
+                  isCorrupted
+                      ? "Impossibile decifrare questa voce. Puoi solo eliminarla."
+                      : "Tocca per ripristinare",
                   style: TextStyle(color: KyboColors.textSecondary(context)),
                 ),
                 trailing: IconButton(
                   icon: Icon(Icons.delete, color: KyboColors.error),
                   onPressed: () => _confirmDeleteDiet(context, firestore, diet, dateStr),
                 ),
-                onTap: () => _showRestoreDialog(context, diet, dateStr),
+                onTap: isCorrupted ? null : () => _showRestoreDialog(context, diet, dateStr),
               ),
             );
           },

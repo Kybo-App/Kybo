@@ -322,18 +322,22 @@ class ChatProvider extends ChangeNotifier {
         fileName: fileName,
       );
 
-      await _firestore
-          .collection('chats')
-          .doc(_currentChatId)
-          .collection('messages')
-          .add(message.toFirestore());
-
       String lastMessagePreview = text.trim();
       if (lastMessagePreview.isEmpty && attachmentType != null) {
         lastMessagePreview = attachmentType == 'pdf' ? '📄 Documento' : '📷 Immagine';
       }
 
-      await _firestore.collection('chats').doc(_currentChatId).set({
+      // [FIX CH4] Prima erano due scritture separate: se la seconda (update
+      // del doc chat) falliva dopo che la prima (messaggio) era riuscita, il
+      // messaggio esisteva ma anteprima/contatore non-letti del
+      // nutrizionista non si aggiornavano — un messaggio "silenzioso" per il
+      // destinatario. Un batch le rende atomiche (entrambe o nessuna).
+      final chatRef = _firestore.collection('chats').doc(_currentChatId);
+      final messageRef = chatRef.collection('messages').doc();
+      final batch = _firestore.batch();
+
+      batch.set(messageRef, message.toFirestore());
+      batch.set(chatRef, {
         'chatType': 'nutritionist-client',
         'participants': {
           'clientId': user.uid,
@@ -344,12 +348,16 @@ class ChatProvider extends ChangeNotifier {
         'lastMessage': lastMessagePreview,
         'lastMessageTime': Timestamp.now(),
         'lastMessageSender': 'client',
-        'unreadCount': {
-          'client': 0,
-          'nutritionist': FieldValue.increment(1),
-        },
+        // [FIX CH1] unreadCount.client non viene più azzerato qui: è
+        // ridondante (markAsRead lo fa già all'apertura della chat) e la
+        // scrittura come mappa annidata (non dotted-path) sovrascriveva
+        // interamente 'unreadCount' invece di aggiornare solo il campo
+        // interessato.
+        'unreadCount.nutritionist': FieldValue.increment(1),
         'messageCount': FieldValue.increment(1),
       }, SetOptions(merge: true));
+
+      await batch.commit();
     } catch (e) {
       debugPrint('Error sending message: $e');
       rethrow;

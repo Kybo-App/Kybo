@@ -92,12 +92,17 @@ class DietProvider extends ChangeNotifier {
     _needsNotificationPermissions = false;
   }
 
-  Future<String> runSmartSyncCheck({bool forceSync = false}) async {
+  /// [FIX D1] Restituiva stringhe di stato leggibili che l'unico chiamante
+  /// (_triggerSmartSyncCheck) scartava sempre — nessuna UI le mostrava mai.
+  /// Semplificato a `Future` senza valore; i fallimenti sono ora osservabili
+  /// tramite `syncFailed` (banner in HomeScreen, vedi fix D2/FS2) invece che tramite
+  /// un valore di ritorno mai consumato.
+  Future<void> runSmartSyncCheck({bool forceSync = false}) async {
     final user = _auth.currentUser;
-    if (user == null || _dietPlan == null) return "Errore: Dati mancanti.";
+    if (user == null || _dietPlan == null) return;
     if (_isViewingHistorical) {
       debugPrint("⏭️ Sync skip: stiamo visualizzando una dieta storica (view-only).");
-      return "ℹ️ Visualizzazione storica — nessuna sincronizzazione.";
+      return;
     }
 
     final currentDietJson = _dietPlan!.toJson();
@@ -110,7 +115,7 @@ class DietProvider extends ChangeNotifier {
         _hasStructuralChanges(currentPlanJson, _lastSyncedDiet) ||
             hasSwapsChanged;
 
-    if (!hasStructuralChanges && !forceSync) return "✅ Nessuna modifica.";
+    if (!hasStructuralChanges && !forceSync) return;
 
     final now = DateTime.now();
 
@@ -120,24 +125,34 @@ class DietProvider extends ChangeNotifier {
     final configJson = _dietPlan!.config?.toJson();
 
     if (!forceSync && now.difference(_lastCloudSave).inHours < 3) {
-      await _firestore.saveCurrentDiet(
+      // [FIX FS2] saveCurrentDiet ora ritorna un bool invece di ingoiare
+      // l'errore in silenzio: un fallimento aggiorna il banner "sync
+      // fallita" già usato per syncFromFirebase (D2).
+      final saved = await _firestore.saveCurrentDiet(
         _sanitize(currentPlanJson),
         _sanitize(currentSubsJson),
         swapsToSave,
         weeks: currentWeeksJson,
         config: configJson,
       );
-      return "☁️ Modifiche sincronizzate.";
+      _syncFailed = !saved;
+      notifyListeners();
+      return;
     }
 
     try {
-      await _firestore.saveCurrentDiet(
+      final saved = await _firestore.saveCurrentDiet(
         _sanitize(currentPlanJson),
         _sanitize(currentSubsJson),
         swapsToSave,
         weeks: currentWeeksJson,
         config: configJson,
       );
+      if (!saved) {
+        _syncFailed = true;
+        notifyListeners();
+        return;
+      }
 
       if (_currentFirestoreId == null) {
         String newId = await _firestore.saveDietToHistory(
@@ -161,9 +176,12 @@ class DietProvider extends ChangeNotifier {
 
       _lastCloudSave = now;
       _lastSyncedDiet = _deepCopy(currentPlanJson);
-      return "✅ Backup Storico e Sync completati.";
+      _syncFailed = false;
+      notifyListeners();
     } catch (e) {
-      return "❌ Errore Sync: $e";
+      debugPrint("❌ Errore Sync: $e");
+      _syncFailed = true;
+      notifyListeners();
     }
   }
 
@@ -516,13 +534,18 @@ class DietProvider extends ChangeNotifier {
           final jsonMap = _dietPlan!.toJson();
           final swapsMap = <String, dynamic>{};
           _activeSwaps.forEach((k, v) => swapsMap[k] = v.toMap());
-          await _firestore.saveCurrentDiet(
+          final saved = await _firestore.saveCurrentDiet(
             _sanitize(jsonMap['plan'] as Map<String, dynamic>),
             _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
             swapsMap,
             weeks: jsonMap['weeks'] as List<dynamic>?,
             config: jsonMap['config'] as Map<String, dynamic>?,
           );
+          if (!saved) {
+            _syncFailed = true;
+            notifyListeners();
+            return;
+          }
           _lastSyncedDiet = _deepCopy(jsonMap['plan'] as Map<String, dynamic>);
           _lastSyncedSubstitutions =
               _deepCopy(jsonMap['substitutions'] as Map<String, dynamic>);
@@ -664,15 +687,20 @@ class DietProvider extends ChangeNotifier {
       try {
         final swapsMap = <String, dynamic>{};
         _activeSwaps.forEach((k, v) => swapsMap[k] = v.toMap());
-        await _firestore.saveCurrentDiet(
+        final saved = await _firestore.saveCurrentDiet(
           _sanitize(jsonMap['plan'] as Map<String, dynamic>),
           _sanitize(jsonMap['substitutions'] as Map<String, dynamic>),
           swapsMap,
           weeks: jsonMap['weeks'] as List<dynamic>?,
           config: jsonMap['config'] as Map<String, dynamic>?,
         );
-        _lastCloudSave = DateTime.now();
-        debugPrint("☁️ Storica pushata in diets/current.");
+        if (!saved) {
+          _syncFailed = true;
+          notifyListeners();
+        } else {
+          _lastCloudSave = DateTime.now();
+          debugPrint("☁️ Storica pushata in diets/current.");
+        }
       } catch (e) {
         debugPrint("⚠️ Push storica → current fallito: $e (local è comunque corretto, sync futuro recupera)");
       }
@@ -888,6 +916,13 @@ class DietProvider extends ChangeNotifier {
 
     await _recalcAvailability();
     await _updateDailyStats();
+
+    // [FIX D3] _recalcAvailability ha un early-return senza notify se un
+    // altro calcolo è già in corso (lock): in quel caso il pasto risultava
+    // consumato nei dati ma la spunta non si aggiornava in UI finché non
+    // arrivava un altro rebuild. notifyListeners() esplicito qui non dipende
+    // dall'esito del lock.
+    notifyListeners();
   }
 
 
@@ -1190,7 +1225,7 @@ class DietProvider extends ChangeNotifier {
     await _storage.saveDiet(_dietPlan!.toJson());
 
     final dietJson = _dietPlan!.toJson();
-    await _firestore.saveCurrentDiet(
+    final saved = await _firestore.saveCurrentDiet(
       _sanitize(dietJson['plan'] as Map<String, dynamic>),
       _sanitize(dietJson['substitutions'] as Map<String, dynamic>),
       {},
@@ -1198,8 +1233,11 @@ class DietProvider extends ChangeNotifier {
       config: dietJson['config'] as Map<String, dynamic>?,
     );
 
-    _lastSyncedDiet = _deepCopy(dietJson['plan'] as Map<String, dynamic>);
-    _lastCloudSave = DateTime.now();
+    _syncFailed = !saved;
+    if (saved) {
+      _lastSyncedDiet = _deepCopy(dietJson['plan'] as Map<String, dynamic>);
+      _lastCloudSave = DateTime.now();
+    }
     notifyListeners();
   }
 
