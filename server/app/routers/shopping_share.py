@@ -14,9 +14,10 @@ import re
 from datetime import datetime, timezone, timedelta
 from app.core.config import settings
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from firebase_admin import firestore
+from app.core.dependencies import verify_token
 from app.core.limiter import limiter
 from app.core.logging import logger
 
@@ -34,8 +35,20 @@ class ShareListRequest(BaseModel):
 
 @router.post("/share")
 @limiter.limit("10/hour")
-async def create_share(request: Request, req: ShareListRequest):
-    """Crea uno snapshot condiviso della lista della spesa."""
+async def create_share(
+    request: Request,
+    req: ShareListRequest,
+    token: dict = Depends(verify_token),
+):
+    """Crea uno snapshot condiviso della lista della spesa.
+
+    [FIX SRV-SH1] Prima non richiedeva autenticazione: chiunque, anche non
+    loggato, poteva scrivere su Firestore e ottenere un URL pubblico su
+    kybo.it/list (abuso come storage effimero, rischio reputazione/phishing
+    ospitato sul dominio). Il client la usa già solo da utenti loggati
+    (ApiClient allega sempre il token se presente), quindi non è una
+    regressione funzionale. La GET resta pubblica by-design.
+    """
     if not req.items:
         raise HTTPException(status_code=422, detail="La lista è vuota.")
 

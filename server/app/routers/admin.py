@@ -305,9 +305,10 @@ async def get_user_details_secure(request: Request, target_uid: str, requester: 
             if ud.get('parent_id') != requester_id and ud.get('created_by') != requester_id and ud.get('nutritionist_id') != requester_id and ud.get('pt_id') != requester_id:
                 raise HTTPException(status_code=403, detail="Access denied")
 
-        asyncio.create_task(
-            run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_PROFILE', 'Detail View', target_uid)
-        )
+        # [FIX SRV-ADM1] Prima era fire-and-forget (asyncio.create_task): sotto
+        # carico o in caso di errore l'audit log di un accesso PII poteva non
+        # essere scritto. Per integrità forense l'attesa è garantita.
+        await run_in_threadpool(_log_access_bg, requester_id, 'READ_USER_PROFILE', 'Detail View', target_uid)
 
         doc = db.collection('users').document(target_uid).get()
         if not doc.exists:

@@ -15,7 +15,7 @@ import time
 from app.core.dependencies import verify_token, get_current_uid
 from app.core.limiter import limiter
 from app.core.config import settings
-from app.core.logging import logger
+from app.core.logging import logger, sanitize_error_message
 from app.core.cache import redis_cache
 from app.services.diet_crypto import load_diet_plan
 from app.core.metrics import (
@@ -27,6 +27,11 @@ from app.core.metrics import (
 )
 
 router = APIRouter(tags=["suggestions"])
+
+# Valori canonici (vedi core/config.py MEAL_MAPPING) — whitelist per SRV-SUG2.
+_VALID_MEAL_TYPES = {
+    "Colazione", "Seconda Colazione", "Pranzo", "Merenda", "Cena", "Spuntino Serale",
+}
 
 
 class SuggestedDish(BaseModel):
@@ -97,6 +102,13 @@ async def get_meal_suggestions(
     if not settings.GOOGLE_API_KEY:
         raise HTTPException(503, "Servizio AI non disponibile")
 
+    # [FIX SRV-SUG2] meal_type veniva interpolato grezzo nel prompt Gemini
+    # senza alcuna validazione (prompt injection, per quanto self-scoped e
+    # coerciato nello schema di risposta). Limitalo ai valori canonici già
+    # usati altrove (vedi core/config.py MEAL_MAPPING).
+    if meal_type is not None and meal_type not in _VALID_MEAL_TYPES:
+        raise HTTPException(400, "Tipo pasto non valido.")
+
     # Carica dati utente da Firestore
     from firebase_admin import firestore as fb_firestore
     db = fb_firestore.client()
@@ -148,9 +160,11 @@ async def get_meal_suggestions(
             )
     except Exception as e:
         suggestions_gemini_errors_total.inc()
-        logger.error(f"Errore generazione suggerimenti: {e}", uid=uid, meal_type=meal_type, count=count)
-        error_detail = str(e)[:200] if str(e) else "Errore sconosciuto"
-        raise HTTPException(500, f"Errore nella generazione dei suggerimenti: {error_detail}")
+        # [FIX SRV-SUG1] Prima ritornava str(e)[:200] al client, esponendo
+        # l'eccezione grezza (dettagli Gemini/interni) invece di un
+        # messaggio generico come il resto del server.
+        logger.error("suggestions_generation_error", error=sanitize_error_message(e), uid=uid, meal_type=meal_type, count=count)
+        raise HTTPException(500, "Errore nella generazione dei suggerimenti.")
 
     response_data = {
         "suggestions": result,

@@ -65,6 +65,23 @@ def _decrypt_secret(value: str) -> str:
 
 
 @gcloud_firestore.transactional
+def _consume_totp_counter_txn(transaction, user_ref, counter: int) -> bool:
+    """[SECURITY FIX SRV-2FA-B] Consuma atomicamente un time-step TOTP.
+    Senza questo, un codice valido è riutilizzabile per tutta la finestra
+    ±1 step (~90s) — chi lo intercetta (screen-share, shoulder-surfing,
+    log) può autenticarsi di nuovo con lo stesso codice. Rifiuta counter
+    già usati o precedenti all'ultimo accettato (il tempo va solo avanti)."""
+    snapshot = user_ref.get(transaction=transaction)
+    if not snapshot.exists:
+        return False
+    last_counter = snapshot.to_dict().get('two_factor_last_counter')
+    if last_counter is not None and counter <= last_counter:
+        return False
+    transaction.update(user_ref, {'two_factor_last_counter': counter})
+    return True
+
+
+@gcloud_firestore.transactional
 def _consume_backup_code_txn(transaction, user_ref, code_hash: str) -> bool:
     """
     Verifica e consuma atomicamente un backup code 2FA.
@@ -152,7 +169,7 @@ class TOTPService:
 
         return str(code).zfill(self.CODE_DIGITS)
 
-    def _verify_totp(self, secret: str, code: str, window: int = 1) -> bool:
+    def _verify_totp(self, secret: str, code: str, window: int = 1) -> Optional[int]:
         """
         Verifica un codice TOTP con finestra temporale.
 
@@ -162,10 +179,12 @@ class TOTPService:
             window: Number of time steps to check before/after (default: 1)
 
         Returns:
-            True if code is valid
+            Il counter (time-step) del match, o None se il codice non è
+            valido. verify_and_enable lo tratta come bool (`is not None`);
+            verify_code lo usa per la protezione replay (SRV-2FA-B).
         """
         if len(code) != self.CODE_DIGITS:
-            return False
+            return None
 
         current_time = int(time.time())
 
@@ -173,9 +192,9 @@ class TOTPService:
             timestamp = current_time + (offset * self.TIME_STEP)
             expected_code = self._get_totp_code(secret, timestamp)
             if hmac.compare_digest(code, expected_code):
-                return True
+                return timestamp // self.TIME_STEP
 
-        return False
+        return None
 
     def _generate_qr_uri(self, secret: str, email: str) -> str:
         """
@@ -195,10 +214,13 @@ class TOTPService:
         return f"otpauth://totp/{quote(label)}?{param_str}"
 
     def _generate_backup_codes(self) -> list[str]:
-        """Genera codici di backup per recovery."""
+        """Genera codici di backup per recovery.
+        [FIX SRV-2FA-C] token_hex(4) dava solo 32 bit di entropia, sotto lo
+        standard (40-80 bit) anche con rate limit a mitigare il brute-force.
+        token_hex(5) = 40 bit (10 caratteri hex), minimo dello standard."""
         codes = []
         for _ in range(self.BACKUP_CODES_COUNT):
-            code = secrets.token_hex(4).upper()
+            code = secrets.token_hex(5).upper()
             codes.append(code)
         return codes
 
@@ -248,7 +270,7 @@ class TOTPService:
             - backup_codes: Lista di codici di backup (solo se success=True)
         """
         try:
-            if not self._verify_totp(secret, code):
+            if self._verify_totp(secret, code) is None:
                 logger.warning("2fa_verify_failed", user_id=user_id)
                 return False, None
 
@@ -305,8 +327,17 @@ class TOTPService:
                 logger.error("2fa_secret_decrypt_error", user_id=user_id, error=sanitize_error_message(e))
                 return False
 
-            if self._verify_totp(secret, code):
-                return True
+            counter = self._verify_totp(secret, code)
+            if counter is not None:
+                # [FIX SRV-2FA-B] Senza consumo atomico del counter, questo
+                # stesso codice resterebbe valido per l'intera finestra ±1
+                # step (~90s) e sarebbe riutilizzabile da chi lo intercetta.
+                user_ref = self.db.collection('users').document(user_id)
+                transaction = self.db.transaction()
+                if _consume_totp_counter_txn(transaction, user_ref, counter):
+                    return True
+                logger.warning("2fa_totp_replay_blocked", user_id=user_id)
+                return False
 
             code_hash = hashlib.sha256(code.upper().encode()).hexdigest()
             user_ref = self.db.collection('users').document(user_id)

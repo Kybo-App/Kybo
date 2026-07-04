@@ -263,19 +263,28 @@ async def admin_assign_user(
     try:
         db = firebase_admin.firestore.client()
 
+        # [FIX SRV-U2] Prima, se nutritionist_id non esisteva il check
+        # max_clients veniva saltato del tutto e l'assegnazione procedeva
+        # comunque — un typo dell'admin assegnava il cliente a un UID
+        # inesistente o non-nutrizionista senza alcun errore.
         nut_doc = db.collection('users').document(body.nutritionist_id).get()
-        if nut_doc.exists:
-            nut_data = nut_doc.to_dict()
-            max_clients = nut_data.get('max_clients', settings.DEFAULT_MAX_CLIENTS)
-            
-            clients_query = db.collection('users').where('parent_id', '==', body.nutritionist_id).count()
-            current_clients = clients_query.get()[0][0].value
-            
-            if current_clients >= max_clients:
-               raise HTTPException(
-                   status_code=400, 
-                   detail=f"Nutrizionista pieno! ({current_clients}/{max_clients} clienti)"
-               )
+        if not nut_doc.exists:
+            raise HTTPException(status_code=404, detail="Nutrizionista non trovato.")
+
+        nut_data = nut_doc.to_dict()
+        if nut_data.get('role') not in ('nutritionist', 'coach'):
+            raise HTTPException(status_code=400, detail="L'UID indicato non è un nutrizionista.")
+
+        max_clients = nut_data.get('max_clients', settings.DEFAULT_MAX_CLIENTS)
+
+        clients_query = db.collection('users').where('parent_id', '==', body.nutritionist_id).count()
+        current_clients = clients_query.get()[0][0].value
+
+        if current_clients >= max_clients:
+           raise HTTPException(
+               status_code=400,
+               detail=f"Nutrizionista pieno! ({current_clients}/{max_clients} clienti)"
+           )
 
         db.collection('users').document(body.target_uid).update({
             'role': 'user',
