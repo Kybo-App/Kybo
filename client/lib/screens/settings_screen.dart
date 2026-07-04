@@ -1,14 +1,21 @@
 // Schermata impostazioni: password, allarmi pasti, budget spesa, dark mode, privacy, tutorial,
 // preferenze supermercato, timer cottura.
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
+import '../core/error_handler.dart';
 import '../providers/diet_provider.dart';
+import '../providers/chat_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/api_client.dart';
+import '../services/auth_service.dart';
 import '../widgets/design_system.dart';
 import 'change_password_screen.dart';
 import 'cooking_timer_screen.dart';
+import 'login_screen.dart';
 import '../widgets/meal_reminder_dialog.dart';
 
 // Legacy (single value) — letto solo per la migrazione one-shot.
@@ -339,6 +346,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 24),
 
+          // [FIX SRV-GDPR1/ST1] Diritti GDPR self-service (portabilità Art.20
+          // + cancellazione Art.17): prima esistevano solo lato server/admin,
+          // l'utente finale non poteva esercitarli da solo.
+          PillCard(
+            child: PillListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: KyboColors.accent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.download_rounded, color: KyboColors.accent, size: 20),
+              ),
+              title: "Scarica i miei dati",
+              subtitle: "Esporta una copia dei tuoi dati (GDPR)",
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _exportMyData(context),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          PillCard(
+            child: PillListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: KyboColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delete_forever_rounded, color: KyboColors.error, size: 20),
+              ),
+              title: "Elimina account",
+              subtitle: "Cancella definitivamente account e dati",
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _confirmDeleteAccount(context),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           Center(
             child: Text(
               'Kybo v1.0.0',
@@ -593,9 +641,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         content: SingleChildScrollView(
           child: Text(
-            "Kybo rispetta la tua privacy e protegge i tuoi dati personali.\n\n"
-            "I tuoi dati sono crittografati end-to-end e vengono utilizzati esclusivamente per fornire i servizi dell'app.\n\n"
-            "Per maggiori informazioni, visita il nostro sito web.",
+            // [SECURITY FIX ST2] Rimossa la dichiarazione "end-to-end" (falsa:
+            // il piano alimentare è offuscato con chiave derivata dal tuo UID,
+            // non cifrato E2E, e la chat non è cifrata). Testo allineato alla
+            // protezione reale.
+            "Kybo rispetta la tua privacy e protegge i tuoi dati personali secondo il GDPR.\n\n"
+            "I tuoi dati sono protetti dalle regole di accesso di Firestore e dalla cifratura a riposo di Google Cloud. Solo tu, il professionista che ti segue e gli amministratori autorizzati possono accedervi.\n\n"
+            "Puoi richiedere l'esportazione o la cancellazione dei tuoi dati in qualsiasi momento da questa schermata.",
             style: TextStyle(color: KyboColors.textSecondary(context)),
           ),
         ),
@@ -614,10 +666,132 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _resetTutorial(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('seen_tutorial_v11', false);
+    // [FIX ST3] La chiave letta da home_screen.dart è 'seen_tutorial_v13';
+    // scriverne una diversa ('v11', obsoleta) non riavviava mai il tutorial.
+    await prefs.setBool('seen_tutorial_v13', false);
 
     if (context.mounted) {
       Navigator.of(context).pop();
+    }
+  }
+
+  /// [FIX SRV-GDPR1/ST1] Esporta i dati utente (GDPR Art. 20) e li condivide
+  /// come file JSON, così l'utente può scaricarli senza passare da admin.
+  Future<void> _exportMyData(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(content: Text('Preparazione esportazione...')));
+
+    try {
+      final data = await ApiClient().get('/gdpr/export');
+      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
+
+      messenger.hideCurrentSnackBar();
+      await Share.shareXFiles(
+        [XFile.fromData(
+          Uint8List.fromList(utf8.encode(jsonStr)),
+          name: 'kybo-dati-export.json',
+          mimeType: 'application/json',
+        )],
+        subject: 'Esportazione dati Kybo',
+      );
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
+      );
+    }
+  }
+
+  /// [FIX SRV-GDPR1/ST1] Cancellazione account self-service (GDPR Art. 17).
+  /// Doppia conferma perché l'azione è distruttiva e irreversibile.
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final firstConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text("Elimina account", style: TextStyle(color: KyboColors.error, fontWeight: FontWeight.bold)),
+        content: Text(
+          "Questa azione è IRREVERSIBILE: verranno eliminati per sempre il tuo account e tutti i tuoi dati (dieta, storico, dispensa, XP, badge). Non potrai recuperarli.\n\nVuoi procedere?",
+          style: TextStyle(color: KyboColors.textSecondary(context)),
+        ),
+        actions: [
+          PillButton(
+            label: "Annulla",
+            onPressed: () => Navigator.pop(ctx, false),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 44,
+          ),
+          PillButton(
+            label: "Continua",
+            onPressed: () => Navigator.pop(ctx, true),
+            backgroundColor: KyboColors.error,
+            textColor: Colors.white,
+            height: 44,
+          ),
+        ],
+      ),
+    );
+    if (firstConfirm != true || !context.mounted) return;
+
+    final secondConfirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text("Confermi definitivamente?", style: TextStyle(color: KyboColors.textPrimary(context))),
+        content: Text(
+          "Ultima conferma: account e dati verranno cancellati adesso, per sempre.",
+          style: TextStyle(color: KyboColors.textSecondary(context)),
+        ),
+        actions: [
+          PillButton(
+            label: "No, annulla",
+            onPressed: () => Navigator.pop(ctx, false),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 44,
+          ),
+          PillButton(
+            label: "Sì, elimina",
+            onPressed: () => Navigator.pop(ctx, true),
+            backgroundColor: KyboColors.error,
+            textColor: Colors.white,
+            height: 44,
+          ),
+        ],
+      ),
+    );
+    if (secondConfirm != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ApiClient().post('/gdpr/delete-me');
+
+      if (!context.mounted) return;
+      await context.read<DietProvider>().clearData();
+
+      if (!context.mounted) return;
+      context.read<ChatProvider>().clearChat();
+      await AuthService().signOut();
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
+      );
     }
   }
 }

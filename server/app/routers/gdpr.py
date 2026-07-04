@@ -179,6 +179,58 @@ async def export_user_data(request: Request, user_data: dict = Depends(verify_to
         raise HTTPException(status_code=500, detail="Errore durante l'export dei dati")
 
 
+@router.post("/delete-me")
+@limiter.limit("3/hour")
+async def delete_own_account(request: Request, user_data: dict = Depends(verify_token)):
+    """
+    [FIX SRV-GDPR1] Cancellazione account self-service (GDPR Art. 17).
+    Prima di questa fix solo admin/professional potevano cancellare un
+    account (delete-user in users.py, verify_professional) — un utente
+    finale non poteva esercitare il diritto all'oblio da solo.
+
+    Limitata ai ruoli client-facing: un professionista/admin ha clienti
+    assegnati che dipendono dal suo account, quindi la sua cancellazione
+    resta un'azione amministrativa (delete-user) e non self-service.
+    Irreversibile: cancella account Auth + tutti i dati Firestore
+    (GDPRRetentionService.purge_user, stessa cascata completa usata dal
+    retention job, vedi fix SRV-RET1).
+    """
+    uid = user_data['uid']
+    role = user_data.get('role')
+
+    # [NOTE] Nega solo i ruoli professional/admin, non fare whitelist stretta
+    # su ['user','independent','client']: i custom claim di un self-signup
+    # (role scritto solo su Firestore) vengono sincronizzati su Firebase Auth
+    # da /admin/sync-users in modo asincrono, quindi `role` può essere None
+    # per un utente client appena registrato. I ruoli professional/admin,
+    # invece, ricevono sempre il claim in modo sincrono alla creazione
+    # (users.py:create-user) — negarli qui è affidabile.
+    if role in ('admin', 'nutritionist', 'personal_trainer', 'coach'):
+        raise HTTPException(
+            status_code=403,
+            detail="La cancellazione di un account professionista/admin richiede l'intervento di un amministratore."
+        )
+
+    try:
+        service = GDPRRetentionService()
+        result = await service.purge_user(
+            uid=uid,
+            reason="Self-service GDPR deletion (Art. 17)",
+            requester_id=uid,
+            dry_run=False,
+        )
+        if not result.success:
+            raise HTTPException(status_code=500, detail="Errore durante la cancellazione dell'account.")
+
+        logger.info("gdpr_self_delete_completed", uid=uid)
+        return {"message": "Account e dati eliminati definitivamente."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("gdpr_self_delete_error", uid=uid, error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante la cancellazione dell'account.")
+
+
 @router.get("/export/{target_uid}")
 @limiter.limit("30/minute")
 async def admin_export_user_data(
