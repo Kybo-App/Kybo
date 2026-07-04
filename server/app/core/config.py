@@ -14,6 +14,15 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
     STORAGE_BUCKET: str = os.getenv("STORAGE_BUCKET", "mydiet-6d55b.appspot.com")
 
+    # [SECURITY FIX SRV-2FA-A] Chiave server-side (env/KMS) per cifrare
+    # two_factor_secret a riposo — non co-locata col ciphertext su Firestore.
+    # Senza questa variabile, l'abilitazione di NUOVO 2FA viene rifiutata
+    # (fail-closed) invece di salvare il secret in chiaro; i secret già
+    # esistenti in chiaro restano leggibili per compatibilità (vedi
+    # totp_service.py::_decrypt_secret). Generane una con
+    # `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+    TOTP_ENCRYPTION_KEY: str = os.getenv("TOTP_ENCRYPTION_KEY", "")
+
     _dev_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:8080",

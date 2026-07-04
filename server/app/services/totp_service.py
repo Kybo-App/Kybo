@@ -16,8 +16,52 @@ from urllib.parse import quote
 
 from firebase_admin import firestore
 from google.cloud import firestore as gcloud_firestore
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from app.core.config import settings
 from app.core.logging import logger, sanitize_error_message
+
+_SECRET_ENC_PREFIX = "enc:v1:"
+
+
+def _get_secret_encryption_key() -> Optional[bytes]:
+    """Deriva una chiave AES-256 da TOTP_ENCRYPTION_KEY (env/KMS). None se
+    non configurata."""
+    raw = settings.TOTP_ENCRYPTION_KEY
+    if not raw:
+        return None
+    return hashlib.sha256(raw.encode('utf-8')).digest()
+
+
+def _encrypt_secret(secret: str) -> str:
+    """[SECURITY FIX SRV-2FA-A] Cifra il secret TOTP con AES-256-GCM usando
+    una chiave server-side (mai co-locata col ciphertext su Firestore, a
+    differenza della cifratura offuscata delle diete che deriva la chiave
+    dall'UID). Fail-closed: senza chiave configurata, l'abilitazione di un
+    NUOVO 2FA viene rifiutata invece di salvare il secret in chiaro."""
+    key = _get_secret_encryption_key()
+    if key is None:
+        raise RuntimeError("TOTP_ENCRYPTION_KEY non configurata sul server.")
+    nonce = secrets.token_bytes(12)
+    ciphertext = AESGCM(key).encrypt(nonce, secret.encode('utf-8'), None)
+    return _SECRET_ENC_PREFIX + base64.b64encode(nonce + ciphertext).decode('ascii')
+
+
+def _decrypt_secret(value: str) -> str:
+    """Decifra un secret TOTP. Se il valore non ha il prefisso enc:v1: è un
+    secret legacy salvato in chiaro prima di questa fix — viene restituito
+    così com'è per non disabilitare il 2FA di chi l'aveva già configurato
+    (grandfathering); l'utente può rigenerarlo per passare al formato
+    cifrato disabilitando e riabilitando 2FA."""
+    if not value.startswith(_SECRET_ENC_PREFIX):
+        return value
+    key = _get_secret_encryption_key()
+    if key is None:
+        raise RuntimeError("TOTP_ENCRYPTION_KEY non configurata sul server.")
+    raw = base64.b64decode(value[len(_SECRET_ENC_PREFIX):])
+    nonce, ciphertext = raw[:12], raw[12:]
+    plaintext = AESGCM(key).decrypt(nonce, ciphertext, None)
+    return plaintext.decode('utf-8')
 
 
 @gcloud_firestore.transactional
@@ -217,7 +261,7 @@ class TOTPService:
             user_ref = self.db.collection('users').document(user_id)
             user_ref.update({
                 'two_factor_enabled': True,
-                'two_factor_secret': secret,
+                'two_factor_secret': _encrypt_secret(secret),
                 'two_factor_backup_codes': hashed_backups,
                 'two_factor_enabled_at': firestore.SERVER_TIMESTAMP,
             })
@@ -253,6 +297,12 @@ class TOTPService:
             secret = user_data.get('two_factor_secret')
             if not secret:
                 logger.warning("2fa_no_secret", user_id=user_id)
+                return False
+
+            try:
+                secret = _decrypt_secret(secret)
+            except Exception as e:
+                logger.error("2fa_secret_decrypt_error", user_id=user_id, error=sanitize_error_message(e))
                 return False
 
             if self._verify_totp(secret, code):
