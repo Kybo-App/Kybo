@@ -118,6 +118,13 @@ class AuthService {
     }
   }
 
+  /// [FIX F3] Nessun flusso di recupero password esisteva in tutta l'app
+  /// (grep sendPasswordResetEmail → 0): un utente email/password che
+  /// dimenticava la password restava bloccato fuori senza recupero in-app.
+  Future<void> sendPasswordReset(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();

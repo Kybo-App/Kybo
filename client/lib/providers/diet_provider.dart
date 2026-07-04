@@ -62,6 +62,13 @@ class DietProvider extends ChangeNotifier {
   Map<String, dynamic>? _lastSyncedDiet;
   Map<String, dynamic>? _lastSyncedSubstitutions;
 
+  /// [FIX D2] syncFromFirebase era muto su ogni fallimento (decifratura,
+  /// rete, permessi): l'utente restava con la cache locale potenzialmente
+  /// stale credendo di essere sincronizzato. Espone lo stato osservabile
+  /// dalla UI (banner) invece di solo un debugPrint.
+  bool _syncFailed = false;
+  bool get syncFailed => _syncFailed;
+
 
   static const Duration _cloudSaveInterval = Duration(hours: 3);
 
@@ -482,6 +489,8 @@ class DietProvider extends ChangeNotifier {
                 "config=${data['config'] != null})");
           } catch (e) {
             debugPrint("❌ Sync cloud: errore decifratura: $e");
+            _syncFailed = true;
+            notifyListeners();
             return;
           }
         } else {
@@ -518,6 +527,8 @@ class DietProvider extends ChangeNotifier {
           _lastSyncedSubstitutions =
               _deepCopy(jsonMap['substitutions'] as Map<String, dynamic>);
           _lastCloudSave = DateTime.now();
+          _syncFailed = false;
+          notifyListeners();
           return;
         }
       }
@@ -579,12 +590,15 @@ class DietProvider extends ChangeNotifier {
           _recalcAvailability();
           await scheduleMealNotifications();
           await _updateDailyStats();
+          _syncFailed = false;
           notifyListeners();
           debugPrint("☁️ Sync Cloud completato (da 'current')");
         }
       }
     } catch (e) {
       debugPrint("⚠️ Sync Cloud fallito: $e");
+      _syncFailed = true;
+      notifyListeners();
     }
   }
 

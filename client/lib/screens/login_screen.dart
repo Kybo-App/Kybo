@@ -141,9 +141,15 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         content: SingleChildScrollView(
           child: Text(
-            "Informativa sulla Privacy\n\n"
-            "I tuoi dati vengono utilizzati per fornire il servizio. "
-            "Continuando accetti il trattamento dei dati personali secondo le normative vigenti.",
+            // [FIX F4] Testo segnaposto ("secondo le normative vigenti") senza
+            // policy reale né link ai documenti — rischio legale per un'app di
+            // salute in UE. Allineato al testo corretto usato in
+            // settings_screen.dart (stessa correzione ST2: niente più
+            // dichiarazioni di cifratura E2E inesistente).
+            "Kybo rispetta la tua privacy e protegge i tuoi dati personali secondo il GDPR.\n\n"
+            "Raccogliamo email, dati del profilo e, se li inserisci, dati su dieta/peso/obiettivi, per fornirti il servizio e permettere al tuo nutrizionista/personal trainer di seguirti.\n\n"
+            "I tuoi dati sono protetti dalle regole di accesso di Firestore e dalla cifratura a riposo di Google Cloud. Solo tu, il professionista che ti segue e gli amministratori autorizzati possono accedervi.\n\n"
+            "Puoi richiedere l'esportazione o la cancellazione dei tuoi dati in qualsiasi momento dalle Impostazioni dell'app, dopo l'accesso.",
             style: TextStyle(
               fontSize: 14,
               color: KyboColors.textSecondary(context),
@@ -161,6 +167,83 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+  }
+
+  /// [FIX F3] Nessun flusso di recupero password esisteva nell'app.
+  void _showForgotPasswordDialog(BuildContext context) {
+    final resetEmailCtrl = TextEditingController(text: _emailCtrl.text.trim());
+    bool isSending = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final canSend = _isValidEmail(resetEmailCtrl.text.trim()) && !isSending;
+          return AlertDialog(
+            backgroundColor: KyboColors.surface(context),
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: Text(
+              "Recupera Password",
+              style: TextStyle(color: KyboColors.textPrimary(context)),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Inserisci la tua email: ti invieremo un link per reimpostare la password.",
+                  style: TextStyle(color: KyboColors.textSecondary(context), fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                PillTextField(
+                  controller: resetEmailCtrl,
+                  labelText: "Email",
+                  hintText: "nome@esempio.com",
+                  prefixIcon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+              ],
+            ),
+            actions: [
+              PillButton(
+                label: "Annulla",
+                onPressed: isSending ? null : () => Navigator.pop(ctx),
+                backgroundColor: KyboColors.surface(context),
+                textColor: KyboColors.textPrimary(context),
+                height: 44,
+              ),
+              PillButton(
+                label: "Invia",
+                isLoading: isSending,
+                onPressed: !canSend
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        setDialogState(() => isSending = true);
+                        try {
+                          await _auth.sendPasswordReset(resetEmailCtrl.text.trim());
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text("Email inviata! Controlla la tua casella di posta.")),
+                          );
+                        } catch (e) {
+                          setDialogState(() => isSending = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
+                            );
+                          }
+                        }
+                      },
+                backgroundColor: KyboColors.primary,
+                textColor: Colors.white,
+                height: 44,
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((_) => resetEmailCtrl.dispose());
   }
 
   @override
@@ -266,7 +349,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: KyboPasswordChecklist(password: _passCtrl.text),
                     ),
                   ],
-                  const SizedBox(height: 32),
+                  // [FIX F3] "Password dimenticata?" mancava del tutto.
+                  if (_isLogin) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading ? null : () => _showForgotPasswordDialog(context),
+                        child: Text(
+                          "Password dimenticata?",
+                          style: TextStyle(color: KyboColors.primary, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
 
                   PillButton(
                     label: _isLogin ? "ACCEDI" : "REGISTRATI",

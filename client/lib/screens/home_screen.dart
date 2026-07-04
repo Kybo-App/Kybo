@@ -844,7 +844,12 @@ class _MainScreenContentState extends State<MainScreenContent>
             )
           : null,
       drawer: _buildDrawer(context, user),
-      body: _buildBody(provider),
+      body: Column(
+        children: [
+          if (provider.syncFailed) _buildSyncFailedBanner(context),
+          Expanded(child: _buildBody(provider)),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: KyboColors.surface(context),
@@ -907,6 +912,7 @@ class _MainScreenContentState extends State<MainScreenContent>
               children: [
                 if (_currentIndex == 1 && _tabController != null)
                   _buildTabletAppBar(context, provider),
+                if (provider.syncFailed) _buildSyncFailedBanner(context),
                 Expanded(child: _buildBody(provider)),
               ],
             ),
@@ -1537,6 +1543,29 @@ class _MainScreenContentState extends State<MainScreenContent>
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  /// [FIX D2] syncFromFirebase prima era muto su ogni fallimento (decifratura,
+  /// rete, permessi): l'utente restava con la cache locale stale credendo di
+  /// essere sincronizzato. Banner minimale, non bloccante.
+  Widget _buildSyncFailedBanner(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: KyboColors.warning.withValues(alpha: 0.15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: KyboColors.warning, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Sincronizzazione cloud fallita: alcuni dati potrebbero non essere aggiornati.",
+              style: TextStyle(color: KyboColors.textPrimary(context), fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
