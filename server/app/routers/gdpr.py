@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from app.core.dependencies import verify_token, verify_professional, verify_admin
 from app.core.logging import logger, sanitize_error_message
-from app.core.limiter import limiter
+from app.core.limiter import limiter, get_rate_limit_key
 from app.services.gdpr_retention_service import GDPRRetentionService
 
 router = APIRouter(prefix="/gdpr", tags=["gdpr"])
@@ -48,12 +48,17 @@ async def record_consent(
         db = firebase_admin.firestore.client()
         user_id = user_data['uid']
         timestamp = datetime.now(timezone.utc).isoformat()
-        
+
+        # [FIX SRV-GDPR2] Il docstring dichiarava "tracciata... con IP per
+        # compliance" ma l'IP non veniva mai catturato. Riusa la stessa
+        # risoluzione IP del rate limiter (gestisce X-Forwarded-For dietro
+        # proxy/hosting).
         consent_record = {
             "consent_type": body.consent_type,
             "granted": body.granted,
             "version": body.version,
             "timestamp": timestamp,
+            "ip_address": get_rate_limit_key(request),
             "recorded_at": firebase_admin.firestore.SERVER_TIMESTAMP,
         }
         

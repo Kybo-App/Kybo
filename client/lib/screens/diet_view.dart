@@ -292,9 +292,28 @@ class _DietViewState extends State<DietView> {
               ),
               PillButton(
                 label: "Sì, consuma",
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(ctx);
-                  provider.consumeMeal(day, mealType, index, force: true);
+                  // [FIX DV4] Prima non veniva né atteso né gestito: un
+                  // errore nel force-consume spariva in silenzio e non
+                  // mostrava mai lo snackbar "Pasto consumato".
+                  try {
+                    await provider.consumeMeal(day, mealType, index, force: true);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Pasto consumato!"),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
+                      );
+                    }
+                  }
                 },
                 backgroundColor: KyboColors.primary,
                 textColor: Colors.white,

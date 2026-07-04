@@ -1745,12 +1745,6 @@ class _MainScreenContentState extends State<MainScreenContent>
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              image: (photoUrl != null && photoUrl.isNotEmpty)
-                                  ? DecorationImage(
-                                      image: NetworkImage(photoUrl),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.2),
@@ -1759,18 +1753,41 @@ class _MainScreenContentState extends State<MainScreenContent>
                                 ),
                               ],
                             ),
-                            child: (photoUrl == null || photoUrl.isEmpty)
-                                ? Center(
-                                    child: Text(
-                                      initial,
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: KyboColors.primary,
+                            // [FIX H5] DecorationImage non ha un modo pulito di
+                            // mostrare un fallback sull'errore di caricamento
+                            // (es. signed URL scaduto dopo 7gg): a differenza
+                            // degli allegati chat (Image.network+errorBuilder),
+                            // l'avatar restava un cerchio vuoto. ClipOval +
+                            // Image.network con errorBuilder torna all'iniziale.
+                            child: ClipOval(
+                              child: (photoUrl != null && photoUrl.isNotEmpty)
+                                  ? Image.network(
+                                      photoUrl,
+                                      width: 70,
+                                      height: 70,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(
+                                          initial,
+                                          style: const TextStyle(
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                            color: KyboColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        initial,
+                                        style: const TextStyle(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: KyboColors.primary,
+                                        ),
                                       ),
                                     ),
-                                  )
-                                : null,
+                            ),
                           ),
                           Positioned(
                             bottom: 0,

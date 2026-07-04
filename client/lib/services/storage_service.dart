@@ -104,24 +104,35 @@ class StorageService {
 
   /// Promemoria pasti: mappa `{nomePasto: "HH:mm"}`.
   ///
-  /// [TODO security] Attualmente persistiti su SharedPreferences per non
-  /// rompere i dati esistenti. Andrebbero migrati su FlutterSecureStorage
-  /// come gli altri dati comportamentali (vedi loadAlarms sopra).
+  /// [FIX SV4] Migrati su FlutterSecureStorage come gli altri dati
+  /// comportamentali (erano l'unico rimasto su SharedPreferences in
+  /// chiaro, leggibile su device rooted). Migrazione one-shot dal vecchio
+  /// valore in chiaro per non perdere gli allarmi già impostati.
   Future<Map<String, String>> loadMealAlarms() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('meal_alarms');
-    if (raw == null) return {};
     try {
-      final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded.map((k, v) => MapEntry(k, v.toString()));
+      final raw = await _storage.read(key: 'meal_alarms');
+      if (raw != null) {
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        return decoded.map((k, v) => MapEntry(k, v.toString()));
+      }
+    } catch (_) {}
+
+    final prefs = await SharedPreferences.getInstance();
+    final legacyRaw = prefs.getString('meal_alarms');
+    if (legacyRaw == null) return {};
+    try {
+      final decoded = jsonDecode(legacyRaw) as Map<String, dynamic>;
+      final alarms = decoded.map((k, v) => MapEntry(k, v.toString()));
+      await saveMealAlarms(alarms);
+      await prefs.remove('meal_alarms');
+      return alarms;
     } catch (_) {
       return {};
     }
   }
 
   Future<void> saveMealAlarms(Map<String, String> alarms) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('meal_alarms', jsonEncode(alarms));
+    await _storage.write(key: 'meal_alarms', value: jsonEncode(alarms));
   }
 
   Future<void> clearAll() async {

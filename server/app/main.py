@@ -333,11 +333,12 @@ async def health_check_detailed(_admin: dict = Depends(verify_admin)):
         "sentry": {"status": "unknown", "message": ""},
     }
 
-    # [SECURITY] L'endpoint è pubblico (no auth): NON esporre il testo grezzo
-    # delle eccezioni (str(e)) né stringhe di versione precise. Un attaccante
-    # potrebbe usarle per fingerprinting (versioni librerie → CVE note) o per
-    # leakare percorsi/frammenti di connection string. Restituiamo solo
-    # status + messaggio generico. I dettagli completi restano nei log/Sentry.
+    # [FIX SRV-MAIN1] Commento corretto: l'endpoint richiede verify_admin
+    # (riga 308), non è pubblico. Il codice resta comunque prudente in
+    # difesa in profondità — non esporre il testo grezzo delle eccezioni
+    # (str(e)) né stringhe di versione precise nemmeno ad admin autenticati,
+    # nel caso un token admin venga compromesso. Restituiamo solo status +
+    # messaggio generico; i dettagli completi restano nei log/Sentry.
     try:
         db = firebase_admin.firestore.client()
         db.collection("config").document("global").get()

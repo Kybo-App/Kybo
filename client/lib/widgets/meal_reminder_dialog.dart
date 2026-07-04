@@ -61,27 +61,28 @@ class _MealReminderDialogState extends State<MealReminderDialog> {
       return const TimeOfDay(hour: 12, minute: 0);
     }
 
+    // [FIX MR1] int.parse su un orario "HH:mm" corrotto lanciava
+    // un'eccezione non gestita dentro setState → spinner infinito nel
+    // dialog. tryParseTime torna null invece di lanciare.
+    TimeOfDay? tryParseTime(String raw) {
+      final parts = raw.split(':');
+      if (parts.length != 2) return null;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) return null;
+      return TimeOfDay(hour: hour, minute: minute);
+    }
+
     setState(() {
       for (var meal in _availableMeals) {
         _enabled[meal] = currentAlarms.containsKey(meal);
 
         if (currentAlarms.containsKey(meal)) {
-          final parts = currentAlarms[meal]!.split(':');
-          if (parts.length == 2) {
-             _times[meal] = TimeOfDay(
-              hour: int.parse(parts[0]),
-              minute: int.parse(parts[1]),
-            );
-          } else {
-             _times[meal] = inferTime(meal);
-          }
+          _times[meal] = tryParseTime(currentAlarms[meal]!) ?? inferTime(meal);
+        } else if (_fallbackDefaults.containsKey(meal)) {
+          _times[meal] = tryParseTime(_fallbackDefaults[meal]!) ?? inferTime(meal);
         } else {
-          if (_fallbackDefaults.containsKey(meal)) {
-             final parts = _fallbackDefaults[meal]!.split(':');
-             _times[meal] = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-          } else {
-             _times[meal] = inferTime(meal);
-          }
+          _times[meal] = inferTime(meal);
         }
       }
       _isLoading = false;
