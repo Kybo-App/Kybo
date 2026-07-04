@@ -1,9 +1,14 @@
-// Gestisce il sistema di badge, livelli e contatori utente: sblocco, persistenza su Firestore e streak di accesso.
+// Gestisce il sistema di badge, livelli e contatori utente: sblocco, persistenza
+// e streak di accesso. Contatori/sblocchi/streak sono scritti dal server
+// (Admin SDK) su chiamata del client, non più direttamente su Firestore —
+// vedi audit SV2 (i campi non-whitelisted venivano negati in silenzio, e
+// unlocked_badges era comunque forgiabile dal client).
 // Supporta badge progressivi con contatori, feature-discovery, badge segreti e integrazione XP.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/badge_model.dart';
+import 'api_client.dart';
 
 class BadgeLevel {
   final String name;
@@ -120,53 +125,50 @@ class BadgeService extends ChangeNotifier {
     }
   }
 
-  /// Incrementa un contatore e controlla se nuovi badge sono sbloccabili.
-  Future<void> _incrementCounter(String key, {int amount = 1}) async {
+  /// Incrementa un contatore lato server (whitelist di chiavi valide) e
+  /// sblocca automaticamente i badge progressivi collegati (SV2).
+  Future<void> _incrementCounter(String key) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    _counters[key] = (_counters[key] ?? 0) + amount;
-    final newValue = _counters[key]!;
-
     try {
-      await _firestore.collection('users').doc(user.uid).update({
-        'badge_counters.$key': newValue,
-      });
+      final data = await ApiClient().post(
+        '/gamification/badge/counter',
+        body: {'key': key, 'mode': 'increment'},
+      ) as Map<String, dynamic>;
+      _applyCounterResult(key, data);
     } catch (e) {
       debugPrint("Error incrementing counter $key: $e");
     }
-
-    // Controlla badge progressivi collegati a questo contatore
-    await _checkCounterBadges(key, newValue);
   }
 
-  /// Imposta un contatore a un valore fisso (per streak che si resettano).
+  /// Imposta un contatore a un valore fisso lato server (per totali noti
+  /// solo al client, es. numero articoli in dispensa).
   Future<void> _setCounter(String key, int value) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    _counters[key] = value;
-
     try {
-      await _firestore.collection('users').doc(user.uid).update({
-        'badge_counters.$key': value,
-      });
+      final data = await ApiClient().post(
+        '/gamification/badge/counter',
+        body: {'key': key, 'mode': 'set', 'value': value},
+      ) as Map<String, dynamic>;
+      _applyCounterResult(key, data);
     } catch (e) {
       debugPrint("Error setting counter $key: $e");
     }
-
-    await _checkCounterBadges(key, value);
   }
 
-  /// Controlla tutti i badge che dipendono da un contatore specifico.
-  Future<void> _checkCounterBadges(String counterKey, int newValue) async {
-    for (final badge in _badges) {
-      if (badge.counterKey == counterKey &&
-          !badge.isUnlocked &&
-          newValue >= badge.requiredCount) {
-        await unlockBadge(badge.id);
-      }
+  void _applyCounterResult(String key, Map<String, dynamic> data) {
+    final newValue = (data['value'] as num?)?.toInt();
+    if (newValue != null) {
+      _counters[key] = newValue;
     }
+    final unlocked = (data['unlocked'] as List<dynamic>? ?? []);
+    for (final badgeId in unlocked) {
+      _markUnlockedLocally(badgeId.toString());
+    }
+    notifyListeners();
   }
 
   /// Restituisce il progresso corrente per un badge progressivo (0.0 - 1.0).
@@ -183,10 +185,33 @@ class BadgeService extends ChangeNotifier {
     return _counters[counterKey] ?? 0;
   }
 
+  /// Sblocca un badge lato server (idempotente, solo ID validati — SV2).
+  /// Applica lo stato locale solo dopo la conferma del server, per evitare
+  /// di mostrare una celebrazione per uno sblocco poi rifiutato.
   Future<void> unlockBadge(String badgeId) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    final badgeIndex = _badges.indexWhere((b) => b.id == badgeId);
+    if (badgeIndex == -1 || _badges[badgeIndex].isUnlocked) return;
+
+    try {
+      final data = await ApiClient().post(
+        '/gamification/badge/unlock',
+        body: {'badge_id': badgeId},
+      ) as Map<String, dynamic>;
+
+      if (data['newly_unlocked'] == true) {
+        _markUnlockedLocally(badgeId);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error unlocking badge: $e");
+    }
+  }
+
+  /// Applica localmente uno sblocco già confermato dal server.
+  void _markUnlockedLocally(String badgeId) {
     final badgeIndex = _badges.indexWhere((b) => b.id == badgeId);
     if (badgeIndex == -1) return;
 
@@ -204,73 +229,35 @@ class BadgeService extends ChangeNotifier {
       _justLeveledUp = levelAfter;
     }
 
-    notifyListeners();
-
-    try {
-      await _firestore.collection('users').doc(user.uid).update({
-        'unlocked_badges.$badgeId': FieldValue.serverTimestamp(),
-      });
-      debugPrint("🏆 Badge sbloccato: ${badge.title} | Livello: ${levelAfter.emoji} ${levelAfter.name}");
-    } catch (e) {
-      debugPrint("Error unlocking badge: $e");
-    }
+    debugPrint("🏆 Badge sbloccato: ${badge.title} | Livello: ${levelAfter.emoji} ${levelAfter.name}");
   }
 
   // ──────────────────────────────────────────────
   //  TRIGGER METHODS
   // ──────────────────────────────────────────────
 
+  /// Calcola/aggiorna lo streak di accesso interamente lato server (usa la
+  /// data del server, non manipolabile cambiando l'orologio del device).
+  /// Sblocca anche first_login/holiday_spirit/streak_* in un'unica chiamata.
   Future<void> checkLoginStreak() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    await unlockBadge('first_login');
-
-    // Controlla badge festivo
-    final now = DateTime.now();
-    if (now.month == 12 && now.day == 25) {
-      await unlockBadge('holiday_spirit');
-    }
-
     try {
-      final ref = _firestore.collection('users').doc(user.uid);
-      final doc = await ref.get();
-      final data = doc.data() ?? {};
+      final data = await ApiClient().post('/gamification/streak/checkin') as Map<String, dynamic>;
 
-      final today = DateTime.now();
-      final todayStr = '${today.year}-${today.month.toString().padLeft(2,'0')}-${today.day.toString().padLeft(2,'0')}';
-
-      final lastLoginStr = data['streak_last_login'] as String?;
-      final currentStreak = (data['streak_count'] as int?) ?? 0;
-
-      int newStreak;
-
-      if (lastLoginStr == null) {
-        newStreak = 1;
-      } else if (lastLoginStr == todayStr) {
-        return;
-      } else {
-        final lastLogin = DateTime.tryParse(lastLoginStr);
-        if (lastLogin != null) {
-          final diff = today.difference(lastLogin).inDays;
-          if (diff == 1) {
-            newStreak = currentStreak + 1;
-          } else {
-            newStreak = 1;
-          }
-        } else {
-          newStreak = 1;
-        }
+      final newStreak = (data['streak_count'] as num?)?.toInt();
+      if (newStreak != null) {
+        _counters['streak_days'] = newStreak;
       }
 
-      await ref.update({
-        'streak_last_login': todayStr,
-        'streak_count': newStreak,
-      });
-
-      // Aggiorna contatore streak per badge progressivi
-      await _setCounter('streak_days', newStreak);
-
+      final unlocked = (data['unlocked'] as List<dynamic>? ?? []);
+      for (final badgeId in unlocked) {
+        _markUnlockedLocally(badgeId.toString());
+      }
+      if (unlocked.isNotEmpty) {
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint('Errore checkLoginStreak: $e');
     }

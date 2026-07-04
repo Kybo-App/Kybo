@@ -1,13 +1,15 @@
-// Servizio sfide giornaliere: genera 3 missioni al giorno, traccia il completamento e assegna XP.
-// Le sfide si resettano a mezzanotte locale.
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Servizio sfide giornaliere: mostra 3 missioni al giorno, il completamento
+// e l'XP assegnato sono autoritativi lato server (vedi audit SV1) — il
+// client non scrive più su Firestore per queste sfide.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../utils/time_helper.dart';
+import 'api_client.dart';
 import 'xp_service.dart';
 
 class ChallengeModel {
   final String id;
+  final String baseId;
   final String title;
   final String description;
   final IconData icon;
@@ -17,6 +19,7 @@ class ChallengeModel {
 
   ChallengeModel({
     required this.id,
+    required this.baseId,
     required this.title,
     required this.description,
     required this.icon,
@@ -24,32 +27,6 @@ class ChallengeModel {
     required this.type,
     this.isCompleted = false,
   });
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'description': description,
-    'icon_code': icon.codePoint,
-    'xp_reward': xpReward,
-    'type': type.name,
-    'is_completed': isCompleted,
-  };
-
-  factory ChallengeModel.fromJson(Map<String, dynamic> json) => ChallengeModel(
-    id: json['id'] as String? ?? '',
-    title: json['title'] as String? ?? '',
-    description: json['description'] as String? ?? '',
-    icon: IconData(
-      json['icon_code'] as int? ?? Icons.star.codePoint,
-      fontFamily: 'MaterialIcons',
-    ),
-    xpReward: (json['xp_reward'] as num?)?.toInt() ?? 10,
-    type: ChallengeType.values.firstWhere(
-      (e) => e.name == json['type'],
-      orElse: () => ChallengeType.explore,
-    ),
-    isCompleted: json['is_completed'] ?? false,
-  );
 }
 
 enum ChallengeType {
@@ -60,7 +37,6 @@ enum ChallengeType {
 }
 
 class ChallengeService extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final XpService _xpService;
 
@@ -76,10 +52,12 @@ class ChallengeService extends ChangeNotifier {
 
   ChallengeService(this._xpService);
 
-  /// Pool di sfide possibili.
+  /// Pool di sfide possibili (contenuto display: titolo/descrizione/icona).
+  /// L'importo XP e la selezione giornaliera autoritativi sono ricalcolati
+  /// dal server con lo stesso algoritmo (vedi gamification.py).
   static final List<ChallengeModel> _challengePool = [
     ChallengeModel(
-      id: 'complete_2_meals',
+      id: 'complete_2_meals', baseId: 'complete_2_meals',
       title: 'Pasti del Giorno',
       description: 'Completa almeno 2 pasti oggi.',
       icon: Icons.restaurant_rounded,
@@ -87,7 +65,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.meals,
     ),
     ChallengeModel(
-      id: 'complete_all_meals',
+      id: 'complete_all_meals', baseId: 'complete_all_meals',
       title: 'Giornata Completa',
       description: 'Completa tutti i pasti di oggi.',
       icon: Icons.check_circle_rounded,
@@ -95,7 +73,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.meals,
     ),
     ChallengeModel(
-      id: 'log_weight',
+      id: 'log_weight', baseId: 'log_weight',
       title: 'Controllo Peso',
       description: 'Registra il tuo peso oggi.',
       icon: Icons.monitor_weight_rounded,
@@ -103,7 +81,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.weight,
     ),
     ChallengeModel(
-      id: 'visit_stats',
+      id: 'visit_stats', baseId: 'visit_stats',
       title: 'Analisti dei Dati',
       description: 'Visita la sezione statistiche.',
       icon: Icons.bar_chart_rounded,
@@ -111,7 +89,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.explore,
     ),
     ChallengeModel(
-      id: 'use_timer',
+      id: 'use_timer', baseId: 'use_timer',
       title: 'Tempo di Cottura',
       description: 'Usa il timer di cottura.',
       icon: Icons.timer_rounded,
@@ -119,7 +97,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.explore,
     ),
     ChallengeModel(
-      id: 'share_list',
+      id: 'share_list', baseId: 'share_list',
       title: 'Condividi la Lista',
       description: 'Condividi la lista della spesa.',
       icon: Icons.share_rounded,
@@ -127,7 +105,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.social,
     ),
     ChallengeModel(
-      id: 'add_pantry',
+      id: 'add_pantry', baseId: 'add_pantry',
       title: 'Rifornimento',
       description: 'Aggiungi un articolo alla dispensa.',
       icon: Icons.add_shopping_cart_rounded,
@@ -135,7 +113,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.explore,
     ),
     ChallengeModel(
-      id: 'use_ai',
+      id: 'use_ai', baseId: 'use_ai',
       title: 'Chiedi all\'AI',
       description: 'Chiedi suggerimenti all\'intelligenza artificiale.',
       icon: Icons.auto_awesome_rounded,
@@ -143,7 +121,7 @@ class ChallengeService extends ChangeNotifier {
       type: ChallengeType.explore,
     ),
     ChallengeModel(
-      id: 'complete_1_meal',
+      id: 'complete_1_meal', baseId: 'complete_1_meal',
       title: 'Primo Pasto',
       description: 'Completa almeno un pasto oggi.',
       icon: Icons.lunch_dining_rounded,
@@ -152,77 +130,69 @@ class ChallengeService extends ChangeNotifier {
     ),
   ];
 
-  /// Genera o carica le sfide del giorno.
+  ChallengeModel? _poolTemplate(String baseId) {
+    for (final c in _challengePool) {
+      if (c.baseId == baseId) return c;
+    }
+    return null;
+  }
+
+  /// Carica le sfide di oggi dal server (autoritativo per XP e stato di
+  /// completamento). Se la rete non è disponibile, genera un fallback
+  /// locale solo per mostrare qualcosa in UI: il completamento resta
+  /// comunque delegato al server (vedi completeChallenge), quindi un uso
+  /// offline non assegna XP finché la connessione non torna.
   Future<void> loadOrGenerateDailyChallenges() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     final todayStr = _getTodayString();
-
-    // Se già caricate per oggi, skip
     if (_currentDate == todayStr && _dailyChallenges.isNotEmpty) return;
 
     try {
-      final docRef = _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('challenges')
-          .doc(todayStr);
+      final data = await ApiClient().get('/gamification/challenges/today') as Map<String, dynamic>;
+      final date = data['date'] as String? ?? todayStr;
+      final challenges = (data['challenges'] as List<dynamic>? ?? []);
 
-      final doc = await docRef.get();
-
-      if (doc.exists && doc.data() != null) {
-        // Carica sfide esistenti
-        final data = doc.data()!;
-        final challengesList = data['challenges'] as List<dynamic>? ?? [];
-        _dailyChallenges = challengesList
-            .map((c) => ChallengeModel.fromJson(Map<String, dynamic>.from(c)))
-            .toList();
-        _challengeStreak = (data['challenge_streak'] as num?)?.toInt() ?? 0;
-      } else {
-        // Genera nuove sfide
-        _dailyChallenges = _generateChallenges(todayStr);
-
-        // Carica streak dalle sfide precedenti
-        await _loadChallengeStreak();
-
-        // Salva su Firestore
-        await docRef.set({
-          'challenges': _dailyChallenges.map((c) => c.toJson()).toList(),
-          'date': todayStr,
-          'challenge_streak': _challengeStreak,
-        });
-      }
-
-      _currentDate = todayStr;
+      _dailyChallenges = challenges.map((raw) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        final baseId = map['base_id'] as String? ?? '';
+        final template = _poolTemplate(baseId);
+        return ChallengeModel(
+          id: map['id'] as String? ?? '',
+          baseId: baseId,
+          title: template?.title ?? baseId,
+          description: template?.description ?? '',
+          icon: template?.icon ?? Icons.star_rounded,
+          xpReward: (map['xp_reward'] as num?)?.toInt() ?? template?.xpReward ?? 0,
+          type: template?.type ?? ChallengeType.explore,
+          isCompleted: map['is_completed'] == true,
+        );
+      }).toList();
+      _challengeStreak = (data['challenge_streak'] as num?)?.toInt() ?? 0;
+      _currentDate = date;
       notifyListeners();
     } catch (e) {
       debugPrint("Error loading challenges: $e");
-      // Genera comunque le sfide localmente
       _dailyChallenges = _generateChallenges(todayStr);
       _currentDate = todayStr;
       notifyListeners();
     }
   }
 
-  /// Genera 3 sfide pseudo-casuali basate sul giorno dell'anno.
+  /// Fallback locale usato solo se il server non è raggiungibile.
   List<ChallengeModel> _generateChallenges(String dateStr) {
-    // Usa il giorno dell'anno come seed per pseudo-casualità deterministica
     final date = DateTime.tryParse(dateStr) ?? DateTime.now();
     final dayOfYear = date.difference(DateTime(date.year, 1, 1)).inDays;
 
     final pool = List<ChallengeModel>.from(_challengePool);
-
-    // Seleziona 3 sfide diverse
     final selected = <ChallengeModel>[];
     final usedTypes = <ChallengeType>{};
 
-    // Cerca di ottenere variety di tipo
     for (int i = 0; i < 3 && pool.isNotEmpty; i++) {
       final index = (dayOfYear * 7 + i * 13 + dayOfYear ~/ 3) % pool.length;
       final challenge = pool[index];
 
-      // Se abbiamo già 2 sfide dello stesso tipo, salta
       if (usedTypes.where((t) => t == challenge.type).length >= 2 && pool.length > 1) {
         pool.removeAt(index);
         i--;
@@ -230,7 +200,8 @@ class ChallengeService extends ChangeNotifier {
       }
 
       selected.add(ChallengeModel(
-        id: '${challenge.id}_$dateStr',
+        id: '${challenge.baseId}_$dateStr',
+        baseId: challenge.baseId,
         title: challenge.title,
         description: challenge.description,
         icon: challenge.icon,
@@ -244,46 +215,35 @@ class ChallengeService extends ChangeNotifier {
     return selected;
   }
 
-  /// Completa una sfida e assegna XP.
+  /// Completa una sfida lato server (idempotente, XP a importo fisso
+  /// server-side) — sostituisce la vecchia scrittura diretta su Firestore
+  /// che veniva negata dalle rules e permetteva di ri-guadagnare XP a ogni
+  /// riavvio dell'app (SV1).
   Future<void> completeChallenge(String challengeId) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final index = _dailyChallenges.indexWhere((c) => c.id == challengeId);
+    if (index == -1 || _dailyChallenges[index].isCompleted) return;
 
-    final challenge = _dailyChallenges.firstWhere(
-      (c) => c.id == challengeId,
-      orElse: () => ChallengeModel(
-        id: '', title: '', description: '', icon: Icons.star,
-        xpReward: 0, type: ChallengeType.explore,
-      ),
-    );
-
-    if (challenge.id.isEmpty || challenge.isCompleted) return;
-
-    challenge.isCompleted = true;
-
-    // Assegna XP per la sfida
-    await _xpService.addXp(challenge.xpReward, 'challenge_completed');
-
-    // Se tutte completate, bonus XP
-    if (allCompleted) {
-      await _xpService.addXp(XpRewards.allChallengesBonus, 'all_challenges_bonus');
-      _challengeStreak++;
-    }
-
-    notifyListeners();
-
-    // Salva stato su Firestore
     try {
-      final todayStr = _getTodayString();
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('challenges')
-          .doc(todayStr)
-          .update({
-        'challenges': _dailyChallenges.map((c) => c.toJson()).toList(),
-        'challenge_streak': _challengeStreak,
-      });
+      final data = await ApiClient().post(
+        '/gamification/challenge/complete',
+        body: {'challenge_id': challengeId},
+      ) as Map<String, dynamic>;
+
+      final completedIds = (data['completed_ids'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toSet();
+
+      for (final c in _dailyChallenges) {
+        c.isCompleted = completedIds.contains(c.baseId);
+      }
+      _challengeStreak = (data['challenge_streak'] as num?)?.toInt() ?? _challengeStreak;
+
+      final newXpTotal = (data['xp_total'] as num?)?.toInt();
+      if (newXpTotal != null) {
+        _xpService.setAuthoritativeXp(newXpTotal, reason: 'challenge_completed');
+      }
+
+      notifyListeners();
     } catch (e) {
       debugPrint("Error completing challenge: $e");
     }
@@ -293,43 +253,10 @@ class ChallengeService extends ChangeNotifier {
   /// Chiamato dai vari service/provider quando l'utente compie un'azione.
   Future<void> checkAutoComplete(String challengeBaseId) async {
     for (final challenge in _dailyChallenges) {
-      if (!challenge.isCompleted && challenge.id.startsWith(challengeBaseId)) {
+      if (!challenge.isCompleted && challenge.baseId == challengeBaseId) {
         await completeChallenge(challenge.id);
         break;
       }
-    }
-  }
-
-  Future<void> _loadChallengeStreak() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    try {
-      // Controlla se ieri è stato completato tutto, usando la data LOGICA
-      final yesterday = TimeHelper().getLogicalToday().subtract(const Duration(days: 1));
-      final yesterdayStr = TimeHelper().getLogicalDateString(yesterday);
-
-      final doc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('challenges')
-          .doc(yesterdayStr)
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        final challenges = (doc.data()!['challenges'] as List<dynamic>? ?? []);
-        final allDone = challenges.every((c) => c['is_completed'] == true);
-        if (allDone && challenges.isNotEmpty) {
-          _challengeStreak = (doc.data()!['challenge_streak'] as num?)?.toInt() ?? 0;
-        } else {
-          _challengeStreak = 0;
-        }
-      } else {
-        _challengeStreak = 0;
-      }
-    } catch (e) {
-      debugPrint("Error loading challenge streak: $e");
-      _challengeStreak = 0;
     }
   }
 

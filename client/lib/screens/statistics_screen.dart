@@ -822,7 +822,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
     if (mounted) {
       context.read<BadgeService>().onWeightLogged();
-      context.read<XpService>().addXp(XpRewards.weightLogged, 'weight_logged');
+      context.read<XpService>().addXp('weight_logged');
       context.read<ChallengeService>().checkAutoComplete('log_weight');
 
       // Trova un obiettivo di peso se esiste

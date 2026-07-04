@@ -208,9 +208,10 @@ class _RewardsScreenState extends State<RewardsScreen>
 
       HapticFeedback.mediumImpact();
 
-      // Aggiorna XP locale
+      // Aggiorna XP locale al valore autorevole ritornato dal server
+      // (non più un decremento locale — vedi audit RW1).
       if (newXpTotal != null) {
-        xpService.spendXp(xpCost, 'reward_claimed');
+        xpService.setAuthoritativeXp(newXpTotal);
       }
 
       // Ricarica catalogo e storico

@@ -1,9 +1,11 @@
-// Servizio XP: gestisce punti esperienza giornalieri e totali, livelli e storico su Firestore.
-// addXp — aggiunge XP con motivo, aggiorna Firestore e notifica i listener.
+// Servizio XP: gestisce punti esperienza giornalieri e totali, livelli e storico.
+// addXp — chiede al server di assegnare XP per un evento (nessuna scrittura diretta
+// di xp_total: il client non è più autoritativo, vedi audit XP1/SRV-RW1).
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/time_helper.dart';
+import 'api_client.dart';
 import 'badge_service.dart';
 
 /// Costanti XP per ogni azione.
@@ -46,7 +48,6 @@ class XpService extends ChangeNotifier {
 
   int _totalXp = 0;
   int _todayXp = 0;
-  String _todayDate = '';
   List<XpEntry> _recentEntries = [];
 
   int get totalXp => _totalXp;
@@ -99,7 +100,6 @@ class XpService extends ChangeNotifier {
         } else {
           _todayXp = 0;
         }
-        _todayDate = todayStr;
 
         // Carica ultime entries di oggi
         await _loadRecentEntries();
@@ -112,111 +112,97 @@ class XpService extends ChangeNotifier {
     }
   }
 
-  /// Aggiunge XP e salva su Firestore.
-  Future<void> addXp(int amount, String reason) async {
-    if (amount <= 0) return;
+  /// Eventi XP che il server sa assegnare (importo deciso server-side).
+  static const Set<String> _validEvents = {
+    'meal_consumed',
+    'all_meals_complete',
+    'weight_logged',
+  };
+
+  /// Richiede al server di assegnare XP per un evento verificato.
+  /// Non scrive più xp_total direttamente: il client non è autoritativo
+  /// sull'economia XP (vedi audit XP1/SRV-RW1) — l'importo e il cap
+  /// giornaliero sono decisi dal server.
+  Future<void> addXp(String reason) async {
+    if (!_validEvents.contains(reason)) return;
 
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final todayStr = _getTodayString();
-
-    // Reset giornaliero se la data è cambiata
-    if (_todayDate != todayStr) {
-      _todayXp = 0;
-      _todayDate = todayStr;
-      _recentEntries.clear();
-    }
-
-    _totalXp += amount;
-    _todayXp += amount;
-
-    final entry = XpEntry(
-      amount: amount,
-      reason: reason,
-      timestamp: DateTime.now(),
-    );
-    _recentEntries.insert(0, entry);
-    if (_recentEntries.length > 20) {
-      _recentEntries = _recentEntries.sublist(0, 20);
-    }
-
-    notifyListeners();
+    final previousTotal = _totalXp;
 
     try {
-      // Aggiorna totali
-      await _firestore.collection('users').doc(user.uid).update({
-        'xp_total': _totalXp,
-        'xp_today': _todayXp,
-        'xp_today_date': todayStr,
-      });
+      final data = await ApiClient().post(
+        '/gamification/xp/event',
+        body: {'event_type': reason},
+      ) as Map<String, dynamic>;
 
-      // Salva entry nello storico
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('xp_history')
-          .doc(todayStr)
-          .set({
-        'entries': FieldValue.arrayUnion([entry.toJson()]),
-      }, SetOptions(merge: true));
-
-      debugPrint("⭐ +$amount XP ($reason) | Totale: $_totalXp | Oggi: $_todayXp");
+      _applyServerXp(data, reason: reason, previousTotal: previousTotal);
+      debugPrint("⭐ XP evento '$reason' | Totale: $_totalXp | Oggi: $_todayXp");
     } catch (e) {
-      debugPrint("Error saving XP: $e");
+      debugPrint("Error awarding XP ($reason): $e");
     }
   }
 
-  /// Sottrae XP per riscatto premio. Aggiorna locale + Firestore.
-  Future<bool> spendXp(int amount, String reason) async {
-    if (amount <= 0) return false;
-    if (_totalXp < amount) return false;
-
-    final user = _auth.currentUser;
-    if (user == null) return false;
-
-    _totalXp -= amount;
-    notifyListeners();
-
-    try {
-      await _firestore.collection('users').doc(user.uid).update({
-        'xp_total': _totalXp,
-      });
-
-      debugPrint("💸 -$amount XP ($reason) | Totale: $_totalXp");
-      return true;
-    } catch (e) {
-      // Rollback locale in caso di errore
-      _totalXp += amount;
-      notifyListeners();
-      debugPrint("Error spending XP: $e");
-      return false;
+  /// Allinea lo stato locale a un totale XP autorevole ritornato dal server
+  /// (es. dopo un riscatto premio, vedi rewards_screen.dart). Non scrive su
+  /// Firestore: il server ha già applicato la modifica.
+  void setAuthoritativeXp(int newTotal, {String reason = 'reward_claimed'}) {
+    final delta = newTotal - _totalXp;
+    _totalXp = newTotal;
+    if (delta != 0) {
+      _recentEntries.insert(0, XpEntry(amount: delta, reason: reason, timestamp: DateTime.now()));
+      if (_recentEntries.length > 20) {
+        _recentEntries = _recentEntries.sublist(0, 20);
+      }
     }
+    notifyListeners();
+    debugPrint("💸 XP aggiornato da server ($reason) | Totale: $_totalXp");
   }
 
-  /// Carica le entries recenti di oggi da Firestore.
+  void _applyServerXp(Map<String, dynamic> data, {required String reason, required int previousTotal}) {
+    _totalXp = (data['xp_total'] as num?)?.toInt() ?? _totalXp;
+    _todayXp = (data['xp_today'] as num?)?.toInt() ?? _todayXp;
+
+    final delta = _totalXp - previousTotal;
+    if (delta > 0) {
+      _recentEntries.insert(0, XpEntry(amount: delta, reason: reason, timestamp: DateTime.now()));
+      if (_recentEntries.length > 20) {
+        _recentEntries = _recentEntries.sublist(0, 20);
+      }
+    }
+
+    notifyListeners();
+  }
+
+  /// Carica le entries XP recenti (di oggi) dallo storico scritto dal server.
   Future<void> _loadRecentEntries() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
     try {
-      final todayStr = _getTodayString();
-      final doc = await _firestore
+      final now = DateTime.now();
+      final todayMidnight = DateTime(now.year, now.month, now.day);
+
+      final snap = await _firestore
           .collection('users')
           .doc(user.uid)
           .collection('xp_history')
-          .doc(todayStr)
+          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(todayMidnight))
+          .orderBy('created_at', descending: true)
+          .limit(20)
           .get();
 
-      if (doc.exists && doc.data() != null) {
-        final entries = doc.data()!['entries'] as List<dynamic>?;
-        if (entries != null) {
-          _recentEntries = entries
-              .map((e) => XpEntry.fromJson(Map<String, dynamic>.from(e)))
-              .toList()
-            ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        }
-      }
+      _recentEntries = snap.docs.map((doc) {
+        final data = doc.data();
+        final ts = data['created_at'];
+        final timestamp = ts is Timestamp ? ts.toDate() : DateTime.now();
+        return XpEntry(
+          amount: (data['amount'] as num?)?.toInt() ?? 0,
+          reason: data['reason'] as String? ?? '',
+          timestamp: timestamp,
+        );
+      }).toList();
     } catch (e) {
       debugPrint("Error loading XP entries: $e");
     }

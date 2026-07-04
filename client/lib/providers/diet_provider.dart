@@ -867,7 +867,7 @@ class DietProvider extends ChangeNotifier {
     await _storage.saveDiet(_dietPlan!.toJson());
 
     // Award XP per pasto consumato
-    await _xpService.addXp(XpRewards.mealConsumed, 'meal_consumed');
+    await _xpService.addXp('meal_consumed');
 
     // Auto-complete sfide relative ai pasti
     await _challengeService.checkAutoComplete('complete_1_meal');
@@ -911,7 +911,7 @@ class DietProvider extends ChangeNotifier {
 
       // XP bonus e sfide per giornata completa
       if (planned > 0 && consumed == planned) {
-        await _xpService.addXp(XpRewards.allMealsComplete, 'all_meals_complete');
+        await _xpService.addXp('all_meals_complete');
         await _challengeService.checkAutoComplete('complete_all_meals');
       }
       if (consumed >= 2) {
