@@ -100,17 +100,7 @@ class _DietsHistoryList extends StatelessWidget {
                 ),
                 trailing: IconButton(
                   icon: Icon(Icons.delete, color: KyboColors.error),
-                  onPressed: () async {
-                    try {
-                      await firestore.deleteDiet(diet['id']);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: () => _confirmDeleteDiet(context, firestore, diet, dateStr),
                 ),
                 onTap: () => _showRestoreDialog(context, diet, dateStr),
               ),
@@ -165,6 +155,70 @@ class _DietsHistoryList extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// [FIX HS1] Prima cancellava subito al tap, senza conferma (a differenza
+  /// del Ripristina che ce l'ha) — un tap accidentale perdeva per sempre una
+  /// dieta storica. Aggiunge anche un feedback di successo (HS2).
+  Future<void> _confirmDeleteDiet(
+    BuildContext context,
+    FirestoreService firestore,
+    Map<String, dynamic> diet,
+    String dateStr,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: KyboColors.surface(context),
+        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+        title: Text(
+          "Elimina Dieta",
+          style: TextStyle(color: KyboColors.textPrimary(context)),
+        ),
+        content: Text(
+          "Vuoi eliminare definitivamente la dieta del $dateStr? L'azione non è reversibile.",
+          style: TextStyle(color: KyboColors.textSecondary(context)),
+        ),
+        actions: [
+          PillButton(
+            label: "Annulla",
+            onPressed: () => Navigator.pop(c, false),
+            backgroundColor: KyboColors.surface(context),
+            textColor: KyboColors.textPrimary(context),
+            height: 44,
+          ),
+          PillButton(
+            label: "Elimina",
+            onPressed: () => Navigator.pop(c, true),
+            backgroundColor: KyboColors.error,
+            textColor: Colors.white,
+            height: 44,
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await firestore.deleteDiet(diet['id']);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Dieta eliminata."),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: KyboColors.success,
+            shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.medium),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
+        );
+      }
+    }
   }
 }
 

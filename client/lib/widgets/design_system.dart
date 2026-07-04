@@ -170,10 +170,23 @@ class PillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = backgroundColor ??
-        (isSelected ? KyboColors.primary : KyboColors.surface(context));
-    final fgColor = textColor ??
-        (isSelected ? Colors.white : KyboColors.textPrimary(context));
+    // [FIX DS1] Prima, con onPressed == null il tap veniva disabilitato ma i
+    // colori restavano quelli "attivi" passati dal chiamante: il bottone
+    // sembrava cliccabile ma non faceva nulla (radice di P2/DV3/SS2/MM3— chi
+    // chiamava PillButton doveva ricordarsi di grigiare a mano, e spesso non
+    // lo faceva). Ora si ingrigisce automaticamente, indipendentemente dai
+    // colori passati — stessa coppia muted già usata a mano altrove (vedi
+    // login_screen.dart _canSubmit).
+    final isDisabled = onPressed == null && !isLoading;
+
+    final bgColor = isDisabled
+        ? KyboColors.border(context)
+        : backgroundColor ??
+            (isSelected ? KyboColors.primary : KyboColors.surface(context));
+    final fgColor = isDisabled
+        ? KyboColors.textMuted(context)
+        : textColor ??
+            (isSelected ? Colors.white : KyboColors.textPrimary(context));
 
     Widget button = Container(
       height: height,
@@ -190,11 +203,13 @@ class PillButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: KyboBorderRadius.pill,
-              border: borderColor != null
-                  ? Border.all(color: borderColor!, width: 2)
-                  : (!isSelected
-                      ? Border.all(color: KyboColors.border(context), width: 1)
-                      : null),
+              border: isDisabled
+                  ? Border.all(color: KyboColors.border(context), width: 1)
+                  : (borderColor != null
+                      ? Border.all(color: borderColor!, width: 2)
+                      : (!isSelected
+                          ? Border.all(color: KyboColors.border(context), width: 1)
+                          : null)),
               boxShadow: isSelected
                   ? KyboColors.mediumShadow(context)
                   : KyboColors.softShadow(context),
