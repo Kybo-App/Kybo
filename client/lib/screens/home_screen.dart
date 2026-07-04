@@ -1576,6 +1576,7 @@ class _MainScreenContentState extends State<MainScreenContent>
                     activeSwaps: provider.activeSwaps,
                     pantryItems: provider.pantryItems,
                     isTranquilMode: provider.isTranquilMode,
+                    onUploadDiet: () => _uploadDiet(context),
                   );
                 }).toList(),
               ),

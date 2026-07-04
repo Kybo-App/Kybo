@@ -17,7 +17,6 @@ class MealCard extends StatelessWidget {
   final List<String> orderedMeals;
   final Function(int) onEat;
   final Function(String, int) onSwap;
-  final Function(int, String, String) onEdit;
   final VoidCallback? onNote;
   final String? currentNote;
   final int portionMultiplier;
@@ -35,7 +34,6 @@ class MealCard extends StatelessWidget {
     required this.orderedMeals,
     required this.onEat,
     required this.onSwap,
-    required this.onEdit,
     this.onNote,
     this.currentNote,
     this.portionMultiplier = 1,

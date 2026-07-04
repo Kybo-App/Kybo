@@ -1,6 +1,8 @@
 // Vista giornaliera della dieta con selezione porzioni, consumo pasti, swap e diario alimentare.
 // _showSwapDialog — mostra le sostituzioni disponibili per un piatto tramite codice CAD.
 // _showNoteDialog — apre il diario per annotare umore e note sul pasto.
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/diet_provider.dart';
@@ -22,6 +24,7 @@ class DietView extends StatefulWidget {
   final Map<String, ActiveSwap> activeSwaps;
   final List<PantryItem> pantryItems;
   final bool isTranquilMode;
+  final VoidCallback? onUploadDiet;
 
   const DietView({
     super.key,
@@ -31,6 +34,7 @@ class DietView extends StatefulWidget {
     required this.activeSwaps,
     required this.pantryItems,
     required this.isTranquilMode,
+    this.onUploadDiet,
   });
 
   @override
@@ -60,51 +64,84 @@ class _DietViewState extends State<DietView> {
     final currentWeekPlan = context.read<DietProvider>().currentWeekPlan;
 
     if (widget.dietPlan == null || currentWeekPlan.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.description_outlined,
-                  size: 64, color: KyboColors.textMuted(context)),
-              const SizedBox(height: 16),
-              Text(
-                "Nessuna dieta caricata",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: KyboColors.textPrimary(context),
-                ),
+      // [FIX DV1] Prima questo empty-state era cablato sul caso "utente con
+      // nutrizionista" anche per gli utenti indipendenti: messaggio sbagliato
+      // ("il tuo nutrizionista...") e CTA verso una chat non funzionante
+      // (initializeChat esce subito senza parent_id, sendMessage no-op).
+      final user = FirebaseAuth.instance.currentUser;
+      return StreamBuilder<DocumentSnapshot>(
+        stream: user == null
+            ? null
+            : FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+        builder: (context, snapshot) {
+          bool hasNutritionist = false;
+          if (snapshot.hasData && snapshot.data!.exists) {
+            final data = snapshot.data!.data() as Map<String, dynamic>?;
+            hasNutritionist = ((data?['parent_id'] != null &&
+                    (data?['parent_id'].toString().isNotEmpty ?? false)) ||
+                (data?['nutritionist_id'] != null &&
+                    (data?['nutritionist_id'].toString().isNotEmpty ?? false)) ||
+                (data?['created_by'] != null &&
+                    (data?['created_by'].toString().isNotEmpty ?? false)));
+          }
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.description_outlined,
+                      size: 64, color: KyboColors.textMuted(context)),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Nessuna dieta caricata",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: KyboColors.textPrimary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    hasNutritionist
+                        ? "Il tuo nutrizionista non ti ha ancora\ncaricato un piano alimentare."
+                        : "Non hai ancora caricato un piano\nalimentare. Puoi caricarne uno tuo.",
+                    style: TextStyle(
+                        fontSize: 14, color: KyboColors.textSecondary(context)),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    icon: Icon(hasNutritionist
+                        ? Icons.chat_bubble_outline_rounded
+                        : Icons.upload_file_rounded),
+                    label: Text(hasNutritionist
+                        ? 'Contatta il nutrizionista'
+                        : 'Carica la tua dieta'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: KyboColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: const StadiumBorder(),
+                    ),
+                    onPressed: () {
+                      if (hasNutritionist) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ChatScreen()),
+                        );
+                      } else {
+                        widget.onUploadDiet?.call();
+                      }
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                "Il tuo nutrizionista non ti ha ancora\ncaricato un piano alimentare.",
-                style: TextStyle(
-                    fontSize: 14, color: KyboColors.textSecondary(context)),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: const Text('Contatta il nutrizionista'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: KyboColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
-                  shape: const StadiumBorder(),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ChatScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
     }
 
@@ -156,8 +193,6 @@ class _DietViewState extends State<DietView> {
                 portionMultiplier: _portionMultiplier,
                 onEat: (index) => _handleConsume(context, widget.day, mealType, index),
                 onSwap: (key, cadCode) => _showSwapDialog(context, key, cadCode),
-                onEdit: (index, name, qty) => provider
-                    .updateDietMeal(widget.day, mealType, index, name, qty),
                 onNote: () => _showNoteDialog(context, widget.day, mealType),
               );
             }),
