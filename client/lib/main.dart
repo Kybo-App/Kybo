@@ -28,7 +28,25 @@ import 'services/scale_service.dart';
 import 'utils/time_helper.dart';
 import 'widgets/design_system.dart';
 
+/// Punto unico di raccolta errori non gestiti (framework + zone async).
+/// [SECURITY FIX F2] Prima nessuno dei due canali era intercettato: gli
+/// errori di build/render (FlutterError.onError non impostato) sparivano
+/// del tutto in release, e quelli di runZonedGuarded finivano solo in
+/// debugPrint (invisibile in release). Centralizzare qui rende immediato
+/// collegare un reporter remoto (Crashlytics/Sentry) in futuro — la scelta
+/// del servizio è un'azione prodotto/account che richiede un progetto e
+/// credenziali dedicate, non applicata in questa fix (vedi audit F2).
+void _reportError(Object error, StackTrace? stack) {
+  debugPrint("🔴 Unhandled error: $error");
+  if (stack != null) debugPrint(stack.toString());
+}
+
 void main() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    _reportError(details.exception, details.stack);
+  };
+
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
@@ -139,7 +157,7 @@ void main() {
       });
     },
     (error, stack) {
-      debugPrint("Global Error: $error");
+      _reportError(error, stack);
     },
   );
 }
