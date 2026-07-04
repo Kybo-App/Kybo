@@ -19,6 +19,7 @@ import 'providers/workout_provider.dart';
 import 'providers/matchmaking_provider.dart';
 import 'screens/splash_screen.dart';
 import 'guards/password_guard.dart';
+import 'guards/email_verification_guard.dart';
 import 'services/notification_service.dart';
 import 'services/badge_service.dart';
 import 'services/xp_service.dart';
@@ -312,7 +313,13 @@ class DietApp extends StatelessWidget {
         ),
       ),
       builder: (context, child) {
-        return MaintenanceGuard(child: PasswordGuard(child: child!));
+        // Ordine: manutenzione → verifica email → cambio password → app.
+        // La verifica dell'identità email precede il cambio della password temp.
+        return MaintenanceGuard(
+          child: EmailVerificationGuard(
+            child: PasswordGuard(child: child!),
+          ),
+        );
       },
       home: const SplashScreen(),
     );

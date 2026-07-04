@@ -278,6 +278,33 @@ class AppLocalizations {
       isItalian ? 'Una lettera minuscola' : 'One lowercase letter';
   String get pwdRuleDigit => isItalian ? 'Un numero' : 'One number';
 
+  // --- Verifica email (primo accesso) ---
+  String get verifyEmailTitle =>
+      isItalian ? 'Verifica la tua email' : 'Verify your email';
+  String get verifyEmailSentTo => isItalian
+      ? 'Ti abbiamo inviato un link di verifica a:'
+      : 'We sent a verification link to:';
+  String get verifyEmailInstructions => isItalian
+      ? 'Apri la mail e clicca il link, poi torna qui e premi il pulsante.'
+      : 'Open the email and click the link, then come back and press the button.';
+  String get verifyEmailDone =>
+      isItalian ? "HO VERIFICATO L'EMAIL" : "I'VE VERIFIED MY EMAIL";
+  String get verifyEmailNotYet => isItalian
+      ? 'Email non ancora verificata. Apri la mail (controlla anche lo spam) e clicca il link.'
+      : 'Email not verified yet. Open the email (check spam too) and click the link.';
+  String get verifyEmailResend =>
+      isItalian ? "Invia di nuovo l'email" : 'Resend email';
+  String verifyEmailResendIn(int s) =>
+      isItalian ? 'Invia di nuovo tra ${s}s' : 'Resend in ${s}s';
+  String get verifyEmailSentAgain => isItalian
+      ? 'Email di verifica inviata di nuovo.'
+      : 'Verification email sent again.';
+  String get verifyEmailTooMany => isItalian
+      ? 'Troppi tentativi. Riprova tra qualche minuto.'
+      : 'Too many attempts. Try again in a few minutes.';
+  String get verifyEmailError =>
+      isItalian ? 'Qualcosa è andato storto. Riprova.' : 'Something went wrong. Try again.';
+
   // --- Audit log ---
   String get auditTitle => isItalian ? 'Audit Log' : 'Audit Log';
   String get auditExportCsv =>

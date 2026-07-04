@@ -10,6 +10,16 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:kybo_admin/core/env.dart';
 
+/// Eccezione HTTP che conserva lo status code, per distinguere i casi nella UI
+/// (es. 400 = email non ancora verificata) senza esporre stack trace.
+class ApiStatusException implements Exception {
+  final int statusCode;
+  final String message;
+  ApiStatusException(this.statusCode, this.message);
+  @override
+  String toString() => message;
+}
+
 class AdminRepository {
   String get _baseUrl => Env.apiUrl;
 
@@ -107,6 +117,23 @@ class AdminRepository {
     if (response.statusCode != 200) {
       await _checkUnauthorized(response);
       throw Exception('Cambio password non completato: ${_safeBody(response)}');
+    }
+  }
+
+  /// Azzera `requires_email_verification` sul proprio documento, ma solo dopo
+  /// che il server ha verificato via Admin SDK che l'email è davvero
+  /// confermata su Firebase Auth. Se non lo è, il server risponde 400 e questo
+  /// metodo lancia un'eccezione (statusCode 400) intercettabile dalla UI.
+  Future<void> completeEmailVerification() async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/profile/complete-email-verification'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      await _checkUnauthorized(response);
+      throw ApiStatusException(response.statusCode, _safeBody(response));
     }
   }
 

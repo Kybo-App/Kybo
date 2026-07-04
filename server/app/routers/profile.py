@@ -3,7 +3,7 @@ Router per il profilo utente self-service (foto profilo).
 """
 import uuid
 import firebase_admin
-from firebase_admin import storage, firestore
+from firebase_admin import storage, firestore, auth
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from datetime import timedelta
 
@@ -127,3 +127,38 @@ async def complete_password_change(
     except Exception as e:
         logger.error("complete_password_change_error", error=sanitize_error_message(e))
         raise HTTPException(status_code=500, detail="Errore durante l'aggiornamento.")
+
+
+@router.post("/complete-email-verification")
+@limiter.limit("20/hour")
+async def complete_email_verification(
+    request: Request,
+    requester: dict = Depends(verify_token),
+):
+    """
+    Azzera il flag `requires_email_verification` sul documento del chiamante,
+    ma SOLO dopo aver verificato lato server (Admin SDK) che l'email risulti
+    davvero confermata su Firebase Auth.
+
+    `email_verified` è gestito da Firebase e non è falsificabile dal client:
+    controllandolo qui impediamo a un utente di sbloccarsi da solo senza aver
+    davvero cliccato il link di verifica. Il client chiama questo endpoint dopo
+    aver ricaricato lo stato utente (`user.reload()`).
+    """
+    try:
+        uid = requester['uid']
+        user_record = auth.get_user(uid)
+        if not user_record.email_verified:
+            raise HTTPException(status_code=400, detail="Email non ancora verificata.")
+
+        db = firebase_admin.firestore.client()
+        doc_ref = db.collection('users').document(uid)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Utente non trovato.")
+        doc_ref.update({'requires_email_verification': False})
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("complete_email_verification_error", error=sanitize_error_message(e))
+        raise HTTPException(status_code=500, detail="Errore durante la verifica.")

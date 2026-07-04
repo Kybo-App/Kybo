@@ -156,6 +156,11 @@ async def admin_create_user(
             'created_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'created_by': requester['uid'],
             'requires_password_change': True,
+            # L'account nasce con email non verificata (email_verified=False sopra):
+            # il guard lato app obbliga la verifica al primo accesso. Il flag viene
+            # azzerato solo da /profile/complete-email-verification dopo il click sul
+            # link (controllo server-side non falsificabile).
+            'requires_email_verification': True,
             'max_clients': body.max_clients
         })
         return {"uid": user.uid, "message": "User created"}

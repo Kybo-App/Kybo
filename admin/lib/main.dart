@@ -1,6 +1,7 @@
 // Entry point dell'app admin Kybo. Inizializza Firebase, LanguageProvider e
 // gestisce il flusso auth: LoginScreen → AdminPasswordGuard → TwoFactorGuard → RoleCheckScreen.
 import 'package:kybo_admin/guards/admin_password_guard.dart';
+import 'package:kybo_admin/guards/email_verification_guard.dart';
 import 'package:kybo_admin/guards/two_factor_guard.dart';
 import 'package:kybo_admin/screens/dashboard_screen.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
@@ -147,8 +148,12 @@ class AuthGate extends StatelessWidget {
         if (!snapshot.hasData) {
           return const LoginScreen();
         }
-        return AdminPasswordGuard(
-          child: TwoFactorGuard(child: const RoleCheckScreen()),
+        // Ordine: verifica email → cambio password → 2FA → controllo ruolo.
+        // La verifica dell'identità email precede tutto il resto.
+        return EmailVerificationGuard(
+          child: AdminPasswordGuard(
+            child: TwoFactorGuard(child: const RoleCheckScreen()),
+          ),
         );
       },
     );

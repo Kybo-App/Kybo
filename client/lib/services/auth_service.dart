@@ -92,7 +92,17 @@ class AuthService {
         password: password,
       );
       if (credential.user != null) {
-        await _ensureUserDoc(credential.user!, role: role, additionalData: additionalData);
+        // Nuovo account self-signup: obbliga la verifica email al primo accesso
+        // (l'EmailVerificationGuard mostra la schermata finché il flag è true;
+        // la mail di verifica viene inviata dalla schermata stessa).
+        await _ensureUserDoc(
+          credential.user!,
+          role: role,
+          additionalData: {
+            'requires_email_verification': true,
+            if (additionalData != null) ...additionalData,
+          },
+        );
         await updateLastLogin(credential.user!.uid);
       }
     } catch (e) {
