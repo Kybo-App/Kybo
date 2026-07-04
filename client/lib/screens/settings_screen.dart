@@ -619,7 +619,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-    );
+      // [FIX ST5] Controller di dialog mai disposato (pattern ricorrente
+      // F6/SL1/DV2/P1).
+    ).then((_) => controller.dispose());
   }
 
   void _openTimeSettings(BuildContext context) {

@@ -28,6 +28,8 @@ class _PantryViewState extends State<PantryView> {
   final TextEditingController _qtyController = TextEditingController();
   String _unit = DietUnits.GRAMS;
 
+  bool get _canAdd => _nameController.text.trim().isNotEmpty;
+
   void _handleAdd() {
     if (_nameController.text.isNotEmpty) {
       double qty =
@@ -37,6 +39,15 @@ class _PantryViewState extends State<PantryView> {
       _qtyController.clear();
       FocusScope.of(context).unfocus();
     }
+  }
+
+  // [FIX P1] I due controller non venivano mai disposati (leak ad ogni
+  // ricreazione della tab Dispensa).
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _qtyController.dispose();
+    super.dispose();
   }
 
   @override
@@ -146,6 +157,9 @@ class _PantryViewState extends State<PantryView> {
                     flex: 3,
                     child: TextField(
                       controller: _nameController,
+                      // [FIX P2] Il bottone "+" era sempre abilitato ma
+                      // _handleAdd non faceva nulla in silenzio a nome vuoto.
+                      onChanged: (_) => setState(() {}),
                       style: TextStyle(color: KyboColors.textPrimary(context)),
                       decoration: InputDecoration(
                         hintText: "Aggiungi cibo...",
@@ -207,18 +221,21 @@ class _PantryViewState extends State<PantryView> {
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [KyboColors.primary, KyboColors.primaryDark],
-                      ),
+                      gradient: _canAdd
+                          ? LinearGradient(
+                              colors: [KyboColors.primary, KyboColors.primaryDark],
+                            )
+                          : null,
+                      color: _canAdd ? null : KyboColors.border(context),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.add,
-                        color: Colors.white,
+                        color: _canAdd ? Colors.white : KyboColors.textMuted(context),
                         size: 24,
                       ),
-                      onPressed: _handleAdd,
+                      onPressed: _canAdd ? _handleAdd : null,
                     ),
                   ),
                 ],

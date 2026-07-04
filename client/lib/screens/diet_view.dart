@@ -387,7 +387,9 @@ class _DietViewState extends State<DietView> {
           ),
         ],
       ),
-    );
+      // [FIX DV2] Controller di dialog mai disposato (pattern ricorrente
+      // F6/SL1/ST5/P1).
+    ).then((_) => controller.dispose());
   }
 
   void _showSwapDialog(BuildContext context, String swapKey, int cadCode) {
@@ -512,6 +514,9 @@ class _DietViewState extends State<DietView> {
                 controller: noteController,
                 maxLines: 3,
                 maxLength: 500, // ep6.3: limite + contatore live nativo
+                // [FIX DV3] Il "Salva" non faceva nulla in silenzio a testo
+                // vuoto, senza essere disabilitato.
+                onChanged: (_) => setDialogState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Come ti sei sentito? Cosa hai mangiato?',
                   hintStyle: TextStyle(color: KyboColors.textMuted(context)),
@@ -560,25 +565,25 @@ class _DietViewState extends State<DietView> {
             ),
             PillButton(
               label: 'Salva',
-              onPressed: () async {
-                if (noteController.text.trim().isNotEmpty) {
-                  final note = MealNote(
-                    id: noteId,
-                    date: DateTime.now(),
-                    day: day,
-                    mealType: mealType,
-                    note: noteController.text.trim(),
-                    mood: selectedMood,
-                  );
-                  await trackingService.saveMealNote(note);
-                  if (context.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Nota salvata! 📝')),
-                    );
-                  }
-                }
-              },
+              onPressed: noteController.text.trim().isEmpty
+                  ? null
+                  : () async {
+                      final note = MealNote(
+                        id: noteId,
+                        date: DateTime.now(),
+                        day: day,
+                        mealType: mealType,
+                        note: noteController.text.trim(),
+                        mood: selectedMood,
+                      );
+                      await trackingService.saveMealNote(note);
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Nota salvata! 📝')),
+                        );
+                      }
+                    },
               backgroundColor: KyboColors.roleAdmin,
               textColor: Colors.white,
               height: 44,
@@ -586,6 +591,8 @@ class _DietViewState extends State<DietView> {
           ],
         ),
       ),
-    );
+      // [FIX DV2] Controller di dialog mai disposato (pattern ricorrente
+      // F6/SL1/ST5/P1).
+    ).then((_) => noteController.dispose());
   }
 }

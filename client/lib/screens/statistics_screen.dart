@@ -640,6 +640,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             children: [
               TextField(
                 controller: titleController,
+                // [FIX SS2] "Crea" chiudeva il dialog senza creare nulla in
+                // silenzio se il titolo era vuoto — ora il bottone è
+                // disabilitato finché non si scrive un titolo.
+                onChanged: (_) => setDialogState(() {}),
                 decoration: const InputDecoration(
                   labelText: 'Titolo',
                   hintText: 'es. Bevi acqua',
@@ -678,19 +682,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               child: const Text('Annulla'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: titleController.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(ctx, true),
               child: const Text('Crea'),
             ),
           ],
         ),
       ),
+      // [FIX] Controller di dialog mai disposati (pattern ricorrente
+      // F6/SL1/DV2/ST5/P1).
     );
 
-    if (result == true && titleController.text.isNotEmpty) {
-      final target = double.tryParse(targetController.text) ?? 1;
+    final title = titleController.text;
+    final targetText = targetController.text;
+    titleController.dispose();
+    targetController.dispose();
+
+    if (result == true && title.isNotEmpty) {
+      final target = double.tryParse(targetText) ?? 1;
       final goal = UserGoal(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: titleController.text,
+        title: title,
         targetValue: target,
         currentValue: 0,
         unit: selectedUnit,

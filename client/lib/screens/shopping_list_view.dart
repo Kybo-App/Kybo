@@ -344,7 +344,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
           ),
         ],
       ),
-    );
+      // [FIX SL1] Controller di dialog mai disposato (pattern ricorrente
+      // F6/DV2/ST5/P1).
+    ).then((_) => controller.dispose());
   }
 
   Future<void> _shareList() async {

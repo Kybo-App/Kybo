@@ -29,6 +29,9 @@ class OnboardingScreen extends StatelessWidget {
             const SizedBox(height: 16),
             TextField(
               controller: controller,
+              // [FIX F5] Nessun cap: il path deep-link (getInviteCode) limita
+              // già a 64 caratteri per evitare input abnormemente lunghi.
+              maxLength: 64,
               decoration: const InputDecoration(
                 hintText: "Es. ABC-123",
                 border: OutlineInputBorder(),
@@ -45,10 +48,11 @@ class OnboardingScreen extends StatelessWidget {
             label: "Avanti",
             onPressed: () {
               Navigator.pop(ctx);
-              if (controller.text.isNotEmpty) {
+              final code = controller.text.trim();
+              if (code.isNotEmpty && code.length <= 64) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => LoginScreen(inviteCode: controller.text),
+                    builder: (_) => LoginScreen(inviteCode: code),
                   ),
                 );
               }
@@ -56,7 +60,8 @@ class OnboardingScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+      // [FIX F6] TextEditingController creato qui e mai disposato.
+    ).then((_) => controller.dispose());
   }
 
   @override
