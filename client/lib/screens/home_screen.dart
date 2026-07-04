@@ -3,7 +3,6 @@
 // _findNextMeal — individua il prossimo pasto non consumato in base all'ora corrente.
 // _onShowcaseComplete — gestisce le transizioni tra le fasi del tutorial interattivo.
 import 'dart:async';
-import 'dart:convert';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +14,7 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../providers/diet_provider.dart';
 import '../providers/chat_provider.dart';
+import '../services/api_client.dart';
 import '../services/storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/badge_service.dart';
@@ -162,17 +162,22 @@ class _MainScreenContentState extends State<MainScreenContent>
   Future<void> _loadAndShowSharedList(String shareId) async {
     if (!mounted) return;
     try {
-      final response = await http.get(
-        Uri.parse('${Env.apiUrl}/shopping-list/share/$shareId'),
-      );
+      // [FIX H1/H3] Prima usava http diretto e ingoiava OGNI errore in
+      // silenzio (catch (_) {}), ignorando anche i non-200: un link scaduto
+      // o non valido non mostrava nulla. ApiClient dà error handling e
+      // retry coerenti col resto dell'app.
+      final data = await ApiClient().get('/shopping-list/share/$shareId') as Map<String, dynamic>;
       if (!mounted) return;
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final items = List<String>.from(data['items'] ?? []);
-        final title = data['title'] as String? ?? 'Lista condivisa';
-        _showSharedListDialog(title, items);
+      final items = List<String>.from(data['items'] ?? []);
+      final title = data['title'] as String? ?? 'Lista condivisa';
+      _showSharedListDialog(title, items);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
+        );
       }
-    } catch (_) {}
+    }
   }
 
   void _showSharedListDialog(String title, List<String> items) {
@@ -2185,9 +2190,7 @@ class _MainScreenContentState extends State<MainScreenContent>
       );
       if (result == null || result.files.isEmpty) return;
       final file = result.files.single;
-
-      final token = await _auth.getToken();
-      if (token == null) return;
+      if (file.path == null) return;
 
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
@@ -2195,30 +2198,14 @@ class _MainScreenContentState extends State<MainScreenContent>
         );
       }
 
-      final uri = Uri.parse('${Env.apiUrl}/profile/upload-photo');
-      final req = http.MultipartRequest('POST', uri)
-        ..headers['Authorization'] = 'Bearer $token';
-      if (file.bytes != null) {
-        req.files.add(http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name));
-      } else if (file.path != null) {
-        req.files.add(await http.MultipartFile.fromPath('file', file.path!, filename: file.name));
-      } else {
-        return;
-      }
+      // [FIX H3] Prima usava http.MultipartRequest diretto: niente retry di
+      // rete e niente 401→signOut centralizzato. ApiClient.uploadFile
+      // include entrambi (vedi _performUpload).
+      await ApiClient().uploadFile('/profile/upload-photo', file.path!);
 
-      final streamed = await req.send();
-      final resp = await http.Response.fromStream(streamed);
-      if (!ctx.mounted) return;
-      if (resp.statusCode == 200) {
+      if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           const SnackBar(content: Text('Foto profilo aggiornata')),
-        );
-      } else {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(
-            content: Text('Errore caricamento: ${resp.statusCode}'),
-            backgroundColor: KyboColors.error,
-          ),
         );
       }
     } catch (e) {
@@ -2324,7 +2311,11 @@ class _MainScreenContentState extends State<MainScreenContent>
       await provider.uploadDiet(filePath);
 
       if (context.mounted) {
-        Navigator.of(context).pop();
+        // [FIX H4] Prima usava Navigator.of(context).pop() (non-root) qui,
+        // ma rootNavigator: true nel ramo errore sotto — con showDialog che
+        // usa il root navigator di default, un Navigator annidato futuro
+        // farebbe fallire questo pop lasciando il progress dialog bloccato.
+        Navigator.of(context, rootNavigator: true).pop();
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -2371,7 +2362,20 @@ class _MainScreenContentState extends State<MainScreenContent>
       if (!ctx.mounted) return;
       ScaffoldMessenger.of(ctx).hideCurrentSnackBar();
 
-      if (response.statusCode == 200) {
+      // [FIX H3] Risposta binaria (PDF): non può passare da ApiClient (che
+      // fa sempre json.decode del body). Replica qui lo stesso check 401 →
+      // signOut che ApiClient._parseResponse applica alle altre chiamate,
+      // così un token scaduto forza il re-login invece di un errore generico.
+      if (response.statusCode == 401) {
+        await FirebaseAuth.instance.signOut();
+        if (!ctx.mounted) return;
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(
+            content: Text('Sessione scaduta. Effettua nuovamente il login.'),
+            backgroundColor: KyboColors.error,
+          ),
+        );
+      } else if (response.statusCode == 200) {
         await Share.shareXFiles(
           [XFile.fromData(response.bodyBytes, name: 'dieta-kybo.pdf', mimeType: 'application/pdf')],
           subject: 'Dieta Kybo',

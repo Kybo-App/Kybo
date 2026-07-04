@@ -7,17 +7,13 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/env.dart';
 import '../models/chat_message.dart';
-import '../services/auth_service.dart';
+import '../services/api_client.dart';
 
 class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final AuthService _authService = AuthService();
 
   int _unreadCount = 0;
   int get unreadCount => _unreadCount;
@@ -287,55 +283,15 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  // [FIX CH2] Prima usava http.MultipartRequest diretto: niente retry di
+  // rete e niente 401→signOut centralizzato. ApiClient.uploadFile include
+  // entrambi; il Content-Type è rilevato automaticamente dall'estensione
+  // (come faceva già _getMediaType per jpg/png/pdf), e il server valida
+  // comunque i magic bytes indipendentemente dall'header dichiarato.
   Future<Map<String, dynamic>> uploadAttachment(PlatformFile file) async {
-    final token = await _authService.getToken();
-    if (token == null) throw Exception('Non autenticato');
-
-    final uri = Uri.parse('${Env.apiUrl}/chat/upload-attachment');
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $token';
-
-    if (file.bytes != null) {
-      request.files.add(http.MultipartFile.fromBytes(
-        'file',
-        file.bytes!,
-        filename: file.name,
-        contentType: _getMediaType(file.extension),
-      ));
-    } else if (file.path != null) {
-      request.files.add(await http.MultipartFile.fromPath(
-        'file',
-        file.path!,
-        filename: file.name,
-        contentType: _getMediaType(file.extension),
-      ));
-    } else {
-      throw Exception('File vuoto o invalido');
-    }
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Upload fallito: ${response.statusCode}');
-    }
-  }
-
-  MediaType? _getMediaType(String? extension) {
-    if (extension == null) return null;
-    switch (extension.toLowerCase()) {
-      case 'jpg':
-      case 'jpeg':
-        return MediaType('image', 'jpeg');
-      case 'png':
-        return MediaType('image', 'png');
-      case 'pdf':
-        return MediaType('application', 'pdf');
-      default:
-        return null;
-    }
+    if (file.path == null) throw Exception('File vuoto o invalido');
+    final data = await ApiClient().uploadFile('/chat/upload-attachment', file.path!);
+    return data as Map<String, dynamic>;
   }
 
   Future<void> sendMessage(
