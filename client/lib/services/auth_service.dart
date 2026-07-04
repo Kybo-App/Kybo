@@ -19,26 +19,30 @@ class AuthService {
     return await currentUser?.getIdToken();
   }
 
+  /// Crea il documento Firestore dell'utente se non esiste (self-healing:
+  /// chiamato sia da signUp/signInWithGoogle che da signIn, così un account
+  /// Auth creato ma senza doc — es. per un fallimento passato — viene
+  /// riparato al prossimo login invece di restare orfano per sempre).
+  ///
+  /// [SECURITY FIX F2] Non ingoia più l'errore: il chiamante deve sapere se
+  /// il profilo non è stato creato, altrimenti l'utente prosegue verso
+  /// MainScreen senza ruolo/legame col nutrizionista (vedi audit F1).
   Future<void> _ensureUserDoc(User user, {String role = 'independent', Map<String, dynamic>? additionalData}) async {
-    try {
-      final docRef = _db.collection('users').doc(user.uid);
-      final doc = await docRef.get();
-      if (!doc.exists) {
-        debugPrint("👤 Creazione nuovo profilo utente: ${user.uid}");
-        await docRef.set({
-          'uid': user.uid,
-          'email': user.email,
-          'role': role,
-          'first_name': user.displayName?.split(' ').first ?? 'User',
-          'last_name': '',
-          'is_active': true,
-          'created_at': FieldValue.serverTimestamp(),
-          'platform': defaultTargetPlatform.name,
-          if (additionalData != null) ...additionalData,
-        });
-      }
-    } catch (e) {
-      debugPrint("⚠️ Errore creazione doc utente: $e");
+    final docRef = _db.collection('users').doc(user.uid);
+    final doc = await docRef.get();
+    if (!doc.exists) {
+      debugPrint("👤 Creazione nuovo profilo utente: ${user.uid}");
+      await docRef.set({
+        'uid': user.uid,
+        'email': user.email,
+        'role': role,
+        'first_name': user.displayName?.split(' ').first ?? 'User',
+        'last_name': '',
+        'is_active': true,
+        'created_at': FieldValue.serverTimestamp(),
+        'platform': defaultTargetPlatform.name,
+        if (additionalData != null) ...additionalData,
+      });
     }
   }
 
@@ -78,6 +82,10 @@ class AuthService {
     try {
       final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
       if (cred.user != null) {
+        // Self-healing: ripara un account Auth senza doc Firestore (es. da un
+        // signUp interrotto in passato). Se il doc esiste già, _ensureUserDoc
+        // è un no-op (non tocca ruolo/dati esistenti).
+        await _ensureUserDoc(cred.user!);
         await updateLastLogin(cred.user!.uid);
       }
     } catch (e) {

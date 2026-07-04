@@ -98,7 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
         await _auth.signUp(
           email,
           pass,
-          role: widget.inviteCode != null ? 'client' : 'independent',
+          // [SECURITY FIX F1] 'client' non è mai stato ammesso dalla create
+          // rule (solo ['independent', 'user']) né dal server: la scrittura
+          // veniva negata e ingoiata, lasciando l'account senza profilo.
+          // 'user' è la convenzione usata da rules e server per un cliente
+          // registrato con invito.
+          role: widget.inviteCode != null ? 'user' : 'independent',
           additionalData: widget.inviteCode != null ? {'invite_code': widget.inviteCode} : null,
         );
       }
