@@ -74,7 +74,6 @@ class GDPRRetentionService:
     """
 
     USERS_COLLECTION = 'users'
-    DIETS_SUBCOLLECTION = 'diets'
     DIET_HISTORY_COLLECTION = 'diet_history'
     CHATS_COLLECTION = 'chats'
     MESSAGES_SUBCOLLECTION = 'messages'
@@ -348,7 +347,9 @@ class GDPRRetentionService:
         Elimina tutti i dati di un utente in cascata (GDPR Art. 17).
 
         Ordine di eliminazione:
-        1. Subcollection diets
+        1. TUTTE le subcollection di users/{uid} (diets, weight_history,
+           daily_stats, goals, meal_notes, xp_history, claimed_rewards,
+           challenges, workout_completions, internal_notes, ecc.)
         2. diet_history (documenti con userId == uid)
         3. chats e messages (dove l'utente è partecipante)
         4. consent_logs
@@ -386,12 +387,20 @@ class GDPRRetentionService:
                     'dry_run': dry_run
                 })
 
-            diets_deleted = await self._delete_subcollection(
-                f"{self.USERS_COLLECTION}/{uid}/{self.DIETS_SUBCOLLECTION}",
-                dry_run
-            )
-            if diets_deleted > 0:
-                deleted_collections.append(f"diets ({diets_deleted} docs)")
+            # [FIX SRV-RET1] Elimina TUTTE le subcollection dell'utente (peso,
+            # note pasti, obiettivi, xp_history, claimed_rewards, sfide, ecc.),
+            # non solo `diets`: Firestore non cancella le subcollection quando
+            # si elimina il doc padre, quindi limitarsi a `diets` lasciava PII
+            # orfana interrogabile via collection_group. Stesso approccio di
+            # users.py:delete-user (user_ref.collections()).
+            user_ref = self.db.collection(self.USERS_COLLECTION).document(uid)
+            for sub_ref in user_ref.collections():
+                sub_deleted = await self._delete_subcollection(
+                    f"{self.USERS_COLLECTION}/{uid}/{sub_ref.id}",
+                    dry_run
+                )
+                if sub_deleted > 0:
+                    deleted_collections.append(f"{sub_ref.id} ({sub_deleted} docs)")
 
             history_deleted = await self._delete_by_field(
                 self.DIET_HISTORY_COLLECTION,
