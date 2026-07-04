@@ -17,6 +17,7 @@ from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.logging import logger
 from app.core.cache import redis_cache
+from app.services.diet_crypto import load_diet_plan
 from app.core.metrics import (
     suggestions_gemini_calls_total,
     suggestions_gemini_errors_total,
@@ -181,7 +182,9 @@ def _load_user_context(db, uid: str) -> dict:
         diet_doc = db.collection("users").document(uid).collection("diets").document("current").get()
         if diet_doc.exists:
             diet_data = diet_doc.to_dict() or {}
-            plan = diet_data.get("plan", {})
+            # [FIX SRV-DIET1] Decifra `plan_encrypted` se la dieta è stata
+            # toccata dal client (che cancella il campo `plan` in chiaro).
+            plan = load_diet_plan(diet_data, uid)
 
             dishes = []
             for day_meals in plan.values():

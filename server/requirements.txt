@@ -28,6 +28,10 @@ pydantic>=2.10,<3.0
 pydantic-settings>=2.6,<3.0
 python-dotenv==1.0.1
 firebase-admin==6.4.0
+# Già dipendenza transitiva di google-auth (firebase-admin); pinnata
+# esplicitamente perché ora usata direttamente per decifrare le diete
+# cifrate dal client (AES-256-CBC) — vedi app/services/diet_crypto.py.
+cryptography>=42.0.0,<47.0.0
 email-validator==2.1.0
 aiosmtplib==3.0.1
 # [SECURITY] CVE-2024-56201 + CVE-2024-56326 (sandbox escape) — fixed in 3.1.5

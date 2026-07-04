@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from app.core.dependencies import verify_professional
 from app.core.logging import logger, sanitize_error_message
 from app.core.limiter import limiter
+from app.services.diet_crypto import load_diet_plan
 
 router = APIRouter(prefix="/admin/analytics", tags=["analytics"])
 
@@ -407,7 +408,10 @@ async def get_meal_completion(
         planned_meals_per_day = 0
         if diet_docs:
             diet_data = diet_docs[0].to_dict()
-            plan = diet_data.get('plan', {})
+            # [FIX SRV-DIET1] `plan` è vuoto dopo un save client (cifrato in
+            # `plan_encrypted`); decifra usando la chiave del proprietario
+            # della dieta (target_uid), non del richiedente.
+            plan = load_diet_plan(diet_data, target_uid)
             planned_meals_per_day = len(plan) if isinstance(plan, dict) else 0
 
         now = datetime.now(timezone.utc)

@@ -25,6 +25,7 @@ from app.core.dependencies import (
 from app.core.logging import logger, sanitize_error_message
 from app.services.app_config_service import get_app_config
 from app.services.diet_save_service import save_diet_to_firestore
+from app.services.diet_crypto import load_diet_plan, encrypt_field
 from app.services.diet_service import DietParser
 from app.services.receipt_service import ReceiptScanner
 from app.services.notification_service import NotificationService
@@ -440,7 +441,11 @@ async def export_diet_pdf(request: Request, uid: str = Depends(get_current_uid))
             raise HTTPException(status_code=404, detail="Nessuna dieta trovata.")
 
         diet_data = diet_doc.to_dict() or {}
-        plan = diet_data.get('plan', {})
+        # [FIX SRV-DIET1] Il client cifra `plan` in `plan_encrypted` e cancella
+        # il campo in chiaro dopo il primo salvataggio (swap/modifica/sync):
+        # leggere solo `plan` produceva un PDF vuoto. load_diet_plan gestisce
+        # entrambi i formati.
+        plan = load_diet_plan(diet_data, uid)
 
         pdf_bytes = await run_in_threadpool(_generate_diet_pdf, plan, uid)
 
@@ -554,8 +559,13 @@ async def import_diet_from_file(
             raise HTTPException(status_code=422, detail="Impossibile leggere il file. Verifica il formato.")
 
         db = firebase_admin.firestore.client()
+        # [FIX SRV-DIET1] Cifra come il resto del sistema (merge=True su un
+        # doc esistente lascerebbe altrimenti `plan_encrypted` di una dieta
+        # precedente in giro accanto a un `plan` in chiaro non aggiornato).
         db.collection('users').document(uid).collection('diets').document('current').set({
-            'plan': plan,
+            'plan_encrypted': encrypt_field(plan, uid),
+            'encrypted': True,
+            'plan': firebase_admin.firestore.DELETE_FIELD,
             'source': 'import',
             'imported_at': firebase_admin.firestore.SERVER_TIMESTAMP,
             'original_filename': file.filename,
