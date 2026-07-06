@@ -51,5 +51,11 @@ hiredis==2.3.2
 # RQ task queue for async diet parsing (opzionale - graceful fallback se Redis non disponibile)
 rq==1.16.1
 # APM - Prometheus metrics
-prometheus-fastapi-instrumentator==6.1.0
+# [FIX] 6.1.0 crasha con starlette>=0.49 ('_IncludedRouter' object has no
+# attribute 'path' in routing.get_route_name) → 500 su OGNI richiesta non
+# esclusa (la preflight CORS inclusa → il browser lo mostra come errore CORS).
+# starlette 0.49 non è downgradabile (fissa CVE-2024-47874 & co.), quindi
+# aggiorniamo l'instrumentator alla linea 7.x che gestisce le route nuove.
+# TODO: ri-pinnare a versione esatta dopo primo CI green (supply chain).
+prometheus-fastapi-instrumentator>=7.0.0,<8.0.0
 prometheus-client==0.20.0
