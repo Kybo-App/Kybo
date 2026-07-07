@@ -19,8 +19,24 @@ class ChatManagementView extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AdminChatProvider(),
-      child: const Scaffold(
-        body: _ChatManagementContent(),
+      // [FIX dark mode] Scaffold senza backgroundColor eredita
+      // scaffoldBackgroundColor dal ThemeData del MaterialApp, che è fisso
+      // chiaro (0xFFF5F5F5): il dark mode admin vive in KyboColors, non nel
+      // tema. Senza il colore esplicito la chat restava bianca col tema scuro.
+      child: Scaffold(
+        backgroundColor: KyboColors.background,
+        // Container esterno: dà alla chat lo stesso look "card" delle altre
+        // view (bordo + raggio visibili anche in dark) e clippa i contenuti.
+        body: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: KyboColors.surface,
+            borderRadius: KyboBorderRadius.large,
+            border: Border.all(color: KyboColors.border),
+            boxShadow: KyboColors.softShadow,
+          ),
+          child: const _ChatManagementContent(),
+        ),
       ),
     );
   }

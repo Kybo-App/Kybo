@@ -1294,6 +1294,8 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
                           )
                         : null,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 14,

@@ -23,6 +23,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Env.init();
 
+  // [THEME] Primo avvio: tema del sistema (prefers-color-scheme). Dopo la
+  // prima scelta col toggle nella top bar la preferenza persistita vince.
+  await KyboThemeProvider().init();
+
   final firebaseOptions = Env.isProd
       ? prod.DefaultFirebaseOptions.currentPlatform
       : dev.DefaultFirebaseOptions.currentPlatform;
@@ -75,64 +79,79 @@ class AdminApp extends StatelessWidget {
   }
 
   Widget _buildMaterialApp(Locale locale) {
-    return MaterialApp(
-      title: 'Kybo Admin',
-      debugShowCheckedModeBanner: false,
-      locale: locale,
-      supportedLocales: const [Locale('it'), Locale('en')],
-      scrollBehavior: const _AdminScrollBehavior(),
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2E7D32),
-          primary: const Color(0xFF2E7D32),
-          secondary: const Color(0xFFE65100),
-          surface: Colors.white,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    // [THEME] ThemeData dinamico agganciato a KyboThemeProvider: i default
+    // Material (Card, Dropdown menu, testi senza stile, Dialog, ecc.) seguono
+    // il dark mode. Prima il ThemeData era fisso chiaro e ogni widget che
+    // ereditava i default restava bianco/scuro sbagliato col tema scuro.
+    return ListenableBuilder(
+      listenable: KyboThemeProvider(),
+      builder: (context, _) {
+        final isDark = KyboColors.isDark;
+        return MaterialApp(
+          title: 'Kybo Admin',
+          debugShowCheckedModeBanner: false,
+          locale: locale,
+          supportedLocales: const [Locale('it'), Locale('en')],
+          scrollBehavior: const _AdminScrollBehavior(),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            scaffoldBackgroundColor: KyboColors.background,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF2E7D32),
+              brightness: isDark ? Brightness.dark : Brightness.light,
+              primary: const Color(0xFF2E7D32),
+              secondary: const Color(0xFFE65100),
+              surface: KyboColors.surface,
+            ),
+            cardTheme: CardThemeData(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              color: KyboColors.surface,
+              surfaceTintColor: KyboColors.surface,
+            ),
+            appBarTheme: AppBarTheme(
+              backgroundColor: KyboColors.surface,
+              surfaceTintColor: KyboColors.surface,
+              elevation: 0,
+              iconTheme: const IconThemeData(color: Color(0xFF2E7D32)),
+              titleTextStyle: const TextStyle(
+                color: Color(0xFF2E7D32),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              // filled: false — il fill del tema è RETTANGOLARE (con
+              // InputBorder.none non segue il raggio) e sporgeva con angoli
+              // squadrati sopra i campi pill-shaped (es. ricerca utenti).
+              // Chi vuole il fill lo dichiara esplicito nel widget.
+              filled: false,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: KyboColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: KyboColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+              ),
+            ),
           ),
-          color: Colors.white,
-          surfaceTintColor: Colors.white,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.white,
-          elevation: 0,
-          iconTheme: IconThemeData(color: Color(0xFF2E7D32)),
-          titleTextStyle: TextStyle(
-            color: Color(0xFF2E7D32),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.grey[50],
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
-          ),
-        ),
-      ),
-      home: const AuthGate(),
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }
@@ -267,6 +286,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       size: 20,
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 16,
@@ -311,6 +332,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 16,

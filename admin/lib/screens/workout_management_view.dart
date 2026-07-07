@@ -293,6 +293,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                                       hintStyle: TextStyle(
                                           color: KyboColors.textMuted),
                                       border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
                                       isDense: true,
                                       contentPadding: EdgeInsets.zero,
                                     ),

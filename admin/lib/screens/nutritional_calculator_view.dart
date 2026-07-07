@@ -145,7 +145,7 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildMacroStat(l10n.calculatorKcal, _totalKcal, "kcal", Colors.grey[800]!),
+          _buildMacroStat(l10n.calculatorKcal, _totalKcal, "kcal", KyboColors.textPrimary),
           _buildMacroStat(l10n.calculatorProtein, _totalProtein, "g", KyboColors.protein),
           _buildMacroStat(l10n.calculatorCarbs, _totalCarbs, "g", KyboColors.carbs),
           _buildMacroStat(l10n.calculatorFat, _totalFat, "g", KyboColors.fat),

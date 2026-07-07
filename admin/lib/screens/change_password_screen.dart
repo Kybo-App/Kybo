@@ -86,10 +86,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      backgroundColor: Colors.blueGrey[50],
+      backgroundColor: KyboColors.background,
       body: Center(
         child: Card(
           elevation: 4,
+          // Il cardTheme dell'app forza bianco: serve il colore esplicito
+          // perché il dark mode admin vive in KyboColors, non nel ThemeData.
+          color: KyboColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -103,23 +106,32 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 const SizedBox(height: 24),
                 Text(
                   l10n.pwdSecurityUpdate,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: KyboColors.textPrimary),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   l10n.pwdWelcome,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(color: KyboColors.textSecondary),
                 ),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _passCtrl,
                   obscureText: true,
                   onChanged: (_) => setState(() {}),
+                  style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     labelText: l10n.pwdNew,
+                    labelStyle: TextStyle(color: KyboColors.textSecondary),
+                    filled: true,
+                    // L'inputDecorationTheme dell'app riempie di grigio chiaro:
+                    // serve il fill esplicito per il dark mode.
+                    fillColor: KyboColors.background,
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
+                    prefixIcon: Icon(Icons.lock, color: KyboColors.textMuted),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -133,10 +145,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   controller: _confirmCtrl,
                   obscureText: true,
                   onChanged: (_) => setState(() {}),
+                  style: TextStyle(color: KyboColors.textPrimary),
                   decoration: InputDecoration(
                     labelText: l10n.pwdConfirm,
+                    labelStyle: TextStyle(color: KyboColors.textSecondary),
+                    filled: true,
+                    fillColor: KyboColors.background,
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon:
+                        Icon(Icons.lock_outline, color: KyboColors.textMuted),
                   ),
                 ),
                 // Errore inline vicino al campo che non va.

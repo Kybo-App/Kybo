@@ -249,7 +249,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
           Center(child: Padding(
             padding: const EdgeInsets.all(32.0),
             child: Text(l10n.matchmakingNoAnnouncements,
-                style: const TextStyle(color: Colors.grey)),
+                style: TextStyle(color: KyboColors.textMuted)),
           )),
 
         Expanded(
@@ -265,6 +265,8 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                   : l10n.missingDate;
 
               return Card(
+                // Colore esplicito: il dark mode admin vive in KyboColors.
+                color: KyboColors.surface,
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -282,23 +284,36 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
                             isPT
                                 ? l10n.matchmakingFindPT
                                 : l10n.matchmakingFindNutritionist,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: KyboColors.textPrimary),
                           ),
                           const Spacer(),
-                          Text(timeString, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(timeString,
+                              style: TextStyle(
+                                  color: KyboColors.textMuted, fontSize: 12)),
                         ],
                       ),
                       const SizedBox(height: 12),
                       Text(l10n.matchmakingObjectiveLabel,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                      Text(req['goal'] ?? '', style: const TextStyle(fontSize: 14)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: KyboColors.textSecondary)),
+                      Text(req['goal'] ?? '',
+                          style: TextStyle(
+                              fontSize: 14, color: KyboColors.textPrimary)),
                       if (req['notes'] != null && req['notes'].toString().isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(l10n.matchmakingUserNotes,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13)),
-                        Text(req['notes'], style: const TextStyle(fontSize: 14)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: KyboColors.textSecondary)),
+                        Text(req['notes'],
+                            style: TextStyle(
+                                fontSize: 14, color: KyboColors.textPrimary)),
                       ],
                       // Azioni nascoste in modalità monitor (admin) —
                       // l'admin non fa proposte, le osserva soltanto.

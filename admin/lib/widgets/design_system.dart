@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Sistema di design Kybo Admin: componenti pill-shaped con supporto dark mode.
 // KyboThemeProvider — singleton ChangeNotifier per toggle dark mode globale; KyboColors — getter dinamici luce/buio.
+// Stesso pattern del client (client/lib/providers/theme_provider.dart):
+// primo avvio → tema del sistema; dopo la prima scelta col toggle → la
+// preferenza è persistita (su web: localStorage) e vince sul sistema.
 class KyboThemeProvider extends ChangeNotifier {
+  static const String _themeKey = 'dark_mode';
+  static const String _themeSetKey = 'theme_set';
+
   static final KyboThemeProvider _instance = KyboThemeProvider._internal();
   factory KyboThemeProvider() => _instance;
   KyboThemeProvider._internal();
@@ -10,11 +17,31 @@ class KyboThemeProvider extends ChangeNotifier {
   bool _isDarkMode = false;
   bool get isDarkMode => _isDarkMode;
 
-  void toggleTheme() {
-    _isDarkMode = !_isDarkMode;
-    notifyListeners();
+  /// Da chiamare in main() PRIMA di runApp: qui il tema vive nei getter
+  /// statici KyboColors + rebuild espliciti (nessun listener globale sul
+  /// provider), quindi il valore deve essere corretto già al primo frame.
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasUserSetTheme = prefs.getBool(_themeSetKey) ?? false;
+    if (hasUserSetTheme) {
+      _isDarkMode = prefs.getBool(_themeKey) ?? false;
+    } else {
+      // Primo avvio: segue prefers-color-scheme del browser/OS.
+      final brightness =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      _isDarkMode = brightness == Brightness.dark;
+    }
   }
 
+  Future<void> toggleTheme() async {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_themeKey, _isDarkMode);
+    await prefs.setBool(_themeSetKey, true);
+  }
+
+  /// Solo per uso programmatico (non persiste la scelta).
   void setDarkMode(bool value) {
     _isDarkMode = value;
     notifyListeners();
@@ -90,8 +117,11 @@ class KyboColors {
     ),
   ];
 
+  // [DARK] alpha 0.16 (era 0.1): al 10% i bordi su surface scura erano
+  // quasi invisibili (segnalato sulla chat). ~16% è lo standard dei temi
+  // dark (es. GitHub dark).
   static Color get border => isDark
-      ? Colors.white.withValues(alpha: 0.1)
+      ? Colors.white.withValues(alpha: 0.16)
       : Colors.black.withValues(alpha: 0.08);
 }
 
@@ -722,7 +752,12 @@ class _PillTextFieldState extends State<PillTextField> {
                           setState(() => _obscureText = !_obscureText),
                     )
                   : null,
+              // La tripletta è necessaria: `border:` da solo NON basta —
+              // enabledBorder/focusedBorder dell'inputDecorationTheme
+              // vincono e disegnano il rettangolo del tema sopra la pill.
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 20,
                 vertical: 16,

@@ -1110,6 +1110,8 @@ class _UserManagementViewState extends State<UserManagementView> {
                         size: 20,
                       ),
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 12,
@@ -2431,7 +2433,15 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(AppLocalizations.of(context).userHistoryTitle(widget.userName))),
+      backgroundColor: KyboColors.background,
+      appBar: AppBar(
+        backgroundColor: KyboColors.surface,
+        iconTheme: IconThemeData(color: KyboColors.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).userHistoryTitle(widget.userName),
+          style: TextStyle(color: KyboColors.textPrimary),
+        ),
+      ),
       body: FutureBuilder<List<dynamic>>(
         future: _historyFuture,
         builder: (context, snapshot) {
@@ -2532,7 +2542,15 @@ class _DietDetailScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(data['fileName'] ?? "Dettaglio")),
+      backgroundColor: KyboColors.background,
+      appBar: AppBar(
+        backgroundColor: KyboColors.surface,
+        iconTheme: IconThemeData(color: KyboColors.textPrimary),
+        title: Text(
+          data['fileName'] ?? "Dettaglio",
+          style: TextStyle(color: KyboColors.textPrimary),
+        ),
+      ),
       body: plan == null
           ? Center(
               child: Column(
@@ -2680,8 +2698,14 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: KyboColors.background,
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).userParserCustom),
+        backgroundColor: KyboColors.surface,
+        iconTheme: IconThemeData(color: KyboColors.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).userParserCustom,
+          style: TextStyle(color: KyboColors.textPrimary),
+        ),
         actions: [
           if (!_isLoading)
             IconButton(icon: const Icon(Icons.save), onPressed: _uploadPrompt),
@@ -3172,8 +3196,14 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: KyboColors.background,
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context).noteForClient(widget.clientName)),
+        backgroundColor: KyboColors.surface,
+        iconTheme: IconThemeData(color: KyboColors.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).noteForClient(widget.clientName),
+          style: TextStyle(color: KyboColors.textPrimary),
+        ),
         actions: [
           if (!_isLoading)
             IconButton(

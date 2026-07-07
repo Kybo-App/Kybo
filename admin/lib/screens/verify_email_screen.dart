@@ -106,10 +106,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     final l10n = AppLocalizations.of(context);
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
     return Scaffold(
-      backgroundColor: Colors.blueGrey[50],
+      backgroundColor: KyboColors.background,
       body: Center(
         child: Card(
           elevation: 4,
+          // Il cardTheme dell'app forza bianco: serve il colore esplicito
+          // perché il dark mode admin vive in KyboColors, non nel ThemeData.
+          color: KyboColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Container(
             width: 400,
@@ -122,26 +125,30 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 const SizedBox(height: 24),
                 Text(
                   l10n.verifyEmailTitle,
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: KyboColors.textPrimary),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   l10n.verifyEmailSentTo,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black54),
+                  style: TextStyle(color: KyboColors.textSecondary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   email,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: KyboColors.textPrimary),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   l10n.verifyEmailInstructions,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black45, fontSize: 13),
+                  style: TextStyle(color: KyboColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 28),
                 SizedBox(

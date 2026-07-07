@@ -286,7 +286,14 @@ class _ReportsViewState extends State<ReportsView> {
               value: _selectedNutritionistId,
               isExpanded: true,
               underline: const SizedBox(),
-              hint: Text(l10n.reportsAllNutritionists),
+              // Stile esplicito (come il filtro ruoli in user_management):
+              // senza, il testo eredita il default del tema → scuro su scuro.
+              style: TextStyle(color: KyboColors.textPrimary, fontSize: 14),
+              dropdownColor: KyboColors.surface,
+              icon: Icon(Icons.keyboard_arrow_down_rounded,
+                  color: KyboColors.textSecondary),
+              hint: Text(l10n.reportsAllNutritionists,
+                  style: TextStyle(color: KyboColors.textMuted)),
               items: [
                 DropdownMenuItem(
                   value: null,

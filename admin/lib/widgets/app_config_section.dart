@@ -306,6 +306,8 @@ class _AppConfigSectionState extends State<AppConfigSection> {
                 hintStyle: TextStyle(color: KyboColors.textMuted, fontSize: 13),
                 contentPadding: const EdgeInsets.all(12),
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
               ),
             ),
           ),
