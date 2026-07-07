@@ -148,23 +148,48 @@ class _CascadeSnapshotPainter extends SnapshotPainter {
     final canvas = context.canvas;
     final paint = ui.Paint()..filterQuality = FilterQuality.low;
     final h = _sliceHeight <= 0 ? size.height : _sliceHeight;
-    final numSlices = (size.height / h).ceil();
 
     // Overlap verticale tra strisce: copre eventuali hairline (gap sub-pixel)
     // ai bordi shearati. Tenuto a 1px → disallineamento impercettibile.
     const overlap = 1.0;
+    // [PERF] Tolleranza (px) sotto cui due offset sono considerati uguali:
+    // usata per fondere fasce "piatte" consecutive in un unico blit.
+    const eps = 0.02;
 
-    for (int i = 0; i < numSlices; i++) {
-      final y = i * h;
-      final sliceH = math.min(h, size.height - y);
-      if (sliceH <= 0) break;
+    double y = 0;
+    double dxTop = _offsetAt(0);
+    while (y < size.height) {
+      double sliceH = math.min(h, size.height - y);
 
       // Offset orizzontale al bordo SUPERIORE e INFERIORE della fascia.
       // Disegnando la striscia come parallelogramma (shear lineare tra i due),
       // il suo bordo basso combacia col bordo alto della striscia successiva
       // → i lati del contenuto diventano una linea continua, non una scaletta.
-      final dxTop = _offsetAt(y);
-      final dxBottom = _offsetAt(y + sliceH);
+      double dxBottom = _offsetAt(y + sliceH);
+
+      // [PERF] MERGE delle fasce piatte: nelle zone dove l'onda è ferma
+      // (contenuto già spinto a maxPush, o non ancora raggiunto dall'onda:
+      // offset costante) fasce adiacenti identiche vengono fuse in un'unica
+      // striscia → 1 drawImageRect invece di decine. Con viewport ~900px e
+      // sliceHeight 6 si passa da ~150 draw/frame a poche decine nei frame
+      // centrali e a ~3-5 in quelli iniziali/finali. Il midpoint check evita
+      // di fondere una fascia che contiene il "fold" dell'onda al suo interno
+      // (endpoint uguali ma interno diverso, possibile attorno alla tab
+      // selezionata nei primissimi frame).
+      if ((dxBottom - dxTop).abs() < eps &&
+          (_offsetAt(y + sliceH / 2) - dxTop).abs() < eps) {
+        var yEnd = y + sliceH;
+        while (yEnd < size.height) {
+          final step = math.min(h, size.height - yEnd);
+          if ((_offsetAt(yEnd + step) - dxTop).abs() >= eps ||
+              (_offsetAt(yEnd + step / 2) - dxTop).abs() >= eps) {
+            break;
+          }
+          yEnd += step;
+        }
+        sliceH = yEnd - y;
+        dxBottom = dxTop; // piatta per costruzione
+      }
 
       // Estende la fascia di `overlap` px in basso (clampato all'immagine).
       final drawH = math.min(sliceH + overlap, sourceSize.height - y);
@@ -199,15 +224,27 @@ class _CascadeSnapshotPainter extends SnapshotPainter {
       // quindi la Y non cambia): l'`overlap` riempie i gap sub-pixel ai bordi
       // inclinati ma la sua parte eccedente viene tagliata → nessuna doppia
       // composizione, quindi niente righe scure che attraversano la pagina.
-      canvas.clipRect(Rect.fromLTWH(
-        offset.dx - 1,
-        y0,
-        sourceSize.width + 2000,
-        sliceH,
-      ));
+      // [FIX hairline] doAntiAlias: false — il clip AA su bordi a coordinate
+      // frazionarie (es. Windows a scala 125%: 6px logici = 7.5px fisici)
+      // lascia pixel di bordo semi-trasparenti su ENTRAMBE le fasce che si
+      // incontrano → la doppia composizione non torna opaca al 100% e appare
+      // una riga orizzontale. Il clip hard scatta al pixel fisico intero:
+      // ogni pixel appartiene a una sola fascia e l'overlap copre i buchi.
+      canvas.clipRect(
+        Rect.fromLTWH(
+          offset.dx - 1,
+          y0,
+          sourceSize.width + 2000,
+          sliceH,
+        ),
+        doAntiAlias: false,
+      );
       canvas.transform(m.storage);
       canvas.drawImageRect(image, src, dst, paint);
       canvas.restore();
+
+      y += sliceH;
+      dxTop = dxBottom;
     }
   }
 
