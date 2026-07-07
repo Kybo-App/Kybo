@@ -1,9 +1,21 @@
 # [SECURITY] Patched Versions — pinned to exact versions (supply chain protection)
-# [SECURITY] fastapi/starlette coppia: range temporaneo finché non identifichiamo
-# la versione fastapi che supporta starlette>=0.49 (CVE-2024-47874 + CVE-2025-54121
-# + CVE-2025-62727 fixed in 0.49.1). pip risolverà l'ultima compatibile.
+# [SECURITY] I tre CVE (CVE-2024-47874 + CVE-2025-54121 + CVE-2025-62727) sono di
+# STARLETTE, fixati in 0.49.1: è lo starlette pin qui sotto a chiuderli, NON la
+# versione di fastapi. fastapi 0.121+ accetta già starlette 0.49.x.
+#
+# [FIX CORS-500] Cap a <0.137: fastapi 0.137.0 ha rifattorizzato include_router()
+# (PR fastapi#15745) inserendo oggetti wrapper `_IncludedRouter` SENZA `.path` in
+# app.routes. prometheus-fastapi-instrumentator (vedi sotto) fa `route.path` diretto
+# per ogni richiesta → AttributeError → 500 su OGNI handler non escluso, preflight
+# CORS OPTIONS inclusa (il middleware instrumentator è il più esterno, gira prima
+# del CORS) → il browser lo mostra come errore CORS. Il fix upstream del bug
+# `_IncludedRouter` esiste solo in instrumentator 8.0.1+, che però richiede
+# starlette>=1.0.0 (incompatibile col nostro starlette 0.49.x). Fino a quando non
+# si valuta l'upgrade a starlette 1.x, restiamo su fastapi<0.137 (pre-refactor):
+# instrumentator 7.x funziona e le metriche restano attive.
 # TODO: ri-pinnare a versione esatta dopo primo CI green per supply chain safety.
-fastapi>=0.121.0,<0.200.0
+# TODO: rimuovere il cap <0.137 quando si migra a starlette 1.x + instrumentator 8.x.
+fastapi>=0.121.0,<0.137.0
 starlette>=0.49.1,<0.50.0
 # [SECURITY] GHSA-7669-jjrm-h66r (DoS via malformed headers) fixed in 0.30.0+
 uvicorn[standard]==0.34.0
@@ -51,11 +63,12 @@ hiredis==2.3.2
 # RQ task queue for async diet parsing (opzionale - graceful fallback se Redis non disponibile)
 rq==1.16.1
 # APM - Prometheus metrics
-# [FIX] 6.1.0 crasha con starlette>=0.49 ('_IncludedRouter' object has no
-# attribute 'path' in routing.get_route_name) → 500 su OGNI richiesta non
-# esclusa (la preflight CORS inclusa → il browser lo mostra come errore CORS).
-# starlette 0.49 non è downgradabile (fissa CVE-2024-47874 & co.), quindi
-# aggiorniamo l'instrumentator alla linea 7.x che gestisce le route nuove.
-# TODO: ri-pinnare a versione esatta dopo primo CI green (supply chain).
+# [FIX CORS-500] Il crash "'_IncludedRouter' object has no attribute 'path'" è
+# causato da fastapi>=0.137 (non da starlette): vedi il commento sul cap fastapi
+# in cima. Con fastapi<0.137 non esistono oggetti `_IncludedRouter` in app.routes,
+# quindi 7.x (routing.get_route_name fa `route.path` diretto) NON crasha.
+# Il cap <8.0.0 resta OBBLIGATORIO: 8.0.x richiede starlette>=1.0.0 (incompatibile
+# col nostro starlette 0.49.x) → senza il cap pip non risolve.
+# TODO: passare a >=8.0.1 solo insieme all'upgrade starlette 1.x + rimozione cap fastapi.
 prometheus-fastapi-instrumentator>=7.0.0,<8.0.0
 prometheus-client==0.20.0
