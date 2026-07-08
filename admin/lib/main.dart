@@ -5,7 +5,6 @@ import 'package:kybo_admin/guards/email_verification_guard.dart';
 import 'package:kybo_admin/guards/two_factor_guard.dart';
 import 'package:kybo_admin/screens/dashboard_screen.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +14,7 @@ import 'package:provider/provider.dart';
 import 'core/env.dart';
 import 'core/app_localizations.dart';
 import 'providers/language_provider.dart';
+import 'providers/user_provider.dart';
 
 import 'firebase_options_dev.dart' as dev;
 import 'firebase_options_prod.dart' as prod;
@@ -70,8 +70,13 @@ class AdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: LanguageProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: LanguageProvider()),
+        // [COERENZA] Profilo/ruolo condiviso: una lettura Firestore per login
+        // invece di una copia locale per ogni view (vedi user_provider.dart).
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
       child: Consumer<LanguageProvider>(
         builder: (context, langProvider, _) => _buildMaterialApp(langProvider.locale),
       ),
@@ -127,6 +132,17 @@ class AdminApp extends StatelessWidget {
                 color: Color(0xFF2E7D32),
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+            // Look uniforme per TUTTE le snackbar (prima ogni chiamata
+            // inline aveva forma/posizione diverse). I colori semantici
+            // error/success restano per-chiamata via backgroundColor.
+            snackBarTheme: SnackBarThemeData(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: KyboColors.surfaceElevated,
+              contentTextStyle: TextStyle(color: KyboColors.textPrimary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
@@ -381,13 +397,12 @@ class _RoleCheckScreenState extends State<RoleCheckScreen> {
   Future<void> _checkRole() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      final role = doc.data()?['role'];
+      // [COERENZA] Ruolo dal UserProvider condiviso (fail-closed: se la
+      // lettura fallisce il ruolo resta vuoto → accesso negato).
+      final userProv = context.read<UserProvider>();
+      await userProv.ensureLoaded();
 
-      if (role == 'admin' || role == 'nutritionist' || role == 'personal_trainer') {
+      if (userProv.isProfessional) {
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const DashboardScreen()),

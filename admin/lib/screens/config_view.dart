@@ -31,6 +31,11 @@ class _ConfigViewState extends State<ConfigView> {
     _initStream();
   }
 
+  // [ARCHITETTURA] Split intenzionale per config/global: la SCRITTURA passa
+  // dal server (setMaintenanceStatus in AdminRepository → validazione +
+  // audit), la LETTURA è uno stream Firestore diretto per avere l'aggiornamento
+  // realtime dello stato manutenzione senza polling. Non "uniformare" i due
+  // percorsi: è una scelta, documentata anche nell'header di admin_repository.
   void _initStream() {
     FirebaseFirestore.instance
         .collection('config')

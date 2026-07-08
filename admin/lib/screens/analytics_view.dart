@@ -1,14 +1,14 @@
 // Vista analytics: overview KPI, trend upload diete (grafico lineare), attività nutrizionisti e utenti inattivi.
 // _loadAllData — carica tutti i dati in parallelo; _buildLineChart — grafico fl_chart con tooltip e assi localizzati.
-import 'dart:convert';
+// [COERENZA 2026-07-07] Le chiamate passano da AdminRepository (prima erano
+// http.get diretti: bypassavano il signOut su 401 e duplicavano token/decode).
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../admin_repository.dart';
 import '../core/app_localizations.dart';
-import '../core/env.dart';
+import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
 
 class AnalyticsView extends StatefulWidget {
@@ -19,7 +19,7 @@ class AnalyticsView extends StatefulWidget {
 }
 
 class _AnalyticsViewState extends State<AnalyticsView> {
-  String get _baseUrl => Env.apiUrl;
+  final AdminRepository _repo = AdminRepository();
 
   bool _isLoading = true;
   String? _error;
@@ -42,24 +42,8 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
-  }
-
-  Future<String?> _getToken() async {
-    return await FirebaseAuth.instance.currentUser?.getIdToken();
-  }
-
-  Future<void> _loadUserRole() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (mounted && doc.exists) {
-        _userRole = (doc.data() as Map<String, dynamic>)['role'] ?? '';
-      }
-    }
+    // Ruolo dal UserProvider condiviso (niente più lettura Firestore per-view).
+    _userRole = context.read<UserProvider>().role;
     _loadAllData();
   }
 
@@ -69,77 +53,49 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       _error = null;
     });
 
-    try {
-      await Future.wait([
-        _loadOverview(),
-        _loadDietTrend(),
-        _loadNutritionistActivity(),
-        _loadInactiveUsers(),
-      ]);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _error = e.toString());
+    // [COERENZA] Sezioni indipendenti: un endpoint fallito non butta più in
+    // errore l'intera pagina (prima Future.wait propagava il primo errore).
+    // Errore full-page solo se falliscono TUTTE e quattro le chiamate.
+    String? lastError;
+    Future<bool> guard(Future<void> Function() loader) async {
+      try {
+        await loader();
+        return true;
+      } catch (e) {
+        lastError = e.toString();
+        return false;
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    }
+
+    final results = await Future.wait([
+      guard(_loadOverview),
+      guard(_loadDietTrend),
+      guard(_loadNutritionistActivity),
+      guard(_loadInactiveUsers),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        if (!results.contains(true)) _error = lastError;
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _loadOverview() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/analytics/overview'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) {
-      _overview = jsonDecode(utf8.decode(response.bodyBytes));
-    } else {
-      throw Exception('Errore overview: ${response.statusCode}');
-    }
+    _overview = await _repo.getAnalyticsOverview();
   }
 
   Future<void> _loadDietTrend() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/analytics/diet-trend?period=$_trendPeriod&months=3'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      _trendData = List<Map<String, dynamic>>.from(data['trend'] ?? []);
-    } else {
-      throw Exception('Errore trend: ${response.statusCode}');
-    }
+    _trendData = await _repo.getDietTrend(period: _trendPeriod);
   }
 
   Future<void> _loadNutritionistActivity() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/analytics/nutritionist-activity'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      _nutritionists = List<Map<String, dynamic>>.from(data['nutritionists'] ?? []);
-    } else {
-      throw Exception('Errore attività: ${response.statusCode}');
-    }
+    _nutritionists = await _repo.getNutritionistActivity();
   }
 
   Future<void> _loadInactiveUsers() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/admin/analytics/inactive-users?days=$_inactiveDays'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      _inactiveUsers = List<Map<String, dynamic>>.from(data['users'] ?? []);
-    } else {
-      throw Exception('Errore inattivi: ${response.statusCode}');
-    }
+    _inactiveUsers = await _repo.getInactiveUsers(days: _inactiveDays);
   }
 
   @override

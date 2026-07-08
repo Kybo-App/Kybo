@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:universal_html/html.dart' as html;
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
+import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
 
 // Vista report mensili: lista report con filtri per nutrizionista/mese, dettaglio statistiche e download PDF.
@@ -44,18 +45,11 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   Future<void> _init() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      _currentUserId = user.uid;
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        _isAdmin = data['role'] == 'admin';
-      }
-    }
+    // [COERENZA 2026-07-07] Ruolo/uid dal UserProvider condiviso invece
+    // della lettura Firestore per-view di users/{uid}.
+    final userProv = context.read<UserProvider>();
+    _currentUserId = userProv.uid;
+    _isAdmin = userProv.isAdmin;
 
     if (_isAdmin) {
       await _loadNutritionists();

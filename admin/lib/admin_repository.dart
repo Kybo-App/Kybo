@@ -2,6 +2,21 @@
 // _pollDietJob: polling asincrono sul job RQ fino a completamento o timeout (~5 min).
 // _checkUnauthorized: forza signOut su 401, il StreamBuilder in AuthGate reindirizza.
 // _safeBody: estrae solo il campo 'detail' dal JSON del server, non espone stack trace.
+//
+// [ARCHITETTURA — confini di accesso ai dati]
+// - Dati utente/PII in LETTURA MASSIVA (liste, ricerche, analytics): SEMPRE
+//   via server (questo repository) → gerarchia applicata server-side +
+//   percorso access_logs. Nessuna view deve fare query dirette sulla
+//   collection `users` per liste (le Firestore rules le bloccano comunque
+//   per i non-admin).
+// - Letture Firestore DIRETTE ammesse solo per: il proprio documento
+//   (UserProvider), stream realtime scoped per rules (chat, my day con
+//   filtro parent_id, config/global, audit log admin-only).
+// - config/global: si SCRIVE via server (validazione), si LEGGE via stream
+//   diretto (realtime) — split intenzionale, vedi config_view.dart.
+// - Decodifica risposte: SEMPRE utf8.decode(response.bodyBytes) (mai
+//   response.body: senza charset nell'header viene decodificato latin-1 e
+//   gli accenti italiani escono corrotti). Helper: _getJson.
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -27,6 +42,49 @@ class AdminRepository {
     return await FirebaseAuth.instance.currentUser?.getIdToken();
   }
 
+  /// GET autenticato + decode UTF-8 + gestione 401 uniforme. Da usare per
+  /// tutti i nuovi endpoint GET JSON (evita le tre derive viste in audit:
+  /// decode con response.body, _checkUnauthorized dimenticato, token inline).
+  Future<dynamic> _getJson(String path) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('$_baseUrl$path'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    }
+    await _checkUnauthorized(response);
+    throw ApiStatusException(response.statusCode, _safeBody(response));
+  }
+
+  // --- ANALYTICS ---
+  // [COERENZA 2026-07-07] Prima analytics_view faceva http.get diretti:
+  // bypassava _checkUnauthorized (sessione scaduta non gestita) e duplicava
+  // token/decode. Ora passa da qui come tutte le altre view.
+
+  Future<Map<String, dynamic>> getAnalyticsOverview() async =>
+      Map<String, dynamic>.from(await _getJson('/admin/analytics/overview'));
+
+  Future<List<Map<String, dynamic>>> getDietTrend({
+    required String period,
+    int months = 3,
+  }) async {
+    final data =
+        await _getJson('/admin/analytics/diet-trend?period=$period&months=$months');
+    return List<Map<String, dynamic>>.from(data['trend'] ?? []);
+  }
+
+  Future<List<Map<String, dynamic>>> getNutritionistActivity() async {
+    final data = await _getJson('/admin/analytics/nutritionist-activity');
+    return List<Map<String, dynamic>>.from(data['nutritionists'] ?? []);
+  }
+
+  Future<List<Map<String, dynamic>>> getInactiveUsers({int days = 30}) async {
+    final data = await _getJson('/admin/analytics/inactive-users?days=$days');
+    return List<Map<String, dynamic>>.from(data['users'] ?? []);
+  }
+
   // [SECURITY] 401 → forza signOut per invalidare la sessione lato client.
   // Il StreamBuilder su authStateChanges() in AuthGate reindirizza automaticamente.
   Future<void> _checkUnauthorized(http.Response response) async {
@@ -40,7 +98,8 @@ class AdminRepository {
   // evitando di esporre stack trace o dati interni nelle exception client.
   String _safeBody(http.Response response) {
     try {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       final detail = data['detail'];
       if (detail is String) {
         return detail.length > 200 ? detail.substring(0, 200) : detail;
@@ -146,7 +205,7 @@ class AdminRepository {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(jsonDecode(response.body));
+      return Map<String, dynamic>.from(jsonDecode(utf8.decode(response.bodyBytes)));
     }
     return {};
   }
@@ -303,7 +362,8 @@ class AdminRepository {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
-      return jsonDecode(response.body)['message'] ?? "Sync completato.";
+      return jsonDecode(utf8.decode(response.bodyBytes))['message'] ??
+          "Sync completato.";
     }
     await _checkUnauthorized(response);
     throw Exception("Sync fallito: ${_safeBody(response)}");
@@ -363,7 +423,8 @@ class AdminRepository {
         throw Exception('Servizio di coda non disponibile.');
       }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       final status = data['status'] as String;
 
       if (status == 'done') return;
@@ -508,7 +569,7 @@ class AdminRepository {
     var response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(utf8.decode(response.bodyBytes));
     } else {
       await _checkUnauthorized(response);
       throw Exception("Upload fallito: ${_safeBody(response)}");
@@ -921,7 +982,7 @@ class AdminRepository {
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     }
     await _checkUnauthorized(response);
     throw Exception("Errore recupero config (${response.statusCode}): ${_safeBody(response)}");
@@ -1296,19 +1357,10 @@ class AdminRepository {
   // --- MATCHMAKING ---
 
   Future<List<dynamic>> getMatchmakingBoard() async {
-    final token = await _getToken();
-    final response = await http.get(
-      Uri.parse('$_baseUrl/matchmaking/board'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    await _checkUnauthorized(response);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      return data['board'] as List<dynamic>? ?? [];
-    } else {
-      throw Exception(_safeBody(response));
-    }
+    // [COERENZA] Allineato al pattern degli altri metodi: _checkUnauthorized
+    // solo nel ramo di errore (prima era chiamato anche sul 200).
+    final data = await _getJson('/matchmaking/board');
+    return data['board'] as List<dynamic>? ?? [];
   }
 
   Future<void> makeMatchmakingOffer(String reqId, String notes, String? priceInfo) async {

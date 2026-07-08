@@ -1,13 +1,14 @@
 // Schermata principale del dashboard admin: top bar con navigazione pill, ricerca globale e scorciatoie da tastiera.
-// _handleKeyEvent — gestisce Ctrl+K/N/1-8 e Shift+7; _openGlobalSearch — dialog ricerca utenti Firestore.
+// _handleKeyEvent — gestisce Ctrl+K/N/1-8 e Shift+7; _openGlobalSearch — dialog ricerca utenti (via /admin/users-secure).
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../admin_repository.dart';
 import '../providers/admin_notification_provider.dart';
 import '../providers/language_provider.dart';
+import '../providers/user_provider.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import '../widgets/diet_logo.dart';
@@ -55,12 +56,18 @@ class _DashboardContent extends StatefulWidget {
 class _DashboardContentState extends State<_DashboardContent>
     with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  String _userName = "";
-  String _userRole = "Utente";
-  bool _isAdmin = false;
-  bool _isNutritionist = false;
-  bool _isPT = false;
-  bool _isLoading = true;
+
+  // [COERENZA 2026-07-07] Profilo/ruolo dal UserProvider condiviso (una sola
+  // lettura Firestore per login) invece della copia locale caricata in
+  // initState da ogni view. Il context.watch in build() tiene la UI
+  // sincronizzata quando il profilo finisce di caricare.
+  UserProvider get _userProv => context.read<UserProvider>();
+  String get _userName => _userProv.userName;
+  String get _userRole => _userProv.role;
+  bool get _isAdmin => _userProv.isAdmin;
+  bool get _isNutritionist => _userProv.isNutritionist;
+  bool get _isPT => _userProv.isPT;
+  bool get _isLoading => !_userProv.isLoaded;
 
   // Stato hover per espandere la sidebar collassata.
   // collapsed = solo icone (72px), expanded = icone + label + badge (240px).
@@ -108,7 +115,8 @@ class _DashboardContentState extends State<_DashboardContent>
       duration: const Duration(milliseconds: 1280),
       vsync: this,
     );
-    _fetchCurrentUser();
+    // Il profilo utente è caricato dal UserProvider (RoleCheckScreen lo
+    // attende già prima di arrivare qui); build() lo osserva via watch.
   }
 
   @override
@@ -174,32 +182,8 @@ class _DashboardContentState extends State<_DashboardContent>
   // selezionata. Negativo = sposta l'origine verso l'alto. Tunabile a vista.
   static const double _contentCascadeOriginOffset = 0;
 
-  Future<void> _fetchCurrentUser() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (mounted && doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
-        setState(() {
-          _userName =
-              "${data['first_name'] ?? 'Utente'} ${data['last_name'] ?? ''}"
-                  .trim();
-          _userRole = data['role'] ?? 'user';
-          _isAdmin = _userRole == 'admin';
-          _isNutritionist = _userRole == 'nutritionist' || _isAdmin;
-          _isPT = _userRole == 'personal_trainer' || _isAdmin;
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
-      }
-    } else {
-      setState(() => _isLoading = false);
-    }
-  }
+  // [RIMOSSO 2026-07-07] _fetchCurrentUser: sostituito dal UserProvider
+  // condiviso (vedi providers/user_provider.dart).
 
   void _onNavSelected(int index) {
     setState(() => _selectedIndex = index);
@@ -343,6 +327,8 @@ class _DashboardContentState extends State<_DashboardContent>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Sottoscrive il profilo condiviso: rebuild quando finisce di caricare.
+    context.watch<UserProvider>();
 
     if (_isLoading) {
       return Scaffold(
@@ -1181,6 +1167,18 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
   String _query = '';
   List<_SearchResult> _results = [];
   bool _isSearching = false;
+  bool _loadFailed = false;
+
+  // [FIX COERENZA 2026-07-07] Prima la ricerca leggeva Firestore direttamente
+  // con .limit(20) e filtrava in memoria: (a) per i non-admin la query
+  // sull'intera collection viola le rules → permission-denied ingoiato da un
+  // catch muto = "nessun risultato" senza errore; (b) per l'admin cercava
+  // solo nei primi 20 documenti. Ora usa la stessa fonte della pagina Utenti
+  // (/admin/users-secure): gerarchia server-side, lista completa, 401
+  // gestito. La lista si carica una volta per apertura del dialog e si
+  // filtra in memoria a ogni tasto.
+  List<Map<String, dynamic>>? _allUsers;
+  Future<void>? _usersFuture;
 
   @override
   void initState() {
@@ -1197,43 +1195,59 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
     super.dispose();
   }
 
+  Future<void> _ensureUsersLoaded() {
+    return _usersFuture ??= () async {
+      try {
+        final list = await AdminRepository().getSecureUsersList();
+        _allUsers = list
+            .whereType<Map>()
+            .map((u) => Map<String, dynamic>.from(u))
+            .toList();
+      } catch (_) {
+        // Errore visibile (niente catch muto) + retry al prossimo tasto.
+        _loadFailed = true;
+        _usersFuture = null;
+      }
+    }();
+  }
+
   Future<void> _runSearch() async {
     if (_query.isEmpty) {
       setState(() => _results = []);
       return;
     }
-    setState(() => _isSearching = true);
+    setState(() {
+      _isSearching = true;
+      _loadFailed = false;
+    });
 
-    try {
-      // Cerca utenti in Firestore
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .limit(20)
-          .get();
+    await _ensureUsersLoaded();
 
-      final results = <_SearchResult>[];
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final name =
-            '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'.trim().toLowerCase();
-        final email = (data['email'] ?? '').toString().toLowerCase();
-        final role = (data['role'] ?? '').toString();
+    final results = <_SearchResult>[];
+    for (final data in _allUsers ?? const <Map<String, dynamic>>[]) {
+      final name = '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'
+          .trim()
+          .toLowerCase();
+      final email = (data['email'] ?? '').toString().toLowerCase();
+      final role = (data['role'] ?? '').toString();
 
-        if (name.contains(_query) || email.contains(_query)) {
-          results.add(_SearchResult(
-            type: _SearchResultType.user,
-            title: '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'.trim(),
-            subtitle: data['email'] ?? '',
-            badge: role,
-            tabIndex: 0,
-          ));
-        }
+      if (name.contains(_query) || email.contains(_query)) {
+        results.add(_SearchResult(
+          type: _SearchResultType.user,
+          title:
+              '${data['first_name'] ?? ''} ${data['last_name'] ?? ''}'.trim(),
+          subtitle: data['email'] ?? '',
+          badge: role,
+          tabIndex: 0,
+        ));
       }
+    }
 
-      if (mounted) setState(() => _results = results);
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _isSearching = false);
+    if (mounted) {
+      setState(() {
+        _results = results;
+        _isSearching = false;
+      });
     }
   }
 
@@ -1308,11 +1322,13 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
             const Divider(height: 1),
 
             Flexible(
-              child: _query.isEmpty
-                  ? _buildEmptyState(l10n)
-                  : _results.isEmpty && !_isSearching
-                      ? _buildNoResults(l10n)
-                      : _buildResults(l10n),
+              child: _loadFailed
+                  ? _buildLoadError(l10n)
+                  : _query.isEmpty
+                      ? _buildEmptyState(l10n)
+                      : _results.isEmpty && !_isSearching
+                          ? _buildNoResults(l10n)
+                          : _buildResults(l10n),
             ),
 
             Container(
@@ -1340,6 +1356,23 @@ class _GlobalSearchDialogState extends State<_GlobalSearchDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadError(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 40, color: KyboColors.error),
+          const SizedBox(height: 12),
+          Text(
+            l10n.error,
+            style: TextStyle(color: KyboColors.textSecondary, fontSize: 14),
+          ),
+        ],
       ),
     );
   }

@@ -48,6 +48,20 @@ class KyboThemeProvider extends ChangeNotifier {
   }
 }
 
+/// Snackbar standard Kybo: successo verde, errore rosso, look uniforme
+/// (forma/posizione arrivano dallo snackBarTheme in main.dart).
+/// Da usare per i NUOVI messaggi al posto di ScaffoldMessenger inline, così
+/// lo stesso tipo di feedback appare uguale in tutte le pagine.
+void showKyboSnack(BuildContext context, String message,
+    {bool isError = false}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message, style: const TextStyle(color: Colors.white)),
+      backgroundColor: isError ? KyboColors.error : KyboColors.success,
+    ),
+  );
+}
+
 class KyboColors {
   static final _theme = KyboThemeProvider();
   static bool get isDark => _theme.isDarkMode;

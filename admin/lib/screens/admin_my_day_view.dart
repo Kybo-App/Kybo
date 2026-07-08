@@ -13,10 +13,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
+import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
 import '../widgets/smooth_scroll.dart';
 
@@ -39,26 +40,10 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
   @override
   void initState() {
     super.initState();
-    _loadUser();
-  }
-
-  Future<void> _loadUser() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) setState(() => _loading = false);
-      return;
-    }
-    try {
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (!mounted) return;
-      final data = doc.data() ?? {};
-      setState(() {
-        _userName = (data['first_name'] ?? '').toString();
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
+    // [COERENZA 2026-07-07] Profilo dal UserProvider condiviso (sincrono,
+    // niente lettura Firestore per-view di users/{uid}).
+    _userName = context.read<UserProvider>().firstName;
+    _loading = false;
   }
 
   String _greeting(AppLocalizations l10n) {

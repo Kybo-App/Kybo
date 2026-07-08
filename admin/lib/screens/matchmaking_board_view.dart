@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:kybo_admin/admin_repository.dart';
 import 'package:kybo_admin/core/app_localizations.dart';
+import 'package:kybo_admin/providers/user_provider.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -32,24 +32,11 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   @override
   void initState() {
     super.initState();
-    _loadRoleAndFetch();
-  }
-
-  Future<void> _loadRoleAndFetch() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        final role = (doc.data()?['role'] ?? '').toString();
-        if (mounted) {
-          setState(() => _isAdminMonitor = role == 'admin');
-        }
-      } catch (_) {/* fallback: assume non-admin → tutto visibile */}
-    }
-    _fetchBoard();
+    // [COERENZA 2026-07-07] Ruolo dal UserProvider condiviso (sincrono,
+    // niente lettura Firestore per-view). Il fetch parte dopo il primo
+    // frame perché _fetchBoard usa AppLocalizations.of(context).
+    _isAdminMonitor = context.read<UserProvider>().isAdmin;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchBoard());
   }
 
   Future<void> _fetchBoard() async {
