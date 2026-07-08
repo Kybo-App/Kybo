@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +47,63 @@ class KyboThemeProvider extends ChangeNotifier {
   void setDarkMode(bool value) {
     _isDarkMode = value;
     notifyListeners();
+  }
+}
+
+/// Testo di stato progressivo per operazioni lunghe (regola UX R4): mostra
+/// una sequenza di messaggi che AVANZA nel tempo — mai ciclica — così
+/// l'utente percepisce che il lavoro procede invece di uno spinner muto.
+/// Da affiancare a spinner/isLoading per operazioni >5s (parsing AI di un
+/// PDF, generazione report). L'ultimo messaggio resta fisso.
+class KyboProgressiveHint extends StatefulWidget {
+  final List<String> messages;
+  final Duration stepDuration;
+
+  const KyboProgressiveHint({
+    super.key,
+    required this.messages,
+    this.stepDuration = const Duration(seconds: 7),
+  });
+
+  @override
+  State<KyboProgressiveHint> createState() => _KyboProgressiveHintState();
+}
+
+class _KyboProgressiveHintState extends State<KyboProgressiveHint> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(widget.stepDuration, (t) {
+      if (!mounted) return;
+      if (_index < widget.messages.length - 1) {
+        setState(() => _index++);
+      } else {
+        t.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.messages.isEmpty) return const SizedBox.shrink();
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: Text(
+        widget.messages[_index],
+        key: ValueKey(_index),
+        textAlign: TextAlign.center,
+        style: TextStyle(color: KyboColors.textMuted, fontSize: 12),
+      ),
+    );
   }
 }
 

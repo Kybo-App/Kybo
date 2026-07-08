@@ -7,9 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
-import '../widgets/design_system.dart';
-
 import '../core/error_mapper.dart';
+import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 
 class DietTemplatesView extends StatefulWidget {
   const DietTemplatesView({super.key});
@@ -24,6 +25,11 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   List<Map<String, dynamic>> _templates = [];
   List<Map<String, dynamic>> _clients = [];
   bool _isLoading = true;
+  // [UX R2] Errore load distinto dallo stato "nessun template".
+  Object? _loadError;
+  // [UX R5] Prima il fallimento di _loadClients era un catch MUTO: il
+  // dialog "usa template" mostrava "nessun dato" senza spiegazione.
+  Object? _clientsError;
 
   @override
   void initState() {
@@ -33,7 +39,10 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   }
 
   Future<void> _loadTemplates() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final data = await _repo.getDietTemplates();
       if (mounted) {
@@ -45,18 +54,16 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ErrorMapper.toUserMessage(e)),
-            backgroundColor: KyboColors.error,
-          ),
-        );
+        setState(() {
+          _loadError = e;
+          _isLoading = false;
+        });
       }
     }
   }
 
   Future<void> _loadClients() async {
+    _clientsError = null;
     try {
       final raw = await _repo.getSecureUsersList();
       final clients = raw
@@ -68,7 +75,9 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
           })
           .toList();
       if (mounted) setState(() => _clients = clients);
-    } catch (_) {}
+    } catch (e) {
+      _clientsError = e;
+    }
   }
 
   Future<void> _uploadTemplate() async {
@@ -127,6 +136,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                   controller: nameCtrl,
                   hintText: AppLocalizations.of(ctx).dietTemplateNameHint,
                   prefixIcon: Icons.label_rounded,
+                  onChanged: (_) => setDialogState(() {}),
                 ),
                 const SizedBox(height: 12),
                 PillTextField(
@@ -161,6 +171,22 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                     ],
                   ),
                 ),
+                // [UX R4] Il parsing AI del PDF dura ben oltre i 10s: testo
+                // di stato che AVANZA (mai ciclico) accanto allo spinner del
+                // bottone, così l'attesa non sembra un blocco.
+                if (isUploading) ...[
+                  const SizedBox(height: 14),
+                  const Center(
+                    child: KyboProgressiveHint(
+                      messages: [
+                        'Caricamento del PDF…',
+                        'Lettura del documento…',
+                        'L\'AI sta estraendo il piano alimentare…',
+                        'Quasi fatto: ancora qualche secondo…',
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -177,18 +203,11 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
               textColor: Colors.white,
               height: 40,
               isLoading: isUploading,
-              onPressed: isUploading
+              // [UX R6] Submit disabilitato finché manca il nome.
+              onPressed: (isUploading || nameCtrl.text.trim().isEmpty)
                   ? null
                   : () async {
                       final name = nameCtrl.text.trim();
-                      if (name.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  '${AppLocalizations.of(context).name} ${AppLocalizations.of(context).required.toLowerCase()}')),
-                        );
-                        return;
-                      }
                       setDialogState(() => isUploading = true);
                       try {
                         await _repo.createDietTemplate(
@@ -232,10 +251,21 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
   Future<void> _useTemplate(Map<String, dynamic> template) async {
     final l10n = AppLocalizations.of(context);
     if (_clients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.noDataAvailable)),
-      );
-      return;
+      // Se la lista era fallita, ritenta al volo prima di arrendersi.
+      if (_clientsError != null) await _loadClients();
+      if (_clients.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_clientsError != null
+                ? 'Impossibile caricare i tuoi clienti: ${ErrorMapper.toUserMessage(_clientsError!)}'
+                : l10n.noDataAvailable),
+            backgroundColor:
+                _clientsError != null ? KyboColors.error : null,
+          ),
+        );
+        return;
+      }
     }
     String? selectedUid;
     bool isAssigning = false;
@@ -441,39 +471,23 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
         const SizedBox(height: 16),
         Expanded(
           child: _isLoading
-              ? Center(
-                  child: CircularProgressIndicator(color: KyboColors.primary))
-              : _templates.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.bookmark_border_rounded,
-                              size: 56, color: KyboColors.textMuted),
-                          const SizedBox(height: 16),
-                          Text(
-                            l10n.dietTemplateNoneTitle,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: KyboColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l10n.dietTemplateNoneSubtitle,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: KyboColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _templates.length,
-                      itemBuilder: (ctx, idx) =>
-                          _buildTemplateRow(_templates[idx]),
-                    ),
+              ? const SkeletonUserList(itemCount: 5)
+              : _loadError != null
+                  ? KyboErrorView.fromError(_loadError!,
+                      onRetry: _loadTemplates)
+                  : _templates.isEmpty
+                      ? KyboEmptyView(
+                          icon: Icons.bookmark_border_rounded,
+                          title: l10n.dietTemplateNoneTitle,
+                          subtitle: l10n.dietTemplateNoneSubtitle,
+                          actionLabel: l10n.dietTemplateUploadCta,
+                          onAction: _uploadTemplate,
+                        )
+                      : ListView.builder(
+                          itemCount: _templates.length,
+                          itemBuilder: (ctx, idx) =>
+                              _buildTemplateRow(_templates[idx]),
+                        ),
         ),
       ],
     );
