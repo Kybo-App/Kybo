@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.dependencies import verify_admin, verify_professional, verify_token
 from app.core.logging import logger, sanitize_error_message
 from app.core.limiter import limiter
+from app.services.chat_service import ensure_client_chat_safe
 
 router = APIRouter(prefix="/admin", tags=["users"])
 
@@ -163,6 +164,17 @@ async def admin_create_user(
             'requires_email_verification': True,
             'max_clients': body.max_clients
         })
+
+        # [FIX CHAT-1] La chat nutritionist-client nasce QUI, non più solo
+        # lazy nell'app client: così il professionista vede il cliente in
+        # chat da subito, anche se il cliente non ha mai aperto l'app.
+        if body.parent_id and body.role in ('user', 'client'):
+            ensure_client_chat_safe(
+                db, user.uid, body.parent_id,
+                client_name=f"{body.first_name} {body.last_name}".strip(),
+                client_email=body.email,
+            )
+
         return {"uid": user.uid, "message": "User created"}
     except Exception as e:
         logger.error("create_user_error", error=sanitize_error_message(e))
@@ -292,6 +304,17 @@ async def admin_assign_user(
             'updated_at': firebase_admin.firestore.SERVER_TIMESTAMP
         })
         auth.set_custom_user_claims(body.target_uid, {'role': 'user'})
+
+        # [FIX CHAT-1] Assegnazione = la chat deve esistere/puntare al nuovo
+        # professionista subito (non solo al prossimo avvio dell'app client).
+        target_doc = db.collection('users').document(body.target_uid).get()
+        td = target_doc.to_dict() or {}
+        ensure_client_chat_safe(
+            db, body.target_uid, body.nutritionist_id,
+            client_name=f"{td.get('first_name', '')} {td.get('last_name', '')}".strip(),
+            client_email=td.get('email', ''),
+        )
+
         return {"message": "User assigned"}
     except Exception as e:
         logger.error("assign_user_error", error=sanitize_error_message(e))

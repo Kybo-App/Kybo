@@ -20,6 +20,7 @@ from app.core.logging import logger, sanitize_error_message
 from app.broadcast import broadcast_message
 from app.core.limiter import limiter
 from app.services.app_config_service import get_app_config, invalidate_app_config_cache
+from app.services.chat_service import ensure_client_chat_safe
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -114,7 +115,30 @@ async def admin_sync_users(request: Request, requester: dict = Depends(verify_ad
             tasks = [update_claim(uid, role) for uid, role in chunk]
             await asyncio.gather(*tasks)
 
-        return {"message": f"Synced {len(claims_to_update)} users efficiently (parallelized)"}
+        # [FIX CHAT-1] Backfill chat nutritionist-client: crea i doc chat
+        # mancanti per i clienti con parent_id già assegnato. Ripara il
+        # pregresso (la chat nasceva solo lazy nell'app client, quindi i
+        # clienti che non avevano mai aperto l'app erano invisibili in chat
+        # al loro professionista). Idempotente: al secondo run non crea nulla.
+        chats_created = 0
+        for uid, data in firestore_map.items():
+            parent_id = data.get('parent_id')
+            role = data.get('role', '')
+            if parent_id and role in ('user', 'client'):
+                created = ensure_client_chat_safe(
+                    db, uid, parent_id,
+                    client_name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip(),
+                    client_email=data.get('email', ''),
+                )
+                if created:
+                    chats_created += 1
+
+        return {
+            "message": (
+                f"Synced {len(claims_to_update)} users efficiently (parallelized)"
+                + (f" — {chats_created} chat create" if chats_created else "")
+            )
+        }
 
     except Exception as e:
         logger.error("sync_users_error", error=sanitize_error_message(e))
