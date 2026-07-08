@@ -18,8 +18,8 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:universal_html/html.dart' as html;
 import '../services/client_report_service.dart';
-
 import '../core/error_mapper.dart';
+import '../widgets/state_views.dart';
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -1936,7 +1936,10 @@ class _UserCardState extends State<_UserCard> {
             lastSeenColor = KyboColors.success;
           }
         }
-      } catch (_) {}
+      } catch (_) {
+        // Parsing data cosmetico (etichetta "ultimo accesso"): se fallisce
+        // resta il fallback, nessun impatto per l'utente.
+      }
     }
 
     // --- EXPIRING DIET CHECK ---
@@ -2768,8 +2771,7 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
   final List<String> _steps = [
     "Caricamento PDF...",
     "Analisi documento...",
-    "Estrazione dati...",
-    "Elaborazione finale...",
+    "L'AI sta estraendo il piano alimentare...",
   ];
 
   @override
@@ -2789,9 +2791,17 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
 
   @override
   Widget build(BuildContext context) {
-    double progress = (_currentStep + 1) / _steps.length;
+    final bool isFinalStep = _currentStep == _steps.length - 1;
+    // [UX R4] Le prime fasi avanzano su timer (feedback immediato), ma
+    // l'ultima — il parsing AI vero, che può durare minuti — passa a
+    // indicatore INDETERMINATO: una percentuale finta ferma al 100%
+    // comunica "bloccato" peggio di un anello che gira.
+    final double? progress =
+        isFinalStep ? null : (_currentStep + 1) / _steps.length;
 
     return AlertDialog(
+      backgroundColor: KyboColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -2805,34 +2815,48 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
                 child: CircularProgressIndicator(
                   value: progress,
                   strokeWidth: 6,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                  backgroundColor: KyboColors.border,
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(KyboColors.primary),
                 ),
               ),
-              Text(
-                "${(progress * 100).toInt()}%",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              if (progress != null)
+                Text(
+                  "${(progress * 100).toInt()}%",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: KyboColors.textPrimary,
+                  ),
+                )
+              else
+                Icon(Icons.auto_awesome_rounded,
+                    color: KyboColors.primary, size: 28),
             ],
           ),
           const SizedBox(height: 24),
           Text(
             _steps[_currentStep],
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(fontSize: 16, color: KyboColors.textPrimary),
             textAlign: TextAlign.center,
           ),
+          if (isFinalStep) ...[
+            const SizedBox(height: 8),
+            Text(
+              "Per PDF lunghi può servire fino a un minuto: non chiudere la pagina.",
+              style: TextStyle(fontSize: 12, color: KyboColors.textMuted),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 16),
           LinearProgressIndicator(
             value: progress,
-            backgroundColor: Colors.grey[200],
+            backgroundColor: KyboColors.border,
           ),
           const SizedBox(height: 8),
           Text(
             "Step ${_currentStep + 1} di ${_steps.length}",
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 12, color: KyboColors.textMuted),
           ),
         ],
       ),
@@ -3224,14 +3248,16 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
               future: _notesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const SkeletonUserList(itemCount: 4);
                 }
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      "Errore: ${snapshot.error}",
-                      style: const TextStyle(color: Colors.red),
-                    ),
+                  // [UX R5] Niente snapshot.error grezzo: messaggio mappato
+                  // + retry in-page.
+                  return KyboErrorView.fromError(
+                    snapshot.error!,
+                    onRetry: () => setState(() {
+                      _notesFuture = _repo.getClientNotes(widget.clientUid);
+                    }),
                   );
                 }
 
@@ -3280,7 +3306,9 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                       try {
                         final d = DateTime.tryParse(note['updated_at'].toString());
                         if (d != null) dateStr = DateFormat('dd MMM yyyy HH:mm').format(d);
-                      } catch (_) {}
+                      } catch (_) {
+                        // Data cosmetica della nota: fallback stringa vuota.
+                      }
                     }
 
                     return Card(
