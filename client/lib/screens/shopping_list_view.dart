@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart' show Share;
 import '../providers/diet_provider.dart';
 import '../models/active_swap.dart';
 import '../models/pantry_item.dart';
+import '../core/error_handler.dart';
 import '../widgets/design_system.dart';
 import '../widgets/state_views.dart';
 import '../logic/diet_calculator.dart';
@@ -410,7 +411,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Errore: ${e.message}'),
+          content: Text(ErrorMapper.toUserMessage(e)),
           behavior: SnackBarBehavior.floating,
         ),
       );

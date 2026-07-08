@@ -331,9 +331,16 @@ class _MealSuggestionsScreenState extends State<MealSuggestionsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Gemini AI sta elaborando\ni tuoi suggerimenti...',
-            textAlign: TextAlign.center,
+          // [UX R4] L'elaborazione AI supera i 5s: messaggi che avanzano
+          // (mai ciclici) invece di un testo statico che sembra bloccato.
+          KyboProgressiveHint(
+            messages: const [
+              'Gemini AI sta elaborando\ni tuoi suggerimenti...',
+              'Sto abbinando gli ingredienti\ndella tua dispensa...',
+              'Perfeziono le ricette\nsulla tua dieta...',
+              'Quasi pronto: ancora\nqualche secondo...',
+            ],
+            stepDuration: const Duration(seconds: 6),
             style: TextStyle(
               color: KyboColors.textSecondary(context),
               fontSize: 15,

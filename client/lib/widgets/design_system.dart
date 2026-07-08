@@ -1,9 +1,71 @@
 // Sistema di design Kybo Client: componenti pill-shaped con supporto dark mode tramite ThemeProvider.
 // Colori identici alla webapp admin. KyboColors usa context.watch per i getter dinamici e context.read per quelli statici.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
+
+/// Testo di stato progressivo per operazioni lunghe (regola UX R4): mostra
+/// una sequenza di messaggi che AVANZA nel tempo — mai ciclica — così
+/// l'utente percepisce che il lavoro procede invece di uno spinner muto.
+/// Da affiancare a spinner/isLoading per operazioni >5s (suggerimenti AI,
+/// OCR scontrini). L'ultimo messaggio resta fisso. Speculare all'admin.
+class KyboProgressiveHint extends StatefulWidget {
+  final List<String> messages;
+  final Duration stepDuration;
+  final TextStyle? style;
+
+  const KyboProgressiveHint({
+    super.key,
+    required this.messages,
+    this.stepDuration = const Duration(seconds: 7),
+    this.style,
+  });
+
+  @override
+  State<KyboProgressiveHint> createState() => _KyboProgressiveHintState();
+}
+
+class _KyboProgressiveHintState extends State<KyboProgressiveHint> {
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(widget.stepDuration, (t) {
+      if (!mounted) return;
+      if (_index < widget.messages.length - 1) {
+        setState(() => _index++);
+      } else {
+        t.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.messages.isEmpty) return const SizedBox.shrink();
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: Text(
+        widget.messages[_index],
+        key: ValueKey(_index),
+        textAlign: TextAlign.center,
+        style: widget.style ??
+            TextStyle(color: KyboColors.textMuted(context), fontSize: 12),
+      ),
+    );
+  }
+}
 
 class KyboBreakpoints {
   static const double tablet = 600.0;
