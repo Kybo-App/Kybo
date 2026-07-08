@@ -8,8 +8,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
+import '../core/error_mapper.dart';
 import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 
 class AnalyticsView extends StatefulWidget {
   const AnalyticsView({super.key});
@@ -39,12 +41,42 @@ class _AnalyticsViewState extends State<AnalyticsView> {
   List<Map<String, dynamic>> _inactiveUsers = [];
   int _inactiveDays = 30;
 
+  // [UX R9/R10] Errore per-sezione: la sezione fallita mostra il SUO errore
+  // con retry locale, le altre restano visibili coi loro dati.
+  Object? _overviewError;
+  Object? _trendError;
+  Object? _activityError;
+  Object? _inactiveError;
+
   @override
   void initState() {
     super.initState();
     // Ruolo dal UserProvider condiviso (niente più lettura Firestore per-view).
     _userRole = context.read<UserProvider>().role;
     _loadAllData();
+  }
+
+  Future<bool> _guard(
+    Future<void> Function() loader,
+    void Function(Object?) setErr,
+  ) async {
+    try {
+      setErr(null);
+      await loader();
+      return true;
+    } catch (e) {
+      setErr(e);
+      return false;
+    }
+  }
+
+  /// Ricarica una singola sezione (retry locale dal suo error-widget).
+  Future<void> _retrySection(
+    Future<void> Function() loader,
+    void Function(Object?) setErr,
+  ) async {
+    await _guard(loader, setErr);
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAllData() async {
@@ -56,27 +88,19 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     // [COERENZA] Sezioni indipendenti: un endpoint fallito non butta più in
     // errore l'intera pagina (prima Future.wait propagava il primo errore).
     // Errore full-page solo se falliscono TUTTE e quattro le chiamate.
-    String? lastError;
-    Future<bool> guard(Future<void> Function() loader) async {
-      try {
-        await loader();
-        return true;
-      } catch (e) {
-        lastError = e.toString();
-        return false;
-      }
-    }
-
     final results = await Future.wait([
-      guard(_loadOverview),
-      guard(_loadDietTrend),
-      guard(_loadNutritionistActivity),
-      guard(_loadInactiveUsers),
+      _guard(_loadOverview, (e) => _overviewError = e),
+      _guard(_loadDietTrend, (e) => _trendError = e),
+      _guard(_loadNutritionistActivity, (e) => _activityError = e),
+      _guard(_loadInactiveUsers, (e) => _inactiveError = e),
     ]);
 
     if (mounted) {
       setState(() {
-        if (!results.contains(true)) _error = lastError;
+        if (!results.contains(true)) {
+          _error = ErrorMapper.toUserMessage(
+              _overviewError ?? Exception('load failed'));
+        }
         _isLoading = false;
       });
     }
@@ -98,12 +122,38 @@ class _AnalyticsViewState extends State<AnalyticsView> {
     _inactiveUsers = await _repo.getInactiveUsers(days: _inactiveDays);
   }
 
+  /// Errore compatto di sezione: la card fallita mostra il proprio errore
+  /// con retry LOCALE, senza toccare il resto della dashboard (R9/R10).
+  Widget _sectionError(Object error, Future<void> Function() retry) {
+    return PillCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, color: KyboColors.error, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              ErrorMapper.toUserMessage(error),
+              style: TextStyle(color: KyboColors.textSecondary, fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 12),
+          PillButton(
+            label: AppLocalizations.of(context).retry,
+            icon: Icons.refresh_rounded,
+            height: 36,
+            onPressed: retry,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      // [UX R3] Skeleton al posto dello spinner full-page.
+      return const SkeletonUserList(itemCount: 6);
     }
 
     final l10n = AppLocalizations.of(context);
@@ -169,13 +219,33 @@ class _AnalyticsViewState extends State<AnalyticsView> {
           ),
 
           const SizedBox(height: 24),
-          _buildOverviewCards(),
+          _overviewError != null
+              ? _sectionError(
+                  _overviewError!,
+                  () => _retrySection(
+                      _loadOverview, (e) => _overviewError = e))
+              : _buildOverviewCards(),
           const SizedBox(height: 24),
-          _buildDietTrendSection(),
+          _trendError != null
+              ? _sectionError(
+                  _trendError!,
+                  () =>
+                      _retrySection(_loadDietTrend, (e) => _trendError = e))
+              : _buildDietTrendSection(),
           const SizedBox(height: 24),
-          _buildNutritionistActivitySection(),
+          _activityError != null
+              ? _sectionError(
+                  _activityError!,
+                  () => _retrySection(
+                      _loadNutritionistActivity, (e) => _activityError = e))
+              : _buildNutritionistActivitySection(),
           const SizedBox(height: 24),
-          _buildInactiveUsersSection(),
+          _inactiveError != null
+              ? _sectionError(
+                  _inactiveError!,
+                  () => _retrySection(
+                      _loadInactiveUsers, (e) => _inactiveError = e))
+              : _buildInactiveUsersSection(),
         ],
       ),
     );
@@ -312,9 +382,9 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       onTap: () {
         if (_trendPeriod != value) {
           setState(() => _trendPeriod = value);
-          _loadDietTrend().then((_) {
-            if (mounted) setState(() {});
-          });
+          // Guarded: un errore qui finisce nell'error-widget della sezione
+          // (prima era un Future non gestito → eccezione silenziosa).
+          _retrySection(_loadDietTrend, (e) => _trendError = e);
         }
       },
       child: AnimatedContainer(
@@ -736,9 +806,8 @@ class _AnalyticsViewState extends State<AnalyticsView> {
       onTap: () {
         if (_inactiveDays != days) {
           setState(() => _inactiveDays = days);
-          _loadInactiveUsers().then((_) {
-            if (mounted) setState(() {});
-          });
+          // Guarded: un errore qui finisce nell'error-widget della sezione.
+          _retrySection(_loadInactiveUsers, (e) => _inactiveError = e);
         }
       },
       child: AnimatedContainer(
