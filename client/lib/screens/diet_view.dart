@@ -13,6 +13,7 @@ import '../models/diet_models.dart';
 import '../core/error_handler.dart';
 import '../logic/diet_calculator.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
 import '../services/tracking_service.dart';
 import '../models/tracking_models.dart';
 import 'chat_screen.dart';
@@ -58,7 +59,8 @@ class _DietViewState extends State<DietView> {
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      // [UX R3] Schermata core: skeleton dei pasti, non spinner nudo.
+      return const SkeletonCardList(itemCount: 4);
     }
 
     final currentWeekPlan = context.read<DietProvider>().currentWeekPlan;

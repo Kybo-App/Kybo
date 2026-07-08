@@ -34,6 +34,8 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     // Azzera l'eventuale "sta scrivendo" quando l'utente lascia la schermata.
+    // [silenzio VOLUTO] context.read in dispose può legittimamente fallire
+    // (albero già smontato): è pulizia best-effort, nessun impatto utente.
     try {
       context.read<ChatProvider>().clearTyping();
     } catch (_) {}

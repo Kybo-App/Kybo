@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../core/error_handler.dart';
+import '../widgets/skeleton_loaders.dart';
 import '../widgets/state_views.dart';
 import '../services/tracking_service.dart';
 import '../services/health_service.dart';
@@ -126,8 +127,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
+      // [UX R3] Skeleton al posto dello spinner full-page.
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: SkeletonCardList(itemCount: 5),
       );
     }
 

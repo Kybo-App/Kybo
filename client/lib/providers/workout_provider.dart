@@ -10,13 +10,19 @@ class WorkoutProvider extends ChangeNotifier {
 
   WorkoutPlan? _plan;
   bool _isLoading = true;
+  // [UX R2/R5] Prima un errore di rete lasciava _plan null in silenzio e la
+  // schermata mostrava "Nessuna scheda assegnata" — messaggio FALSO su un
+  // errore. Ora la view distingue errore (con retry) da "davvero senza piano".
+  Object? _error;
 
   WorkoutPlan? get plan => _plan;
   bool get isLoading => _isLoading;
   bool get hasPlan => _plan != null;
+  Object? get error => _error;
 
   Future<void> loadPlan() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
@@ -35,6 +41,7 @@ class WorkoutProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint("Error loading workout plan: $e");
+      _error = e;
     }
 
     _isLoading = false;

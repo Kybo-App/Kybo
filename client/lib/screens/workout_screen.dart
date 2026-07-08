@@ -10,9 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/error_handler.dart';
 import '../providers/workout_provider.dart';
 import '../models/workout_model.dart';
 import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 import '../widgets/workout_reminder_dialog.dart';
 import 'chat_screen.dart';
 
@@ -72,11 +75,20 @@ class _WorkoutScreenState extends State<WorkoutScreen>
         ],
       ),
       body: provider.isLoading
-          ? Center(
-              child: CircularProgressIndicator(color: KyboColors.primary))
-          : !provider.hasPlan
-              ? _buildNoPlan(context)
-              : _buildPlanContent(context, provider.plan!, isDark),
+          // [UX R3] Skeleton per il load di pagina, non spinner nudo.
+          ? const SkeletonCardList(itemCount: 4)
+          : provider.error != null
+              // [UX R2] Errore ≠ "nessuna scheda": prima un errore di rete
+              // mostrava "Nessuna scheda assegnata", un messaggio falso.
+              ? KyboErrorView(
+                  message: ErrorMapper.toUserMessage(provider.error!),
+                  onRetry: ErrorMapper.isRetryable(provider.error!)
+                      ? () => provider.loadPlan()
+                      : null,
+                )
+              : !provider.hasPlan
+                  ? _buildNoPlan(context)
+                  : _buildPlanContent(context, provider.plan!, isDark),
     );
   }
 
