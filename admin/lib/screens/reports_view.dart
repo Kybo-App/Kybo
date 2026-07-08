@@ -8,10 +8,11 @@ import 'dart:typed_data';
 import 'package:universal_html/html.dart' as html;
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
+import '../core/error_mapper.dart';
 import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
-
-import '../core/error_mapper.dart';
+import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 
 // Vista report mensili: lista report con filtri per nutrizionista/mese, dettaglio statistiche e download PDF.
 // _generateReport — crea/rigenera report via API; _downloadPdf — costruisce PDF lato client con package pdf.
@@ -28,12 +29,15 @@ class _ReportsViewState extends State<ReportsView> {
   bool _isLoading = true;
   bool _isAdmin = false;
   String? _currentUserId;
-  String? _error;
+  Object? _error;
 
   List<dynamic> _reports = [];
 
   Map<String, dynamic>? _selectedReport;
   bool _loadingReport = false;
+  // Distingue la GENERAZIONE (lenta, server-side) dal semplice load di un
+  // report esistente: solo la prima mostra il testo progressivo (R4).
+  bool _isGenerating = false;
 
   String? _selectedNutritionistId;
   List<Map<String, dynamic>> _nutritionists = [];
@@ -80,7 +84,9 @@ class _ReportsViewState extends State<ReportsView> {
         }).toList();
       });
     } catch (e) {
-      // ignore
+      // [Degradazione voluta] Senza la lista nutrizionisti il filtro non
+      // appare e l'admin vede comunque tutti i report (nutritionistId null).
+      debugPrint('Load nutrizionisti per filtro report fallito: $e');
     }
   }
 
@@ -105,7 +111,7 @@ class _ReportsViewState extends State<ReportsView> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = e;
           _isLoading = false;
         });
       }
@@ -128,6 +134,7 @@ class _ReportsViewState extends State<ReportsView> {
         setState(() {
           _selectedReport = report;
           _loadingReport = false;
+          _isGenerating = false;
         });
       }
     } catch (e) {
@@ -138,7 +145,10 @@ class _ReportsViewState extends State<ReportsView> {
             backgroundColor: KyboColors.error,
           ),
         );
-        setState(() => _loadingReport = false);
+        setState(() {
+          _loadingReport = false;
+          _isGenerating = false;
+        });
       }
     }
   }
@@ -147,7 +157,10 @@ class _ReportsViewState extends State<ReportsView> {
     final nutritionistId = _selectedNutritionistId ?? _currentUserId;
     if (nutritionistId == null) return;
 
-    setState(() => _loadingReport = true);
+    setState(() {
+      _loadingReport = true;
+      _isGenerating = true;
+    });
 
     try {
       await _repo.generateReport(
@@ -177,7 +190,10 @@ class _ReportsViewState extends State<ReportsView> {
             backgroundColor: KyboColors.error,
           ),
         );
-        setState(() => _loadingReport = false);
+        setState(() {
+          _loadingReport = false;
+          _isGenerating = false;
+        });
       }
     }
   }
@@ -201,28 +217,13 @@ class _ReportsViewState extends State<ReportsView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      // [UX R3] Skeleton al posto dello spinner full-page.
+      return const SkeletonUserList(itemCount: 6);
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: KyboColors.error),
-            const SizedBox(height: 16),
-            Text(_error!, style: TextStyle(color: KyboColors.textSecondary)),
-            const SizedBox(height: 16),
-            PillButton(
-              label: AppLocalizations.of(context).retry,
-              icon: Icons.refresh,
-              onPressed: _loadReports,
-            ),
-          ],
-        ),
-      );
+      // [UX R5] Messaggio mappato, mai e.toString() a schermo.
+      return KyboErrorView.fromError(_error!, onRetry: _loadReports);
     }
 
     return Row(
@@ -476,8 +477,28 @@ class _ReportsViewState extends State<ReportsView> {
 
   Widget _buildRightPanel() {
     if (_loadingReport) {
-      return const Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(color: KyboColors.primary),
+            // [UX R4] La generazione lato server supera i 5s: testo che
+            // avanza per comunicare progresso (il semplice load di un
+            // report esistente resta con lo spinner nudo, è rapido).
+            if (_isGenerating) ...[
+              const SizedBox(height: 20),
+              const KyboProgressiveHint(
+                messages: [
+                  'Generazione del report in corso…',
+                  'Raccolta dei dati del mese…',
+                  'Calcolo delle statistiche…',
+                  'Quasi pronto…',
+                ],
+                stepDuration: Duration(seconds: 5),
+              ),
+            ],
+          ],
+        ),
       );
     }
 

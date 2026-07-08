@@ -5,9 +5,10 @@
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
-import '../widgets/design_system.dart';
-
 import '../core/error_mapper.dart';
+import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 
 class WorkoutManagementView extends StatefulWidget {
   const WorkoutManagementView({super.key});
@@ -22,6 +23,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
   List<Map<String, dynamic>> _plans = [];
   List<Map<String, dynamic>> _clients = [];
   bool _isLoading = true;
+  // [UX R2] Errore load distinto da "nessuna scheda".
+  Object? _loadError;
 
   // Nomi giorno preimpostati per velocizzare la creazione scheda: tipici split
   // usati dai personal trainer (push/pull/legs, upper/lower, ecc.).
@@ -47,7 +50,10 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
   }
 
   Future<void> _loadPlans() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final data = await _repo.getWorkoutPlans();
       if (mounted) {
@@ -57,14 +63,12 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         });
       }
     } catch (e) {
+      // Errore in-page con retry, non snackbar volatile.
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ErrorMapper.toUserMessage(e)),
-            backgroundColor: KyboColors.error,
-          ),
-        );
+        setState(() {
+          _loadError = e;
+          _isLoading = false;
+        });
       }
     }
   }
@@ -866,35 +870,21 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         // Content
         Expanded(
           child: _isLoading
-              ? Center(
-                  child: CircularProgressIndicator(color: KyboColors.primary))
-              : _plans.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.fitness_center_rounded,
-                              size: 56, color: KyboColors.textMuted),
-                          const SizedBox(height: 16),
-                          Text(
-                            AppLocalizations.of(context).workoutNoneCreated,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: KyboColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppLocalizations.of(context).workoutCreateFirst,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: KyboColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _buildPartitionedList(),
+              ? const SkeletonUserList(itemCount: 5)
+              : _loadError != null
+                  ? KyboErrorView.fromError(_loadError!, onRetry: _loadPlans)
+                  : _plans.isEmpty
+                      ? KyboEmptyView(
+                          icon: Icons.fitness_center_rounded,
+                          title:
+                              AppLocalizations.of(context).workoutNoneCreated,
+                          subtitle:
+                              AppLocalizations.of(context).workoutCreateFirst,
+                          actionLabel:
+                              AppLocalizations.of(context).workoutNewPlan,
+                          onAction: () => _showCreateEditDialog(),
+                        )
+                      : _buildPartitionedList(),
         ),
       ],
     );

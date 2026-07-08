@@ -84,13 +84,44 @@ class _ConfigViewState extends State<ConfigView> {
       await _repo.setMaintenanceStatus(value, message: msg);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ErrorMapper.toUserMessage(e)),
-            backgroundColor: KyboColors.error,
+        setState(() => _isLoading = false);
+        // [UX R7] La manutenzione è un'azione critica (stacca gli utenti):
+        // l'esito negativo va su un dialog con azione, non su una snackbar
+        // che scompare mentre l'admin crede di aver cambiato lo stato.
+        final retry = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: KyboColors.surface,
+            shape:
+                RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+            title: Text(
+              'Manutenzione non aggiornata',
+              style: TextStyle(
+                  color: KyboColors.error, fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              '${ErrorMapper.toUserMessage(e)}\n\nLo stato di manutenzione NON è cambiato.',
+              style: TextStyle(color: KyboColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Chiudi',
+                    style: TextStyle(color: KyboColors.textSecondary)),
+              ),
+              PillButton(
+                label: 'Riprova',
+                backgroundColor: KyboColors.primary,
+                textColor: Colors.white,
+                height: 40,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
           ),
         );
-        setState(() => _isLoading = false);
+        if (retry == true && mounted) {
+          await _toggleMaintenance(value);
+        }
       }
     }
   }
