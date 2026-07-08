@@ -401,7 +401,13 @@ class _MainScreenContentState extends State<MainScreenContent>
           await context.read<DietProvider>().scheduleMealNotifications();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      // [UX R5 — silenzio VOLUTO] Ri-schedulazione notifiche all'avvio:
+      // best-effort in background, l'utente non sta aspettando un esito e
+      // uno snackbar a ogni apertura sarebbe rumore. Ritenterà al prossimo
+      // avvio. Logghiamo per la diagnosi.
+      debugPrint('Reschedule notifiche fallito (non bloccante): $e');
+    }
 
     if (mounted) {
       context.read<BadgeService>().checkLoginStreak();
@@ -451,7 +457,12 @@ class _MainScreenContentState extends State<MainScreenContent>
               (data?['created_by'] != null &&
                   data!['created_by'].toString().isNotEmpty);
         }
-      } catch (_) {}
+      } catch (e) {
+        // [UX R5 — silenzio VOLUTO] Serve solo a personalizzare il testo del
+        // tutorial: se la lettura fallisce si usa la variante di default,
+        // nessun impatto funzionale per l'utente.
+        debugPrint('Lettura profilo per tutorial fallita (non bloccante): $e');
+      }
     }
 
     for (int i = 0; i < 10 && _tabController == null && mounted; i++) {

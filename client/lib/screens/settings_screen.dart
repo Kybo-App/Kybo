@@ -95,7 +95,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (decoded is List) {
           loaded = decoded.whereType<String>().toSet();
         }
-      } catch (_) {}
+      } catch (e) {
+        // [UX R5 — silenzio VOLUTO] Preferenza locale corrotta: si riparte
+        // dal set vuoto, nessun impatto sui dati. Log per la diagnosi.
+        debugPrint('Preferenza supermercati corrotta, reset: $e');
+      }
     } else {
       // Migrazione one-shot dalla vecchia chiave singola.
       final legacy = prefs.getString(_kSupermarketPrefKey);
@@ -766,7 +770,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (secondConfirm != true || !context.mounted) return;
+    await _executeDeleteAccount(context);
+  }
 
+  /// Esecuzione della cancellazione (post doppia conferma), separata così
+  /// il "Riprova" del dialog d'errore ripete SOLO l'esecuzione senza
+  /// richiedere di nuovo le due conferme.
+  Future<void> _executeDeleteAccount(BuildContext context) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -791,9 +801,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: KyboColors.error),
+      // [UX R7] Cancellazione account = azione critica: l'esito negativo va
+      // su un dialog con azione ("Riprova"), non su una snackbar che sparisce
+      // da sola mentre l'utente si chiede se l'account esista ancora.
+      final retry = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: KyboColors.surface(ctx),
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: Text("Eliminazione non riuscita",
+              style: TextStyle(
+                  color: KyboColors.error, fontWeight: FontWeight.bold)),
+          content: Text(
+            "${ErrorMapper.toUserMessage(e)}\n\nIl tuo account NON è stato eliminato.",
+            style: TextStyle(color: KyboColors.textSecondary(ctx)),
+          ),
+          actions: [
+            PillButton(
+              label: "Chiudi",
+              onPressed: () => Navigator.pop(ctx, false),
+              backgroundColor: KyboColors.surface(ctx),
+              textColor: KyboColors.textPrimary(ctx),
+              height: 44,
+            ),
+            PillButton(
+              label: "Riprova",
+              onPressed: () => Navigator.pop(ctx, true),
+              backgroundColor: KyboColors.error,
+              textColor: Colors.white,
+              height: 44,
+            ),
+          ],
+        ),
       );
+      if (retry == true && context.mounted) {
+        await _executeDeleteAccount(context);
+      }
     }
   }
 }
