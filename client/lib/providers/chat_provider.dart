@@ -15,6 +15,40 @@ class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // [FIX CHAT-2 2026-07-07] initializeChat veniva chiamato in un solo punto:
+  // alla costruzione dei provider in main.dart, cioè all'avvio dell'app.
+  // Se in quel momento l'utente non era ancora loggato (prima sessione dopo
+  // l'installazione), usciva subito per user==null e NESSUNO lo richiamava
+  // dopo il login → chat mai inizializzata e doc chats/{uid}_chat mai
+  // creato fino al riavvio successivo (il nutrizionista non vedeva la chat
+  // del cliente). Ora segue authStateChanges: init al login, reset al
+  // logout — copre anche il cambio account nella stessa sessione.
+  ChatProvider() {
+    _authSub = _auth.authStateChanges().listen((user) {
+      if (user == null) {
+        _reset();
+      } else {
+        initializeChat();
+      }
+    });
+  }
+
+  StreamSubscription<User?>? _authSub;
+
+  void _reset() {
+    _unreadSubscription?.cancel();
+    _unreadSubscription = null;
+    _initialized = false;
+    _currentChatId = null;
+    _nutritionistId = null;
+    _nutritionistName = null;
+    _studioName = null;
+    _clientName = null;
+    _clientEmail = null;
+    _unreadCount = 0;
+    notifyListeners();
+  }
+
   int _unreadCount = 0;
   int get unreadCount => _unreadCount;
 
@@ -412,6 +446,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _unreadSubscription?.cancel();
     super.dispose();
   }

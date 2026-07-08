@@ -137,7 +137,11 @@ void main() {
               create: (_) => ThemeProvider(),
             ),
             ChangeNotifierProvider<ChatProvider>(
-              create: (_) => ChatProvider()..initializeChat(),
+              // [FIX CHAT-2] Niente più initializeChat esplicito: il provider
+              // si inizializza da solo su authStateChanges (al login). Prima,
+              // al primo avvio pre-login, questa chiamata era un no-op mai
+              // più ritentato → chat mai creata nella prima sessione.
+              create: (_) => ChatProvider(),
             ),
             ChangeNotifierProvider<WorkoutProvider>(
               create: (_) => WorkoutProvider(),
