@@ -5,9 +5,10 @@
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
 import '../core/app_localizations.dart';
-import '../widgets/design_system.dart';
-
 import '../core/error_mapper.dart';
+import '../widgets/design_system.dart';
+import '../widgets/skeleton_loaders.dart';
+import '../widgets/state_views.dart';
 
 class RewardsCatalogView extends StatefulWidget {
   const RewardsCatalogView({super.key});
@@ -25,6 +26,11 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
   List<Map<String, dynamic>> _claims = [];
   bool _isLoadingRewards = true;
   bool _isLoadingClaims = true;
+  // [UX R2] Errore di caricamento tenuto distinto dallo stato "catalogo
+  // vuoto": prima un load fallito mostrava l'empty state — indistinguibile
+  // da un catalogo davvero vuoto e senza modo di riprovare.
+  Object? _rewardsError;
+  Object? _claimsError;
 
   @override
   void initState() {
@@ -41,7 +47,10 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
   }
 
   Future<void> _loadCatalog() async {
-    setState(() => _isLoadingRewards = true);
+    setState(() {
+      _isLoadingRewards = true;
+      _rewardsError = null;
+    });
     try {
       final data = await _repo.getRewardsCatalog();
       if (mounted) {
@@ -51,20 +60,22 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         });
       }
     } catch (e) {
+      // Errore in-page con retry (KyboErrorView nel tab), non snackbar
+      // volatile: il caricamento della pagina è un errore "persistente".
       if (mounted) {
-        setState(() => _isLoadingRewards = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(ErrorMapper.toUserMessage(e)),
-            backgroundColor: KyboColors.error,
-          ),
-        );
+        setState(() {
+          _rewardsError = e;
+          _isLoadingRewards = false;
+        });
       }
     }
   }
 
   Future<void> _loadClaims() async {
-    setState(() => _isLoadingClaims = true);
+    setState(() {
+      _isLoadingClaims = true;
+      _claimsError = null;
+    });
     try {
       final data = await _repo.getRewardsClaims();
       if (mounted) {
@@ -74,8 +85,13 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         });
       }
     } catch (e) {
+      // [UX R5] Prima questo catch era completamente muto: tab riscatti
+      // vuoto senza spiegazione. Ora errore visibile con retry.
       if (mounted) {
-        setState(() => _isLoadingClaims = false);
+        setState(() {
+          _claimsError = e;
+          _isLoadingClaims = false;
+        });
       }
     }
   }
@@ -98,6 +114,15 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          // [UX R6] Gating reattivo: il submit resta disabilitato finché
+          // nome e costo XP non sono validi (prima la validazione avveniva
+          // solo al click, via snackbar).
+          final xpText = xpCtrl.text.trim();
+          final xpVal = int.tryParse(xpText);
+          final xpInvalid = xpText.isNotEmpty && (xpVal == null || xpVal <= 0);
+          final canSubmit =
+              nameCtrl.text.trim().isNotEmpty && xpVal != null && xpVal > 0;
+
           return AlertDialog(
             backgroundColor: KyboColors.surface,
             shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
@@ -132,6 +157,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                       controller: nameCtrl,
                       hintText: AppLocalizations.of(ctx).rewardsNamePlaceholder,
                       prefixIcon: Icons.card_giftcard_rounded,
+                      onChanged: (_) => setDialogState(() {}),
                     ),
                     const SizedBox(height: 12),
                     PillTextField(
@@ -149,6 +175,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                             hintText: AppLocalizations.of(ctx).rewardsCostHint,
                             prefixIcon: Icons.star_rounded,
                             keyboardType: TextInputType.number,
+                            onChanged: (_) => setDialogState(() {}),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -162,6 +189,19 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                         ),
                       ],
                     ),
+                    // [UX R6/R7] Errore inline accanto al campo, non snackbar.
+                    if (xpInvalid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 12),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppLocalizations.of(ctx).rewardsCostInvalid,
+                            style: TextStyle(
+                                fontSize: 12, color: KyboColors.error),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     PillTextField(
                       controller: imageCtrl,
@@ -223,28 +263,11 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                 textColor: Colors.white,
                 height: 40,
                 isLoading: isSaving,
-                onPressed: isSaving
+                onPressed: (isSaving || !canSubmit)
                     ? null
                     : () async {
                         final name = nameCtrl.text.trim();
-                        final xpStr = xpCtrl.text.trim();
-                        if (name.isEmpty || xpStr.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(AppLocalizations.of(context)
-                                    .rewardsNameAndCostRequired)),
-                          );
-                          return;
-                        }
-                        final xpCost = int.tryParse(xpStr);
-                        if (xpCost == null || xpCost <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(AppLocalizations.of(context)
-                                    .rewardsCostInvalid)),
-                          );
-                          return;
-                        }
+                        final xpCost = xpVal;
 
                         setDialogState(() => isSaving = true);
                         try {
@@ -468,36 +491,22 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
   Widget _buildCatalogTab() {
     final l10n = AppLocalizations.of(context);
     if (_isLoadingRewards) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      return const SkeletonUserList(itemCount: 5);
+    }
+
+    if (_rewardsError != null) {
+      return KyboErrorView.fromError(_rewardsError!, onRetry: _loadCatalog);
     }
 
     if (_rewards.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.storefront_rounded,
-                size: 56, color: KyboColors.textMuted),
-            const SizedBox(height: 16),
-            Text(
-              l10n.rewardsNoneInCatalog,
-              style: TextStyle(
-                fontSize: 16,
-                color: KyboColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.rewardsCreateFirst,
-              style: TextStyle(
-                fontSize: 13,
-                color: KyboColors.textMuted,
-              ),
-            ),
-          ],
-        ),
+      // [UX R8] Empty "da riempire" con CTA diretta: apre il dialog di
+      // creazione invece di lasciare l'admin a cercare il bottone altrove.
+      return KyboEmptyView(
+        icon: Icons.storefront_rounded,
+        title: l10n.rewardsNoneInCatalog,
+        subtitle: l10n.rewardsCreateFirst,
+        actionLabel: 'Aggiungi il primo premio',
+        onAction: () => _showCreateEditDialog(),
       );
     }
 
@@ -689,28 +698,17 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
 
   Widget _buildClaimsTab() {
     if (_isLoadingClaims) {
-      return Center(
-        child: CircularProgressIndicator(color: KyboColors.primary),
-      );
+      return const SkeletonUserList(itemCount: 5);
+    }
+
+    if (_claimsError != null) {
+      return KyboErrorView.fromError(_claimsError!, onRetry: _loadClaims);
     }
 
     if (_claims.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long_rounded,
-                size: 56, color: KyboColors.textMuted),
-            const SizedBox(height: 16),
-            Text(
-              AppLocalizations.of(context).rewardsNoneRedeemed,
-              style: TextStyle(
-                fontSize: 16,
-                color: KyboColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      return KyboEmptyView(
+        icon: Icons.receipt_long_rounded,
+        title: AppLocalizations.of(context).rewardsNoneRedeemed,
       );
     }
 
