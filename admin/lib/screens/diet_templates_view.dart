@@ -267,6 +267,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
         return;
       }
     }
+    if (!mounted) return;
     String? selectedUid;
     bool isAssigning = false;
 
