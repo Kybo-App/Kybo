@@ -4,6 +4,8 @@ import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 // Vista GDPR privacy: dashboard retention, statistiche inattività e purge utenti.
 // _executePurge — lancia purge reale o simulazione con dialog di conferma; _saveConfig — aggiorna la policy via API.
 class GDPRPrivacyView extends StatefulWidget {
@@ -84,7 +86,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -192,7 +194,7 @@ class _GDPRPrivacyViewState extends State<GDPRPrivacyView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${l10n.error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );

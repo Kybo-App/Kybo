@@ -4,6 +4,8 @@ import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 // Schermata configurazione 2FA: attivazione con codice TOTP, visualizzazione secret e salvataggio codici di backup.
 // _verifyAndEnable — verifica il codice e abilita 2FA restituendo i backup codes; _disable2FA — disabilita con conferma codice.
 class TwoFactorSetupScreen extends StatefulWidget {
@@ -55,7 +57,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -78,7 +80,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isSettingUp = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -130,7 +132,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isVerifying = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -164,7 +166,7 @@ class _TwoFactorSetupScreenState extends State<TwoFactorSetupScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );

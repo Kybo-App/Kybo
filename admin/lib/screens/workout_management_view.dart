@@ -7,6 +7,8 @@ import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 class WorkoutManagementView extends StatefulWidget {
   const WorkoutManagementView({super.key});
 
@@ -59,7 +61,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).error}: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -507,7 +509,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${AppLocalizations.of(context).error}: $e'),
+                                content: Text(ErrorMapper.toUserMessage(e)),
                                 backgroundColor: KyboColors.error,
                               ),
                             );
@@ -653,7 +655,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${AppLocalizations.of(context).error}: $e'),
+                              content: Text(ErrorMapper.toUserMessage(e)),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -767,7 +769,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${AppLocalizations.of(context).error}: $e'),
+                              content: Text(ErrorMapper.toUserMessage(e)),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -821,7 +823,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${AppLocalizations.of(context).error}: $e'),
+              content: Text(ErrorMapper.toUserMessage(e)),
               backgroundColor: KyboColors.error,
             ),
           );

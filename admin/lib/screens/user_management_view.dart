@@ -19,6 +19,8 @@ import 'package:cross_file/cross_file.dart';
 import 'package:universal_html/html.dart' as html;
 import '../services/client_report_service.dart';
 
+import '../core/error_mapper.dart';
+
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
 
@@ -170,7 +172,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).userSyncError}: $e"),
+            content: Text("${AppLocalizations.of(context).userSyncError}: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -218,7 +220,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         if (mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+          ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -255,7 +257,7 @@ class _UserManagementViewState extends State<UserManagementView> {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("${AppLocalizations.of(context).userDietUploadError}: $e"),
+              content: Text("${AppLocalizations.of(context).userDietUploadError}: ${ErrorMapper.toUserMessage(e)}"),
               backgroundColor: Colors.red,
             ),
           );
@@ -314,7 +316,7 @@ class _UserManagementViewState extends State<UserManagementView> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore upload: $e"),
+            content: Text("Errore upload: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -506,8 +508,8 @@ class _UserManagementViewState extends State<UserManagementView> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("${t.loginError}$e"),
-                      backgroundColor: Colors.red,
+                      content: Text(ErrorMapper.toUserMessage(e)),
+                      backgroundColor: KyboColors.error,
                     ),
                   );
                 }
@@ -552,7 +554,7 @@ class _UserManagementViewState extends State<UserManagementView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).userReportGenError}: $e"),
+            content: Text("${AppLocalizations.of(context).userReportGenError}: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -765,7 +767,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text("${l10n.error}: $e"),
+                        content: Text(ErrorMapper.toUserMessage(e)),
                         backgroundColor: Colors.red,
                       ),
                     );
@@ -844,7 +846,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     if (mounted) {
                       ScaffoldMessenger.of(
                         context,
-                      ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+                      ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
                     }
                   } finally {
                     if (mounted) setState(() => _isLoading = false);
@@ -878,7 +880,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+                    ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
@@ -1033,7 +1035,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                   if (mounted) {
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+                    ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
@@ -1850,7 +1852,7 @@ class _UserCardState extends State<_UserCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).userUnlockFailed}: $e"),
+            content: Text("${AppLocalizations.of(context).userUnlockFailed}: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -2417,7 +2419,7 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+          ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
         }
       }
     }
@@ -2649,7 +2651,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("${AppLocalizations.of(context).userParserLoadError}: $e")));
+        ).showSnackBar(SnackBar(content: Text("${AppLocalizations.of(context).userParserLoadError}: ${ErrorMapper.toUserMessage(e)}")));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -2688,7 +2690,7 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("${l10n.error}: $e")));
+        ).showSnackBar(SnackBar(content: Text(ErrorMapper.toUserMessage(e))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -2993,7 +2995,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
+                      SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
@@ -3116,7 +3118,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
+                      SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: Colors.red),
                     );
                   }
                 } finally {
@@ -3168,7 +3170,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -3187,7 +3189,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${AppLocalizations.of(context).error}: $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e)), backgroundColor: Colors.red),
         );
       }
     }

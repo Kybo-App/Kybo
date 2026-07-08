@@ -8,6 +8,8 @@ import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import '../widgets/app_config_section.dart';
 
+import '../core/error_mapper.dart';
+
 class ConfigView extends StatefulWidget {
   const ConfigView({super.key});
 
@@ -84,7 +86,7 @@ class _ConfigViewState extends State<ConfigView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -173,7 +175,7 @@ class _ConfigViewState extends State<ConfigView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("${l10n.error}: $e"),
+              content: Text(ErrorMapper.toUserMessage(e)),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -223,7 +225,7 @@ class _ConfigViewState extends State<ConfigView> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("${l10n.error}: $e"),
+              content: Text(ErrorMapper.toUserMessage(e)),
               backgroundColor: KyboColors.error,
             ),
           );

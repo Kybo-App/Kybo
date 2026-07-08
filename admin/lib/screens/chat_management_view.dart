@@ -12,6 +12,8 @@ import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 import 'package:intl/intl.dart';
 
+import '../core/error_mapper.dart';
+
 class ChatManagementView extends StatelessWidget {
   const ChatManagementView({super.key});
 
@@ -230,7 +232,7 @@ class _ChatManagementContent extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${l10n.error}: $e'),
+                      content: Text(ErrorMapper.toUserMessage(e)),
                       backgroundColor: KyboColors.error,
                     ),
                   );
@@ -299,7 +301,7 @@ class _ChatManagementContent extends StatelessWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${l10n.error}: $e'),
+                              content: Text(ErrorMapper.toUserMessage(e)),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -709,7 +711,7 @@ class _ChatInterfaceState extends State<_ChatInterface> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-            content: Text('${AppLocalizations.of(context).chatAlertSendError} $e'),
+            content: Text('${AppLocalizations.of(context).chatAlertSendError} ${ErrorMapper.toUserMessage(e)}'),
             backgroundColor: KyboColors.error),
       );
     } finally {
@@ -1232,7 +1234,7 @@ class _EmailAlertConfigDialogState extends State<_EmailAlertConfigDialog> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${AppLocalizations.of(context).error}: $e'),
+          content: Text(ErrorMapper.toUserMessage(e)),
           backgroundColor: KyboColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.pill),

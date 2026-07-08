@@ -9,6 +9,8 @@ import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 class DietTemplatesView extends StatefulWidget {
   const DietTemplatesView({super.key});
 
@@ -46,7 +48,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).error}: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -209,8 +211,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                  '${AppLocalizations.of(context).error}: $e'),
+                              content: Text(ErrorMapper.toUserMessage(e)),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -336,7 +337,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${AppLocalizations.of(context).error}: $e'),
+                              content: Text(ErrorMapper.toUserMessage(e)),
                               backgroundColor: KyboColors.error,
                             ),
                           );
@@ -401,7 +402,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${l10n.error}: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );

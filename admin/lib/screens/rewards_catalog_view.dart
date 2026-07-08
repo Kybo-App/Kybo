@@ -7,6 +7,8 @@ import '../admin_repository.dart';
 import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 class RewardsCatalogView extends StatefulWidget {
   const RewardsCatalogView({super.key});
 
@@ -53,7 +55,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         setState(() => _isLoadingRewards = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).error}: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -283,7 +285,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${AppLocalizations.of(context).error}: $e'),
+                                content: Text(ErrorMapper.toUserMessage(e)),
                                 backgroundColor: KyboColors.error,
                               ),
                             );
@@ -342,7 +344,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${AppLocalizations.of(context).error}: $e'),
+              content: Text(ErrorMapper.toUserMessage(e)),
               backgroundColor: KyboColors.error,
             ),
           );
@@ -367,7 +369,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).error}: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );

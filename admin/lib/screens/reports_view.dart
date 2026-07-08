@@ -11,6 +11,8 @@ import '../core/app_localizations.dart';
 import '../providers/user_provider.dart';
 import '../widgets/design_system.dart';
 
+import '../core/error_mapper.dart';
+
 // Vista report mensili: lista report con filtri per nutrizionista/mese, dettaglio statistiche e download PDF.
 // _generateReport — crea/rigenera report via API; _downloadPdf — costruisce PDF lato client con package pdf.
 class ReportsView extends StatefulWidget {
@@ -132,7 +134,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -171,7 +173,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${AppLocalizations.of(context).error}: $e"),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -864,7 +866,7 @@ class _ReportsViewState extends State<ReportsView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${l10n.reportsGenerationError}: $e"),
+            content: Text("${l10n.reportsGenerationError}: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: KyboColors.error,
           ),
         );

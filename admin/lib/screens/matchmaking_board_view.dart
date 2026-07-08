@@ -6,6 +6,8 @@ import 'package:kybo_admin/providers/user_provider.dart';
 import 'package:kybo_admin/widgets/design_system.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import 'package:kybo_admin/core/error_mapper.dart';
+
 class MatchmakingBoardView extends StatefulWidget {
   const MatchmakingBoardView({super.key});
 
@@ -40,7 +42,6 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
   }
 
   Future<void> _fetchBoard() async {
-    final l10n = AppLocalizations.of(context);
     setState(() => _isLoading = true);
     try {
       final board = await _repo.getMatchmakingBoard();
@@ -48,7 +49,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${l10n.error}: $e")),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
         );
       }
     } finally {
@@ -92,7 +93,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("${l10n.error}: $e")),
+          SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
         );
       }
     } finally {
@@ -155,7 +156,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("${l10n.error}: $e")),
+                    SnackBar(content: Text(ErrorMapper.toUserMessage(e))),
                   );
                 }
               } finally {
