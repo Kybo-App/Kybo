@@ -173,6 +173,9 @@ class ChatProvider extends ChangeNotifier {
       debugPrint(
           'Chat initialized: chatId=$_currentChatId, nutritionist=$_nutritionistId');
     } catch (e) {
+      // Degradazione: senza init la chat mostra lo stato vuoto e si
+      // re-inizializza al prossimo evento di auth (login/riavvio) — vedi
+      // il listener authStateChanges nel costruttore. Nessun dato perso.
       debugPrint('Error initializing chat: $e');
     }
   }

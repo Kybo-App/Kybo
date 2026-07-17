@@ -994,7 +994,10 @@ class DietProvider extends ChangeNotifier {
       String? token;
       try {
         token = await FirebaseMessaging.instance.getToken();
-      } catch (_) {}
+      } catch (_) {
+        // [silenzio VOLUTO] Il token FCM è opzionale per l'upload (serve solo
+        // alla notifica di fine parsing): senza token si procede comunque.
+      }
 
       final result = await _repository.uploadDiet(
         path,
