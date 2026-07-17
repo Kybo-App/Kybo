@@ -19,46 +19,51 @@ class OnboardingScreen extends StatelessWidget {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
-        title: const Text("Hai un codice invito?"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Inserisci il codice fornito dal tuo nutrizionista."),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              // [FIX F5] Nessun cap: il path deep-link (getInviteCode) limita
-              // già a 64 caratteri per evitare input abnormemente lunghi.
-              maxLength: 64,
-              decoration: const InputDecoration(
-                hintText: "Es. ABC-123",
-                border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
+          title: const Text("Hai un codice invito?"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Inserisci il codice fornito dal tuo nutrizionista."),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                // [FIX F5] Nessun cap: il path deep-link (getInviteCode) limita
+                // già a 64 caratteri per evitare input abnormemente lunghi.
+                maxLength: 64,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: const InputDecoration(
+                  hintText: "Es. ABC-123",
+                  border: OutlineInputBorder(),
+                ),
               ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Annulla"),
+            ),
+            PillButton(
+              label: "Avanti",
+              // [UX R6] Disabilitato finché il codice è vuoto: prima il tap
+              // chiudeva il dialog senza fare nulla (no-op silenzioso).
+              onPressed: controller.text.trim().isEmpty
+                  ? null
+                  : () {
+                      final code = controller.text.trim();
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LoginScreen(inviteCode: code),
+                        ),
+                      );
+                    },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Annulla"),
-          ),
-          PillButton(
-            label: "Avanti",
-            onPressed: () {
-              Navigator.pop(ctx);
-              final code = controller.text.trim();
-              if (code.isNotEmpty && code.length <= 64) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => LoginScreen(inviteCode: code),
-                  ),
-                );
-              }
-            },
-          ),
-        ],
       ),
       // [FIX F6] TextEditingController creato qui e mai disposato.
     ).then((_) => controller.dispose());

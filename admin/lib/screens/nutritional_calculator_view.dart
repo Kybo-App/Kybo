@@ -210,8 +210,11 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             labelText: l10n.calculatorQuantity,
             hintText: "100",
             keyboardType: TextInputType.number,
+            // [UX R6] Input permissivo: normalizziamo noi la virgola decimale
+            // ("1,5" → 1.5) invece di azzerare in silenzio il valore.
             onChanged: (val) {
-              ingredient.quantity = double.tryParse(val) ?? 0;
+              ingredient.quantity =
+                  double.tryParse(val.replaceAll(',', '.')) ?? 0;
               _calculateTotals();
             },
           ),
@@ -223,7 +226,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             labelText: l10n.calculatorKcal100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
-              ingredient.kcal100 = double.tryParse(val) ?? 0;
+              ingredient.kcal100 =
+                  double.tryParse(val.replaceAll(',', '.')) ?? 0;
               _calculateTotals();
             },
           ),
@@ -234,7 +238,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             labelText: l10n.calculatorProt100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
-              ingredient.protein100 = double.tryParse(val) ?? 0;
+              ingredient.protein100 =
+                  double.tryParse(val.replaceAll(',', '.')) ?? 0;
               _calculateTotals();
             },
           ),
@@ -245,7 +250,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             labelText: l10n.calculatorCarb100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
-              ingredient.carbs100 = double.tryParse(val) ?? 0;
+              ingredient.carbs100 =
+                  double.tryParse(val.replaceAll(',', '.')) ?? 0;
               _calculateTotals();
             },
           ),
@@ -256,7 +262,8 @@ class _NutritionalCalculatorViewState extends State<NutritionalCalculatorView> {
             labelText: l10n.calculatorFat100,
             keyboardType: TextInputType.number,
             onChanged: (val) {
-              ingredient.fat100 = double.tryParse(val) ?? 0;
+              ingredient.fat100 =
+                  double.tryParse(val.replaceAll(',', '.')) ?? 0;
               _calculateTotals();
             },
           ),
