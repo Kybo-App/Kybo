@@ -1176,9 +1176,9 @@ class _ClientPicker extends StatelessWidget {
         ),
       ),
       items: [
-        const DropdownMenuItem<String>(
+        DropdownMenuItem<String>(
           value: '',
-          child: Text('— Nessuna assegnazione —'),
+          child: Text(AppLocalizations.of(context).workoutNoAssignment),
         ),
         ...clients.map((u) => DropdownMenuItem<String>(
               value: u['uid'] as String?,

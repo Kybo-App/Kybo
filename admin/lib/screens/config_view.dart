@@ -95,22 +95,22 @@ class _ConfigViewState extends State<ConfigView> {
             shape:
                 RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
             title: Text(
-              'Manutenzione non aggiornata',
+              AppLocalizations.of(ctx).maintenanceUpdateFailedTitle,
               style: TextStyle(
                   color: KyboColors.error, fontWeight: FontWeight.bold),
             ),
             content: Text(
-              '${ErrorMapper.toUserMessage(e)}\n\nLo stato di manutenzione NON è cambiato.',
+              '${ErrorMapper.toUserMessage(e)}\n\n${AppLocalizations.of(ctx).maintenanceNotChanged}',
               style: TextStyle(color: KyboColors.textSecondary),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text('Chiudi',
+                child: Text(AppLocalizations.of(ctx).close,
                     style: TextStyle(color: KyboColors.textSecondary)),
               ),
               PillButton(
-                label: 'Riprova',
+                label: AppLocalizations.of(ctx).retry,
                 backgroundColor: KyboColors.primary,
                 textColor: Colors.white,
                 height: 40,

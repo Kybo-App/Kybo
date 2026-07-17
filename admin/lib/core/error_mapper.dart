@@ -1,7 +1,10 @@
-// Mappa eccezioni tecniche in messaggi leggibili dall'utente in italiano.
+// Mappa eccezioni tecniche in messaggi leggibili dall'utente (IT/EN).
 // Speculare a client/lib/core/error_handler.dart (stessa API, stessi principi)
 // ma adattato al web: niente dart:io (SocketException non esiste su web),
 // gli errori di rete arrivano come ClientException/"Failed to fetch".
+//
+// [L10N] Senza BuildContext (usato anche fuori dal widget tree), la lingua
+// arriva dal singleton LanguageProvider — stessa fonte del MaterialApp.
 //
 // Modello messaggio d'errore (UX): ogni messaggio dice COSA è successo e dà
 // un'AZIONE chiara ("Riprova", "Controlla la rete", "Accedi di nuovo").
@@ -12,68 +15,97 @@
 //   onRetry: ErrorMapper.isRetryable(e) ? _reload : null
 import 'dart:async';
 
+import '../providers/language_provider.dart';
+
 class ErrorMapper {
+  static bool get _it => LanguageProvider().isItalian;
+
   static String toUserMessage(Object error) {
     String errorStr = error.toString();
     String errorLower = errorStr.toLowerCase();
 
     if (error is TimeoutException) {
-      return "Il server ci mette troppo a rispondere. Riprova.";
+      return _it
+          ? "Il server ci mette troppo a rispondere. Riprova."
+          : "The server is taking too long. Try again.";
     }
     // Rete su Flutter web: http.ClientException / fetch API.
     if (errorLower.contains("clientexception") ||
         errorLower.contains("failed to fetch") ||
         errorLower.contains("xmlhttprequest")) {
-      return "Nessuna connessione al server. Controlla la rete e riprova.";
+      return _it
+          ? "Nessuna connessione al server. Controlla la rete e riprova."
+          : "No connection to the server. Check your network and try again.";
     }
     if (errorLower.contains("timeout")) {
-      return "Connessione scaduta. Riprova.";
+      return _it ? "Connessione scaduta. Riprova." : "Connection timed out. Try again.";
     }
     if (errorLower.contains("connection") ||
         errorLower.contains("connessione") ||
         errorLower.contains("network")) {
-      return "Problemi di connessione. Controlla la rete.";
+      return _it
+          ? "Problemi di connessione. Controlla la rete."
+          : "Connection problems. Check your network.";
     }
 
     if (errorLower.contains("401") || errorLower.contains("unauthorized")) {
-      return "Sessione scaduta. Effettua nuovamente il login.";
+      return _it
+          ? "Sessione scaduta. Effettua nuovamente il login."
+          : "Session expired. Please log in again.";
     }
     if (errorLower.contains("403") || errorLower.contains("forbidden")) {
-      return "Non hai i permessi per questa azione.";
+      return _it
+          ? "Non hai i permessi per questa azione."
+          : "You don't have permission for this action.";
     }
     if (errorLower.contains("404") || errorLower.contains("not found")) {
-      return "Contenuto non trovato. Potrebbe essere stato rimosso: ricarica la pagina.";
+      return _it
+          ? "Contenuto non trovato. Potrebbe essere stato rimosso: ricarica la pagina."
+          : "Content not found. It may have been removed: reload the page.";
     }
     if (errorLower.contains("413")) {
-      return "File troppo grande. Massimo 10MB.";
+      return _it
+          ? "File troppo grande. Massimo 10MB."
+          : "File too large. 10MB maximum.";
     }
     if (errorLower.contains("429") || errorLower.contains("too many")) {
-      return "Troppe richieste in poco tempo. Attendi qualche istante e riprova.";
+      return _it
+          ? "Troppe richieste in poco tempo. Attendi qualche istante e riprova."
+          : "Too many requests. Wait a moment and try again.";
     }
     if (errorLower.contains("500") || errorLower.contains("internal server")) {
-      return "Errore dei nostri server. Riprova più tardi.";
+      return _it
+          ? "Errore dei nostri server. Riprova più tardi."
+          : "Server error on our side. Try again later.";
     }
     if (errorLower.contains("502") ||
         errorLower.contains("503") ||
         errorLower.contains("504")) {
-      return "Server non disponibile. Riprova tra poco.";
+      return _it
+          ? "Server non disponibile. Riprova tra poco."
+          : "Server unavailable. Try again shortly.";
     }
 
     if (errorLower.contains("upload failed") ||
         errorLower.contains("upload fallito") ||
         errorLower.contains("upload error")) {
-      return "Errore durante il caricamento. Riprova.";
+      return _it
+          ? "Errore durante il caricamento. Riprova."
+          : "Upload failed. Try again.";
     }
     if (errorLower.contains("pdf") && errorLower.contains("valid")) {
-      return "Il file non è un PDF valido.";
+      return _it ? "Il file non è un PDF valido." : "The file is not a valid PDF.";
     }
     if (errorLower.contains("permission-denied")) {
-      return "Non hai i permessi per questa azione.";
+      return _it
+          ? "Non hai i permessi per questa azione."
+          : "You don't have permission for this action.";
     }
 
     // Le eccezioni del repository portano già il 'detail' pulito del server
     // (vedi AdminRepository._safeBody): se è corto e umano, mostralo senza
-    // il prefisso tecnico "Exception: ".
+    // il prefisso tecnico "Exception: ". NOTA: il 'detail' arriva dal server
+    // in italiano — localizzarlo davvero richiederebbe l10n lato FastAPI.
     if (errorStr.startsWith("Exception: ")) {
       String msg = errorStr.substring(11);
       if (!msg.contains("Exception") && !msg.contains("Error:") && msg.length < 140) {
@@ -88,7 +120,9 @@ class ErrorMapper {
       return errorStr;
     }
 
-    return "Si è verificato un errore. Riprova.";
+    return _it
+        ? "Si è verificato un errore. Riprova."
+        : "Something went wrong. Try again.";
   }
 
   /// True se ha senso offrire un pulsante "Riprova" per questo errore.

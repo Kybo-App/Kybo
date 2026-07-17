@@ -6,6 +6,7 @@
 // contenuto reale (stato "success"), coprono i 4 stati obbligatori:
 //   loading · success · error · empty
 import 'package:flutter/material.dart';
+import '../core/app_localizations.dart';
 import '../core/error_mapper.dart';
 import 'design_system.dart';
 
@@ -17,7 +18,9 @@ import 'design_system.dart';
 class KyboErrorView extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
-  final String retryLabel;
+
+  /// Etichetta del bottone di retry; se null usa l10n ("Riprova"/"Retry").
+  final String? retryLabel;
   final IconData icon;
   final EdgeInsets padding;
 
@@ -25,7 +28,7 @@ class KyboErrorView extends StatelessWidget {
     super.key,
     required this.message,
     this.onRetry,
-    this.retryLabel = 'Riprova',
+    this.retryLabel,
     this.icon = Icons.error_outline_rounded,
     this.padding = const EdgeInsets.all(32),
   });
@@ -36,7 +39,7 @@ class KyboErrorView extends StatelessWidget {
     Object error, {
     super.key,
     VoidCallback? onRetry,
-    this.retryLabel = 'Riprova',
+    this.retryLabel,
     this.icon = Icons.error_outline_rounded,
     this.padding = const EdgeInsets.all(32),
   })  : message = ErrorMapper.toUserMessage(error),
@@ -71,7 +74,7 @@ class KyboErrorView extends StatelessWidget {
             if (onRetry != null) ...[
               const SizedBox(height: 20),
               PillButton(
-                label: retryLabel,
+                label: retryLabel ?? AppLocalizations.of(context).retry,
                 icon: Icons.refresh_rounded,
                 onPressed: onRetry,
                 backgroundColor: KyboColors.primary,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
 import '../widgets/design_system.dart';
 
 // Guard che blocca l'accesso finché il codice TOTP non è verificato per la sessione corrente.
@@ -71,7 +72,7 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
   Future<void> _verify() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = "Inserisci il codice");
+      setState(() => _error = AppLocalizations.of(context).tfaEnterCode);
       return;
     }
 
@@ -85,10 +86,15 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
       if (valid) {
         widget.onVerified();
       } else {
-        setState(() => _error = "Codice non valido. Riprova.");
+        if (mounted) {
+          setState(() =>
+              _error = AppLocalizations.of(context).tfaCodeInvalidRetry);
+        }
       }
     } catch (e) {
-      setState(() => _error = "Errore di verifica. Riprova.");
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context).tfaVerifyError);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -146,7 +152,7 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Inserisci il codice dalla tua app di autenticazione",
+                AppLocalizations.of(context).tfaEnterCodeHint,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: KyboColors.textSecondary,

@@ -214,9 +214,9 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
               const SizedBox(width: 12),
               Expanded(
                 child: _CompactKpiCard(
-                  title: 'Nuove iscrizioni',
+                  title: AppLocalizations.of(context).newSignups,
                   value: '$newSignups7d',
-                  subtitle: 'ultimi 7 giorni',
+                  subtitle: AppLocalizations.of(context).last7Days,
                   icon: Icons.person_add_rounded,
                   color: KyboColors.success,
                   trend: signupsDelta,
@@ -708,11 +708,12 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_loading) {
       return _shell(
         color: KyboColors.textMuted,
         icon: Icons.hourglass_top_rounded,
-        title: 'Verifico stato servizi…',
+        title: l10n.checkingServices,
         compactLabel: '…',
         subtitle: '',
       );
@@ -722,9 +723,9 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
       return _shell(
         color: KyboColors.error,
         icon: Icons.cloud_off_rounded,
-        title: 'Backend non raggiungibile',
-        compactLabel: 'Backend KO',
-        subtitle: 'Impossibile contattare /system/status',
+        title: l10n.backendUnreachable,
+        compactLabel: l10n.backendKo,
+        subtitle: l10n.systemStatusUnreachable,
       );
     }
 
@@ -765,20 +766,18 @@ class _ServerHealthBannerState extends State<_ServerHealthBanner> {
             ? Icons.warning_amber_rounded
             : Icons.check_circle_rounded);
 
-    String servizi(int n) => n == 1 ? 'servizio' : 'servizi';
-
     final title = errors > 0
-        ? 'Sistema: $errors ${servizi(errors)} giù'
+        ? '${l10n.systemLabel}: ${l10n.servicesDown(errors)}'
         : (warnings > 0
-            ? 'Sistema: $warnings warning'
-            : 'Sistema: tutto OK');
+            ? '${l10n.systemLabel}: $warnings warning'
+            : '${l10n.systemLabel}: ${l10n.systemAllOkShort}');
     // Etichetta breve per la modalità compatta (pill stretto a destra header).
     final compactLabel = errors > 0
-        ? '$errors ${servizi(errors)} giù'
-        : (warnings > 0 ? '$warnings warning' : 'Tutto OK');
+        ? l10n.servicesDown(errors)
+        : (warnings > 0 ? '$warnings warning' : l10n.systemAllOkShort);
     final subtitle = errors > 0 || warnings > 0
-        ? 'Problemi: ${issuesNames.join(", ")} • $ok/$total ${servizi(ok)} OK'
-        : '$ok/$total ${servizi(ok)} OK${env.isNotEmpty ? " • $env" : ""}';
+        ? '${l10n.issuesPrefix}: ${issuesNames.join(", ")} • ${l10n.servicesOk(ok, total)}'
+        : '${l10n.servicesOk(ok, total)}${env.isNotEmpty ? " • $env" : ""}';
 
     return _shell(
       color: color,

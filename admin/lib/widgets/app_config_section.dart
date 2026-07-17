@@ -6,6 +6,8 @@
 // conferma, "Annulla" ripristina i valori caricati dal server.
 import 'package:flutter/material.dart';
 import '../admin_repository.dart';
+import '../core/app_localizations.dart';
+import '../core/error_mapper.dart';
 import 'design_system.dart';
 
 class AppConfigSection extends StatefulWidget {
@@ -118,14 +120,14 @@ class _AppConfigSectionState extends State<AppConfigSection> {
           _editMode = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Configurazione salvata')),
+          SnackBar(content: Text(AppLocalizations.of(context).configSaved)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Errore: $e'),
+            content: Text(ErrorMapper.toUserMessage(e)),
             backgroundColor: KyboColors.error,
           ),
         );
@@ -160,7 +162,7 @@ class _AppConfigSectionState extends State<AppConfigSection> {
               ),
             if (!_loading && _editMode) ...[
               PillButton(
-                label: 'Annulla',
+                label: AppLocalizations.of(context).cancel,
                 icon: Icons.close_rounded,
                 height: 36,
                 backgroundColor: KyboColors.surface,
@@ -169,7 +171,7 @@ class _AppConfigSectionState extends State<AppConfigSection> {
               ),
               const SizedBox(width: 12),
               PillButton(
-                label: 'Salva',
+                label: AppLocalizations.of(context).save,
                 icon: Icons.save_rounded,
                 height: 36,
                 isLoading: _saving,

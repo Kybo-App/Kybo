@@ -507,7 +507,7 @@ class _ServerMetricsViewState extends State<ServerMetricsView> {
                           ),
                           if (total == 0)
                             Text(
-                              '  Nessuna richiesta ancora',
+                              '  ${AppLocalizations.of(context).serverNoRequestsYet}',
                               style: TextStyle(
                                 color: KyboColors.textMuted,
                                 fontSize: 11,

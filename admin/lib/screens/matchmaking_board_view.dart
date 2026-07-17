@@ -182,13 +182,7 @@ class _MatchmakingBoardViewState extends State<MatchmakingBoardView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_isAdminMonitor) ...[
-          _MonitorModeBanner(
-            message: l10n.locale.languageCode == 'it'
-                ? 'Modalità monitor: stai osservando la bacheca come admin. '
-                    'Le azioni di proposta sono riservate a nutrizionisti e PT.'
-                : 'Monitor mode: viewing the board as admin. Proposal actions '
-                    'are reserved to nutritionists and PTs.',
-          ),
+          _MonitorModeBanner(message: l10n.matchmakingMonitorBanner),
           const SizedBox(height: 16),
         ],
          Row(

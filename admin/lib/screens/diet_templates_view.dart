@@ -176,13 +176,13 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
                 // bottone, così l'attesa non sembra un blocco.
                 if (isUploading) ...[
                   const SizedBox(height: 14),
-                  const Center(
+                  Center(
                     child: KyboProgressiveHint(
                       messages: [
-                        'Caricamento del PDF…',
-                        'Lettura del documento…',
-                        'L\'AI sta estraendo il piano alimentare…',
-                        'Quasi fatto: ancora qualche secondo…',
+                        AppLocalizations.of(ctx).progressUploadingPdf,
+                        AppLocalizations.of(ctx).progressReadingDoc,
+                        AppLocalizations.of(ctx).progressAiExtracting,
+                        AppLocalizations.of(ctx).progressAlmostDone,
                       ],
                     ),
                   ),
@@ -258,7 +258,7 @@ class _DietTemplatesViewState extends State<DietTemplatesView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_clientsError != null
-                ? 'Impossibile caricare i tuoi clienti: ${ErrorMapper.toUserMessage(_clientsError!)}'
+                ? '${l10n.clientsLoadFailedPrefix}: ${ErrorMapper.toUserMessage(_clientsError!)}'
                 : l10n.noDataAvailable),
             backgroundColor:
                 _clientsError != null ? KyboColors.error : null,

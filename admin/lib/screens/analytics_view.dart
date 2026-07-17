@@ -650,7 +650,7 @@ class _AnalyticsViewState extends State<AnalyticsView> {
                     ),
                   ),
                   Text(
-                    "clienti",
+                    AppLocalizations.of(context).clientsLowercase,
                     style: TextStyle(color: KyboColors.textMuted, fontSize: 11),
                   ),
                 ],

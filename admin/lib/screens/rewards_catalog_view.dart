@@ -505,7 +505,7 @@ class _RewardsCatalogViewState extends State<RewardsCatalogView>
         icon: Icons.storefront_rounded,
         title: l10n.rewardsNoneInCatalog,
         subtitle: l10n.rewardsCreateFirst,
-        actionLabel: 'Aggiungi il primo premio',
+        actionLabel: l10n.rewardsAddFirst,
         onAction: () => _showCreateEditDialog(),
       );
     }

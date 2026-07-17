@@ -1192,6 +1192,155 @@ class AppLocalizations {
       isItalian ? 'Carboidrati' : 'Carbs';
   String get calculatorFat => isItalian ? 'Grassi' : 'Fat';
   String get remove => isItalian ? 'Rimuovi' : 'Remove';
+
+  // ── [L10N 2026-07] Chiavi aggiunte per eliminare le stringhe hardcoded
+  //    residue (audit UX, punto 5). Raggruppate per area. ──
+
+  // Comuni
+  String get retryLater =>
+      isItalian ? 'Riprova più tardi.' : 'Try again later.';
+  List<String> get weekDaysFull => isItalian
+      ? ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
+      : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  String get clientsLowercase => isItalian ? 'clienti' : 'clients';
+
+  // Operazioni lunghe (KyboProgressiveHint)
+  String get progressUploadingPdf =>
+      isItalian ? 'Caricamento del PDF…' : 'Uploading the PDF…';
+  String get progressReadingDoc =>
+      isItalian ? 'Lettura del documento…' : 'Reading the document…';
+  String get progressAiExtracting => isItalian
+      ? 'L\'AI sta estraendo il piano alimentare…'
+      : 'The AI is extracting the meal plan…';
+  String get progressAlmostDone => isItalian
+      ? 'Quasi fatto: ancora qualche secondo…'
+      : 'Almost done: a few more seconds…';
+  String get progressLongPdfWarning => isItalian
+      ? 'Per PDF lunghi può servire fino a un minuto: non chiudere la pagina.'
+      : 'Long PDFs can take up to a minute: keep this page open.';
+  String get progressReportGenerating =>
+      isItalian ? 'Generazione del report in corso…' : 'Generating the report…';
+  String get progressReportCollecting =>
+      isItalian ? 'Raccolta dei dati del mese…' : 'Collecting monthly data…';
+  String get progressReportComputing =>
+      isItalian ? 'Calcolo delle statistiche…' : 'Computing statistics…';
+  String stepOf(int current, int total) =>
+      isItalian ? 'Step $current di $total' : 'Step $current of $total';
+
+  // Config / manutenzione
+  String get configSaved =>
+      isItalian ? 'Configurazione salvata' : 'Configuration saved';
+  String get maintenanceUpdateFailedTitle =>
+      isItalian ? 'Manutenzione non aggiornata' : 'Maintenance not updated';
+  String get maintenanceNotChanged => isItalian
+      ? 'Lo stato di manutenzione NON è cambiato.'
+      : 'The maintenance state has NOT changed.';
+
+  // Errori di caricamento per-view
+  String get auditLoadError => isItalian
+      ? 'Impossibile caricare i log. Riprova più tardi.'
+      : 'Could not load the logs. Try again later.';
+  String get chatLoadError => isItalian
+      ? 'Impossibile caricare le chat. Riprova più tardi.'
+      : 'Could not load the chats. Try again later.';
+  String get usersLoadError => isItalian
+      ? 'Impossibile caricare gli utenti.'
+      : 'Could not load the users.';
+  String get historyLoadError => isItalian
+      ? 'Impossibile caricare lo storico. Riprova.'
+      : 'Could not load the history. Try again.';
+  String get clientsLoadFailedPrefix => isItalian
+      ? 'Impossibile caricare i tuoi clienti'
+      : 'Could not load your clients';
+
+  // Matchmaking
+  String get matchmakingMonitorBanner => isItalian
+      ? 'Modalità monitor: stai osservando la bacheca come admin. '
+          'Le azioni di proposta sono riservate a nutrizionisti e PT.'
+      : 'Monitor mode: viewing the board as admin. Proposal actions '
+          'are reserved to nutritionists and PTs.';
+
+  // My Day / dashboard admin
+  String get newSignups => isItalian ? 'Nuove iscrizioni' : 'New signups';
+  String get recentActivity =>
+      isItalian ? 'Attività recente' : 'Recent activity';
+  String get noRecentActivity =>
+      isItalian ? 'Nessuna attività recente' : 'No recent activity';
+  String get systemStatusUnreachable => isItalian
+      ? 'Impossibile contattare /system/status'
+      : 'Could not reach /system/status';
+  String servicesDown(int n) => isItalian
+      ? '$n ${n == 1 ? 'servizio' : 'servizi'} giù'
+      : '$n ${n == 1 ? 'service' : 'services'} down';
+  String servicesOk(int ok, int total) => isItalian
+      ? '$ok/$total ${ok == 1 ? 'servizio' : 'servizi'} OK'
+      : '$ok/$total ${ok == 1 ? 'service' : 'services'} OK';
+
+  // Server metrics / stato sistema
+  String get serverNoRequestsYet =>
+      isItalian ? 'Nessuna richiesta ancora' : 'No requests yet';
+  String get checkingServices =>
+      isItalian ? 'Verifico stato servizi…' : 'Checking services…';
+  String get backendUnreachable =>
+      isItalian ? 'Backend non raggiungibile' : 'Backend unreachable';
+  String get backendKo => isItalian ? 'Backend KO' : 'Backend down';
+  String get systemLabel => isItalian ? 'Sistema' : 'System';
+  String get systemAllOkShort => isItalian ? 'Tutto OK' : 'All OK';
+  String get issuesPrefix => isItalian ? 'Problemi' : 'Issues';
+  String get last7Days => isItalian ? 'ultimi 7 giorni' : 'last 7 days';
+
+  // Workout
+  String get workoutNoAssignment =>
+      isItalian ? '— Nessuna assegnazione —' : '— Not assigned —';
+
+  // Rewards
+  String get rewardsAddFirst =>
+      isItalian ? 'Aggiungi il primo premio' : 'Add the first reward';
+
+  // User management
+  String get newNutritionist =>
+      isItalian ? 'Nuovo nutrizionista' : 'New nutritionist';
+  String get syncDbTooltip => isItalian ? 'Sync DB' : 'Sync DB';
+  String get reloadListTooltip =>
+      isItalian ? 'Ricarica Lista' : 'Reload list';
+  String get uploadDietTooltip => isItalian ? 'Carica Dieta' : 'Upload diet';
+  String uploadedOn(String date) =>
+      isItalian ? 'Caricato il: $date' : 'Uploaded on: $date';
+  String get protectedContent =>
+      isItalian ? 'Contenuto Protetto' : 'Protected content';
+  String get contentUnavailable => isItalian
+      ? 'Il contenuto non è disponibile o è stato rimosso.'
+      : 'The content is unavailable or has been removed.';
+  String get parserInstructionsTitle =>
+      isItalian ? 'Istruzioni per Gemini AI' : 'Instructions for Gemini AI';
+  String get parserInstructionsBody => isItalian
+      ? 'Definisci come Gemini deve interpretare i PDF di questo nutrizionista. '
+          'Esempio: \'I pasti sono sempre indicati con emoji 🍽️\' oppure '
+          '\'Le quantità sono in once invece che grammi\'.'
+      : 'Define how Gemini should read this nutritionist\'s PDFs. '
+          'Example: \'Meals are always marked with the 🍽️ emoji\' or '
+          '\'Quantities are in ounces instead of grams\'.';
+  String get parserInstructionsHint => isItalian
+      ? 'Inserisci le istruzioni personalizzate...'
+      : 'Enter the custom instructions...';
+  String get noteNew => isItalian ? 'Nuova Nota' : 'New note';
+  String get noInternalNotes =>
+      isItalian ? 'Nessuna nota interna' : 'No internal notes';
+  String get uploadErrorPrefix =>
+      isItalian ? 'Errore upload' : 'Upload error';
+
+  // 2FA guard
+  String get tfaEnterCode =>
+      isItalian ? 'Inserisci il codice' : 'Enter the code';
+  String get tfaEnterCodeHint => isItalian
+      ? 'Inserisci il codice dalla tua app di autenticazione'
+      : 'Enter the code from your authenticator app';
+  String get tfaVerifyError => isItalian
+      ? 'Errore di verifica. Riprova.'
+      : 'Verification error. Try again.';
+  String get tfaCodeInvalidRetry => isItalian
+      ? 'Codice non valido. Riprova.'
+      : 'Invalid code. Try again.';
 }
 
 class _AppLocalizationsDelegate

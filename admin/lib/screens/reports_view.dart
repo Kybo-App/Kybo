@@ -449,9 +449,7 @@ class _ReportsViewState extends State<ReportsView> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    AppLocalizations.of(context).locale.languageCode == 'it'
-                        ? "$clients clienti"
-                        : "$clients clients",
+                    "$clients ${AppLocalizations.of(context).clientsLowercase}",
                     style: TextStyle(
                       fontSize: 12,
                       color: KyboColors.textSecondary,
@@ -487,14 +485,14 @@ class _ReportsViewState extends State<ReportsView> {
             // report esistente resta con lo spinner nudo, è rapido).
             if (_isGenerating) ...[
               const SizedBox(height: 20),
-              const KyboProgressiveHint(
+              KyboProgressiveHint(
                 messages: [
-                  'Generazione del report in corso…',
-                  'Raccolta dei dati del mese…',
-                  'Calcolo delle statistiche…',
-                  'Quasi pronto…',
+                  AppLocalizations.of(context).progressReportGenerating,
+                  AppLocalizations.of(context).progressReportCollecting,
+                  AppLocalizations.of(context).progressReportComputing,
+                  AppLocalizations.of(context).progressAlmostDone,
                 ],
-                stepDuration: Duration(seconds: 5),
+                stepDuration: const Duration(seconds: 5),
               ),
             ],
           ],

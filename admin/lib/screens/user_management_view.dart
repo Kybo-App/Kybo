@@ -316,7 +316,8 @@ class _UserManagementViewState extends State<UserManagementView> {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Errore upload: ${ErrorMapper.toUserMessage(e)}"),
+            content: Text(
+                "${AppLocalizations.of(context).uploadErrorPrefix}: ${ErrorMapper.toUserMessage(e)}"),
             backgroundColor: Colors.red,
           ),
         );
@@ -500,7 +501,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 );
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(t.isItalian ? 'Utente aggiornato' : 'User updated')),
+                    SnackBar(content: Text(t.userUpdated)),
                   );
                   _refreshList();
                 }
@@ -817,9 +818,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                     .toList(),
                 onChanged: (v) => setDialogState(() => selectedNutId = v),
                 decoration: InputDecoration(
-                  labelText: l10n.locale.languageCode == 'it'
-                      ? "Nuovo nutrizionista"
-                      : "New nutritionist",
+                  labelText: l10n.newNutritionist,
                 ),
               ),
               const SizedBox(height: 16),
@@ -1101,7 +1100,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                         setState(() => _searchQuery = val.toLowerCase()),
                     style: TextStyle(color: KyboColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: "Cerca utente per nome o email...",
+                      hintText: AppLocalizations.of(context).searchUser,
                       hintStyle: TextStyle(
                         color: KyboColors.textMuted,
                         fontSize: 14,
@@ -1189,7 +1188,7 @@ class _UserManagementViewState extends State<UserManagementView> {
                 PillIconButton(
                   icon: Icons.sync_rounded,
                   color: KyboColors.accent,
-                  tooltip: "Sync DB",
+                  tooltip: AppLocalizations.of(context).syncDbTooltip,
                   onPressed: _isLoading ? null : _syncUsers,
                 ),
               ],
@@ -1241,15 +1240,14 @@ class _UserManagementViewState extends State<UserManagementView> {
                             color: KyboColors.error, size: 40),
                         const SizedBox(height: 12),
                         Text(
-                          'Impossibile caricare gli utenti. '
-                          'Controlla la connessione e riprova.',
+                          AppLocalizations.of(context).usersLoadError,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               color: KyboColors.textPrimary, fontSize: 15),
                         ),
                         const SizedBox(height: 16),
                         PillButton(
-                          label: 'Riprova',
+                          label: AppLocalizations.of(context).retry,
                           icon: Icons.refresh_rounded,
                           onPressed: _refreshList,
                           backgroundColor: KyboColors.primary,
@@ -1261,10 +1259,10 @@ class _UserManagementViewState extends State<UserManagementView> {
                 );
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(
+                return Center(
                   child: Text(
-                    "Nessun utente trovato.",
-                    style: TextStyle(color: Colors.grey),
+                    AppLocalizations.of(context).noUsersFound,
+                    style: TextStyle(color: KyboColors.textMuted),
                   ),
                 );
               }
@@ -1301,10 +1299,10 @@ class _UserManagementViewState extends State<UserManagementView> {
               }).toList();
 
               if (filteredUsers.isEmpty) {
-                return const Center(
+                return Center(
                   child: Text(
-                    "Nessun utente corrisponde alla ricerca.",
-                    style: TextStyle(color: Colors.grey),
+                    AppLocalizations.of(context).searchNoResults,
+                    style: TextStyle(color: KyboColors.textMuted),
                   ),
                 );
               }
@@ -1346,8 +1344,8 @@ class _UserManagementViewState extends State<UserManagementView> {
             onClose: _closeUserDetail,
             onOpenChat: () => _closeUserDetail(),
             onShowHistory: () {
-              _showUserHistory(
-                  _detailUid!, _detailUserData!['first_name'] ?? 'Utente');
+              _showUserHistory(_detailUid!,
+                  _detailUserData!['first_name'] ?? AppLocalizations.of(context).user);
             },
           ),
         ),
@@ -1994,7 +1992,9 @@ class _UserCardState extends State<_UserCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      displayName.isNotEmpty ? displayName : "Utente",
+                      displayName.isNotEmpty
+                          ? displayName
+                          : AppLocalizations.of(context).user,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -2192,7 +2192,7 @@ class _UserCardState extends State<_UserCard> {
                     PillIconButton(
                       icon: Icons.upload_file_rounded,
                       color: KyboColors.textSecondary,
-                      tooltip: "Carica Dieta",
+                      tooltip: AppLocalizations.of(context).uploadDietTooltip,
                       onPressed: () => widget.onUploadDiet(uid),
                       size: 36,
                     ),
@@ -2233,7 +2233,7 @@ class _UserCardState extends State<_UserCard> {
                   PillIconButton(
                     icon: Icons.delete_outline_rounded,
                     color: KyboColors.error,
-                    tooltip: "Elimina",
+                    tooltip: AppLocalizations.of(context).delete,
                     onPressed: () => widget.onDelete(uid),
                     size: 36,
                   ),
@@ -2466,14 +2466,14 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
                         color: KyboColors.error, size: 40),
                     const SizedBox(height: 12),
                     Text(
-                      "Impossibile caricare lo storico. Riprova.",
+                      AppLocalizations.of(context).historyLoadError,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: KyboColors.textPrimary, fontSize: 15),
                     ),
                     const SizedBox(height: 16),
                     PillButton(
-                      label: 'Riprova',
+                      label: AppLocalizations.of(context).retry,
                       icon: Icons.refresh_rounded,
                       onPressed: () => setState(() =>
                           _historyFuture =
@@ -2503,7 +2503,8 @@ class _UserHistoryScreenState extends State<_UserHistoryScreen> {
                 leading: const Icon(Icons.lock_clock, color: Colors.indigo),
                 title: Text(data['fileName'] ?? "Dieta Protetta"),
                 subtitle: Text(
-                  "Caricato il: ${DateFormat('dd MMM yyyy HH:mm').format(date)}",
+                  AppLocalizations.of(context).uploadedOn(
+                      DateFormat('dd MMM yyyy HH:mm').format(date)),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -2536,6 +2537,9 @@ class _DietDetailScreen extends StatelessWidget {
     final parsedData = data['parsedData'] as Map<String, dynamic>?;
     final plan = parsedData?['plan'] as Map<String, dynamic>?;
 
+    // [NON LOCALIZZARE] Questi non sono testi UI ma le CHIAVI del JSON del
+    // piano dieta prodotte dal parser (plan["Lunedì"]...): tradurle
+    // romperebbe il lookup indipendentemente dalla lingua dell'interfaccia.
     final orderedDays = [
       "Lunedì",
       "Martedì",
@@ -2552,7 +2556,7 @@ class _DietDetailScreen extends StatelessWidget {
         backgroundColor: KyboColors.surface,
         iconTheme: IconThemeData(color: KyboColors.textPrimary),
         title: Text(
-          data['fileName'] ?? "Dettaglio",
+          data['fileName'] ?? AppLocalizations.of(context).details,
           style: TextStyle(color: KyboColors.textPrimary),
         ),
       ),
@@ -2560,17 +2564,18 @@ class _DietDetailScreen extends StatelessWidget {
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.security, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
+                children: [
+                  const Icon(Icons.security, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
                   Text(
-                    "Contenuto Protetto",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    AppLocalizations.of(context).protectedContent,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   Padding(
-                    padding: EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(16.0),
                     child: Text(
-                      "Il contenuto non è disponibile o è stato rimosso.",
+                      AppLocalizations.of(context).contentUnavailable,
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -2723,15 +2728,15 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Istruzioni per Gemini AI",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    AppLocalizations.of(context).parserInstructionsTitle,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "Definisci come Gemini deve interpretare i PDF di questo nutrizionista. "
-                    "Esempio: 'I pasti sono sempre indicati con emoji 🍽️' oppure 'Le quantità sono in once invece che grammi'.",
-                    style: TextStyle(color: Colors.grey),
+                  Text(
+                    AppLocalizations.of(context).parserInstructionsBody,
+                    style: const TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 20),
                   Expanded(
@@ -2739,9 +2744,10 @@ class _ParserConfigScreenState extends State<_ParserConfigScreen> {
                       controller: _promptController,
                       maxLines: null,
                       expands: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: "Inserisci le istruzioni personalizzate...",
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        hintText:
+                            AppLocalizations.of(context).parserInstructionsHint,
                       ),
                     ),
                   ),
@@ -2768,11 +2774,14 @@ class _DietUploadProgressDialog extends StatefulWidget {
 
 class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
   int _currentStep = 0;
-  final List<String> _steps = [
-    "Caricamento PDF...",
-    "Analisi documento...",
-    "L'AI sta estraendo il piano alimentare...",
-  ];
+  static const int _stepCount = 3;
+
+  // [L10N] Le etichette si risolvono in build (serve il context per l10n).
+  List<String> _steps(AppLocalizations l10n) => [
+        l10n.progressUploadingPdf,
+        l10n.progressReadingDoc,
+        l10n.progressAiExtracting,
+      ];
 
   @override
   void initState() {
@@ -2781,7 +2790,7 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
   }
 
   void _simulateProgress() async {
-    for (int i = 0; i < _steps.length - 1; i++) {
+    for (int i = 0; i < _stepCount - 1; i++) {
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         setState(() => _currentStep = i + 1);
@@ -2791,13 +2800,15 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isFinalStep = _currentStep == _steps.length - 1;
+    final l10n = AppLocalizations.of(context);
+    final steps = _steps(l10n);
+    final bool isFinalStep = _currentStep == _stepCount - 1;
     // [UX R4] Le prime fasi avanzano su timer (feedback immediato), ma
     // l'ultima — il parsing AI vero, che può durare minuti — passa a
     // indicatore INDETERMINATO: una percentuale finta ferma al 100%
     // comunica "bloccato" peggio di un anello che gira.
     final double? progress =
-        isFinalStep ? null : (_currentStep + 1) / _steps.length;
+        isFinalStep ? null : (_currentStep + 1) / _stepCount;
 
     return AlertDialog(
       backgroundColor: KyboColors.surface,
@@ -2836,14 +2847,14 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
           ),
           const SizedBox(height: 24),
           Text(
-            _steps[_currentStep],
+            steps[_currentStep],
             style: TextStyle(fontSize: 16, color: KyboColors.textPrimary),
             textAlign: TextAlign.center,
           ),
           if (isFinalStep) ...[
             const SizedBox(height: 8),
             Text(
-              "Per PDF lunghi può servire fino a un minuto: non chiudere la pagina.",
+              l10n.progressLongPdfWarning,
               style: TextStyle(fontSize: 12, color: KyboColors.textMuted),
               textAlign: TextAlign.center,
             ),
@@ -2855,7 +2866,7 @@ class _DietUploadProgressDialogState extends State<_DietUploadProgressDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Step ${_currentStep + 1} di ${_steps.length}",
+            l10n.stepOf(_currentStep + 1, _stepCount),
             style: TextStyle(fontSize: 12, color: KyboColors.textMuted),
           ),
         ],
@@ -2923,7 +2934,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           backgroundColor: KyboColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            "Nuova Nota",
+            AppLocalizations.of(context).noteNew,
             style: TextStyle(color: KyboColors.textPrimary),
           ),
           content: SizedBox(
@@ -3234,7 +3245,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
           if (!_isLoading)
             IconButton(
               icon: const Icon(Icons.add_rounded),
-              tooltip: "Nuova Nota",
+              tooltip: AppLocalizations.of(context).noteNew,
               onPressed: _showAddNoteDialog,
             ),
         ],
@@ -3269,9 +3280,10 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                       children: [
                         Icon(Icons.note_alt_outlined, size: 64, color: Colors.grey[400]),
                         const SizedBox(height: 16),
-                        const Text(
-                          "Nessuna nota interna",
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        Text(
+                          AppLocalizations.of(context).noInternalNotes,
+                          style: const TextStyle(
+                              fontSize: 16, color: Colors.grey),
                         ),
                         const SizedBox(height: 8),
                         FilledButton.icon(
@@ -3388,7 +3400,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
                                   color: Colors.red,
-                                  tooltip: "Elimina",
+                                  tooltip: AppLocalizations.of(context).delete,
                                   onPressed: () => _deleteNote(note['id']),
                                 ),
                               ],
@@ -3547,7 +3559,7 @@ class _UserDetailPane extends StatelessWidget {
               Icon(Icons.person_rounded, color: roleColor, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Dettaglio cliente',
+                AppLocalizations.of(context).clientDetailTitle,
                 style: TextStyle(
                   color: KyboColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -3558,7 +3570,7 @@ class _UserDetailPane extends StatelessWidget {
               PillIconButton(
                 icon: Icons.close_rounded,
                 color: KyboColors.textSecondary,
-                tooltip: 'Chiudi',
+                tooltip: AppLocalizations.of(context).close,
                 onPressed: onClose,
                 size: 32,
               ),
@@ -3593,7 +3605,9 @@ class _UserDetailPane extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name.isEmpty ? 'Senza nome' : name,
+                      name.isEmpty
+                          ? AppLocalizations.of(context).clientUnnamed
+                          : name,
                       style: TextStyle(
                         color: KyboColors.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -3621,9 +3635,12 @@ class _UserDetailPane extends StatelessWidget {
 
           // Info table
           _detailRow('UID', uid.isEmpty ? '-' : uid, mono: true),
-          _detailRow('Account creato', _fmtDate(createdAt)),
-          _detailRow('Ultima attività', _fmtDate(lastSeen)),
-          _detailRow('Ultima dieta', _fmtDate(lastDiet)),
+          _detailRow(
+              AppLocalizations.of(context).clientCreated, _fmtDate(createdAt)),
+          _detailRow(AppLocalizations.of(context).clientLastActivity,
+              _fmtDate(lastSeen)),
+          _detailRow(
+              AppLocalizations.of(context).clientLastDiet, _fmtDate(lastDiet)),
 
           const SizedBox(height: 16),
 
