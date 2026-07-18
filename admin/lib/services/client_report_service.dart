@@ -1,6 +1,10 @@
 // Genera un report PDF per cliente (cronologia diete + workout + note interne).
 // Pattern: stesso approccio di reports_view.dart (pdf package + universal_html
 // blob download). Tutto lato client per evitare carico server.
+//
+// [NON LOCALIZZARE] I testi qui dentro sono CONTENUTO del documento PDF
+// destinato ai professionisti italiani, non UI dell'admin: restano in
+// italiano indipendentemente dalla lingua dell'interfaccia.
 
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';

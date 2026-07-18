@@ -1298,6 +1298,50 @@ class AppLocalizations {
       isItalian ? 'Aggiungi il primo premio' : 'Add the first reward';
 
   // User management
+  String get unlockData => isItalian ? 'Sblocca Dati' : 'Unlock data';
+  String get passwordToChange =>
+      isItalian ? 'Password da cambiare' : 'Password change required';
+  String dietExpiredWithDate(String date) =>
+      isItalian ? 'Dieta Scaduta ($date)' : 'Diet expired ($date)';
+  String get internalNotes => isItalian ? 'Note Interne' : 'Internal notes';
+  String get dietHistoryTooltip =>
+      isItalian ? 'Storico Diete' : 'Diet history';
+  String get nutriAndPtShort =>
+      isItalian ? 'nutri + PT' : 'nutritionists + PTs';
+  String get last14Days => isItalian ? 'ultimi 14 gg' : 'last 14 days';
+  String get professionalsLabel =>
+      isItalian ? 'Professionisti' : 'Professionals';
+  String get activeClientsLabel =>
+      isItalian ? 'Clienti attivi' : 'Active clients';
+
+  // Workout
+  String get workoutTargetUidOptional => isItalian
+      ? 'UID utente (opzionale, assegna subito)'
+      : 'User UID (optional, assign now)';
+  String get workoutTargetUid =>
+      isItalian ? 'UID utente destinatario' : 'Recipient user UID';
+
+  // Config app
+  String get configGeminiModel =>
+      isItalian ? 'Modello Gemini' : 'Gemini model';
+  String get configGlobalPromptPrefix => isItalian
+      ? 'Prompt prefisso globale (opzionale)'
+      : 'Global prompt prefix (optional)';
+  String get configNotifDietTitle => isItalian
+      ? 'Titolo notifica dieta pronta'
+      : 'Diet-ready notification title';
+  String get configNotifDietBody => isItalian
+      ? 'Corpo notifica dieta pronta'
+      : 'Diet-ready notification body';
+  String get configMaxFileSize =>
+      isItalian ? 'Max dimensione file (MB)' : 'Max file size (MB)';
+  String get configMaxPdfPages =>
+      isItalian ? 'Max pagine PDF' : 'Max PDF pages';
+  String get configPushNotifications =>
+      isItalian ? 'Notifiche Push' : 'Push notifications';
+  String get configUploadLimits =>
+      isItalian ? 'Limiti Upload' : 'Upload limits';
+
   String get newNutritionist =>
       isItalian ? 'Nuovo nutrizionista' : 'New nutritionist';
   String get syncDbTooltip => isItalian ? 'Sync DB' : 'Sync DB';

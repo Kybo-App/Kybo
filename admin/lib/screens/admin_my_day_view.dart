@@ -226,9 +226,9 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
               const SizedBox(width: 12),
               Expanded(
                 child: _CompactKpiCard(
-                  title: 'Professionisti',
+                  title: AppLocalizations.of(context).professionalsLabel,
                   value: '$nutritionists',
-                  subtitle: 'nutri + PT',
+                  subtitle: AppLocalizations.of(context).nutriAndPtShort,
                   icon: Icons.medical_services_rounded,
                   color: KyboColors.accent,
                 ),
@@ -236,9 +236,9 @@ class _AdminMyDayViewState extends State<AdminMyDayView> {
               const SizedBox(width: 12),
               Expanded(
                 child: _CompactKpiCard(
-                  title: 'Clienti attivi',
+                  title: AppLocalizations.of(context).activeClientsLabel,
                   value: '$activeClients',
-                  subtitle: 'ultimi 14 gg',
+                  subtitle: AppLocalizations.of(context).last14Days,
                   icon: Icons.bolt_rounded,
                   color: KyboColors.warning,
                 ),
@@ -1175,7 +1175,7 @@ class _ServerMetricsCardState extends State<_ServerMetricsCard> {
               ),
               const SizedBox(width: 8),
               _MiniServerStat(
-                label: 'Errori',
+                label: AppLocalizations.of(context).serverErrorsLabel,
                 value: '$geminiErrors',
                 hint: 'gemini',
                 color: errorColor,

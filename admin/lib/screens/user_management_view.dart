@@ -305,8 +305,8 @@ class _UserManagementViewState extends State<UserManagementView> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Dieta caricata!"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).userDietUploaded),
             backgroundColor: Colors.green,
           ),
         );
@@ -1179,7 +1179,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               PillIconButton(
                 icon: Icons.refresh_rounded,
                 color: KyboColors.primary,
-                tooltip: "Ricarica Lista",
+                tooltip: AppLocalizations.of(context).reloadListTooltip,
                 onPressed: _refreshList,
               ),
 
@@ -1198,7 +1198,7 @@ class _UserManagementViewState extends State<UserManagementView> {
               if (_currentUserRole == 'admin' ||
                   _currentUserRole == 'nutritionist')
                 PillButton(
-                  label: "NUOVO UTENTE",
+                  label: AppLocalizations.of(context).newUser.toUpperCase(),
                   icon: Icons.add_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
@@ -2089,7 +2089,7 @@ class _UserCardState extends State<_UserCard> {
                     : PillIconButton(
                         icon: Icons.lock_outline_rounded,
                         color: KyboColors.warning,
-                        tooltip: "Sblocca Dati",
+                        tooltip: AppLocalizations.of(context).unlockData,
                         onPressed: _unlockData,
                         size: 36,
                       ),
@@ -2115,14 +2115,15 @@ class _UserCardState extends State<_UserCard> {
                 ),
               if (requiresPassChange)
                 PillBadge(
-                  label: "Password da cambiare",
+                  label: AppLocalizations.of(context).passwordToChange,
                   color: KyboColors.warning,
                   icon: Icons.warning_amber_rounded,
                   small: true,
                 ),
               if (isDietExpired)
                 PillBadge(
-                  label: "Dieta Scaduta ($dietDateStr)",
+                  label: AppLocalizations.of(context)
+                      .dietExpiredWithDate(dietDateStr ?? '-'),
                   color: KyboColors.error,
                   icon: Icons.timer_off_outlined,
                   small: true,
@@ -2157,7 +2158,7 @@ class _UserCardState extends State<_UserCard> {
                   PillIconButton(
                     icon: Icons.info_outline_rounded,
                     color: KyboColors.primary,
-                    tooltip: "Dettagli",
+                    tooltip: AppLocalizations.of(context).details,
                     onPressed: () => widget.onShowDetail!(data),
                     size: 36,
                   ),
@@ -2167,7 +2168,7 @@ class _UserCardState extends State<_UserCard> {
                         ? Icons.manage_accounts_rounded
                         : Icons.person_add_rounded,
                     color: KyboColors.accent,
-                    tooltip: "Assegna",
+                    tooltip: AppLocalizations.of(context).assign,
                     onPressed: () => widget.onAssign!(uid),
                     size: 36,
                   ),
@@ -2175,7 +2176,7 @@ class _UserCardState extends State<_UserCard> {
                   PillIconButton(
                     icon: Icons.note_alt_outlined,
                     color: KyboColors.primary,
-                    tooltip: "Note Interne",
+                    tooltip: AppLocalizations.of(context).internalNotes,
                     onPressed: () => widget.onNotes!(uid, realName),
                     size: 36,
                   ),
@@ -2183,7 +2184,7 @@ class _UserCardState extends State<_UserCard> {
                   PillIconButton(
                     icon: Icons.history_rounded,
                     color: KyboColors.primary,
-                    tooltip: "Storico Diete",
+                    tooltip: AppLocalizations.of(context).dietHistoryTooltip,
                     onPressed: () => widget.onHistory(uid),
                     size: 36,
                   ),
@@ -2219,7 +2220,7 @@ class _UserCardState extends State<_UserCard> {
                   PillIconButton(
                     icon: Icons.edit_rounded,
                     color: KyboColors.accent,
-                    tooltip: "Modifica",
+                    tooltip: AppLocalizations.of(context).edit,
                     onPressed: () => widget.onEdit(
                       uid,
                       realEmail,
@@ -3394,7 +3395,7 @@ class _ClientNotesScreenState extends State<_ClientNotesScreen> {
                                 IconButton(
                                   icon: const Icon(Icons.edit_rounded, size: 18),
                                   color: KyboColors.primary,
-                                  tooltip: "Modifica",
+                                  tooltip: AppLocalizations.of(context).edit,
                                   onPressed: () => _editNote(note),
                                 ),
                                 IconButton(
@@ -3649,7 +3650,7 @@ class _UserDetailPane extends StatelessWidget {
             children: [
               Expanded(
                 child: PillButton(
-                  label: 'STORICO',
+                  label: AppLocalizations.of(context).clientHistory,
                   icon: Icons.history_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
@@ -3660,7 +3661,7 @@ class _UserDetailPane extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: PillButton(
-                  label: 'CHIUDI',
+                  label: AppLocalizations.of(context).closeUpper,
                   icon: Icons.close_rounded,
                   backgroundColor: KyboColors.background,
                   textColor: KyboColors.textPrimary,

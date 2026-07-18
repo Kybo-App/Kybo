@@ -209,7 +209,8 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                       else if (!isTemplate)
                         PillTextField(
                           controller: targetUidCtrl,
-                          hintText: 'UID utente (opzionale, assegna subito)',
+                          hintText: AppLocalizations.of(ctx)
+                              .workoutTargetUidOptional,
                           prefixIcon: Icons.person_rounded,
                         ),
                       const SizedBox(height: 16),
@@ -727,7 +728,7 @@ class _WorkoutManagementViewState extends State<WorkoutManagementView> {
                 else
                   PillTextField(
                     controller: uidCtrl,
-                    hintText: 'UID utente destinatario',
+                    hintText: AppLocalizations.of(ctx).workoutTargetUid,
                     prefixIcon: Icons.person_rounded,
                   ),
               ],

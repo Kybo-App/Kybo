@@ -155,7 +155,7 @@ class _AppConfigSectionState extends State<AppConfigSection> {
             const Spacer(),
             if (!_loading && !_editMode)
               PillButton(
-                label: 'Modifica',
+                label: AppLocalizations.of(context).edit,
                 icon: Icons.edit_rounded,
                 height: 36,
                 onPressed: _enterEditMode,
@@ -192,44 +192,44 @@ class _AppConfigSectionState extends State<AppConfigSection> {
                 _label('AI — Gemini'),
                 const SizedBox(height: 12),
                 _field(
-                  label: 'Modello Gemini',
+                  label: AppLocalizations.of(context).configGeminiModel,
                   controller: _geminiModelCtrl,
                   displayValue: _serverValues['gemini_model']!,
                   hint: 'gemini-2.5-flash',
                 ),
                 const SizedBox(height: 12),
                 _field(
-                  label: 'Prompt prefisso globale (opzionale)',
+                  label: AppLocalizations.of(context).configGlobalPromptPrefix,
                   controller: _promptPrefixCtrl,
                   displayValue: _serverValues['gemini_global_prompt_prefix']!,
                   hint: 'Testo aggiunto prima di ogni prompt AI...',
                   lines: 3,
                 ),
                 const SizedBox(height: 24),
-                _label('Notifiche Push'),
+                _label(AppLocalizations.of(context).configPushNotifications),
                 const SizedBox(height: 12),
                 _field(
-                  label: 'Titolo notifica dieta pronta',
+                  label: AppLocalizations.of(context).configNotifDietTitle,
                   controller: _notifTitleCtrl,
                   displayValue: _serverValues['notification_diet_title']!,
                   hint: 'Dieta Pronta! 🥗',
                 ),
                 const SizedBox(height: 12),
                 _field(
-                  label: 'Corpo notifica dieta pronta',
+                  label: AppLocalizations.of(context).configNotifDietBody,
                   controller: _notifBodyCtrl,
                   displayValue: _serverValues['notification_diet_body']!,
                   hint: 'Il tuo piano nutrizionale è stato elaborato.',
                   lines: 2,
                 ),
                 const SizedBox(height: 24),
-                _label('Limiti Upload'),
+                _label(AppLocalizations.of(context).configUploadLimits),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _field(
-                        label: 'Max dimensione file (MB)',
+                        label: AppLocalizations.of(context).configMaxFileSize,
                         controller: _maxFileMbCtrl,
                         displayValue: _serverValues['max_file_size_mb']!,
                         hint: '10',
@@ -239,7 +239,7 @@ class _AppConfigSectionState extends State<AppConfigSection> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: _field(
-                        label: 'Max pagine PDF',
+                        label: AppLocalizations.of(context).configMaxPdfPages,
                         controller: _maxPagesCtrl,
                         displayValue: _serverValues['max_pdf_pages']!,
                         hint: '50',

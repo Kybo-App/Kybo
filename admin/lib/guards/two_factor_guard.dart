@@ -230,7 +230,7 @@ class _TwoFactorVerifyScreenState extends State<_TwoFactorVerifyScreen> {
               SizedBox(
                 width: double.infinity,
                 child: PillButton(
-                  label: "VERIFICA",
+                  label: AppLocalizations.of(context).tfaVerify.toUpperCase(),
                   icon: Icons.verified_user_rounded,
                   backgroundColor: KyboColors.primary,
                   textColor: Colors.white,
