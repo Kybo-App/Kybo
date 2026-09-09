@@ -7,7 +7,7 @@ import ComparisonTable from '@/components/sections/ComparisonTable';
 import AppMockup from '@/components/sections/AppMockup';
 import NewsletterSection from '@/components/sections/NewsletterSection';
 import CTASection from '@/components/sections/CTASection';
-import TrialPopup from '@/components/TrialPopup';
+// [DISABILITATO 2026-09] import TrialPopup from '@/components/TrialPopup';
 import { it } from '@/content/it';
 import styles from './page.module.css';
 
@@ -33,7 +33,14 @@ export default function HomePage() {
         <NewsletterSection content={it.newsletter} />
         <CTASection content={it.cta} footer={it.footer} />
       </main>
-      <TrialPopup />
+      {/*
+        [DISABILITATO 2026-09] Popup "Sei un nutrizionista?" (compariva dopo 8s).
+        Messo in pausa in attesa di decidere se tenerlo: un audit UX lo ha
+        indicato come concorrente dei CTA dell'header/hero sopra la piega.
+        Il componente resta intatto in components/TrialPopup.tsx — per
+        riattivarlo bastano questa riga e l'import sopra.
+        <TrialPopup />
+      */}
     </>
   );
 }
