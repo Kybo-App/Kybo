@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useLenis } from './animations/SmoothScroll';
+import type { NavContent } from '@/content/types';
+import { UiIcon } from '@/components/icons/UiIcons';
 import styles from './Navbar.module.css';
 
-export default function Navbar() {
-  const navRef = useRef<HTMLElement>(null);
-  const [isScrolled,  setIsScrolled]  = useState(false);
-  const [isMenuOpen,  setIsMenuOpen]  = useState(false);
+export default function Navbar({ content }: { content: NavContent }) {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { lenis } = useLenis();
 
   useEffect(() => {
@@ -16,11 +18,11 @@ export default function Navbar() {
       setIsScrolled(window.scrollY > 50);
       if (window.scrollY > 50) setIsMenuOpen(false);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     setIsMenuOpen(false);
     if (lenis) {
@@ -33,35 +35,67 @@ export default function Navbar() {
   const close = () => setIsMenuOpen(false);
 
   return (
-    <nav ref={navRef} className={`${styles.nav} ${isScrolled ? styles.scrolled : ''}`}>
+    <nav className={`${styles.nav} ${isScrolled ? styles.scrolled : ''}`}>
       <div className={styles.container}>
         <div className={styles.logo}>
-          <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} priority />
+          <Image
+            src="/logo no bg.png"
+            alt="Kybo"
+            width={32}
+            height={32}
+            className={styles.logoIcon}
+            priority
+          />
           <span className={styles.logoText}>Kybo</span>
         </div>
 
         <ul className={`${styles.menu} ${isMenuOpen ? styles.menuOpen : ''}`}>
-          <li><a href="#features"  onClick={(e) => handleNavClick(e, '#features')}>Funzionalità</a></li>
-          <li><a href="#stats"     onClick={(e) => handleNavClick(e, '#stats')}>Statistiche</a></li>
-          <li><a href="#gallery"   onClick={(e) => handleNavClick(e, '#gallery')}>Galleria</a></li>
-          <li><a href="/business"  onClick={close}>Per Nutrizionisti</a></li>
-          <li><a href="/en"        onClick={close} style={{ fontSize: '0.8rem', opacity: 0.6 }}>🇬🇧 EN</a></li>
+          {content.links.map((link) => (
+            <li key={link.label}>
+              {link.href.startsWith('#') ? (
+                <a href={link.href} onClick={(e) => handleAnchorClick(e, link.href)}>
+                  {link.label}
+                </a>
+              ) : (
+                <Link href={link.href} onClick={close}>
+                  {link.label}
+                </Link>
+              )}
+            </li>
+          ))}
+          <li>
+            <Link href={content.languageSwitch.href} onClick={close} className={styles.langSwitch}>
+              {content.languageSwitch.label}
+            </Link>
+          </li>
         </ul>
 
         <div className={styles.ctaGroup}>
-          <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.loginBtn}>
-            Area Riservata
+          <a
+            href={content.loginHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.loginBtn}
+          >
+            {content.loginLabel}
           </a>
-          <button className={styles.ctaBtn}>Scarica App</button>
+          {/* Era un <button> senza handler che prometteva un download inesistente. */}
+          <a
+            href={content.primaryCta.href}
+            className={styles.ctaBtn}
+            onClick={(e) => handleAnchorClick(e, content.primaryCta.href)}
+          >
+            {content.primaryCta.label}
+          </a>
         </div>
 
         <button
           className={styles.hamburger}
-          onClick={() => setIsMenuOpen(o => !o)}
-          aria-label={isMenuOpen ? 'Chiudi menu' : 'Apri menu'}
+          onClick={() => setIsMenuOpen((o) => !o)}
+          aria-label={isMenuOpen ? content.closeMenu : content.openMenu}
           aria-expanded={isMenuOpen}
         >
-          {isMenuOpen ? '✕' : '☰'}
+          <UiIcon name={isMenuOpen ? 'cross' : 'menu'} size={22} />
         </button>
       </div>
     </nav>

@@ -1,94 +1,120 @@
 /**
- * Case Study — Dott.ssa Maria Rossi
- * Pagina che racconta l'adozione di Kybo da parte di una biologa nutrizionista milanese:
- * sfida iniziale, soluzione adottata, risultati misurabili, testimonianza diretta.
+ * Come cambia la gestione di uno studio con Kybo.
+ *
+ * NOTA — Questa pagina era un case study attribuito a una cliente inesistente
+ * ("Dott.ssa Maria Rossi", biologa nutrizionista a Milano), completa di
+ * citazioni dirette, badge "Cliente Kybo Pro" e metriche non verificabili
+ * (70% di tempo risparmiato, 4.9★ di soddisfazione, clienti triplicati) per un
+ * prodotto non ancora pubblicato.
+ *
+ * È stata riscritta come scenario illustrativo, dichiarato come tale in pagina.
+ * Le voci del confronto prima/dopo descrivono funzioni che il prodotto ha
+ * davvero. Quando ci sarà un cliente reale disposto a farsi citare, questa
+ * pagina può tornare a essere un case study vero — con dati suoi.
  */
 import React from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import { UiIcon, type UiIconKey } from '@/components/icons/UiIcons';
+import { it } from '@/content/it';
 import styles from './case-study.module.css';
 
-const metrics = [
-  { value: '70%', label: 'tempo amministrativo risparmiato', icon: '⏱️' },
-  { value: '3×', label: 'clienti gestiti in parallelo', icon: '👥' },
-  { value: '4.9★', label: 'soddisfazione media clienti', icon: '⭐' },
-  { value: '< 5 min', label: 'per caricare una nuova dieta', icon: '⚡' },
+/** Funzioni del prodotto, non risultati misurati su un cliente. */
+const capabilities: Array<{ icon: UiIconKey; value: string; label: string }> = [
+  { icon: 'upload', value: 'PDF', label: 'la dieta che carichi viene letta e strutturata dall’AI' },
+  { icon: 'chat', value: 'In-app', label: 'la comunicazione col paziente vive in un canale solo' },
+  { icon: 'chart', value: 'Live', label: 'l’aderenza al piano è visibile senza chiedere nulla' },
+  { icon: 'euro', value: '0 €', label: 'per il paziente, sempre' },
 ];
 
-const timeline = [
+const timeline: Array<{ icon: UiIconKey; phase: string; title: string; desc: string }> = [
   {
-    phase: 'Settimana 1',
-    title: 'Onboarding e importazione dati',
-    desc: 'La Dott.ssa Rossi ha caricato i PDF delle diete già in suo possesso. Kybo le ha estratte automaticamente con il parser AI, senza riscrivere nulla a mano.',
-    icon: '📤',
+    phase: 'Primo accesso',
+    title: 'Carichi le diete che hai già',
+    desc: 'I PDF esistenti vengono letti dal parser AI e trasformati in piani interattivi, senza riscrivere nulla a mano.',
+    icon: 'upload',
   },
   {
-    phase: 'Settimane 2–3',
-    title: 'Attivazione dei clienti',
-    desc: "I clienti hanno ricevuto l'invito via link e installato l'app in pochi minuti. Il 95% ha completato l'onboarding entro 48 ore.",
-    icon: '📱',
+    phase: 'Attivazione',
+    title: 'Inviti i pazienti',
+    desc: 'Ogni paziente riceve un link, installa l’app e trova il suo piano già pronto.',
+    icon: 'mobile',
   },
   {
-    phase: 'Mese 1',
-    title: 'Gestione diete e chat',
-    desc: 'La nutrizionista ha iniziato a comunicare via chat integrata, eliminando WhatsApp. I clienti segnalavano aderenza ai pasti direttamente nell\'app.',
-    icon: '💬',
+    phase: 'Uso quotidiano',
+    title: 'Le domande arrivano in un posto solo',
+    desc: 'La chat integrata sostituisce WhatsApp ed email. Il paziente segna i pasti consumati direttamente nell’app.',
+    icon: 'chat',
   },
   {
-    phase: 'Mese 2–3',
-    title: 'Analisi e ottimizzazione',
-    desc: 'La Dott.ssa Rossi ha usato la dashboard analytics per identificare i clienti con aderenza bassa e inviare messaggi mirati prima delle ricadute.',
-    icon: '📊',
+    phase: 'Nel tempo',
+    title: 'Vedi chi sta faticando',
+    desc: 'La dashboard mostra l’aderenza al piano, così puoi intervenire prima della visita successiva invece che dopo.',
+    icon: 'chart',
   },
 ];
 
 const challenges = [
-  'Gestione diete su foglio Excel condiviso via email — versioni confuse, dati persi',
-  'Comunicazione con i clienti frammentata tra WhatsApp, email e telefonate',
-  'Nessuna visibilità sull\'aderenza dei clienti tra una visita e l\'altra',
-  'Report mensili compilati a mano — 3–4 ore per paziente ogni mese',
+  'Diete gestite su fogli Excel condivisi via email — versioni confuse, file che si perdono',
+  'Comunicazione col paziente sparsa tra WhatsApp, email e telefonate',
+  'Nessuna visibilità su cosa succede tra una visita e l’altra',
+  'Report compilati a mano, ogni volta da capo',
+];
+
+const solutions = [
+  'Il PDF diventa un piano interattivo senza reinserimento manuale',
+  'Chat professionale integrata, separata dai messaggi personali',
+  'Aderenza al piano visibile in dashboard',
+  'Report generati dai dati già raccolti',
+  'Lista della spesa creata in automatico dal piano del paziente',
+];
+
+const before = [
+  ['Diete', 'Excel e PDF via email'],
+  ['Comunicazione', 'WhatsApp ed email mescolate'],
+  ['Aderenza', 'Nessuna visibilità'],
+  ['Report', 'Compilati a mano'],
+];
+
+const after = [
+  ['Diete', 'App interattiva'],
+  ['Comunicazione', 'Chat dedicata in-app'],
+  ['Aderenza', 'Dashboard aggiornata'],
+  ['Report', 'Generati dai dati'],
 ];
 
 export default function CaseStudyPage() {
   return (
     <>
-      <Navbar />
+      <Navbar content={it.nav} />
       <main className={styles.main}>
 
-        {/* Hero */}
         <section className={styles.hero}>
           <div className={styles.heroContainer}>
-            <Link href="/" className={styles.breadcrumb}>← Torna alla home</Link>
-            <span className={styles.label}>Case Study</span>
+            <Link href="/" className={styles.breadcrumb}>
+              <UiIcon name="arrowLeft" size={15} /> Torna alla home
+            </Link>
+            <span className={styles.label}>Scenario</span>
             <h1 className={styles.heroTitle}>
-              Come la Dott.ssa Rossi ha{' '}
-              <span className={styles.accent}>triplicato i clienti</span>{' '}
-              senza assumere personale
+              Come cambia la gestione di uno studio{' '}
+              <span className={styles.accent}>con Kybo</span>
             </h1>
             <p className={styles.heroSubtitle}>
-              Biologa nutrizionista con studio a Milano. 8 anni di esperienza.
-              Kybo ha trasformato la sua gestione quotidiana in 90 giorni.
+              Un percorso illustrativo, costruito sulle funzioni che Kybo offre oggi.
+              Non è il racconto di un cliente reale: quando ne avremo uno disposto a
+              raccontarsi, questa pagina riporterà i suoi numeri.
             </p>
-
-            <div className={styles.profileCard}>
-              <div className={styles.avatar}>DR</div>
-              <div className={styles.profileInfo}>
-                <p className={styles.profileName}>Dott.ssa Maria Rossi</p>
-                <p className={styles.profileRole}>Biologa Nutrizionista · Milano</p>
-                <p className={styles.profileDetail}>Studio privato · 40+ clienti attivi</p>
-              </div>
-              <div className={styles.profileBadge}>Cliente Kybo Pro</div>
-            </div>
           </div>
         </section>
 
-        {/* Metrics */}
         <section className={styles.metricsSection}>
           <div className={styles.container}>
             <div className={styles.metricsGrid}>
-              {metrics.map((m) => (
+              {capabilities.map((m) => (
                 <div key={m.label} className={styles.metricCard}>
-                  <span className={styles.metricIcon}>{m.icon}</span>
+                  <span className={styles.metricIcon}>
+                    <UiIcon name={m.icon} size={26} />
+                  </span>
                   <p className={styles.metricValue}>{m.value}</p>
                   <p className={styles.metricLabel}>{m.label}</p>
                 </div>
@@ -97,94 +123,97 @@ export default function CaseStudyPage() {
           </div>
         </section>
 
-        {/* Challenges */}
         <section className={styles.section}>
           <div className={styles.container}>
             <div className={styles.sectionGrid}>
               <div className={styles.sectionContent}>
-                <span className={styles.sectionLabel}>La sfida</span>
-                <h2 className={styles.sectionTitle}>Prima di Kybo: gestire tutto a mano</h2>
+                <span className={styles.sectionLabel}>Il problema</span>
+                <h2 className={styles.sectionTitle}>Il tempo che se ne va in amministrazione</h2>
                 <p className={styles.sectionText}>
-                  Come la maggior parte dei nutrizionisti, la Dott.ssa Rossi trascorreva
-                  ore ogni settimana su attività amministrative che nulla avevano a che
-                  fare con la nutrizione.
+                  Gran parte del lavoro di uno studio di nutrizione non è nutrizione:
+                  è spostare file, rincorrere messaggi e ricostruire a mano cosa ha
+                  fatto il paziente nelle ultime settimane.
                 </p>
                 <ul className={styles.challengeList}>
                   {challenges.map((c) => (
                     <li key={c} className={styles.challengeItem}>
-                      <span className={styles.challengeIcon}>✗</span>
+                      <span className={styles.challengeIcon}>
+                        <UiIcon name="cross" size={13} />
+                      </span>
                       {c}
                     </li>
                   ))}
                 </ul>
-                <blockquote className={styles.quote}>
-                  <p>
-                    &ldquo;Passavo più tempo a gestire file Excel che a fare la
-                    nutrizionista. Non era sostenibile.&rdquo;
-                  </p>
-                  <cite>— Dott.ssa Maria Rossi</cite>
-                </blockquote>
               </div>
               <div className={styles.sectionVisual}>
                 <div className={styles.beforeCard}>
-                  <p className={styles.beforeCardTitle}>⚠️ Prima di Kybo</p>
-                  <div className={styles.beforeRow}><span>Diete</span><span className={styles.bad}>Excel / PDF email</span></div>
-                  <div className={styles.beforeRow}><span>Comunicazione</span><span className={styles.bad}>WhatsApp + email</span></div>
-                  <div className={styles.beforeRow}><span>Aderenza clienti</span><span className={styles.bad}>Nessuna visibilità</span></div>
-                  <div className={styles.beforeRow}><span>Report mensili</span><span className={styles.bad}>3–4 ore/cliente</span></div>
-                  <div className={styles.beforeRow}><span>Clienti max gestibili</span><span className={styles.bad}>~15</span></div>
+                  <p className={styles.beforeCardTitle}>
+                    <UiIcon name="warning" size={16} /> Senza Kybo
+                  </p>
+                  {before.map(([k, v]) => (
+                    <div key={k} className={styles.beforeRow}>
+                      <span>{k}</span>
+                      <span className={styles.bad}>{v}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Solution */}
         <section className={`${styles.section} ${styles.sectionAlt}`}>
           <div className={styles.container}>
             <div className={`${styles.sectionGrid} ${styles.sectionGridReverse}`}>
               <div className={styles.sectionContent}>
                 <span className={styles.sectionLabel}>La soluzione</span>
-                <h2 className={styles.sectionTitle}>Kybo come unico hub per tutto</h2>
+                <h2 className={styles.sectionTitle}>Un posto solo per diete, messaggi e progressi</h2>
                 <p className={styles.sectionText}>
-                  Con Kybo, la Dott.ssa Rossi ha centralizzato diete, comunicazione e
-                  monitoraggio in un&apos;unica piattaforma. Il parser AI legge i suoi PDF e
-                  li rende interattivi per i clienti in pochi secondi.
+                  Kybo raccoglie in un&apos;unica piattaforma quello che oggi è sparso tra
+                  strumenti diversi. Il parser AI legge i PDF e li rende consultabili
+                  dal paziente sul telefono.
                 </p>
                 <ul className={styles.solutionList}>
-                  <li><span className={styles.solutionIcon}>✓</span>Upload PDF → dieta strutturata in 30 secondi</li>
-                  <li><span className={styles.solutionIcon}>✓</span>Chat professionale integrata con notifiche push</li>
-                  <li><span className={styles.solutionIcon}>✓</span>Dashboard aderenza in tempo reale</li>
-                  <li><span className={styles.solutionIcon}>✓</span>Report mensili generati automaticamente</li>
-                  <li><span className={styles.solutionIcon}>✓</span>Lista spesa automatica dalle diete per i clienti</li>
+                  {solutions.map((s) => (
+                    <li key={s}>
+                      <span className={styles.solutionIcon}>
+                        <UiIcon name="check" size={13} />
+                      </span>
+                      {s}
+                    </li>
+                  ))}
                 </ul>
               </div>
               <div className={styles.sectionVisual}>
                 <div className={styles.afterCard}>
-                  <p className={styles.afterCardTitle}>✅ Con Kybo</p>
-                  <div className={styles.afterRow}><span>Diete</span><span className={styles.good}>App interattiva</span></div>
-                  <div className={styles.afterRow}><span>Comunicazione</span><span className={styles.good}>Chat in-app</span></div>
-                  <div className={styles.afterRow}><span>Aderenza clienti</span><span className={styles.good}>Dashboard live</span></div>
-                  <div className={styles.afterRow}><span>Report mensili</span><span className={styles.good}>Automatici</span></div>
-                  <div className={styles.afterRow}><span>Clienti max gestibili</span><span className={styles.good}>40+ (e oltre)</span></div>
+                  <p className={styles.afterCardTitle}>
+                    <UiIcon name="check" size={16} /> Con Kybo
+                  </p>
+                  {after.map(([k, v]) => (
+                    <div key={k} className={styles.afterRow}>
+                      <span>{k}</span>
+                      <span className={styles.good}>{v}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Timeline */}
         <section className={styles.section}>
           <div className={styles.container}>
             <div className={styles.timelineHeader}>
               <span className={styles.sectionLabel}>Il percorso</span>
-              <h2 className={styles.sectionTitle}>Da zero a piena operatività in 30 giorni</h2>
+              <h2 className={styles.sectionTitle}>Come si mette in piedi</h2>
             </div>
             <div className={styles.timeline}>
               {timeline.map((step, i) => (
                 <div key={step.phase} className={styles.timelineItem}>
                   <div className={styles.timelineLeft}>
-                    <div className={styles.timelineDot}>{step.icon}</div>
+                    <div className={styles.timelineDot}>
+                      <UiIcon name={step.icon} size={17} />
+                    </div>
                     {i < timeline.length - 1 && <div className={styles.timelineLine} />}
                   </div>
                   <div className={styles.timelineContent}>
@@ -198,36 +227,15 @@ export default function CaseStudyPage() {
           </div>
         </section>
 
-        {/* Final quote */}
-        <section className={`${styles.section} ${styles.sectionFinal}`}>
-          <div className={styles.container}>
-            <div className={styles.finalQuote}>
-              <p className={styles.finalQuoteText}>
-                &ldquo;Kybo non è solo un&#39;app. È come avere un assistente sempre
-                disponibile che gestisce la parte burocratica al posto mio. Ora posso
-                concentrarmi sui pazienti, che è quello che amo fare.&rdquo;
-              </p>
-              <div className={styles.finalAuthor}>
-                <div className={`${styles.avatar} ${styles.avatarLg}`}>DR</div>
-                <div>
-                  <p className={styles.finalAuthorName}>Dott.ssa Maria Rossi</p>
-                  <p className={styles.finalAuthorRole}>Biologa Nutrizionista · Milano · Cliente Kybo dal 2024</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
         <section className={styles.ctaSection}>
           <div className={styles.container}>
-            <h2 className={styles.ctaTitle}>Vuoi lo stesso risultato?</h2>
+            <h2 className={styles.ctaTitle}>Vuoi vedere come funziona sul tuo studio?</h2>
             <p className={styles.ctaSubtitle}>
-              Inizia gratis. Nessuna carta di credito richiesta.
+              Ti mostriamo la piattaforma e rispondiamo alle domande.
             </p>
             <div className={styles.ctaButtons}>
               <Link href="/business" className={styles.ctaPrimary}>
-                Prova Kybo gratis
+                Kybo per i professionisti
               </Link>
               <Link href="/contact" className={styles.ctaSecondary}>
                 Parla con noi

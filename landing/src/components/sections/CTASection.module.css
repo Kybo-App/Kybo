@@ -40,7 +40,7 @@
 
 .subtitle {
   font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 3rem;
   font-weight: 300;
   line-height: 1.6;
@@ -54,31 +54,23 @@
   margin-bottom: 2rem;
 }
 
-.primaryBtn {
-  padding: 1.5rem 3rem;
-  font-size: 1.2rem;
-  font-weight: 600;
-  border: none;
+/*
+  Segnaposto degli store, non bottoni.
+
+  Finché l'app non è pubblicata questi elementi non portano da nessuna parte:
+  hanno l'aspetto di una targhetta informativa, non di una call to action, così
+  nessuno ci clicca sopra aspettandosi un download. Niente cursor:pointer,
+  niente hover che simuli un'interazione.
+*/
+.storeBadge {
+  padding: 1rem 2rem;
   border-radius: 100px;
-  cursor: pointer;
-  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
-  color: white;
-  box-shadow: 0 10px 30px rgba(102, 187, 106, 0.3);
-  transition: all 0.3s ease;
-  font-family: inherit;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
   display: flex;
   align-items: center;
   gap: 0.8rem;
-}
-
-.primaryBtn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(102, 187, 106, 0.4);
-}
-
-.icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
 }
 
 .btnText {
@@ -102,75 +94,37 @@
 }
 
 .note {
-  color: rgba(255, 255, 255, 0.5);
+  /* Alzato da 0.5: sotto non raggiungeva la soglia di contrasto AA. */
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.95rem;
-  font-weight: 300;
-  margin-top: 1rem;
-}
-
-/* QR Code */
-.qrSection {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  justify-content: center;
-  margin-top: 2.5rem;
-  padding: 1.5rem 2rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.qrBox {
-  width: 90px;
-  height: 90px;
-  background: #0f0f0f;
-  border-radius: 12px;
+  font-weight: 400;
+  margin-top: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  padding: 6px;
-  border: 1px solid rgba(255,255,255,0.1);
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
-.qrSvg {
-  width: 100%;
-  height: 100%;
-}
-
-.qrInfo {
-  text-align: left;
-}
-
-.qrTitle {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 0.25rem;
-}
-
-.qrSub {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 0.5rem;
-}
-
-.qrBadge {
+.comingSoon {
   display: inline-block;
   font-size: 0.7rem;
-  font-weight: 600;
-  color: #66BB6A;
-  background: rgba(102, 187, 106, 0.12);
-  border: 1px solid rgba(102, 187, 106, 0.3);
+  font-weight: 700;
+  color: #A5D6A7;
+  background: rgba(102, 187, 106, 0.14);
+  border: 1px solid rgba(102, 187, 106, 0.4);
   border-radius: 100px;
-  padding: 0.2rem 0.6rem;
-  letter-spacing: 0.05em;
+  padding: 0.25rem 0.7rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+
+/*
+  Il blocco QR è stato rimosso: il codice era generato con rettangoli casuali
+  (Math.random() e (x*y)%17), quindi non era scansionabile pur dicendo
+  "Scansiona per scaricare". Va rimesso al lancio, generato da una libreria
+  reale sull'URL vero.
+*/
 
 .footer {
   background: #0a0a0a;
@@ -219,7 +173,7 @@
 }
 
 .footerTagline {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 1rem;
   line-height: 1.6;
   max-width: 300px;
@@ -237,7 +191,7 @@
   gap: 1rem;
 }
 
-.footerColumn h4 {
+.footerColumn h3 {
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
@@ -245,9 +199,11 @@
 }
 
 .footerColumn a {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   text-decoration: none;
   font-size: 0.95rem;
+  /* Porta l'area cliccabile sopra i 24px minimi (prima erano 18px) */
+  padding: 0.35rem 0;
   transition: color 0.3s ease;
 }
 
@@ -263,7 +219,7 @@
 }
 
 .copyright {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.9rem;
 }
 
@@ -272,15 +228,28 @@
   gap: 1.5rem;
 }
 
+/* Area cliccabile di 44px: le icone ne occupano 22, il resto è padding.
+   Prima erano emoji senza area di tocco dichiarata. */
 .socials a {
-  font-size: 1.5rem;
-  transition: transform 0.3s ease, filter 0.3s ease;
-  filter: grayscale(100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.65);
+  transition: transform 0.25s ease, color 0.25s ease, background-color 0.25s ease;
+}
+
+.socials a svg {
+  width: 22px;
+  height: 22px;
 }
 
 .socials a:hover {
   transform: translateY(-3px);
-  filter: grayscale(0%) drop-shadow(0 0 10px rgba(102, 187, 106, 0.5));
+  color: #66BB6A;
+  background: rgba(102, 187, 106, 0.12);
 }
 
 @media (max-width: 1024px) {
@@ -304,9 +273,10 @@
     gap: 1rem;
   }
 
-  .primaryBtn {
+  .storeBadge {
     width: 100%;
     max-width: 350px;
+    justify-content: center;
   }
 
   .footer {

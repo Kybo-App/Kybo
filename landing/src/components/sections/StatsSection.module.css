@@ -27,7 +27,7 @@
 .subtitle {
   text-align: center;
   font-size: clamp(1.1rem, 2vw, 1.5rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 5rem;
   font-weight: 300;
 }
@@ -44,26 +44,9 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  
-  /* CSS Animation */
-  animation: fadeInScale 0.6s ease-out forwards;
-  opacity: 0;
 }
-
-.stat:nth-child(1) { animation-delay: 0.1s; }
-.stat:nth-child(2) { animation-delay: 0.25s; }
-.stat:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+/* L'entrata è gestita da Motion nel componente: l'animazione CSS che stava qui
+   partiva da opacity:0 senza attendere lo scroll e si sovrapponeva a quella. */
 
 .circle {
   width: 200px;
@@ -125,21 +108,27 @@
   z-index: 1;
 }
 
+/*
+  Colore pieno invece del gradiente con background-clip: i valori ora hanno
+  lunghezze molto diverse ("PDF", "AES-256", "Offline") e ciascuno porta il
+  colore della propria voce, passato inline dal componente. Il gradiente
+  fissava un unico verde e rendeva il contrasto impossibile da misurare.
+*/
 .value {
-  font-size: 2rem;
-  font-weight: 900;
-  background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 0 20px rgba(102, 187, 106, 0.8));
+  font-size: clamp(1.15rem, 3.4vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   white-space: nowrap;
+  padding: 0 0.5rem;
 }
 
 .label {
-  font-size: 1.3rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.02rem;
+  color: rgba(255, 255, 255, 0.82);
   font-weight: 500;
+  line-height: 1.45;
+  max-width: 22ch;
+  text-wrap: balance;
 }
 
 @media (max-width: 768px) {
@@ -162,12 +151,8 @@
     height: 130px;
   }
 
-  .value {
-    font-size: 2.2rem;
-  }
-
   .label {
-    font-size: 1.1rem;
+    font-size: 0.96rem;
   }
 }
 

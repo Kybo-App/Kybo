@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
 import styles from './faq.module.css';
+import Navbar from '@/components/Navbar';
+import { UiIcon, type UiIconKey } from '@/components/icons/UiIcons';
+import { it } from '@/content/it';
 
 interface FaqItem {
   question: string;
@@ -11,14 +12,14 @@ interface FaqItem {
 }
 
 interface FaqCategory {
-  icon: string;
+  icon: UiIconKey;
   title: string;
   items: FaqItem[];
 }
 
 const categories: FaqCategory[] = [
   {
-    icon: '💡',
+    icon: 'lightbulb',
     title: 'Generale',
     items: [
       {
@@ -44,7 +45,7 @@ const categories: FaqCategory[] = [
     ],
   },
   {
-    icon: '🥗',
+    icon: 'nutrition',
     title: 'Per i Clienti',
     items: [
       {
@@ -70,7 +71,7 @@ const categories: FaqCategory[] = [
     ],
   },
   {
-    icon: '🩺',
+    icon: 'stethoscope',
     title: 'Per i Nutrizionisti',
     items: [
       {
@@ -96,7 +97,7 @@ const categories: FaqCategory[] = [
     ],
   },
   {
-    icon: '🔒',
+    icon: 'lock',
     title: 'Privacy & Sicurezza',
     items: [
       {
@@ -130,7 +131,7 @@ function AccordionItem({ item }: { item: FaqItem }) {
       >
         <span className={styles.questionText}>{item.question}</span>
         <span className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}>
-          ▼
+          <UiIcon name="chevronDown" size={16} />
         </span>
       </button>
       <div className={`${styles.answerWrapper} ${open ? styles.answerWrapperOpen : ''}`}>
@@ -143,25 +144,7 @@ function AccordionItem({ item }: { item: FaqItem }) {
 export default function FAQPage() {
   return (
     <div className={styles.pageWrapper}>
-      {/* Navbar */}
-      <nav className={styles.nav}>
-        <div className={styles.navContainer}>
-          <Link href="/" className={styles.logo}>
-            <Image
-              src="/logo no bg.png"
-              alt="Kybo"
-              width={32}
-              height={32}
-              className={styles.logoIcon}
-              priority
-            />
-            <span className={styles.logoText}>Kybo</span>
-          </Link>
-          <Link href="/" className={styles.backBtn}>
-            ← Torna alla Home
-          </Link>
-        </div>
-      </nav>
+      <Navbar content={it.nav} />
 
       {/* Hero */}
       <div className={styles.hero}>
@@ -176,7 +159,7 @@ export default function FAQPage() {
         {categories.map((cat) => (
           <div key={cat.title} className={styles.category}>
             <div className={styles.categoryHeader}>
-              <span className={styles.categoryIcon}>{cat.icon}</span>
+              <span className={styles.categoryIcon}><UiIcon name={cat.icon} size={22} /></span>
               <h2 className={styles.categoryTitle}>{cat.title}</h2>
             </div>
             {cat.items.map((item) => (

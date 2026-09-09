@@ -25,12 +25,15 @@
 }
 
 .closeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   position: absolute;
   top: 1rem;
   right: 1rem;
   background: rgba(255, 255, 255, 0.08);
   border: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-size: 1rem;
   width: 32px;
   height: 32px;
@@ -48,6 +51,9 @@
 }
 
 .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   display: inline-block;
   background: rgba(102, 187, 106, 0.15);
   color: #66BB6A;
@@ -76,7 +82,7 @@
 }
 
 .text {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   font-size: 0.95rem;
   line-height: 1.6;
   margin-bottom: 1.5rem;
@@ -93,6 +99,9 @@
 }
 
 .features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.8);
   padding: 0.4rem 0.75rem;
@@ -122,7 +131,7 @@
 .skipBtn {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
   font-size: 0.8rem;
   cursor: pointer;
   font-family: inherit;
@@ -131,7 +140,7 @@
 }
 
 .skipBtn:hover {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
 }
 
 @keyframes fadeIn {

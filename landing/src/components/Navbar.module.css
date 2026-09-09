@@ -87,25 +87,6 @@
   gap: 1rem;
 }
 
-.themeToggle {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.25s ease, transform 0.2s ease;
-}
-
-.themeToggle:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: scale(1.1);
-}
-
 .loginBtn {
   padding: 0.8rem 1.5rem;
   font-size: 0.95rem;
@@ -220,4 +201,24 @@
     padding: 0.55rem 1.1rem;
     font-size: 0.85rem;
   }
+}
+
+/* Area di tocco dei link del menu: prima erano alti 19px, sotto il minimo di
+   24px raccomandato (WCAG 2.2 – 2.5.8). */
+.menu a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+}
+
+.langSwitch {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.langSwitch:hover {
+  opacity: 1;
 }

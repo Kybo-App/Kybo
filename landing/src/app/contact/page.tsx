@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Navbar from '@/components/Navbar';
+import { UiIcon } from '@/components/icons/UiIcons';
+import { it } from '@/content/it';
 import { API_BASE } from '@/lib/api';
 import styles from './contact.module.css';
 
@@ -45,7 +47,7 @@ export default function ContactPage() {
 
   return (
     <>
-      <Navbar />
+      <Navbar content={it.nav} />
       <main className={styles.main}>
         <div className={styles.container}>
           <div className={styles.header}>
@@ -60,21 +62,21 @@ export default function ContactPage() {
             {/* Info box */}
             <div className={styles.info}>
               <div className={styles.infoCard}>
-                <span className={styles.infoIcon}>📧</span>
+                <span className={styles.infoIcon}><UiIcon name="mail" size={20} /></span>
                 <div>
                   <h3 className={styles.infoTitle}>Email</h3>
-                  <a href="mailto:info@kybo.app" className={styles.infoLink}>info@kybo.app</a>
+                  <a href="mailto:info@kybo.it" className={styles.infoLink}>info@kybo.it</a>
                 </div>
               </div>
               <div className={styles.infoCard}>
-                <span className={styles.infoIcon}>⏱️</span>
+                <span className={styles.infoIcon}><UiIcon name="clock" size={20} /></span>
                 <div>
                   <h3 className={styles.infoTitle}>Tempo di risposta</h3>
                   <p className={styles.infoText}>Entro 24 ore lavorative</p>
                 </div>
               </div>
               <div className={styles.infoCard}>
-                <span className={styles.infoIcon}>🇮🇹</span>
+                <span className={styles.infoIcon}><UiIcon name="globe" size={20} /></span>
                 <div>
                   <h3 className={styles.infoTitle}>Supporto</h3>
                   <p className={styles.infoText}>In italiano e inglese</p>
@@ -86,7 +88,7 @@ export default function ContactPage() {
             <div className={styles.formWrap}>
               {success ? (
                 <div className={styles.successBox}>
-                  <span className={styles.successIcon}>✅</span>
+                  <span className={styles.successIcon}><UiIcon name="check" size={30} /></span>
                   <h2 className={styles.successTitle}>Messaggio inviato!</h2>
                   <p className={styles.successText}>
                     Grazie per averci contattato. Ti risponderemo entro 24 ore lavorative.

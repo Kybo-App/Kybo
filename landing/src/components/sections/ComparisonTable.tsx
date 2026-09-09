@@ -1,180 +1,96 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import type { CellValue, ComparisonContent } from '@/content/types';
+import { UiIcon } from '@/components/icons/UiIcons';
 import styles from './ComparisonTable.module.css';
 
-type CellValue = boolean | 'partial';
-
-interface Row {
-  feature: string;
-  kybo: CellValue;
-  manual: CellValue;
-  others: CellValue;
+function Cell({ value, legend }: { value: CellValue; legend: ComparisonContent['legend'] }) {
+  // Il simbolo è decorativo: il significato viene dal testo per screen reader,
+  // altrimenti una tabella di spunte è illeggibile senza vederla.
+  if (value === true) {
+    return (
+      <span className={styles.yes}>
+        <UiIcon name="check" size={16} />
+        <span className={styles.srOnly}>{legend.yes}</span>
+      </span>
+    );
+  }
+  if (value === 'partial') {
+    return (
+      <span className={styles.partial}>
+        <span aria-hidden="true">~</span>
+        <span className={styles.srOnly}>{legend.partial}</span>
+      </span>
+    );
+  }
+  return (
+    <span className={styles.no}>
+      <UiIcon name="cross" size={16} />
+      <span className={styles.srOnly}>{legend.no}</span>
+    </span>
+  );
 }
 
-const rows: Row[] = [
-  {
-    feature: 'Piano alimentare digitale',
-    kybo: true,
-    manual: false,
-    others: 'partial',
-  },
-  {
-    feature: 'Lista spesa automatica',
-    kybo: true,
-    manual: false,
-    others: false,
-  },
-  {
-    feature: 'Chat con nutrizionista',
-    kybo: true,
-    manual: false,
-    others: false,
-  },
-  {
-    feature: 'Tracking dispensa',
-    kybo: true,
-    manual: false,
-    others: false,
-  },
-  {
-    feature: 'Statistiche & progressi',
-    kybo: true,
-    manual: false,
-    others: 'partial',
-  },
-  {
-    feature: 'Allergeni evidenziati',
-    kybo: true,
-    manual: false,
-    others: false,
-  },
-  {
-    feature: 'Modalità offline',
-    kybo: true,
-    manual: true,
-    others: 'partial',
-  },
-  {
-    feature: 'Notifiche pasti',
-    kybo: true,
-    manual: false,
-    others: 'partial',
-  },
-  {
-    feature: 'Upload PDF nutrizionista',
-    kybo: true,
-    manual: false,
-    others: false,
-  },
-  {
-    feature: 'Gratuito per il paziente',
-    kybo: true,
-    manual: true,
-    others: false,
-  },
-];
+export default function ComparisonTable({ content }: { content: ComparisonContent }) {
+  const reduced = useReducedMotion();
 
-function Cell({ value }: { value: CellValue }) {
-  if (value === true) return <span className={styles.yes}>✓</span>;
-  if (value === 'partial') return <span className={styles.partial}>~</span>;
-  return <span className={styles.no}>✗</span>;
-}
-
-export default function ComparisonTable() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const init = async () => {
-      const { gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
-
-      if (!sectionRef.current || !tableRef.current) return;
-
-      // Fade in heading
-      const heading = sectionRef.current.querySelector('h2');
-      const subtitle = sectionRef.current.querySelector('p');
-      if (heading && subtitle) {
-        gsap.fromTo(
-          [heading, subtitle],
-          { opacity: 0, y: 30 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.7,
-            stagger: 0.12,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: sectionRef.current, start: 'top 80%', once: true },
-          }
-        );
-      }
-
-      // Rows stagger in
-      const tableRows = tableRef.current.querySelectorAll('tr');
-      gsap.fromTo(
-        tableRows,
-        { opacity: 0, x: -20 },
-        {
-          opacity: 1,
-          x: 0,
-          duration: 0.5,
-          stagger: 0.06,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: tableRef.current, start: 'top 80%', once: true },
-        }
-      );
-    };
-
-    init();
-  }, []);
+  const reveal = (delay = 0) =>
+    reduced
+      ? {}
+      : {
+          initial: { opacity: 0, y: 26 },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, amount: 0.2 },
+          transition: { duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] as const },
+        };
 
   return (
-    <section ref={sectionRef} id="comparison" className={styles.section}>
+    <section id="comparison" className={styles.section}>
       <div className={styles.container}>
-        <h2 className={styles.title}>Perché scegliere Kybo?</h2>
-        <p className={styles.subtitle}>
-          Confronta Kybo con le alternative più comuni
-        </p>
+        <motion.h2 className={styles.title} data-reveal {...reveal()}>
+          {content.title}
+        </motion.h2>
+        <motion.p className={styles.subtitle} data-reveal {...reveal(0.1)}>
+          {content.subtitle}
+        </motion.p>
 
-        <div ref={tableRef} className={styles.tableWrapper}>
+        <motion.div className={styles.tableWrapper} data-reveal {...reveal(0.18)}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.featureCol}>Funzionalità</th>
+                <th className={styles.featureCol}>{content.columns.feature}</th>
                 <th className={`${styles.colHeader} ${styles.kyboCol}`}>
-                  <span className={styles.kyboBadge}>Kybo</span>
+                  <span className={styles.kyboBadge}>{content.columns.kybo}</span>
                 </th>
-                <th className={styles.colHeader}>Gestione Manuale</th>
-                <th className={styles.colHeader}>Altri Tool</th>
+                <th className={styles.colHeader}>{content.columns.manual}</th>
+                <th className={styles.colHeader}>{content.columns.others}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr key={i} className={styles.row}>
+              {content.rows.map((row) => (
+                <tr key={row.feature} className={styles.row}>
                   <td className={styles.featureLabel}>{row.feature}</td>
                   <td className={`${styles.cell} ${styles.kyboCell}`}>
-                    <Cell value={row.kybo} />
+                    <Cell value={row.kybo} legend={content.legend} />
                   </td>
                   <td className={styles.cell}>
-                    <Cell value={row.manual} />
+                    <Cell value={row.manual} legend={content.legend} />
                   </td>
                   <td className={styles.cell}>
-                    <Cell value={row.others} />
+                    <Cell value={row.others} legend={content.legend} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </motion.div>
 
         <p className={styles.legend}>
-          <span className={styles.yes}>✓</span> Disponibile &nbsp;
-          <span className={styles.partial}>~</span> Parzialmente &nbsp;
-          <span className={styles.no}>✗</span> Non disponibile
+          <span className={styles.yes}><UiIcon name="check" size={14} /></span> {content.legend.yes} &nbsp;
+          <span className={styles.partial} aria-hidden="true">~</span> {content.legend.partial} &nbsp;
+          <span className={styles.no}><UiIcon name="cross" size={14} /></span> {content.legend.no}
         </p>
       </div>
     </section>

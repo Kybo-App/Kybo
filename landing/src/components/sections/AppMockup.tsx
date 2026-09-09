@@ -1,402 +1,392 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import type { MockupContent, MockupScreen } from '@/content/types';
+import { AppIcon, type AppIconKey } from '@/components/icons/AppIcons';
 import styles from './AppMockup.module.css';
 
-type NavTab  = 'diet' | 'pantry' | 'shopping';
-type Screen  = NavTab | 'chat' | 'ai';
+/*
+  Ricostruzione web delle schermate reali dell'app Flutter.
 
-/* ─── PIANO ALIMENTARE ─────────────────────────────────────────────────────── */
-const ScreenDiet = ({ s }: { s: typeof styles }) => (
-  <div className={s.screenDiet}>
-    {/* Day tabs */}
-    <div className={s.dayTabs}>
-      {['LUN','MAR','MER','GIO','VEN'].map((d, i) => (
-        <div key={d} className={`${s.dayTab} ${i === 2 ? s.dayActive : ''}`}>{d}</div>
-      ))}
-    </div>
+  Riferimenti in client/lib:
+    - diet_view.dart          → selettore porzioni, tab dei giorni, card dei pasti
+    - shopping_list_view.dart → banner budget, checkbox con barrato
+    - pantry_view.dart        → header, riga di aggiunta, tile con icona tonda, FAB scanner
+    - home_screen.dart        → app bar (menu / swap / spa), drawer, bottom nav a 3 voci
 
-    {/* Next meal banner */}
-    <div className={s.nextMealBanner}>
-      <span className={s.nextMealIcon}>🍽️</span>
-      <div>
-        <p className={s.nextMealLabel}>Prossimo pasto: Cena</p>
-        <p className={s.nextMealItems}>Salmone · Patate · Insalata</p>
-      </div>
-    </div>
+  I colori vengono da KyboColors in client/lib/widgets/design_system.dart,
+  variante scura (background #0F172A, surface #1E293B, primary #2E7D32).
+*/
 
-    {/* Meal cards */}
-    {[
-      { icon: '☀️', name: 'Colazione', kcal: 350, done: true,
-        ingredients: [['Yogurt greco','150 g'],['Mela','1 pz'],['Caffè','—']] },
-      { icon: '🌞', name: 'Pranzo', kcal: 580, done: true,
-        ingredients: [['Petto di pollo','150 g'],['Riso integrale','80 g'],['Zucchine','200 g']] },
-      { icon: '🌙', name: 'Cena', kcal: 510, done: false,
-        ingredients: [['Salmone','180 g'],['Patate al forno','200 g'],['Insalata','q.b.']] },
-    ].map((m) => (
-      <div key={m.name} className={`${s.mealCard} ${m.done ? s.mealCardDone : ''}`}>
-        <div className={s.mealCardHeader}>
-          <span className={s.mealIcon}>{m.icon}</span>
-          <span className={s.mealName}>{m.name}</span>
-          <span className={s.mealKcal}>{m.kcal} kcal</span>
-        </div>
-        <div className={s.mealIngredients}>
-          {m.ingredients.map(([name, qty]) => (
-            <div key={name} className={s.mealIngRow}>
-              <span className={s.mealIngName}>{name}</span>
-              <span className={s.mealIngQty}>{qty}</span>
-            </div>
-          ))}
-        </div>
-        <div className={m.done ? s.mealConsumedDone : s.mealConsumedPending}>
-          {m.done ? '✓ Consumato' : '○ Segna come consumato'}
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-/* ─── DISPENSA ─────────────────────────────────────────────────────────────── */
-const ScreenPantry = ({ s }: { s: typeof styles }) => (
-  <div className={s.screenPantry}>
-    <div className={s.pantryAddRow}>
-      <div className={s.pantryInput}>Aggiungi alimento...</div>
-      <div className={s.pantryAddBtn}>+</div>
-    </div>
-
-    {[
-      { name: 'Petto di pollo', qty: '300 g' },
-      { name: 'Zucchine',       qty: '200 g' },
-      { name: 'Pomodori',       qty: '150 g' },
-      { name: 'Olio evo',       qty: '5 cucch.' },
-      { name: 'Parmigiano',     qty: '30 g' },
-    ].map((item) => (
-      <div key={item.name} className={s.pantryItem}>
-        <div className={s.pantryItemDot} />
-        <span className={s.pantryItemName}>{item.name}</span>
-        <span className={s.pantryItemQty}>{item.qty}</span>
-      </div>
-    ))}
-
-    <div className={s.pantryFab}>📷 Scansiona scontrino</div>
-  </div>
-);
-
-/* ─── LISTA SPESA ──────────────────────────────────────────────────────────── */
-const ScreenShopping = ({ s }: { s: typeof styles }) => (
-  <div className={s.screenShopping}>
-    <div className={s.budgetBanner}>
-      <div className={s.budgetRow}>
-        <span className={s.budgetLabel}>💰 Spesa stimata</span>
-        <span className={s.budgetValue}>€ 42,50 <span className={s.budgetOf}>/ €80</span></span>
-      </div>
-      <div className={s.budgetBarTrack}>
-        <div className={s.budgetBarFill} />
-      </div>
-    </div>
-
-    <div className={s.shopActions}>
-      <button className={s.shopBtn}>📤 Condividi</button>
-      <button className={`${s.shopBtn} ${s.shopBtnActive}`}>📁 Raggruppato</button>
-    </div>
-
-    {[
-      { cat: '🥩 Carne & Pesce', items: [
-        { name: 'Petto di pollo 450g', done: false },
-        { name: 'Salmone 360g',        done: true  },
-      ]},
-      { cat: '🥦 Frutta & Verdura', items: [
-        { name: 'Zucchine 400g',  done: false },
-        { name: 'Pomodori 300g',  done: false },
-        { name: 'Mele 4 pz',      done: true  },
-      ]},
-      { cat: '🌾 Cereali & Pane', items: [
-        { name: 'Riso integrale 400g', done: false },
-      ]},
-    ].map((cat) => (
-      <div key={cat.cat} className={s.shopCat}>
-        <p className={s.shopCatLabel}>{cat.cat}</p>
-        {cat.items.map((item) => (
-          <div key={item.name} className={`${s.shopItem} ${item.done ? s.shopItemDone : ''}`}>
-            <div className={`${s.shopCheck} ${item.done ? s.shopCheckDone : ''}`}>
-              {item.done && <span>✓</span>}
-            </div>
-            <span>{item.name}</span>
-          </div>
-        ))}
-      </div>
-    ))}
-  </div>
-);
-
-/* ─── CHAT ─────────────────────────────────────────────────────────────────── */
-const ScreenChat = ({ s }: { s: typeof styles }) => (
-  <div className={s.screenChat}>
-    <div className={s.chatMessages}>
-      <div className={`${s.chatMsg} ${s.chatMsgIn}`}>
-        <p>Ciao! Come stai andando con il piano questa settimana? 😊</p>
-        <span className={s.chatTime}>10:30</span>
-      </div>
-      <div className={`${s.chatMsg} ${s.chatMsgOut}`}>
-        <p>Bene! Ho rispettato quasi tutti i pasti. La cena di mercoledì è stata difficile.</p>
-        <span className={s.chatTime}>10:35</span>
-      </div>
-      <div className={`${s.chatMsg} ${s.chatMsgIn}`}>
-        <p>Ottimo! Puoi sostituire il salmone con il merluzzo se preferisci 🐟</p>
-        <span className={s.chatTime}>10:38</span>
-      </div>
-      <div className={`${s.chatMsg} ${s.chatMsgOut}`}>
-        <p>Perfetto, grazie! 🙏</p>
-        <span className={s.chatTime}>10:40</span>
-      </div>
-    </div>
-    <div className={s.chatInput}>
-      <input placeholder="Scrivi un messaggio..." readOnly className={s.chatInputField} />
-      <button className={s.chatSend}>➤</button>
-    </div>
-  </div>
-);
-
-/* ─── SUGGERIMENTI AI ──────────────────────────────────────────────────────── */
-const ScreenAI = ({ s }: { s: typeof styles }) => (
-  <div className={s.screenAI}>
-    <div className={s.aiFilters}>
-      {['Tutti','Pranzo','Cena','Vegano'].map((f, i) => (
-        <div key={f} className={`${s.aiFilter} ${i === 0 ? s.aiFilterActive : ''}`}>{f}</div>
-      ))}
-    </div>
-
-    {[
-      { name: 'Salmone al Limone con Asparagi', time: '20 min', kcal: '480 kcal', meal: 'Cena',
-        grad: 'linear-gradient(135deg,#0d2b1a,#1a4a2a)' },
-      { name: 'Pollo Grigliato con Zucchine', time: '25 min', kcal: '520 kcal', meal: 'Pranzo',
-        grad: 'linear-gradient(135deg,#1a2b0d,#2a4a1a)' },
-      { name: 'Insalata di Ceci e Verdure', time: '10 min', kcal: '380 kcal', meal: 'Pranzo',
-        grad: 'linear-gradient(135deg,#1a1a0d,#3a3a1a)' },
-    ].map((r) => (
-      <div key={r.name} className={s.aiCard}>
-        <div className={s.aiCardImage} style={{ background: r.grad }}>
-          <span className={s.aiCardMealBadge}>{r.meal}</span>
-          <span className={s.aiCardEmoji}>🍽️</span>
-        </div>
-        <div className={s.aiCardBody}>
-          <p className={s.aiCardName}>{r.name}</p>
-          <div className={s.aiCardMeta}>
-            <span>⏱ {r.time}</span>
-            <span>🔥 {r.kcal}</span>
-          </div>
-          <div className={s.aiCardBtn}>Vedi ricetta →</div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-/* ─── MAIN COMPONENT ───────────────────────────────────────────────────────── */
-
-const navTabs = [
-  { id: 'pantry'   as NavTab, label: 'Dispensa', icon: '🥘' },
-  { id: 'diet'     as NavTab, label: 'Piano',    icon: '📅' },
-  { id: 'shopping' as NavTab, label: 'Lista',    icon: '🛒' },
+const TABS: Array<{ key: MockupScreen; icon: AppIconKey }> = [
+  { key: 'pantry', icon: 'kitchen' },
+  { key: 'diet', icon: 'calendar' },
+  { key: 'shopping', icon: 'cart' },
 ];
 
-export default function AppMockup() {
-  const [activeNav,    setActiveNav]    = useState<NavTab>('diet');
-  const [activeScreen, setActiveScreen] = useState<Screen>('diet');
-  const [animating,    setAnimating]    = useState(false);
-  const [showHint,     setShowHint]     = useState(true);
-  const sectionRef = useRef<HTMLDivElement>(null);
+export default function AppMockup({ content }: { content: MockupContent }) {
+  const [screen, setScreen] = useState<MockupScreen>('diet');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [portion, setPortion] = useState(0);
+  const [day, setDay] = useState(content.diet.activeDayIndex);
+  const [checked, setChecked] = useState<Record<number, boolean>>(() =>
+    Object.fromEntries(content.shopping.items.map((it, i) => [i, Boolean(it.checked)]))
+  );
+  const reduced = useReducedMotion();
 
-  useEffect(() => {
-    const initGsap = async () => {
-      const { gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
-      if (sectionRef.current) {
-        gsap.fromTo(
-          sectionRef.current,
-          { opacity: 0, y: 60 },
-          {
-            opacity: 1, y: 0, duration: 0.8, ease: 'power3.out',
-            scrollTrigger: { trigger: sectionRef.current, start: 'top 80%', once: true },
-          }
-        );
-      }
-    };
-    initGsap();
-  }, []);
-
-  const go = (screen: Screen) => {
-    setShowHint(false);
-    if (screen === activeScreen || animating) return;
-    setAnimating(true);
-    setTimeout(() => { setActiveScreen(screen); setAnimating(false); }, 200);
-  };
-
-  const goNav = (tab: NavTab) => {
-    setActiveNav(tab);
-    go(tab);
-  };
-
-  const goBack = () => go(activeNav);
-
-  const isDetail = activeScreen === 'chat' || activeScreen === 'ai';
-
-  /* ── AppBar content ── */
-  const renderAppBar = () => {
-    if (activeScreen === 'chat') {
-      return (
-        <div className={styles.appBar}>
-          <button className={styles.appBarBack} onClick={goBack}>←</button>
-          <div className={styles.appBarChatInfo}>
-            <div className={styles.appBarChatAvatar}>R</div>
-            <div>
-              <p className={styles.appBarChatName}>Dott.ssa Rossi</p>
-              <p className={styles.appBarChatOnline}>● Online</p>
-            </div>
-          </div>
-          <div className={styles.appBarSpacer} />
-        </div>
-      );
-    }
-    if (activeScreen === 'ai') {
-      return (
-        <div className={styles.appBar}>
-          <button className={styles.appBarBack} onClick={goBack}>←</button>
-          <span className={styles.appBarTitle}>✨ Suggerimenti AI</span>
-          <div className={styles.appBarSpacer} />
-        </div>
-      );
-    }
-    /* Main screens */
-    return (
-      <div className={styles.appBar}>
-        <span className={styles.appBarMenu}>≡</span>
-        <span className={styles.appBarTitle}>Kybo</span>
-        <div className={styles.appBarActions}>
-          <button className={styles.appBarIconBtn} onClick={() => go('chat')} title="Chat">
-            💬
-          </button>
-          <button className={styles.appBarIconBtn} onClick={() => go('ai')} title="Suggerimenti AI">
-            ✨
-          </button>
-          <span className={styles.appBarLeaf}>🌿</span>
-        </div>
-      </div>
-    );
-  };
-
-  const renderScreen = () => {
-    switch (activeScreen) {
-      case 'diet':     return <ScreenDiet     s={styles} />;
-      case 'pantry':   return <ScreenPantry   s={styles} />;
-      case 'shopping': return <ScreenShopping s={styles} />;
-      case 'chat':     return <ScreenChat     s={styles} />;
-      case 'ai':       return <ScreenAI       s={styles} />;
-    }
-  };
+  /*
+    Il cambio schermata sfrutta il remount: cambiando `key` React smonta il
+    vecchio contenuto e monta il nuovo, e Motion rigioca initial → animate.
+    Basta un fade in ingresso, quindi non serve AnimatePresence.
+  */
+  const screenMotion = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] as const },
+      };
 
   return (
-    <section id="gallery" className={styles.section} ref={sectionRef}>
+    <section id="gallery" className={styles.section}>
       <div className={styles.container}>
         <div className={styles.textSide}>
-          <span className={styles.eyebrow}>App Mobile</span>
+          <span className={styles.eyebrow}>{content.eyebrow}</span>
           <h2 className={styles.heading}>
-            Tutto quello che ti serve,<br />
-            <span className={styles.highlight}>sempre con te</span>
+            {content.heading}
+            <br />
+            <span className={styles.highlight}>{content.headingAccent}</span>
           </h2>
-          <p className={styles.subtext}>
-            L&apos;app Kybo accompagna il paziente ogni giorno: piani alimentari interattivi,
-            lista della spesa automatica, chat diretta con il nutrizionista e suggerimenti AI personalizzati.
-          </p>
-          <div className={styles.featureList}>
-            {[
-              { icon: '📅', text: 'Piano alimentare settimanale interattivo' },
-              { icon: '🥘', text: 'Dispensa smart con scanner scontrino' },
-              { icon: '🛒', text: 'Lista spesa con budget e categorie' },
-              { icon: '💬', text: 'Chat diretta con il nutrizionista' },
-              { icon: '✨', text: 'Ricette AI dalla tua dispensa' },
-            ].map((f) => (
-              <div key={f.text} className={styles.featureItem}>
-                <span className={styles.featureIcon}>{f.icon}</span>
-                <span>{f.text}</span>
-              </div>
+          <p className={styles.subtext}>{content.subtext}</p>
+
+          <ul className={styles.bullets}>
+            {content.bullets.map((b) => (
+              <li key={b}>
+                <span className={styles.bulletIcon}>
+                  <AppIcon name="check" size={14} />
+                </span>
+                {b}
+              </li>
+            ))}
+          </ul>
+
+          {/* Selettore fuori dal telefono: dà accesso alle schermate anche da
+              tastiera, senza dover colpire i target piccoli della finta UI. */}
+          <div className={styles.screenSwitch} role="tablist" aria-label={content.eyebrow}>
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={screen === tab.key}
+                className={`${styles.switchBtn} ${screen === tab.key ? styles.switchBtnActive : ''}`}
+                onClick={() => {
+                  setScreen(tab.key);
+                  setMenuOpen(false);
+                }}
+              >
+                <AppIcon name={tab.icon} size={16} />
+                {content.screenLabels[tab.key]}
+              </button>
             ))}
           </div>
         </div>
 
         <div className={styles.phoneSide}>
-          <div className={styles.phoneWrapper}>
-            <div className={styles.phone}>
-              <div className={styles.phoneSpeaker} />
-              <div className={styles.phoneScreen}>
+          <div className={styles.phone}>
+            <div className={styles.phoneSpeaker} />
 
-                {/* Interactive hint overlay — fades out after 3.5s or on first tap */}
-                {showHint && (
-                  <div
-                    className={styles.interactiveHint}
-                    onAnimationEnd={() => setShowHint(false)}
-                  >
-                    <div className={styles.hintInner}>
-                      <span className={styles.hintEmoji}>👆</span>
-                      <p className={styles.hintText}>Tocca per esplorare</p>
-                    </div>
-                  </div>
-                )}
+            <div className={styles.phoneScreen}>
+              <div className={styles.statusBar}>
+                <span>9:41</span>
+                <span className={styles.statusIcons}>
+                  <span className={styles.signal} />
+                  <span className={styles.battery} />
+                </span>
+              </div>
 
-                {/* Status bar */}
-                <div className={styles.statusBar}>
-                  <span>9:41</span>
-                  <div className={styles.statusIcons}>
-                    <span>●●●</span>
-                    <span>WiFi</span>
-                    <span>🔋</span>
-                  </div>
-                </div>
-
-                {/* AppBar — always visible, content varies per screen */}
-                {renderAppBar()}
-
-                {/* Screen content */}
-                <div className={`${styles.screenContent} ${animating ? styles.fadeOut : styles.fadeIn}`}>
-                  {renderScreen()}
-                </div>
-
-                {/* Bottom nav — 3 tabs matching real app, hidden on detail screens */}
-                <div className={`${styles.bottomNav} ${isDetail ? styles.bottomNavHidden : ''}`}>
-                  {navTabs.map((t) => (
-                    <button
-                      key={t.id}
-                      className={`${styles.navBtn} ${activeNav === t.id && !isDetail ? styles.navBtnActive : ''}`}
-                      onClick={() => goNav(t.id)}
-                    >
-                      <span className={styles.navIcon}>{t.icon}</span>
-                      <span className={styles.navLabel}>{t.label}</span>
-                    </button>
-                  ))}
+              <div className={styles.appBar}>
+                <button
+                  className={styles.appBarBtn}
+                  onClick={() => setMenuOpen(true)}
+                  aria-label={content.appBar.menu}
+                >
+                  <AppIcon name="menu" size={18} />
+                </button>
+                <span className={styles.appBarTitle}>{content.appBar.title}</span>
+                <div className={styles.appBarActions}>
+                  <button className={styles.appBarBtn} aria-label={content.appBar.swapDays}>
+                    <AppIcon name="swap" size={17} />
+                  </button>
+                  <button className={styles.appBarBtn} aria-label={content.appBar.relaxMode}>
+                    <AppIcon name="spa" size={17} />
+                  </button>
                 </div>
               </div>
-              <div className={styles.phoneHome} />
+
+              <div className={styles.screenBody}>
+                <motion.div key={screen} className={styles.screenInner} {...screenMotion}>
+                  {screen === 'diet' && (
+                    <DietScreen
+                      content={content}
+                      portion={portion}
+                      setPortion={setPortion}
+                      day={day}
+                      setDay={setDay}
+                    />
+                  )}
+                  {screen === 'shopping' && (
+                    <ShoppingScreen
+                      content={content}
+                      checked={checked}
+                      toggle={(i) => setChecked((c) => ({ ...c, [i]: !c[i] }))}
+                    />
+                  )}
+                  {screen === 'pantry' && <PantryScreen content={content} />}
+                </motion.div>
+              </div>
+
+              {/*
+                Drawer: mostra quante funzioni ci sono oltre alle tre schermate.
+
+                Resta sempre montato e si sposta in base a menuOpen, invece di
+                essere montato/smontato dentro AnimatePresence. Le voci sono
+                <li> non focalizzabili, quindi tenerle nel DOM non aggiunge
+                trappole per la tastiera; aria-hidden le nasconde agli screen
+                reader quando il pannello è chiuso.
+              */}
+              <button
+                className={styles.scrim}
+                data-open={menuOpen}
+                aria-label={content.menu.close}
+                onClick={() => setMenuOpen(false)}
+                tabIndex={menuOpen ? 0 : -1}
+                aria-hidden={!menuOpen}
+              />
+              <nav className={styles.drawer} data-open={menuOpen} aria-hidden={!menuOpen}>
+                <div className={styles.drawerHeader}>
+                  <span className={styles.drawerAvatar}>M</span>
+                  <div>
+                    <p className={styles.drawerName}>Marco</p>
+                    <p className={styles.drawerMail}>marco@email.it</p>
+                  </div>
+                </div>
+                <ul className={styles.drawerList}>
+                  {content.menu.items.map((item) => (
+                    <li key={item.label}>
+                      <span className={`${styles.drawerIcon} ${styles[item.tone]}`}>
+                        <AppIcon name={item.icon as AppIconKey} size={16} />
+                      </span>
+                      <span className={styles.drawerLabel}>{item.label}</span>
+                      {item.badge && <span className={styles.drawerBadge}>{item.badge}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+
+              <div className={styles.bottomNav}>
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    className={`${styles.navBtn} ${screen === tab.key ? styles.navBtnActive : ''}`}
+                    onClick={() => {
+                      setScreen(tab.key);
+                      setMenuOpen(false);
+                    }}
+                    aria-label={content.screenLabels[tab.key]}
+                  >
+                    <AppIcon name={tab.icon} size={19} />
+                    <span className={styles.navLabel}>{content.screenLabels[tab.key]}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Persistent interactive badge below phone */}
-            <div className={styles.interactiveBadge}>
-              <span className={styles.interactiveDot} />
-              Interattivo — tocca per esplorare
-            </div>
+            <div className={styles.phoneHome} />
           </div>
 
-          <div className={`${styles.chip} ${styles.chip1}`}>
-            <span>✅</span> Piano rispettato!
-          </div>
-          <div className={`${styles.chip} ${styles.chip2}`}>
-            <span>🔔</span> Ora della Cena
-          </div>
-          <div className={`${styles.chip} ${styles.chip3}`}>
-            <span>🏆</span> Nuovo badge!
-          </div>
+          <p className={styles.hint}>{content.hint}</p>
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── Piano alimentare — diet_view.dart ─────────────────────────────────── */
+function DietScreen({
+  content,
+  portion,
+  setPortion,
+  day,
+  setDay,
+}: {
+  content: MockupContent;
+  portion: number;
+  setPortion: (i: number) => void;
+  day: number;
+  setDay: (i: number) => void;
+}) {
+  const { diet } = content;
+  return (
+    <>
+      <div className={styles.dayTabs}>
+        {diet.days.map((d, i) => (
+          <button
+            key={d}
+            className={`${styles.dayTab} ${i === day ? styles.dayActive : ''}`}
+            onClick={() => setDay(i)}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.portionRow}>
+        <AppIcon name="people" size={13} />
+        <span className={styles.portionLabel}>{diet.portionsLabel}</span>
+        {diet.portions.map((p, i) => (
+          <button
+            key={p}
+            className={`${styles.portionChip} ${i === portion ? styles.portionActive : ''}`}
+            onClick={() => setPortion(i)}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      {diet.meals.map((meal) => (
+        <article key={meal.name} className={styles.mealCard}>
+          <header className={styles.mealHeader}>
+            <span className={styles.mealName}>{meal.name}</span>
+            {meal.allConsumed && (
+              <span className={styles.mealDone}>
+                <AppIcon name="check" size={11} />
+              </span>
+            )}
+            <span className={styles.mealKcal}>{meal.kcal}</span>
+          </header>
+          <ul className={styles.foodList}>
+            {meal.foods.map((food) => (
+              <li key={food.name} className={food.done ? styles.foodDone : undefined}>
+                <span className={`${styles.foodCheck} ${food.done ? styles.foodCheckOn : ''}`}>
+                  {food.done && <AppIcon name="check" size={11} />}
+                </span>
+                <span className={styles.foodName}>{food.name}</span>
+                <span className={styles.foodQty}>{food.qty}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ))}
+    </>
+  );
+}
+
+/* ── Lista della spesa — shopping_list_view.dart ───────────────────────── */
+function ShoppingScreen({
+  content,
+  checked,
+  toggle,
+}: {
+  content: MockupContent;
+  checked: Record<number, boolean>;
+  toggle: (i: number) => void;
+}) {
+  const { shopping } = content;
+  const done = Object.values(checked).filter(Boolean).length;
+  const pct = Math.round((done / shopping.items.length) * 100);
+
+  return (
+    <>
+      <div className={styles.budgetCard}>
+        <div className={styles.budgetTop}>
+          <span className={styles.budgetIcon}>
+            <AppIcon name="euro" size={15} />
+          </span>
+          <span className={styles.budgetLabel}>{shopping.budgetLabel}</span>
+          <AppIcon name="edit" size={12} />
+        </div>
+        <div className={styles.budgetBarTrack}>
+          <div className={styles.budgetBarFill} style={{ width: '69%' }} />
+        </div>
+        <p className={styles.budgetMeta}>
+          <strong>{shopping.budgetSpent}</strong> {shopping.budgetTotal}
+        </p>
+      </div>
+
+      <div className={styles.groupRow}>
+        <span>{shopping.groupLabel}</span>
+        <span className={styles.toggle} data-on="false" />
+      </div>
+
+      <p className={styles.listProgress}>
+        {done}/{shopping.items.length} · {pct}%
+      </p>
+
+      <ul className={styles.shopList}>
+        {shopping.items.map((item, i) => (
+          <li key={item.name}>
+            <button
+              className={styles.shopRow}
+              onClick={() => toggle(i)}
+              aria-pressed={Boolean(checked[i])}
+            >
+              <span className={`${styles.shopBox} ${checked[i] ? styles.shopBoxOn : ''}`}>
+                {checked[i] && <AppIcon name="check" size={12} />}
+              </span>
+              <span className={checked[i] ? styles.shopTextDone : styles.shopText}>
+                {item.name}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/* ── Dispensa — pantry_view.dart ───────────────────────────────────────── */
+function PantryScreen({ content }: { content: MockupContent }) {
+  const { pantry } = content;
+  return (
+    <>
+      <div className={styles.pantryHeader}>
+        <span className={styles.pantryIcon}>
+          <AppIcon name="kitchen" size={16} />
+        </span>
+        <h3 className={styles.pantryTitle}>{pantry.title}</h3>
+        <span className={styles.aiBtn}>
+          <AppIcon name="sparkle" size={12} />
+          {pantry.aiButton}
+        </span>
+      </div>
+
+      <div className={styles.addRow}>
+        <span className={styles.addPlaceholder}>{pantry.addPlaceholder}</span>
+        <span className={styles.addDivider} />
+        <span className={styles.addQty}>{pantry.qtyPlaceholder}</span>
+        <span className={styles.addBtn}>
+          <AppIcon name="add" size={14} />
+        </span>
+      </div>
+
+      <ul className={styles.pantryList}>
+        {pantry.items.map((item) => (
+          <li key={item.name}>
+            <span className={styles.pantryTileIcon}>
+              <AppIcon name="box" size={14} />
+            </span>
+            <span className={styles.pantryName}>{item.name}</span>
+            <span className={styles.pantryQty}>{item.qty}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className={styles.fab}>
+        <AppIcon name="camera" size={15} />
+        {pantry.scanButton}
+      </div>
+    </>
   );
 }

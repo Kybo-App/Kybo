@@ -3,6 +3,8 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { UiIcon } from '@/components/icons/UiIcons';
+import Image from 'next/image';
 import { API_BASE } from '@/lib/api';
 import styles from './list.module.css';
 
@@ -111,7 +113,7 @@ function SharedListContent() {
   if (error) {
     return (
       <div className={styles.center}>
-        <span className={styles.errorIcon}>😕</span>
+        <span className={styles.errorIcon}><UiIcon name="warning" size={34} /></span>
         <h2 className={styles.errorTitle}>Ops!</h2>
         <p className={styles.errorText}>{error}</p>
         <Link href="/" className={styles.homeBtn}>Vai su Kybo</Link>
@@ -126,7 +128,7 @@ function SharedListContent() {
       {/* Header */}
       <header className={styles.header}>
         <Link href="/" className={styles.logo}>
-          <span className={styles.logoIcon}>🥗</span>
+          <Image src="/logo no bg.png" alt="" width={26} height={26} className={styles.logoIcon} />
           <span className={styles.logoText}>Kybo</span>
         </Link>
         <div className={styles.progress}>
@@ -168,7 +170,7 @@ function SharedListContent() {
                     aria-checked={done}
                     role="checkbox"
                   >
-                    <span className={styles.check}>{done ? '✓' : ''}</span>
+                    <span className={styles.check}>{done && <UiIcon name="check" size={13} />}</span>
                     <span className={styles.itemName}>{name}</span>
                   </button>
                 );
@@ -182,7 +184,7 @@ function SharedListContent() {
       <div className={styles.cta}>
         <p className={styles.ctaText}>Vuoi gestire la tua dieta e la lista spesa?</p>
         <Link href="/" className={styles.ctaBtn}>
-          Scopri Kybo →
+          Scopri Kybo
         </Link>
         {/* Deep link: apre Kybo se installato */}
         {id && (
@@ -190,7 +192,7 @@ function SharedListContent() {
             href={`kybo://list?id=${id}`}
             className={styles.openAppBtn}
           >
-            📱 Apri in Kybo
+            <UiIcon name="mobile" size={16} /> Apri in Kybo
           </a>
         )}
       </div>

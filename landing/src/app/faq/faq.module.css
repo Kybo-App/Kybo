@@ -87,7 +87,7 @@
 
 .pageSubtitle {
   font-size: clamp(1.1rem, 2vw, 1.4rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   font-weight: 300;
   max-width: 600px;
   margin: 0 auto;
@@ -113,8 +113,17 @@
   margin-bottom: 1.2rem;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .categoryIcon {
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
+  flex-shrink: 0;
 }
 
 .categoryTitle {
@@ -176,7 +185,7 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-size: 0.75rem;
 }
 
@@ -216,7 +225,7 @@
 }
 
 .footerText {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-size: 0.9rem;
 }
 

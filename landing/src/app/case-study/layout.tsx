@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Case Study — Dott.ssa Rossi con Kybo',
+  title: 'Come cambia la gestione con Kybo',
   description:
-    'Come la Dott.ssa Maria Rossi, biologa nutrizionista a Milano, ha ridotto del 70% il tempo amministrativo e triplicato la soddisfazione dei clienti grazie a Kybo.',
+    'Uno scenario illustrativo: come Kybo cambia la gestione quotidiana di uno studio di nutrizione, dal caricamento delle diete al monitoraggio dell’aderenza.',
 };
 
 export default function CaseStudyLayout({ children }: { children: React.ReactNode }) {

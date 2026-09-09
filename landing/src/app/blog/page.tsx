@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import styles from '../shared.module.css';
+import Navbar from '@/components/Navbar';
+import { UiIcon } from '@/components/icons/UiIcons';
+import { it } from '@/content/it';
 
 const blogPosts = [
   {
@@ -58,18 +60,7 @@ const blogPosts = [
 export default function BlogPage() {
   return (
     <div className={styles.pageWrapper}>
-      {/* Navbar */}
-      <nav className={styles.nav}>
-        <div className={styles.navContainer}>
-          <Link href="/" className={styles.logo}>
-            <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} priority />
-            <span className={styles.logoText}>Kybo</span>
-          </Link>
-          <Link href="/" className={styles.backBtn}>
-            ← Torna alla Home
-          </Link>
-        </div>
-      </nav>
+      <Navbar content={it.nav} />
 
       {/* Hero */}
       <div className={styles.heroSmall}>
@@ -93,7 +84,7 @@ export default function BlogPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}>
-                  <span style={{ fontSize: '3rem', opacity: 0.5 }}>📝</span>
+                  <UiIcon name="note" size={44} />
                 </div>
                 <div className={styles.blogContent}>
                   <span className={styles.blogTag}>{post.tag}</span>

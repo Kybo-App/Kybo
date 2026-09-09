@@ -23,5 +23,19 @@ export const metadata: Metadata = {
 };
 
 export default function EnLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      {/*
+        Solo il layout root può rendere <html>, che qui è lang="it": senza
+        questo, uno screen reader leggerebbe le pagine inglesi con la pronuncia
+        italiana. Lo script corregge l'attributo appena la pagina viene servita.
+      */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "document.documentElement.lang='en'",
+        }}
+      />
+      {children}
+    </>
+  );
 }

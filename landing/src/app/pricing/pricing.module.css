@@ -11,7 +11,7 @@
 
 .toggleLabel {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   transition: color 0.2s ease;
 }
 
@@ -66,19 +66,6 @@
 }
 
 /* Plans */
-.plansSection {
-  padding: 4rem 2rem 6rem;
-}
-
-.plansGrid {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  align-items: start;
-}
-
 .planCard {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -117,10 +104,17 @@
   margin-bottom: 1.5rem;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .planIcon {
-  font-size: 2.5rem;
-  display: block;
-  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
+  margin-bottom: 0.75rem;
 }
 
 .planName {
@@ -132,7 +126,7 @@
 
 .planDescription {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.75);
   line-height: 1.5;
 }
 
@@ -142,15 +136,9 @@
   min-height: 70px;
 }
 
-.priceFree {
-  font-size: 2.5rem;
-  font-weight: 900;
-  color: #66BB6A;
-}
-
 .priceCurrency {
   font-size: 1.5rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   vertical-align: top;
   margin-top: 0.5rem;
   display: inline-block;
@@ -165,7 +153,7 @@
 
 .pricePeriod {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.72);
   margin-left: 0.25rem;
 }
 
@@ -193,10 +181,16 @@
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .checkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.2);
   color: #66BB6A;
-  font-weight: 700;
-  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -218,7 +212,7 @@
 
 .planCta:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.7);
   color: #ffffff;
 }
 
@@ -245,4 +239,13 @@
   .plansGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Segnaposto al posto della cifra, finché il listino non è deciso */
+.priceTbd {
+  display: inline-block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: -0.01em;
 }

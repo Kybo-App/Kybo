@@ -1,5 +1,34 @@
-/* ===== SECTION ===== */
+/*
+  Mockup dell'app.
+
+  I token qui sotto sono gli stessi di KyboColors in
+  client/lib/widgets/design_system.dart (variante scura), così la finta
+  interfaccia corrisponde a quella reale invece di essere un'approssimazione.
+*/
 .section {
+  --app-bg: #0F172A;          /* backgroundDark */
+  --app-surface: #1E293B;     /* surfaceDark */
+  --app-elevated: #334155;    /* surfaceElevatedDark */
+  --app-text: #F1F5F9;        /* textPrimaryDark */
+  --app-text-2: #94A3B8;      /* textSecondaryDark */
+  --app-muted: #64748B;       /* textMutedDark */
+  /* Le voci già consumate/comprate nell'app usano textMutedDark, che su
+     surfaceDark dà 3.07:1 — sotto la soglia AA. Qui uso un grigio più chiaro:
+     il barrato e la spunta bastano a segnalare lo stato "fatto". */
+  --app-done: #94A3B8;
+  --app-border: #334155;
+  --app-primary: #2E7D32;
+  --app-primary-light: #60AD5E;
+  --app-accent: #3B82F6;
+  --app-warning: #F59E0B;
+  --app-success: #10B981;
+
+  /* KyboBorderRadius */
+  --r-pill: 100px;
+  --r-large: 24px;
+  --r-medium: 16px;
+  --r-small: 12px;
+
   padding: 6rem 2rem;
   background: #0a0a0a;
   overflow: hidden;
@@ -14,33 +43,35 @@
   align-items: center;
 }
 
-/* ===== TEXT SIDE ===== */
+/* ===== LATO TESTO ===== */
 .textSide {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #66BB6A;
-  background: rgba(102, 187, 106, 0.1);
+  color: #A5D6A7;
+  background: rgba(102, 187, 106, 0.12);
+  border: 1px solid rgba(102, 187, 106, 0.28);
   padding: 0.4rem 1rem;
-  border-radius: 100px;
+  border-radius: var(--r-pill);
   width: fit-content;
 }
 
 .heading {
   font-size: clamp(2rem, 4vw, 2.8rem);
   font-weight: 800;
-  line-height: 1.2;
-  color: var(--color-text);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
 .highlight {
@@ -51,70 +82,106 @@
 }
 
 .subtext {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   line-height: 1.7;
-  color: var(--color-text-muted);
-  max-width: 480px;
+  color: rgba(255, 255, 255, 0.78);
+  max-width: 48ch;
 }
 
-.featureList {
+.bullets {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  gap: 0.7rem;
+  list-style: none;
+  margin-top: 0.25rem;
 }
 
-.featureItem {
+.bullets li {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.95rem;
-  color: var(--color-text);
+  gap: 0.7rem;
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.88);
 }
 
-.featureIcon {
-  width: 32px;
-  height: 32px;
-  display: flex;
+.bulletIcon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(102, 187, 106, 0.1);
-  border-radius: 8px;
-  font-size: 1rem;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.16);
+  color: #66BB6A;
 }
 
-/* ===== PHONE SIDE ===== */
+/* Selettore schermata accessibile, fuori dal telefono */
+.screenSwitch {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.switchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.switchBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.switchBtnActive {
+  background: rgba(102, 187, 106, 0.18);
+  border-color: rgba(102, 187, 106, 0.55);
+  color: #A5D6A7;
+}
+
+/* ===== TELEFONO ===== */
 .phoneSide {
   position: relative;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
+  gap: 1rem;
 }
 
 .phone {
-  width: 280px;
-  height: 560px;
-  background: #1a1a1a;
-  border-radius: 40px;
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  width: min(360px, 100%);
+  height: 640px;
+  background: #05070c;
+  border-radius: 44px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.8),
-    0 30px 80px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 30px 80px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 12px 0 0;
   position: relative;
-  z-index: 1;
 }
 
 .phoneSpeaker {
-  width: 60px;
+  width: 64px;
   height: 6px;
-  background: #333;
+  background: #20262f;
   border-radius: 3px;
   margin-bottom: 8px;
   flex-shrink: 0;
@@ -123,7 +190,7 @@
 .phoneScreen {
   flex: 1;
   width: 100%;
-  background: #0f1210;
+  background: var(--app-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -131,79 +198,664 @@
 }
 
 .phoneHome {
-  width: 100%;
-  height: 28px;
-  background: #1a1a1a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 110px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
+  margin: 7px 0 9px;
   flex-shrink: 0;
 }
 
-.phoneHome::after {
-  content: '';
-  width: 100px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-}
-
-/* ===== STATUS BAR ===== */
 .statusBar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 12px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  background: #0f1210;
+  padding: 7px 16px 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text);
   flex-shrink: 0;
 }
 
 .statusIcons {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
   align-items: center;
-  font-size: 9px;
+  gap: 5px;
 }
 
-/* ===== SCREEN CONTENT ===== */
-.screenContent {
+.signal,
+.battery {
+  display: inline-block;
+  background: var(--app-text-2);
+  border-radius: 2px;
+}
+
+.signal { width: 15px; height: 10px; clip-path: polygon(0 100%, 25% 60%, 50% 30%, 75% 10%, 100% 0, 100% 100%); }
+.battery { width: 20px; height: 10px; border-radius: 3px; }
+
+/* ===== APP BAR ===== */
+.appBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+
+.appBarTitle {
   flex: 1;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--app-text);
+  padding-left: 2px;
+}
+
+.appBarActions {
+  display: flex;
+  gap: 2px;
+}
+
+.appBarBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--app-text-2);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.appBarBtn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--app-text);
+}
+
+/* ===== CORPO SCHERMATA ===== */
+.screenBody {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.screenInner {
+  height: 100%;
   overflow-y: auto;
-  overflow-x: hidden;
+  padding: 10px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   scrollbar-width: none;
 }
 
-.screenContent::-webkit-scrollbar {
-  display: none;
+.screenInner::-webkit-scrollbar { display: none; }
+
+/* ===== PIANO ALIMENTARE ===== */
+.dayTabs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.fadeIn {
-  animation: fadeIn 0.2s ease-in;
+.dayTab {
+  flex: 1;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 8px;
+  color: var(--app-text-2);
+  background: var(--app-surface);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.fadeOut {
-  animation: fadeOut 0.2s ease-out;
+.dayTab:hover { color: var(--app-text); }
+
+.dayActive {
+  background: var(--app-primary);
+  color: #ffffff;
+}
+
+.portionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-muted);
+  flex-shrink: 0;
+}
+
+.portionLabel {
+  font-size: 12px;
+  color: var(--app-text-2);
+  margin-right: 2px;
+}
+
+.portionChip {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 26px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text-2);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.portionActive {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: #ffffff;
+}
+
+.mealCard {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--r-medium);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mealHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--app-border);
+}
+
+.mealName {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.mealDone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.18);
+  color: var(--app-success);
+}
+
+.mealKcal {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-text-2);
+}
+
+.foodList {
+  list-style: none;
+}
+
+.foodList li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: var(--app-text);
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.foodList li:last-child { border-bottom: none; }
+
+.foodDone .foodName {
+  text-decoration: line-through;
+  color: var(--app-done);
+}
+
+.foodCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--app-border);
+  color: #ffffff;
+}
+
+.foodCheckOn {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+}
+
+.foodName { flex: 1; }
+
+.foodQty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-2);
+}
+
+/* ===== LISTA DELLA SPESA ===== */
+.budgetCard {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--r-medium);
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.budgetTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text-2);
+}
+
+.budgetIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.16);
+  color: var(--app-success);
+}
+
+.budgetLabel {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.budgetBarTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--app-elevated);
+  overflow: hidden;
+}
+
+.budgetBarFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--app-primary-light), var(--app-primary));
+}
+
+.budgetMeta {
+  font-size: 11.5px;
+  color: var(--app-text-2);
+}
+
+.budgetMeta strong { color: var(--app-text); }
+
+.groupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--app-text-2);
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.toggle {
+  width: 32px;
+  height: 18px;
+  border-radius: var(--r-pill);
+  background: var(--app-elevated);
+  position: relative;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--app-text-2);
+}
+
+.listProgress {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--app-text-2);
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.shopList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.shopRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--r-medium);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.shopRow:hover { border-color: var(--app-primary-light); }
+
+.shopBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1.5px solid var(--app-muted);
+  color: #ffffff;
+}
+
+.shopBoxOn {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+}
+
+.shopText { color: var(--app-text); }
+
+.shopTextDone {
+  color: var(--app-done);
+  text-decoration: line-through;
+}
+
+/* ===== DISPENSA ===== */
+.pantryHeader {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.pantryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(46, 125, 50, 0.22);
+  color: var(--app-primary-light);
+}
+
+.pantryTitle {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--app-text);
+}
+
+.aiBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--app-primary);
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--r-medium);
+  flex-shrink: 0;
+}
+
+.addPlaceholder {
+  flex: 1;
+  font-size: 12.5px;
+  /* Anche i placeholder devono raggiungere la soglia AA */
+  color: var(--app-done);
+}
+
+.addDivider {
+  width: 1px;
+  height: 18px;
+  background: var(--app-border);
+}
+
+.addQty {
+  font-size: 12.5px;
+  color: var(--app-done);
+  width: 34px;
+  text-align: center;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--app-primary);
+  color: #ffffff;
+}
+
+.pantryList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pantryList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--r-medium);
+}
+
+.pantryTileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--app-primary), #005005);
+  color: #ffffff;
+}
+
+.pantryName { flex: 1; }
+
+.pantryQty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text-2);
+}
+
+.fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  align-self: center;
+  margin-top: 4px;
+  padding: 11px 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--app-primary), #005005);
+  border-radius: var(--r-pill);
+  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.4);
+  flex-shrink: 0;
+}
+
+/* ===== DRAWER ===== */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
   opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.scrim[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+/*
+  Slide a due stati in CSS puro, guidato da data-open.
+  La riduzione del movimento è già coperta dal blocco
+  @media (prefers-reduced-motion: reduce) in globals.css, che azzera le durate.
+*/
+.drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 21;
+  width: 76%;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: none;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer[data-open='true'] {
+  transform: translateX(0);
+}
+
+.drawer::-webkit-scrollbar { display: none; }
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 14px;
+  background: linear-gradient(135deg, var(--app-primary), #005005);
+}
+
+.drawerAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.drawerName {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.drawerMail {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.drawerList {
+  list-style: none;
+  padding: 6px 0;
+}
+
+.drawerList li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+
+.drawerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.primary { background: rgba(46, 125, 50, 0.24); color: var(--app-primary-light); }
+.accent  { background: rgba(59, 130, 246, 0.2); color: #93B0CE; }
+.warning { background: rgba(245, 158, 11, 0.2); color: #F5C462; }
+.muted   { background: rgba(148, 163, 184, 0.16); color: var(--app-text-2); }
+
+.drawerLabel {
+  flex: 1;
+  color: var(--app-text);
+}
+
+.drawerBadge {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: #EF4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 /* ===== BOTTOM NAV ===== */
 .bottomNav {
   display: flex;
-  background: #161a16;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--app-surface);
+  border-top: 1px solid var(--app-border);
   flex-shrink: 0;
+  z-index: 22;
 }
 
 .navBtn {
@@ -211,793 +863,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
+  gap: 3px;
+  padding: 9px 4px;
   background: none;
   border: none;
+  color: var(--app-text-2);
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
-.navIcon {
-  font-size: 14px;
-}
+.navBtn:hover { color: var(--app-text); }
+
+.navBtnActive { color: var(--app-primary-light); }
 
 .navLabel {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.navBtnActive .navLabel {
-  color: #66BB6A;
-}
-
-.navBtnActive .navIcon {
-  filter: drop-shadow(0 0 4px #66BB6A);
-}
-
-/* ===== SCREEN: PIANO ALIMENTARE ===== */
-.screenDiet {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* AppBar */
-.appBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: #161a16;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-.appBarMenu {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1;
-  font-weight: 300;
-  cursor: pointer;
-}
-
-.appBarTitle {
-  font-size: 14px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.02em;
-}
-
-.appBarLeaf {
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* AppBar — back button (chat & AI screens) */
-.appBarBack {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-/* AppBar — chat info (avatar + name/online) */
-.appBarChatInfo {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex: 1;
-}
-
-.appBarChatAvatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  flex-shrink: 0;
+  font-weight: 600;
 }
 
-.appBarChatName {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.appBarChatOnline {
-  font-size: 7px;
-  color: #66BB6A;
-  margin: 0;
-}
-
-/* AppBar — spacer pushes content left/right */
-.appBarSpacer {
-  flex: 1;
-}
-
-/* AppBar — action icons (💬 ✨) on main screens */
-.appBarActions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.appBarIconBtn {
-  background: none;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 3px 4px;
-  border-radius: 6px;
-  transition: background 0.15s ease;
-  line-height: 1;
-}
-
-.appBarIconBtnActive {
-  background: rgba(102, 187, 106, 0.15);
-}
-
-/* Bottom nav — hidden on detail screens (chat / AI) */
-.bottomNavHidden {
-  display: none;
-}
-
-/* Day tabs */
-.dayTabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px 10px 4px;
-}
-
-.dayTab {
-  flex: 1;
+.hint {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.72);
   text-align: center;
-  font-size: 8px;
-  font-weight: 600;
-  padding: 4px 2px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-  letter-spacing: 0.02em;
-}
-
-.dayActive {
-  background: #66BB6A;
-  color: #fff;
-}
-
-/* Next meal banner */
-.nextMealBanner {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: rgba(102, 187, 106, 0.09);
-  border: 1px solid rgba(102, 187, 106, 0.2);
-  border-radius: 10px;
-  padding: 7px 10px;
-  margin: 6px 10px;
-}
-
-.nextMealIcon {
-  font-size: 14px;
-}
-
-.nextMealLabel {
-  font-size: 9px;
-  font-weight: 700;
-  color: #66BB6A;
-  margin-bottom: 1px;
-}
-
-.nextMealItems {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-/* Meal cards */
-.mealCard {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  margin: 4px 10px;
-  overflow: hidden;
-}
-
-.mealCardDone {
-  opacity: 0.6;
-}
-
-.mealCardHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px 5px;
-}
-
-.mealIcon {
-  font-size: 12px;
-}
-
-.mealName {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  flex: 1;
-}
-
-.mealKcal {
-  font-size: 8px;
-  font-weight: 600;
-  color: #66BB6A;
-  background: rgba(102, 187, 106, 0.12);
-  padding: 2px 6px;
-  border-radius: 100px;
-}
-
-.mealIngredients {
-  padding: 0 10px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.mealIngRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.mealIngName {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.mealIngQty {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.mealConsumedDone {
-  font-size: 8px;
-  color: #66BB6A;
-  padding: 5px 10px 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.mealConsumedPending {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.3);
-  padding: 5px 10px 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* ===== SCREEN: DISPENSA ===== */
-.screenPantry {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding-bottom: 8px;
-}
-
-.pantryAddRow {
-  display: flex;
-  gap: 6px;
-  padding: 0 10px 8px;
-}
-
-.pantryInput {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.pantryAddBtn {
-  width: 28px;
-  height: 28px;
-  background: #66BB6A;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  color: #fff;
-  font-weight: 300;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.pantryItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.pantryItemDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #66BB6A;
-  flex-shrink: 0;
-}
-
-.pantryItemName {
-  flex: 1;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.pantryItemQty {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.pantryFab {
-  margin: 12px 10px 6px;
-  background: rgba(102, 187, 106, 0.12);
-  border: 1px solid rgba(102, 187, 106, 0.25);
-  border-radius: 10px;
-  padding: 9px 12px;
-  font-size: 9px;
-  font-weight: 600;
-  color: #66BB6A;
-  text-align: center;
-  cursor: pointer;
-}
-
-/* ===== SCREEN: LISTA SPESA ===== */
-.screenShopping {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Budget banner */
-.budgetBanner {
-  background: rgba(102, 187, 106, 0.08);
-  border-bottom: 1px solid rgba(102, 187, 106, 0.15);
-  padding: 8px 10px;
-}
-
-.budgetRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.budgetLabel {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.budgetValue {
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.budgetOf {
-  font-size: 8px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.35);
-}
-
-.budgetBarTrack {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.budgetBarFill {
-  width: 53%;
-  height: 100%;
-  background: linear-gradient(90deg, #66BB6A, #4CAF50);
-  border-radius: 2px;
-}
-
-/* Actions */
-.shopActions {
-  display: flex;
-  gap: 6px;
-  padding: 8px 10px;
-}
-
-.shopBtn {
-  flex: 1;
-  font-size: 8px;
-  font-weight: 500;
-  padding: 5px 6px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-}
-
-.shopBtnActive {
-  background: rgba(102, 187, 106, 0.12);
-  border-color: rgba(102, 187, 106, 0.25);
-  color: #66BB6A;
-}
-
-.shopCat {
-  padding: 4px 10px;
-}
-
-.shopCatLabel {
-  font-size: 8px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.35);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
-  padding-top: 4px;
-}
-
-.shopItem {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.75);
-  padding: 4px 6px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 7px;
-  margin-bottom: 3px;
-}
-
-.shopItemDone {
-  color: rgba(255, 255, 255, 0.28);
-  text-decoration: line-through;
-}
-
-.shopCheck {
-  width: 13px;
-  height: 13px;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-}
-
-.shopCheckDone {
-  background: #66BB6A;
-  border-color: #66BB6A;
-  color: #fff;
-}
-
-/* ===== SCREEN: CHAT ===== */
-.screenChat {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.chatMessages {
-  flex: 1;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.chatMessages::-webkit-scrollbar {
-  display: none;
-}
-
-.chatMsg {
-  max-width: 82%;
-  padding: 7px 10px;
-  border-radius: 12px;
-  font-size: 8px;
-  line-height: 1.45;
-  color: #fff;
-}
-
-.chatMsgIn {
-  background: rgba(255, 255, 255, 0.08);
-  border-bottom-left-radius: 3px;
-  align-self: flex-start;
-}
-
-.chatMsgOut {
-  background: linear-gradient(135deg, #66BB6A, #2E7D32);
-  border-bottom-right-radius: 3px;
-  align-self: flex-end;
-}
-
-.chatTime {
-  display: block;
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.35);
-  margin-top: 3px;
-  text-align: right;
-}
-
-.chatInput {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
-}
-
-.chatInputField {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.35);
-  outline: none;
-}
-
-.chatSend {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #66BB6A;
-  border: none;
-  font-size: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* ===== SCREEN: AI SUGGERIMENTI ===== */
-.screenAI {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding-bottom: 8px;
-}
-
-.aiFilters {
-  display: flex;
-  gap: 5px;
-  padding: 4px 10px 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.aiFilters::-webkit-scrollbar {
-  display: none;
-}
-
-.aiFilter {
-  font-size: 8px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.45);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.aiFilterActive {
-  background: #66BB6A;
-  border-color: #66BB6A;
-  color: #fff;
-}
-
-.aiCard {
-  margin: 0 10px 7px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.aiCardImage {
-  height: 52px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 6px 8px;
-  position: relative;
-}
-
-.aiCardMealBadge {
-  font-size: 7px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(0, 0, 0, 0.4);
-  padding: 2px 6px;
-  border-radius: 100px;
-  backdrop-filter: blur(4px);
-}
-
-.aiCardEmoji {
-  font-size: 20px;
-  opacity: 0.6;
-}
-
-.aiCardBody {
-  padding: 7px 9px 8px;
-}
-
-.aiCardName {
-  font-size: 9px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 4px;
-  line-height: 1.3;
-}
-
-.aiCardMeta {
-  display: flex;
-  gap: 10px;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 6px;
-}
-
-.aiCardBtn {
-  font-size: 8px;
-  font-weight: 600;
-  color: #66BB6A;
-  cursor: pointer;
-}
-
-/* ===== PHONE WRAPPER (phone + badge column) ===== */
-.phoneWrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.9rem;
-  position: relative;
-  z-index: 1;
-}
-
-/* ===== INTERACTIVE HINT OVERLAY ===== */
-.interactiveHint {
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 18, 10, 0.62);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-  border-radius: inherit;
-  animation: hintFade 5s ease forwards;
-  pointer-events: none;
-}
-
-@keyframes hintFade {
-  0%   { opacity: 0; }
-  10%  { opacity: 1; }
-  80%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-.hintInner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.hintEmoji {
-  font-size: 30px;
-  animation: tapBounce 1.1s ease-in-out infinite;
-  display: block;
-  user-select: none;
-}
-
-@keyframes tapBounce {
-  0%, 100% { transform: translateY(0) scale(1); }
-  45%       { transform: translateY(-6px) scale(1.12); }
-}
-
-.hintText {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-/* ===== INTERACTIVE BADGE (below phone) ===== */
-.interactiveBadge {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.38);
-  letter-spacing: 0.04em;
-  user-select: none;
-}
-
-.interactiveDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #66BB6A;
-  flex-shrink: 0;
-  animation: dotPulse 2.2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%, 100% { opacity: 1;   transform: scale(1); }
-  50%       { opacity: 0.3; transform: scale(0.7); }
-}
-
-/* ===== FLOATING CHIPS ===== */
-.chip {
-  position: absolute;
-  background: #1E293B;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 100px;
-  padding: 8px 14px;
-  font-size: 0.8rem;
-  color: var(--color-text);
-  white-space: nowrap;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  animation: float 4s ease-in-out infinite;
-}
-
-.chip1 {
-  top: 15%;
-  right: -20px;
-  animation-delay: 0s;
-}
-
-.chip2 {
-  top: 50%;
-  left: -30px;
-  animation-delay: 1.5s;
-}
-
-.chip3 {
-  bottom: 20%;
-  right: -20px;
-  animation-delay: 3s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
 }
 
 /* ===== RESPONSIVE ===== */
@@ -1011,11 +899,17 @@
     order: -1;
   }
 
-  .chip1, .chip2, .chip3 {
-    display: none;
-  }
-
   .subtext {
     max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .section {
+    padding: 4rem 1.25rem;
+  }
+
+  .phone {
+    height: 600px;
   }
 }

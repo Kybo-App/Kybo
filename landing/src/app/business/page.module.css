@@ -228,7 +228,7 @@
 .sectionSubtitle {
   text-align: center;
   font-size: clamp(1.1rem, 2vw, 1.4rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 4rem;
   max-width: 700px;
   margin-left: auto;
@@ -272,8 +272,17 @@
   margin-bottom: 2rem;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .icon {
-  font-size: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
+  margin-bottom: 1rem;
 }
 
 .featureCard h3 {
@@ -323,7 +332,7 @@
 .pricingNote {
   text-align: center;
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   margin-top: 2.5rem;
   font-weight: 300;
 }
@@ -334,83 +343,6 @@
 }
 
 /* Vecchio pricing (non usato — mantenuto per compatibilità) */
-.pricing {
-  padding: 8rem 2rem;
-  background: #1a1a1a;
-}
-
-.pricingGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.pricingCard {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid transparent;
-  border-radius: 32px;
-  padding: 3.5rem 2.5rem;
-  position: relative;
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: fadeInScale 0.6s ease-out forwards;
-  opacity: 0;
-  backdrop-filter: blur(20px);
-  overflow: hidden;
-}
-
-/* Gradient border effect */
-.pricingCard::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 32px;
-  padding: 2px;
-  background: linear-gradient(135deg, rgba(102, 187, 106, 0.2), rgba(46, 125, 50, 0.05));
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box, 
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.pricingCard:hover::before {
-  opacity: 1;
-}
-
-/* Glow effect */
-.pricingCard::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(102, 187, 106, 0.08) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-}
-
-.pricingCard:hover::after {
-  opacity: 1;
-}
-
-.pricingCard:nth-child(1) { animation-delay: 0.1s; }
-.pricingCard:nth-child(2) { animation-delay: 0.25s; }
-.pricingCard:nth-child(3) { animation-delay: 0.4s; }
-
-.pricingCard:hover {
-  transform: translateY(-15px) scale(1.03);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 
-    0 25px 60px rgba(0, 0, 0, 0.4),
-    0 0 50px rgba(102, 187, 106, 0.2);
-}
-
 .pricingCard.featured {
   border-color: transparent;
   background: rgba(102, 187, 106, 0.08);
@@ -445,73 +377,6 @@
   font-weight: 600;
 }
 
-.pricingCard h3 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.price {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.amount {
-  font-size: 3.5rem;
-  font-weight: 900;
-  color: #66BB6A;
-}
-
-.period {
-  font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.featuresList {
-  list-style: none;
-  padding: 0;
-  margin-bottom: 2rem;
-}
-
-.featuresList li {
-  padding: 0.8rem 0;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.05rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.pricingBtn {
-  width: 100%;
-  padding: 1rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 100px;
-  cursor: pointer;
-  background: transparent;
-  color: white;
-  transition: all 0.3s ease;
-  font-family: inherit;
-}
-
-.pricingBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: #66BB6A;
-}
-
-.featuredBtn {
-  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
-  border: none;
-}
-
-.featuredBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(102, 187, 106, 0.3);
-}
-
-/* CTA Section */
 .cta {
   padding: 8rem 2rem;
   background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
@@ -582,7 +447,7 @@
 
 .roiLabel {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 0.5rem;
   display: block;
 }
@@ -630,6 +495,9 @@
 }
 
 .roiResultLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -648,7 +516,7 @@
 
 .roiDisclaimer {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
   text-align: center;
   margin-top: 0.5rem;
 }
@@ -674,7 +542,7 @@
 }
 
 .footerContent p {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-size: 0.9rem;
 }
 
@@ -707,7 +575,7 @@
 
 .demoInfoText {
   font-size: 1.05rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.7;
 }
 
@@ -725,10 +593,16 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .demoPerkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.2);
   color: #66BB6A;
-  font-weight: 700;
-  font-size: 1.1rem;
   flex-shrink: 0;
 }
 
@@ -780,7 +654,7 @@
 }
 
 .formInput::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
 }
 
 .formSelect option {
@@ -817,8 +691,17 @@
   align-items: center;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .formSuccessIcon {
-  font-size: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.16);
+  color: #66BB6A;
+  margin-bottom: 1rem;
 }
 
 .formSuccessTitle {
@@ -829,13 +712,13 @@
 
 .formSuccessText {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.6;
 }
 
 .formPrivacy {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
   text-align: center;
   line-height: 1.4;
 }
@@ -868,10 +751,17 @@
   transform: translateY(-4px);
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .securityIcon {
-  font-size: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
   margin-bottom: 1rem;
-  display: block;
 }
 
 .securityCard h3 {
@@ -883,7 +773,7 @@
 
 .securityCard p {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   line-height: 1.6;
 }
 
@@ -935,7 +825,7 @@
 
 .apiInfoText {
   font-size: 1.05rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.7;
 }
 
@@ -975,7 +865,7 @@
 
 .apiPathDesc {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.68);
   margin-left: auto;
 }
 
@@ -997,7 +887,7 @@
 
 .apiCodeLang {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
   font-family: monospace;
 }
 
@@ -1157,4 +1047,27 @@
     padding: 0.6rem 1rem;
     font-size: 0.8rem;
   }
+}
+
+/* Link legali: erano stilizzati inline a 0.5 di opacità (sotto AA) e alti 15-17px,
+   sotto il minimo di 24px per l'area cliccabile. */
+.footerLegalLink,
+.inlineLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.15rem 0.1rem;
+  text-decoration: none;
+}
+
+.footerLegalLink {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.footerLegalLink:hover {
+  color: #66BB6A;
+}
+
+.inlineLink {
+  color: #66BB6A;
 }
