@@ -135,7 +135,11 @@
   font-size: 1.4rem;
   line-height: 1;
   cursor: pointer;
-  padding: 4px 6px;
+  /* Era ~30x34px con padding 4px/6px: l'icona resta della stessa dimensione,
+     cresce solo l'area toccabile fino ai 44px raccomandati. */
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
   flex-shrink: 0;
   transition: color 0.2s ease;
 }
@@ -192,14 +196,23 @@
     gap: 0.4rem;
   }
 
+  /* Su mobile i due bottoni erano alti ~30px. Manteniamo la compattezza
+     orizzontale (lo spazio in header è poco) ma portiamo l'altezza toccabile
+     a 44px, come i link del menu. */
   .loginBtn {
     padding: 0.55rem 0.9rem;
     font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .ctaBtn {
     padding: 0.55rem 1.1rem;
     font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 
