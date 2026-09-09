@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Inter è caricato da next/font/google in app/layout.tsx (self-hosted, senza
+   richieste a terzi e senza render-blocking). Nessun @import qui. */
 
 :root {
   /* Colors - Light Mode (Default) */
@@ -91,17 +92,9 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
-/* Smooth theme transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: var(--transition-normal);
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Disable transitions on theme change for immediate feedback */
-.theme-transitioning * {
-  transition: none !important;
-}
+/* La transizione di tema vive su body (sopra). Applicarla a `*` significava
+   farla calcolare su ogni nodo del DOM e metterla in conflitto con le
+   animazioni JS, che si contendono le stesse proprietà. */
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
@@ -143,4 +136,36 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+}
+
+/* Focus visibile per la navigazione da tastiera */
+:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/*
+  Riduzione del movimento.
+
+  Il sito ha ~10 animazioni CSS infinite (gradiente hero, particelle, bounce)
+  più GSAP e Lenis. Chi soffre di disturbi vestibolari deve poterle spegnere.
+
+  Le animazioni di entrata non vengono solo rallentate ma portate al loro stato
+  finale (1ms + forwards), altrimenti gli elementi che partono da opacity:0
+  resterebbero invisibili per sempre. Lo stesso vale per data-anim: senza quel
+  attributo il CSS non nasconde mai nulla.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    animation-fill-mode: forwards !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -34,7 +34,7 @@
 .subtitle {
   text-align: center;
   font-size: clamp(1rem, 2vw, 1.25rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 4rem;
   font-weight: 300;
 }
@@ -135,7 +135,7 @@
   text-align: center;
   margin-top: 2rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 @media (max-width: 768px) {
@@ -153,4 +153,20 @@
     padding: 1rem 0.75rem;
     font-size: 0.85rem;
   }
+}
+
+/* Lo stato iniziale è gestito da Motion nel componente. */
+
+/* Testo riservato agli screen reader: dà un significato alle spunte, che da
+   sole non comunicano nulla a chi non vede la tabella. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

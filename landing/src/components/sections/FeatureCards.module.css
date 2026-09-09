@@ -36,7 +36,7 @@
 .subtitle {
   text-align: center;
   font-size: clamp(1.1rem, 2vw, 1.5rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 5rem;
   font-weight: 300;
 }
@@ -61,8 +61,7 @@
   backdrop-filter: blur(20px);
   min-height: 350px;
   
-  /* Opacity starts at 0 — GSAP ScrollTrigger handles the entrance animation */
-  opacity: 0;
+  /* Lo stato nascosto iniziale è gestito da Motion nel componente. */
 }
 
 /* Gradient border effect */
@@ -143,21 +142,24 @@
   position: relative;
 }
 
-.icon {
-  font-size: 2.5rem;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+/* L'icona SVG eredita il colore della feature da .iconWrapper (color inline). */
+.iconWrapper svg {
+  width: 34px;
+  height: 34px;
 }
 
 .cardTitle {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
 }
 
 .cardDescription {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.02rem;
+  /* Alzato da 0.7: sotto era al limite della soglia AA sul fondo delle card. */
+  color: rgba(255, 255, 255, 0.78);
   line-height: 1.6;
   margin-bottom: 2rem;
 }
@@ -191,3 +193,6 @@
     padding: 2rem 1.5rem;
   }
 }
+
+/* Lo stato iniziale è gestito da Motion (initial/whileInView), che lo scrive
+   inline già lato server: qui non serve più nulla. */

@@ -4,8 +4,8 @@ export default function HelpPage() {
   return (
     <PlaceholderPage
       title="Centro Assistenza"
-      icon="🛟"
-      description="Il nostro centro assistenza è in costruzione. Nel frattempo, contattaci a support@kybo.app per qualsiasi domanda."
+      icon="lifebuoy"
+      description="Il nostro centro assistenza è in costruzione. Nel frattempo, contattaci a info@kybo.it per qualsiasi domanda."
     />
   );
 }

@@ -31,9 +31,12 @@
 }
 
 .breadcrumb {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
+  /* Alzato da 0.4: sotto la soglia AA */
+  color: rgba(255, 255, 255, 0.72);
   text-decoration: none;
   margin-bottom: 1.5rem;
   transition: color 0.2s;
@@ -76,82 +79,13 @@
 
 .heroSubtitle {
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-weight: 300;
   line-height: 1.65;
   max-width: 580px;
   margin-bottom: 2.5rem;
 }
 
-.profileCard {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 1rem 1.5rem;
-  width: fit-content;
-}
-
-.avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.avatarLg {
-  width: 56px;
-  height: 56px;
-  font-size: 1rem;
-}
-
-.profileInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.profileName {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.profileRole {
-  font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.45);
-  margin: 0;
-}
-
-.profileDetail {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.3);
-  margin: 0;
-}
-
-.profileBadge {
-  margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #66BB6A;
-  background: rgba(102, 187, 106, 0.1);
-  border: 1px solid rgba(102, 187, 106, 0.2);
-  padding: 0.3rem 0.8rem;
-  border-radius: 100px;
-  white-space: nowrap;
-}
-
-/* ── Metrics ── */
 .metricsSection {
   padding: 4rem 2rem;
   background: #0f0f0f;
@@ -178,9 +112,13 @@
   border-radius: 16px;
 }
 
+/* Contenitori delle icone: erano dimensionati per le emoji (font-size),
+   ora ospitano SVG e vanno allineati come flex. */
 .metricIcon {
-  font-size: 1.8rem;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #66BB6A;
   margin-bottom: 0.75rem;
 }
 
@@ -193,7 +131,7 @@
 
 .metricLabel {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.72);
   margin: 0;
   line-height: 1.4;
 }
@@ -242,7 +180,7 @@
 
 .sectionText {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.75);
   line-height: 1.75;
   margin-bottom: 1.5rem;
 }
@@ -262,15 +200,21 @@
   align-items: flex-start;
   gap: 0.6rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.5;
 }
 
 .challengeIcon {
-  color: #ef4444;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.16);
+  color: #F8A9A0;
 }
 
 /* Solution list */
@@ -293,37 +237,19 @@
 }
 
 .solutionIcon {
-  color: #66BB6A;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.18);
+  color: #66BB6A;
 }
 
 /* Quote */
-.quote {
-  background: rgba(102, 187, 106, 0.05);
-  border-left: 3px solid #66BB6A;
-  border-radius: 0 12px 12px 0;
-  padding: 1.25rem 1.5rem;
-  margin: 1.5rem 0 0;
-}
-
-.quote p {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
-  font-style: italic;
-  margin: 0 0 0.5rem;
-  line-height: 1.7;
-}
-
-.quote cite {
-  font-size: 0.8rem;
-  color: #66BB6A;
-  font-style: normal;
-  font-weight: 600;
-}
-
-/* Before/After cards */
 .beforeCard,
 .afterCard {
   border-radius: 16px;
@@ -345,11 +271,18 @@
 
 .beforeCardTitle,
 .afterCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.9rem;
   font-weight: 700;
   color: #fff;
   margin: 0 0 0.5rem;
 }
+
+/* L'icona porta il colore, il testo resta bianco per il contrasto */
+.beforeCardTitle svg { color: #F0B34E; }
+.afterCardTitle svg { color: #66BB6A; }
 
 .beforeRow,
 .afterRow {
@@ -359,7 +292,7 @@
   font-size: 0.85rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .beforeRow:last-child,
@@ -367,8 +300,10 @@
   border-bottom: none;
 }
 
+/* Rosso schiarito: a rgba(239,68,68,.8) su questo fondo il rapporto era 3.64,
+   sotto la soglia AA per il testo normale. */
 .bad {
-  color: rgba(239, 68, 68, 0.8);
+  color: #F8A9A0;
   font-weight: 500;
 }
 
@@ -410,7 +345,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
+  color: #66BB6A;
   flex-shrink: 0;
 }
 
@@ -445,54 +380,12 @@
 
 .timelineDesc {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   line-height: 1.7;
   margin: 0;
 }
 
 /* ── Final quote ── */
-.sectionFinal {
-  background: linear-gradient(180deg, #0a0a0a 0%, #0d1a0e 100%);
-}
-
-.finalQuote {
-  max-width: 720px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.finalQuoteText {
-  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.75);
-  font-style: italic;
-  line-height: 1.7;
-  margin-bottom: 2rem;
-}
-
-.finalAuthor {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.finalAuthorName {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0 0 0.2rem;
-  text-align: left;
-}
-
-.finalAuthorRole {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0;
-  text-align: left;
-}
-
-/* ── CTA ── */
 .ctaSection {
   padding: 6rem 2rem;
   background: #0a0a0a;
@@ -509,7 +402,7 @@
 
 .ctaSubtitle {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.72);
   margin-bottom: 2.5rem;
 }
 

@@ -89,7 +89,7 @@
 
 .pageSubtitle {
   font-size: clamp(1.1rem, 2vw, 1.4rem);
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   font-weight: 300;
   max-width: 700px;
   margin: 0 auto;
@@ -147,12 +147,6 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.cardIcon {
-  font-size: 2.5rem;
-  margin-bottom: 1.5rem;
-  display: block;
-}
-
 .cardTitle {
   font-size: 1.4rem;
   font-weight: 700;
@@ -160,14 +154,6 @@
   margin-bottom: 0.8rem;
 }
 
-.cardText {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.6);
-  line-height: 1.6;
-  font-weight: 300;
-}
-
-/* Team grid */
 .teamGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -189,16 +175,17 @@
   border-color: rgba(102, 187, 106, 0.3);
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #66BB6A22 0%, #66BB6A44 100%);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  margin: 0 auto 1.5rem;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
+  margin: 0 auto 1rem;
 }
 
 .teamName {
@@ -235,13 +222,6 @@
   border-color: rgba(102, 187, 106, 0.3);
 }
 
-.blogImage {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  display: block;
-}
-
 .blogContent {
   padding: 2rem;
 }
@@ -267,7 +247,7 @@
 
 .blogExcerpt {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.6;
   font-weight: 300;
   margin-bottom: 1.5rem;
@@ -275,7 +255,7 @@
 
 .blogDate {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* Careers */
@@ -315,6 +295,9 @@
 }
 
 .jobMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.9rem;
   color: #66BB6A;
   font-weight: 500;
@@ -322,7 +305,7 @@
 
 .jobDescription {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.6;
   font-weight: 300;
 }
@@ -359,10 +342,17 @@
   padding: 2.5rem 1.5rem;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .valueIcon {
-  font-size: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
   margin-bottom: 1rem;
-  display: block;
 }
 
 .valueTitle {
@@ -374,7 +364,7 @@
 
 .valueText {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   line-height: 1.6;
   font-weight: 300;
 }
@@ -397,7 +387,7 @@
 
 .ctaText {
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   margin-bottom: 2rem;
   font-weight: 300;
 }
@@ -433,9 +423,18 @@
   padding: 4rem 2rem;
 }
 
+/* Ospita un SVG, non più un'emoji: serve il centraggio flex al posto del font-size */
 .placeholderIcon {
-  font-size: 4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
   margin-bottom: 2rem;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.12);
+  border: 1px solid rgba(102, 187, 106, 0.28);
+  color: #66BB6A;
 }
 
 .placeholderTitle {
@@ -447,7 +446,7 @@
 
 .placeholderText {
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-weight: 300;
   margin-bottom: 2rem;
   max-width: 500px;
@@ -486,7 +485,7 @@
 
 .notFoundText {
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-weight: 300;
   margin-bottom: 2.5rem;
   max-width: 500px;
@@ -519,7 +518,7 @@
 }
 
 .footerText {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   font-size: 0.9rem;
 }
 
@@ -556,4 +555,15 @@
     flex-wrap: wrap;
     gap: 0.8rem;
   }
+}
+
+/* Link inline dentro il testo delle sezioni */
+.inlineLink {
+  color: #66BB6A;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.inlineLink:hover {
+  color: #A5D6A7;
 }

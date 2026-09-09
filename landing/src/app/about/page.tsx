@@ -1,28 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import styles from '../shared.module.css';
+import Navbar from '@/components/Navbar';
+import { UiIcon } from '@/components/icons/UiIcons';
+import { it } from '@/content/it';
 
 export default function AboutPage() {
   return (
     <div className={styles.pageWrapper}>
-      {/* Navbar */}
-      <nav className={styles.nav}>
-        <div className={styles.navContainer}>
-          <Link href="/" className={styles.logo}>
-            <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.logoIcon} priority />
-            <span className={styles.logoText}>Kybo</span>
-          </Link>
-          <Link href="/" className={styles.backBtn}>
-            ← Torna alla Home
-          </Link>
-        </div>
-      </nav>
+      <Navbar content={it.nav} />
 
       {/* Hero */}
       <div className={styles.heroSmall}>
-        <h1 className={styles.pageTitle}>Chi Siamo</h1>
+        <h1 className={styles.pageTitle}>Cos’è Kybo</h1>
         <p className={styles.pageSubtitle}>
           La missione di Kybo è rendere la nutrizione accessibile, semplice e personalizzata per tutti.
         </p>
@@ -31,7 +22,7 @@ export default function AboutPage() {
       {/* Mission */}
       <section className={styles.section}>
         <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>La Nostra Missione</h2>
+          <h2 className={styles.sectionTitle}>Perché esiste</h2>
           <p className={styles.sectionText}>
             Kybo nasce dalla convinzione che una corretta alimentazione non debba essere complicata. Il nostro obiettivo è creare strumenti innovativi che aiutino le persone a gestire la propria nutrizione in modo semplice ed efficace, e che supportino i professionisti della nutrizione nel loro lavoro quotidiano.
           </p>
@@ -47,22 +38,22 @@ export default function AboutPage() {
           <h2 className={styles.sectionTitle}>I Nostri Valori</h2>
           <div className={styles.valuesGrid}>
             <div className={styles.valueCard}>
-              <span className={styles.valueIcon}>🎯</span>
+              <span className={styles.valueIcon}><UiIcon name="target" size={26} /></span>
               <h3 className={styles.valueTitle}>Semplicità</h3>
               <p className={styles.valueText}>Rendiamo la nutrizione accessibile a tutti, eliminando complessità inutili.</p>
             </div>
             <div className={styles.valueCard}>
-              <span className={styles.valueIcon}>🔬</span>
+              <span className={styles.valueIcon}><UiIcon name="science" size={26} /></span>
               <h3 className={styles.valueTitle}>Innovazione</h3>
               <p className={styles.valueText}>Utilizziamo la tecnologia più avanzata per migliorare l&apos;esperienza utente.</p>
             </div>
             <div className={styles.valueCard}>
-              <span className={styles.valueIcon}>🤝</span>
+              <span className={styles.valueIcon}><UiIcon name="handshake" size={26} /></span>
               <h3 className={styles.valueTitle}>Collaborazione</h3>
               <p className={styles.valueText}>Lavoriamo a stretto contatto con nutrizionisti e utenti per creare il prodotto migliore.</p>
             </div>
             <div className={styles.valueCard}>
-              <span className={styles.valueIcon}>🔒</span>
+              <span className={styles.valueIcon}><UiIcon name="lock" size={26} /></span>
               <h3 className={styles.valueTitle}>Privacy</h3>
               <p className={styles.valueText}>La sicurezza e la privacy dei dati dei nostri utenti è la nostra priorità assoluta.</p>
             </div>
@@ -70,38 +61,30 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
+      {/* Chi lo fa */}
       <section className={styles.section}>
         <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Il Team</h2>
+          <h2 className={styles.sectionTitle}>Chi lo sviluppa</h2>
           <p className={styles.sectionText}>
-            Un team appassionato di tecnologia e nutrizione, unito dalla volontà di fare la differenza.
+            Kybo è sviluppato da una persona sola. Non c&apos;è un team di design né
+            un comitato scientifico: c&apos;è un progetto in costruzione, portato
+            avanti con l&apos;idea che gestire un piano alimentare non debba essere
+            un lavoro d&apos;archivio.
           </p>
-          <div className={styles.teamGrid}>
-            <div className={styles.teamCard}>
-              <div className={styles.avatar}>👨‍💻</div>
-              <h3 className={styles.teamName}>Leonardo</h3>
-              <p className={styles.teamRole}>Founder & Developer</p>
-            </div>
-            <div className={styles.teamCard}>
-              <div className={styles.avatar}>🎨</div>
-              <h3 className={styles.teamName}>Design Team</h3>
-              <p className={styles.teamRole}>UX/UI Design</p>
-            </div>
-            <div className={styles.teamCard}>
-              <div className={styles.avatar}>🔬</div>
-              <h3 className={styles.teamName}>Nutrition Team</h3>
-              <p className={styles.teamRole}>Consulenza Nutrizionale</p>
-            </div>
-          </div>
+          <p className={styles.sectionText} style={{ marginTop: '1.5rem' }}>
+            Se sei un nutrizionista e vuoi dire la tua su cosa manca, o hai
+            competenze da mettere a disposizione, la pagina{' '}
+            <Link href="/careers" className={styles.inlineLink}>collabora</Link>{' '}
+            spiega come farsi sentire.
+          </p>
         </div>
       </section>
 
       {/* CTA */}
       <section className={styles.ctaBanner}>
         <h2 className={styles.ctaTitle}>Vuoi saperne di più?</h2>
-        <p className={styles.ctaText}>Scarica Kybo e scopri come possiamo aiutarti nel tuo percorso nutrizionale.</p>
-        <Link href="/" className={styles.ctaBtn}>Scopri Kybo</Link>
+        <p className={styles.ctaText}>Guarda come funziona, o lascia la mail per sapere quando esce.</p>
+        <Link href="/#features" className={styles.ctaBtn}>Scopri Kybo</Link>
       </section>
 
       {/* Footer */}

@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import Lenis from 'lenis';
+import { prefersReducedMotion } from '@/lib/motion';
 
 interface LenisContextType {
   lenis: Lenis | null;
@@ -15,7 +16,9 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
   const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
-    // Initialize Lenis smooth scroll
+    // Con prefers-reduced-motion lo scroll resta quello nativo del browser.
+    if (prefersReducedMotion()) return;
+
     const lenisInstance = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -29,17 +32,19 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     setLenis(lenisInstance);
 
-    // Animation frame loop
+    // Il frame va tenuto per poterlo cancellare: destroy() chiude Lenis ma non
+    // ferma la ricorsione, che altrimenti continua a girare dopo l'unmount.
+    let frame = 0;
     function raf(time: number) {
       lenisInstance.raf(time);
-      requestAnimationFrame(raf);
+      frame = requestAnimationFrame(raf);
     }
+    frame = requestAnimationFrame(raf);
 
-    requestAnimationFrame(raf);
-
-    // Cleanup
     return () => {
+      cancelAnimationFrame(frame);
       lenisInstance.destroy();
+      setLenis(null);
     };
   }, []);
 

@@ -119,6 +119,29 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/*
+          Marca <html data-anim="on"> prima del primo paint. Il CSS nasconde gli
+          elementi animati solo sotto questo attributo, quindi senza JS o con
+          prefers-reduced-motion il contenuto resta visibile invece di sparire.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.setAttribute('data-anim','on')}}catch(e){}",
+          }}
+        />
+        {/*
+          Motion scrive lo stato iniziale (opacity:0) inline già lato server,
+          così non c'è lampeggio. Senza JS però nessuno lo animerebbe mai:
+          questa regola riporta visibile tutto ciò che è marcato data-reveal.
+        */}
+        <noscript>
+          <style
+            dangerouslySetInnerHTML={{
+              __html: '[data-reveal]{opacity:1!important;transform:none!important}',
+            }}
+          />
+        </noscript>
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>

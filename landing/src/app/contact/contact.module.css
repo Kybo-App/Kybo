@@ -26,7 +26,7 @@
 
 .subtitle {
   font-size: 1.15rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.76);
   font-weight: 300;
   line-height: 1.7;
 }
@@ -55,15 +55,23 @@
   border-radius: 16px;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .infoIcon {
-  font-size: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(102, 187, 106, 0.14);
+  color: #66BB6A;
   flex-shrink: 0;
 }
 
 .infoTitle {
   font-size: 0.85rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 0.25rem;
@@ -131,7 +139,7 @@
 
 .input::placeholder,
 .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
 }
 
 .input:focus,
@@ -143,7 +151,7 @@
 .charCount {
   align-self: flex-end;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.66);
 }
 
 .errorMsg {
@@ -188,8 +196,17 @@
   padding: 2rem 0;
 }
 
+/* Ospita un SVG, non un'emoji: centraggio flex al posto del font-size */
 .successIcon {
-  font-size: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(102, 187, 106, 0.16);
+  color: #66BB6A;
+  margin-bottom: 1rem;
 }
 
 .successTitle {

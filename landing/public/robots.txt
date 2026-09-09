@@ -1,9 +1,8 @@
 User-agent: *
 Allow: /
 
-# Pagine legali (bassa priorità SEO)
-Disallow: /privacy
-Disallow: /terms
-Disallow: /cookies
+# Le pagine legali devono restare indicizzabili: bloccarle non porta
+# vantaggi SEO e rende privacy policy e termini più difficili da trovare
+# proprio a chi li cerca (utenti, store, partner).
 
 Sitemap: https://kybo.it/sitemap.xml

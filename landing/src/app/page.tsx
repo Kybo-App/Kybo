@@ -1,74 +1,37 @@
-'use client';
-
-import React, { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import React from 'react';
+import Navbar from '@/components/Navbar';
+import HeroSection from '@/components/sections/HeroSection';
+import FeatureCards from '@/components/sections/FeatureCards';
+import ValuesSection from '@/components/sections/ValuesSection';
+import ComparisonTable from '@/components/sections/ComparisonTable';
+import AppMockup from '@/components/sections/AppMockup';
+import NewsletterSection from '@/components/sections/NewsletterSection';
+import CTASection from '@/components/sections/CTASection';
+import TrialPopup from '@/components/TrialPopup';
+import { it } from '@/content/it';
 import styles from './page.module.css';
 
-// Above the fold — caricato subito
-const Navbar = dynamic(() => import('@/components/Navbar'), { ssr: false });
-const HeroSection = dynamic(() => import('@/components/sections/HeroSection'), { ssr: false });
+/*
+  Qui c'era una sezione testimonianze, poi eliminata insieme al suo componente.
 
-// Below the fold — lazy loaded
-const FeatureCards = dynamic(
-  () => import('@/components/sections/FeatureCards'),
-  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
-);
-const StatsSection = dynamic(
-  () => import('@/components/sections/StatsSection'),
-  { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
-);
-const ComparisonTable = dynamic(
-  () => import('@/components/sections/ComparisonTable'),
-  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
-);
-const AppMockup = dynamic(
-  () => import('@/components/sections/AppMockup'),
-  { ssr: false, loading: () => <div style={{ minHeight: '500px' }} /> }
-);
-const TestimonialsSection = dynamic(
-  () => import('@/components/sections/TestimonialsSection'),
-  { ssr: false, loading: () => <div style={{ minHeight: '400px' }} /> }
-);
-const NewsletterSection = dynamic(
-  () => import('@/components/sections/NewsletterSection'),
-  { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
-);
-const CTASection = dynamic(
-  () => import('@/components/sections/CTASection'),
-  { ssr: false, loading: () => <div style={{ minHeight: '200px' }} /> }
-);
-const TrialPopup = dynamic(
-  () => import('@/components/TrialPopup'),
-  { ssr: false }
-);
+  Conteneva sei recensioni firmate con nome, città e badge "Verificata",
+  introdotte come "professionisti e clienti reali", per un'app che nella stessa
+  pagina si dichiara non ancora pubblicata. Va ricostruita da zero quando ci
+  saranno persone vere che hanno dato il consenso a essere citate.
+*/
 
 export default function HomePage() {
   return (
     <>
-      <Navbar />
+      <Navbar content={it.nav} />
       <main className={styles.main}>
-        <HeroSection />
-        <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
-          <FeatureCards />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
-          <StatsSection />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '500px' }} />}>
-          <AppMockup />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
-          <ComparisonTable />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '400px' }} />}>
-          <TestimonialsSection />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
-          <NewsletterSection />
-        </Suspense>
-        <Suspense fallback={<div style={{ minHeight: '200px' }} />}>
-          <CTASection />
-        </Suspense>
+        <HeroSection content={it.hero} />
+        <FeatureCards content={it.features} />
+        <ValuesSection content={it.values} />
+        <AppMockup content={it.mockup} />
+        <ComparisonTable content={it.comparison} />
+        <NewsletterSection content={it.newsletter} />
+        <CTASection content={it.cta} footer={it.footer} />
       </main>
       <TrialPopup />
     </>

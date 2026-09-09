@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { UiIcon, type UiIconKey } from '@/components/icons/UiIcons';
 import styles from '../app/business/page.module.css';
 import pStyles from '../app/pricing/pricing.module.css';
 
@@ -60,23 +61,25 @@ function RoiCalculator() {
 
           <div className={styles.roiResults}>
             <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>⏱ Ore risparmiate / mese</span>
+              <span className={styles.roiResultLabel}><UiIcon name="clock" size={16} /> Ore risparmiate / mese</span>
               <span className={styles.roiResultValue}>{hoursSaved}h</span>
             </div>
             <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>💰 Risparmio admin (€/mese)</span>
+              <span className={styles.roiResultLabel}><UiIcon name="money" size={16} /> Risparmio admin (€/mese)</span>
               <span className={styles.roiResultValue}>€{moneySaved.toLocaleString('it-IT')}</span>
             </div>
             <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>👥 Clienti extra gestibili</span>
+              <span className={styles.roiResultLabel}><UiIcon name="users" size={16} /> Clienti extra gestibili</span>
               <span className={styles.roiResultValue}>+{extraClients}</span>
             </div>
             <div className={styles.roiResultItem}>
-              <span className={styles.roiResultLabel}>📈 Fatturato extra potenziale</span>
+              <span className={styles.roiResultLabel}><UiIcon name="trending" size={16} /> Fatturato extra potenziale</span>
               <span className={styles.roiResultValueBig}>€{extraRevenue.toLocaleString('it-IT')}</span>
             </div>
             <p className={styles.roiDisclaimer}>
-              * Stime basate sull&apos;uso medio di Kybo da parte di nutrizionisti professionisti.
+              * Proiezione teorica: assume che Kybo tolga il 60% del tempo amministrativo.
+              Non è una media rilevata su utenti reali — serve a farsi un&apos;idea, non a
+              promettere un risultato.
             </p>
           </div>
         </div>
@@ -116,14 +119,13 @@ function DemoForm() {
             </p>
             <div className={styles.demoPerks}>
               {[
-                'Demo personalizzata sul tuo flusso di lavoro',
-                'Setup assistito gratuito per i primi 30 giorni',
-                'Migrazione dati da altri software inclusa',
-                'Supporto dedicato via chat e telefono',
-                'Prova gratuita 14 giorni senza limiti',
+                'Ti mostro la piattaforma dal vivo',
+                'Capiamo se copre il tuo flusso di lavoro',
+                'Mi dici cosa manca e ne tengo conto',
+                'Nessun impegno e nessun listino da firmare',
               ].map((p) => (
                 <div key={p} className={styles.demoPerk}>
-                  <span className={styles.demoPerkIcon}>✓</span>
+                  <span className={styles.demoPerkIcon}><UiIcon name="check" size={13} /></span>
                   <span>{p}</span>
                 </div>
               ))}
@@ -133,7 +135,7 @@ function DemoForm() {
           <div className={styles.demoFormCard}>
             {submitted ? (
               <div className={styles.formSuccess}>
-                <span className={styles.formSuccessIcon}>🎉</span>
+                <span className={styles.formSuccessIcon}><UiIcon name="check" size={30} /></span>
                 <p className={styles.formSuccessTitle}>Richiesta inviata!</p>
                 <p className={styles.formSuccessText}>
                   Ti contatteremo entro 24 ore per fissare la tua demo personalizzata.
@@ -195,12 +197,12 @@ function DemoForm() {
                 </div>
 
                 <button type="submit" className={styles.formSubmit}>
-                  Prenota Demo Gratuita →
+                  Prenota Demo Gratuita
                 </button>
 
                 <p className={styles.formPrivacy}>
                   Inviando il modulo accetti la nostra{' '}
-                  <Link href="/privacy" style={{ color: '#66BB6A' }}>Privacy Policy</Link>.
+                  <Link href="/privacy" className={styles.inlineLink}>Privacy Policy</Link>.
                   I tuoi dati non saranno mai condivisi con terze parti.
                 </p>
               </form>
@@ -214,45 +216,45 @@ function DemoForm() {
 
 // ===== SECURITY SECTION =====
 function SecuritySection() {
-  const items = [
+  const items: Array<{ icon: UiIconKey; title: string; desc: string }> = [
     {
-      icon: '🔐',
+      icon: 'key',
       title: 'Cifratura AES-256',
       desc: 'I dati alimentari dei pazienti sono cifrati at-rest con AES-256. Le chiavi di cifratura sono gestite da Firebase KMS e mai accessibili in chiaro.',
     },
     {
-      icon: '🛡️',
+      icon: 'shield',
       title: 'GDPR Compliant',
       desc: "Retention policy configurabile, dashboard consensi, purge automatico e manuale. Audit log completo per ogni accesso a dati sensibili.",
     },
     {
-      icon: '🔒',
+      icon: 'lock',
       title: 'Autenticazione 2FA',
       desc: 'Supporto TOTP (Google Authenticator, Authy) per tutti i professionisti. Session management con revoca forzata da remoto.',
     },
     {
-      icon: '☁️',
+      icon: 'cloud',
       title: 'Infrastruttura Cloud',
       desc: 'Hosted su Google Cloud (Firebase) con SLA 99.9%. Backup automatici giornalieri su Firestore. Zero downtime deployment.',
     },
     {
-      icon: '🔍',
+      icon: 'search',
       title: 'Audit Log',
       desc: 'Ogni accesso a dati sensibili è tracciato con timestamp, IP e ruolo. Log accessibili dall\'admin per compliance e audit di sicurezza.',
     },
     {
-      icon: '🚦',
+      icon: 'gauge',
       title: 'Rate Limiting',
       desc: 'Protezione DoS con rate limiting per IP e utente. Rilevamento anomalie e blocco automatico di pattern sospetti.',
     },
   ];
 
-  const badges = [
-    { icon: '✅', text: 'GDPR Art. 25 (Privacy by Design)' },
-    { icon: '🔒', text: 'TLS 1.3 in Transit' },
-    { icon: '☁️', text: 'ISO 27001 (Google Cloud)' },
-    { icon: '🇪🇺', text: 'Dati in UE (europa-west)' },
-    { icon: '🛡️', text: 'Firebase Security Rules' },
+  const badges: Array<{ icon: UiIconKey; text: string }> = [
+    { icon: 'check', text: 'GDPR Art. 25 (Privacy by Design)' },
+    { icon: 'lock', text: 'TLS 1.3 in Transit' },
+    { icon: 'cloud', text: 'ISO 27001 (Google Cloud)' },
+    { icon: 'globe', text: 'Dati in UE (europa-west)' },
+    { icon: 'shield', text: 'Firebase Security Rules' },
   ];
 
   return (
@@ -266,7 +268,7 @@ function SecuritySection() {
         <div className={styles.securityGrid}>
           {items.map((item) => (
             <div key={item.title} className={styles.securityCard}>
-              <span className={styles.securityIcon}>{item.icon}</span>
+              <span className={styles.securityIcon}><UiIcon name={item.icon} size={24} /></span>
               <h3>{item.title}</h3>
               <p>{item.desc}</p>
             </div>
@@ -276,7 +278,7 @@ function SecuritySection() {
         <div className={styles.securityBadges}>
           {badges.map((b) => (
             <div key={b.text} className={styles.securityBadge}>
-              <span>{b.icon}</span>
+              <UiIcon name={b.icon} size={15} />
               <span>{b.text}</span>
             </div>
           ))}
@@ -346,10 +348,10 @@ const result = await response.json();
 
             <div className={styles.apiCtaRow}>
               <a
-                href="mailto:enterprise@kybo.it"
+                href="mailto:info@kybo.it"
                 className={`${styles.apiCtaBtn} ${styles.apiCtaPrimary}`}
               >
-                📩 Contatta Sales
+                Contatta Sales
               </a>
               <a
                 href="https://kybo-prod.onrender.com/docs"
@@ -357,7 +359,7 @@ const result = await response.json();
                 rel="noopener noreferrer"
                 className={`${styles.apiCtaBtn} ${styles.apiCtaSecondary}`}
               >
-                📖 Swagger Docs
+                Swagger Docs
               </a>
             </div>
           </div>
@@ -382,15 +384,27 @@ const result = await response.json();
 }
 
 // ===== PRICING SECTION =====
-const professionalPlans = [
+/*
+  I prezzi non sono ancora stati decisi. Prima qui c'erano €29 e €79 al mese
+  con toggle mensile/annuale e "-17%" sul piano annuale: numeri inventati che
+  un professionista poteva prendere per buoni e su cui fare i suoi conti.
+  Restano i due livelli e cosa includono, che è l'informazione utile.
+*/
+const professionalPlans: Array<{
+  name: string;
+  icon: UiIconKey;
+  description: string;
+  features: string[];
+  cta: string;
+  badge?: string;
+  highlight: boolean;
+}> = [
   {
     name: 'Nutrizionista Pro',
-    icon: '👨‍⚕️',
-    monthlyPrice: 29,
-    annualPrice: 24,
+    icon: 'doctor',
     description: 'Per professionisti che gestiscono i propri pazienti.',
     highlight: true,
-    badge: 'Più Popolare',
+
     features: [
       'Fino a 50 pazienti',
       'Dashboard admin completa',
@@ -403,13 +417,11 @@ const professionalPlans = [
       'Broadcast messaggi ai clienti',
       'Supporto prioritario',
     ],
-    cta: 'Inizia Gratis 14 giorni',
+    cta: 'Parlane con me',
   },
   {
     name: 'Studio / Clinica',
-    icon: '🏥',
-    monthlyPrice: 79,
-    annualPrice: 65,
+    icon: 'hospital',
     description: 'Per studi con più nutrizionisti e team.',
     highlight: false,
     features: [
@@ -428,30 +440,14 @@ const professionalPlans = [
 ];
 
 function PricingSection() {
-  const [isAnnual, setIsAnnual] = useState(false);
-
   return (
     <section className={styles.pricingFull} id="prezzi">
       <div className={styles.container}>
-        <h2 className={styles.sectionTitle}>Piani Tariffari</h2>
+        <h2 className={styles.sectionTitle}>Come sarà organizzato</h2>
         <p className={styles.sectionSubtitle}>
-          Scegli il piano giusto per la tua attività. Prova gratuita di 14 giorni, nessuna carta richiesta.
+          Il listino non è ancora definito. Questi sono i due livelli previsti e
+          cosa comprendono: se ti interessa, scrivimi e ne parliamo.
         </p>
-
-        {/* Toggle mensile / annuale */}
-        <div className={pStyles.toggleWrapper}>
-          <span className={`${pStyles.toggleLabel} ${!isAnnual ? pStyles.activeLabel : ''}`}>Mensile</span>
-          <button
-            className={pStyles.toggle}
-            onClick={() => setIsAnnual(!isAnnual)}
-            aria-label="Cambia piano"
-          >
-            <span className={`${pStyles.toggleThumb} ${isAnnual ? pStyles.toggleThumbOn : ''}`} />
-          </button>
-          <span className={`${pStyles.toggleLabel} ${isAnnual ? pStyles.activeLabel : ''}`}>
-            Annuale <span className={pStyles.saveBadge}>-17%</span>
-          </span>
-        </div>
 
         <div className={styles.pricingFullGrid}>
           {professionalPlans.map((plan) => (
@@ -461,26 +457,17 @@ function PricingSection() {
             >
               {plan.badge && <div className={pStyles.planBadge}>{plan.badge}</div>}
               <div className={pStyles.planHeader}>
-                <span className={pStyles.planIcon}>{plan.icon}</span>
+                <span className={pStyles.planIcon}><UiIcon name={plan.icon} size={26} /></span>
                 <h2 className={pStyles.planName}>{plan.name}</h2>
                 <p className={pStyles.planDescription}>{plan.description}</p>
               </div>
               <div className={pStyles.priceBlock}>
-                <>
-                  <span className={pStyles.priceCurrency}>€</span>
-                  <span className={pStyles.priceAmount}>
-                    {isAnnual ? plan.annualPrice : plan.monthlyPrice}
-                  </span>
-                  <span className={pStyles.pricePeriod}>/mese</span>
-                </>
-                {isAnnual && (
-                  <p className={pStyles.annualNote}>Fatturato annualmente</p>
-                )}
+                <span className={pStyles.priceTbd}>Prezzo da definire</span>
               </div>
               <ul className={pStyles.featureList}>
                 {plan.features.map((f, i) => (
                   <li key={i} className={pStyles.featureItem}>
-                    <span className={pStyles.checkIcon}>✓</span>
+                    <span className={pStyles.checkIcon}><UiIcon name="check" size={13} /></span>
                     {f}
                   </li>
                 ))}
@@ -496,7 +483,7 @@ function PricingSection() {
         </div>
 
         <p className={styles.pricingNote}>
-          💚 I <strong>pazienti</strong> usano Kybo gratuitamente — il costo è solo per il professionista.
+          I <strong>pazienti</strong> usano Kybo gratuitamente — il costo è solo per il professionista.
         </p>
       </div>
     </section>
@@ -519,7 +506,7 @@ export default function BusinessPageContent() {
               Accedi alla Dashboard
             </a>
             <Link href="/" className={styles.backBtn}>
-              ← Torna alla Home
+              Torna alla Home
             </Link>
           </div>
         </div>
@@ -554,53 +541,53 @@ export default function BusinessPageContent() {
           <div className={styles.grid}>
             <div className={styles.featureCard}>
               <div className={styles.iconWrapper} style={{ background: 'linear-gradient(135deg, #66BB6A22 0%, #66BB6A44 100%)' }}>
-                <span className={styles.icon}>👥</span>
+                <span className={styles.icon}><UiIcon name="users" size={24} /></span>
               </div>
               <h3>Gestione Pazienti Completa</h3>
               <p>Crea, modifica ed elimina account pazienti direttamente dalla dashboard. Visualizza tutti i tuoi pazienti in un&apos;unica schermata con ricerca rapida per nome o email. Assegna pazienti a te stesso o trasferiscili ad altri nutrizionisti del team.</p>
               <div className={styles.featureHighlight}>
-                <span>✓ Creazione account pazienti</span>
-                <span>✓ Ricerca e filtri avanzati</span>
-                <span>✓ Assegnazione nutrizionisti</span>
+                <span><UiIcon name="check" size={12} /> Creazione account pazienti</span>
+                <span><UiIcon name="check" size={12} /> Ricerca e filtri avanzati</span>
+                <span><UiIcon name="check" size={12} /> Assegnazione nutrizionisti</span>
               </div>
             </div>
 
             <div className={styles.featureCard}>
               <div className={styles.iconWrapper} style={{ background: 'linear-gradient(135deg, #3B82F622 0%, #3B82F644 100%)' }}>
-                <span className={styles.icon}>📋</span>
+                <span className={styles.icon}><UiIcon name="clipboard" size={24} /></span>
               </div>
               <h3>Upload Diete PDF</h3>
               <p>Carica piani alimentari in formato PDF direttamente per i tuoi pazienti. I file vengono salvati in modo sicuro e sono immediatamente accessibili dall&apos;app mobile del paziente. Supporto per configurazioni parser personalizzate.</p>
               <div className={styles.featureHighlight}>
-                <span>✓ Upload PDF sicuro</span>
-                <span>✓ Accesso immediato paziente</span>
-                <span>✓ Parser configurabile</span>
+                <span><UiIcon name="check" size={12} /> Upload PDF sicuro</span>
+                <span><UiIcon name="check" size={12} /> Accesso immediato paziente</span>
+                <span><UiIcon name="check" size={12} /> Parser configurabile</span>
               </div>
             </div>
 
             <div className={styles.featureCard}>
               <div className={styles.iconWrapper} style={{ background: 'linear-gradient(135deg, #8B5CF622 0%, #8B5CF644 100%)' }}>
-                <span className={styles.icon}>📊</span>
+                <span className={styles.icon}><UiIcon name="chart" size={24} /></span>
               </div>
               <h3>Storico & Analytics</h3>
               <p>Visualizza lo storico completo di ogni paziente: diete caricate, progressi, aderenza al piano. Dashboard analytics con metriche chiave per monitorare l&apos;evoluzione dell&apos;intero portfolio clienti.</p>
               <div className={styles.featureHighlight}>
-                <span>✓ Timeline completa paziente</span>
-                <span>✓ Aderenza al piano</span>
-                <span>✓ Report mensili automatici</span>
+                <span><UiIcon name="check" size={12} /> Timeline completa paziente</span>
+                <span><UiIcon name="check" size={12} /> Aderenza al piano</span>
+                <span><UiIcon name="check" size={12} /> Report mensili automatici</span>
               </div>
             </div>
 
             <div className={styles.featureCard}>
               <div className={styles.iconWrapper} style={{ background: 'linear-gradient(135deg, #FFA72622 0%, #FFA72644 100%)' }}>
-                <span className={styles.icon}>💬</span>
+                <span className={styles.icon}><UiIcon name="chat" size={24} /></span>
               </div>
               <h3>Chat & Comunicazione</h3>
               <p>Messaggistica diretta con i pazienti, supporto allegati foto e documenti. Broadcast a tutti i clienti, note interne riservate e alert automatici per messaggi non letti.</p>
               <div className={styles.featureHighlight}>
-                <span>✓ Chat diretta</span>
-                <span>✓ Broadcast messaggi</span>
-                <span>✓ Note interne riservate</span>
+                <span><UiIcon name="check" size={12} /> Chat diretta</span>
+                <span><UiIcon name="check" size={12} /> Broadcast messaggi</span>
+                <span><UiIcon name="check" size={12} /> Note interne riservate</span>
               </div>
             </div>
           </div>
@@ -633,7 +620,7 @@ export default function BusinessPageContent() {
               Richiedi una Demo Gratuita
             </button>
             <a href="https://app.kybo.it" target="_blank" rel="noopener noreferrer" className={styles.ctaLoginBtn}>
-              Accedi alla Dashboard →
+              Accedi alla Dashboard
             </a>
           </div>
         </div>
@@ -642,7 +629,7 @@ export default function BusinessPageContent() {
       {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
-          <p>© 2025 Kybo. Tutti i diritti riservati. · <Link href="/privacy" style={{ color: 'rgba(255,255,255,0.5)' }}>Privacy</Link> · <Link href="/terms" style={{ color: 'rgba(255,255,255,0.5)' }}>Termini</Link></p>
+          <p>© 2025 Kybo. Tutti i diritti riservati. · <Link href="/privacy" className={styles.footerLegalLink}>Privacy</Link> · <Link href="/terms" className={styles.footerLegalLink}>Termini</Link></p>
         </div>
       </footer>
     </>

@@ -1,173 +1,126 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'motion/react';
+import type { CtaContent, FooterContent } from '@/content/types';
+import { SocialIcon } from '@/components/icons/Icons';
 import styles from './CTASection.module.css';
 
-export default function CTASection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+interface Props {
+  content: CtaContent;
+  footer: FooterContent;
+}
 
-  useEffect(() => {
-    // No animations - content is immediately visible
-  }, []);
+export default function CTASection({ content, footer }: Props) {
+  const reduced = useReducedMotion();
+
+  const reveal = (delay = 0) =>
+    reduced
+      ? {}
+      : {
+          initial: { opacity: 0, y: 24 },
+          whileInView: { opacity: 1, y: 0 },
+          viewport: { once: true, amount: 0.3 },
+          transition: { duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] as const },
+        };
 
   return (
     <>
-      <section ref={sectionRef} className={styles.section}>
-        <div ref={contentRef} className={styles.content}>
-          <h2 className={styles.title}>Pronto a semplificare la tua nutrizione?</h2>
-          <p className={styles.subtitle}>
-            Unisciti a migliaia di utenti che hanno già trasformato il loro approccio al cibo
-          </p>
+      <section className={styles.section}>
+        <div className={styles.content}>
+          <motion.h2 className={styles.title} data-reveal {...reveal()}>
+            {content.title}
+          </motion.h2>
+          <motion.p className={styles.subtitle} data-reveal {...reveal(0.1)}>
+            {content.subtitle}
+          </motion.p>
 
-          <div className={styles.buttons}>
-            {/* TODO: sostituire href con URL App Store reale al lancio */}
-            <a
-              href="#coming-soon"
-              className={styles.primaryBtn}
-              aria-label="Scarica Kybo su App Store (disponibile presto)"
-              onClick={(e) => e.preventDefault()}
-            >
-              <span className={styles.icon}>📱</span>
+          {/*
+            Gli store non sono ancora attivi. Invece di due link finti che
+            sembrano cliccabili, qui ci sono due segnaposto dichiarati come tali:
+            <div> e non <a>, con il badge "presto disponibile" accanto.
+            Al lancio diventano <a href="…"> con l'URL reale.
+          */}
+          <motion.div className={styles.buttons} data-reveal {...reveal(0.2)}>
+            <div className={styles.storeBadge} aria-label={content.appStore.ariaLabel}>
               <div className={styles.btnText}>
-                <span className={styles.btnSub}>Scarica su</span>
-                <span className={styles.btnMain}>App Store</span>
+                <span className={styles.btnSub}>{content.appStore.sub}</span>
+                <span className={styles.btnMain}>{content.appStore.main}</span>
               </div>
-            </a>
-            {/* TODO: sostituire href con URL Google Play reale al lancio */}
-            <a
-              href="#coming-soon"
-              className={styles.primaryBtn}
-              aria-label="Scarica Kybo su Google Play (disponibile presto)"
-              onClick={(e) => e.preventDefault()}
-            >
-              <span className={styles.icon}>🤖</span>
+            </div>
+            <div className={styles.storeBadge} aria-label={content.googlePlay.ariaLabel}>
               <div className={styles.btnText}>
-                <span className={styles.btnSub}>Disponibile su</span>
-                <span className={styles.btnMain}>Google Play</span>
+                <span className={styles.btnSub}>{content.googlePlay.sub}</span>
+                <span className={styles.btnMain}>{content.googlePlay.main}</span>
               </div>
-            </a>
-          </div>
-
-          <p className={styles.note}>
-            Disponibile gratuitamente. Nessuna carta di credito richiesta.
-          </p>
-
-          {/* QR Code */}
-          <div className={styles.qrSection}>
-            <div className={styles.qrBox}>
-              {/* QR SVG inline — punta a kybo.app */}
-              <svg
-                className={styles.qrSvg}
-                viewBox="0 0 200 200"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-label="QR Code per scaricare Kybo"
-              >
-                {/* Finder patterns (angoli) */}
-                <rect x="10" y="10" width="60" height="60" rx="4" fill="white"/>
-                <rect x="18" y="18" width="44" height="44" rx="2" fill="#0f0f0f"/>
-                <rect x="26" y="26" width="28" height="28" rx="1" fill="white"/>
-
-                <rect x="130" y="10" width="60" height="60" rx="4" fill="white"/>
-                <rect x="138" y="18" width="44" height="44" rx="2" fill="#0f0f0f"/>
-                <rect x="146" y="26" width="28" height="28" rx="1" fill="white"/>
-
-                <rect x="10" y="130" width="60" height="60" rx="4" fill="white"/>
-                <rect x="18" y="138" width="44" height="44" rx="2" fill="#0f0f0f"/>
-                <rect x="26" y="146" width="28" height="28" rx="1" fill="white"/>
-
-                {/* Data modules (pattern decorativo) */}
-                {[80,90,100,110,120].map(x =>
-                  [10,20,30,40,50].map(y => (
-                    <rect key={`${x}-${y}`} x={x} y={y} width="8" height="8" fill="white" opacity={Math.random() > 0.4 ? 1 : 0}/>
-                  ))
-                )}
-                {[10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180].map(x =>
-                  [80,90,100,110,120,130,140,150,160,170,180].map(y => (
-                    <rect key={`d-${x}-${y}`} x={x} y={y} width="8" height="8" fill="white" opacity={((x + y) % 20 === 0 || (x * y) % 17 === 0) ? 1 : 0}/>
-                  ))
-                )}
-
-                {/* Logo centrale */}
-                <rect x="88" y="88" width="24" height="24" rx="4" fill="#66BB6A"/>
-                <text x="100" y="105" textAnchor="middle" fontSize="14" fontWeight="bold" fill="white">K</text>
-              </svg>
             </div>
-            <div className={styles.qrInfo}>
-              <p className={styles.qrTitle}>Scansiona per scaricare</p>
-              <p className={styles.qrSub}>Kybo disponibile su iOS e Android</p>
-              <span className={styles.qrBadge}>Coming soon</span>
-            </div>
-          </div>
+          </motion.div>
+
+          <motion.p className={styles.note} data-reveal {...reveal(0.3)}>
+            <span className={styles.comingSoon}>{content.comingSoonBadge}</span>
+            {content.storeNote}
+          </motion.p>
         </div>
       </section>
 
-      {/* Enhanced Footer */}
       <footer className={styles.footer}>
         <div className={styles.footerContent}>
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
               <div className={styles.footerLogo}>
-                <Image src="/logo no bg.png" alt="Kybo" width={32} height={32} className={styles.footerLogoIcon} />
+                <Image
+                  src="/logo no bg.png"
+                  alt="Kybo"
+                  width={32}
+                  height={32}
+                  className={styles.footerLogoIcon}
+                />
                 <span className={styles.footerLogoText}>Kybo</span>
               </div>
-              <p className={styles.footerTagline}>
-                La tua nutrizione, finalmente semplificata
-              </p>
+              <p className={styles.footerTagline}>{footer.tagline}</p>
             </div>
 
             <div className={styles.footerLinks}>
-              <div className={styles.footerColumn}>
-                <h4>Prodotto</h4>
-                <a href="#features">Features</a>
-                <a href="#gallery">Gallery</a>
-                <a href="#stats">Statistiche</a>
-                <Link href="/business">Per Nutrizionisti</Link>
-              </div>
-
-              <div className={styles.footerColumn}>
-                <h4>Azienda</h4>
-                <Link href="/about">Chi Siamo</Link>
-                <Link href="/blog">Blog</Link>
-                <Link href="/case-study">Case Study</Link>
-                <Link href="/careers">Lavora con noi</Link>
-              </div>
-
-              <div className={styles.footerColumn}>
-                <h4>Supporto</h4>
-                <Link href="/help">Centro Assistenza</Link>
-                <Link href="/contact">Contatti</Link>
-                <Link href="/faq">FAQ</Link>
-                <Link href="/business#prezzi">Prezzi</Link>
-              </div>
-
-              <div className={styles.footerColumn}>
-                <h4>Legale</h4>
-                <Link href="/privacy">Privacy Policy</Link>
-                <Link href="/terms">Termini di Servizio</Link>
-                <Link href="/cookies">Cookie Policy</Link>
-                <Link href="/privacy">GDPR</Link>
-              </div>
+              {footer.columns.map((column) => (
+                <div key={column.heading} className={styles.footerColumn}>
+                  <h3>{column.heading}</h3>
+                  {column.links.map((link) =>
+                    link.href.startsWith('#') ? (
+                      <a key={link.label} href={link.href}>
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link key={link.label} href={link.href}>
+                        {link.label}
+                      </Link>
+                    )
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
           <div className={styles.footerBottom}>
-            <p className={styles.copyright}>© 2025 Kybo. Tutti i diritti riservati.</p>
+            <p className={styles.copyright}>{footer.copyright}</p>
+            {/*
+              Solo i profili che esistono davvero. Prima c'erano anche
+              twitter.com e facebook.com, che puntavano alle homepage dei
+              social e non a un account Kybo.
+            */}
             <div className={styles.socials}>
-              <a href="https://www.instagram.com/kybo.nutrition/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                📷
-              </a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
-                🐦
-              </a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                📘
-              </a>
-              <a href="https://www.linkedin.com/company/kybonutrition" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-                💼
-              </a>
+              {footer.socials.map((social) => (
+                <a
+                  key={social.key}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={social.label}
+                >
+                  <SocialIcon name={social.key} />
+                </a>
+              ))}
             </div>
           </div>
         </div>
