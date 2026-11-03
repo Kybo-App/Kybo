@@ -393,22 +393,10 @@ class _MainScreenContentState extends State<MainScreenContent>
       _auth.touchLastSeen();
     }
 
-    final storage = StorageService();
-    try {
-      var data = await storage.loadAlarms();
-      if (data.isNotEmpty) {
-        if (mounted) {
-          await context.read<DietProvider>().scheduleMealNotifications();
-        }
-      }
-    } catch (e) {
-      // [UX R5 — silenzio VOLUTO] Ri-schedulazione notifiche all'avvio:
-      // best-effort in background, l'utente non sta aspettando un esito e
-      // uno snackbar a ogni apertura sarebbe rumore. Ritenterà al prossimo
-      // avvio. Logghiamo per la diagnosi.
-      debugPrint('Reschedule notifiche fallito (non bloccante): $e');
-    }
-
+    // Queste tre non dipendono l'una dall'altra ne' dalle notifiche, ma
+    // stavano in coda dietro loadAlarms() + scheduleMealNotifications():
+    // I/O su disco piu' la riprogrammazione di tutti i promemoria pasto.
+    // Non erano awaited, ma partivano tardi lo stesso. Ora partono subito.
     if (mounted) {
       context.read<BadgeService>().checkLoginStreak();
       context.read<XpService>().loadXp();
@@ -416,6 +404,28 @@ class _MainScreenContentState extends State<MainScreenContent>
     }
 
     ShortcutsService().donateShortcut(ShortcutsService.dietActivity);
+
+    // Non awaited: nessuno sta aspettando le notifiche per vedere la
+    // schermata, mentre _checkTutorial() e _handleInitialDeepLink() (in
+    // initState) aspettano il ritorno di questo metodo. Tenerla in linea
+    // faceva pagare a loro l'attesa.
+    unawaited(_rescheduleMealNotifications());
+  }
+
+  /// Riprogramma i promemoria pasto all'avvio. Best-effort: l'utente non sta
+  /// aspettando un esito e uno snackbar a ogni apertura sarebbe rumore.
+  /// Se fallisce, ritentera' al prossimo avvio.
+  Future<void> _rescheduleMealNotifications() async {
+    try {
+      final storage = StorageService();
+      final data = await storage.loadAlarms();
+      if (data.isNotEmpty && mounted) {
+        await context.read<DietProvider>().scheduleMealNotifications();
+      }
+    } catch (e) {
+      // [UX R5 — silenzio VOLUTO] Logghiamo solo per la diagnosi.
+      debugPrint('Reschedule notifiche fallito (non bloccante): $e');
+    }
   }
 
   Future<void> _checkJailbreak() async {
