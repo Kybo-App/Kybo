@@ -154,6 +154,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const PillSectionHeader(title: 'ACCOUNT'),
+
           PillCard(
             child: PillListTile(
               leading: Container(
@@ -176,6 +178,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          const SizedBox(height: KyboSpacing.md),
+
+          const PillSectionHeader(title: 'PREFERENZE'),
 
           PillCard(
             child: PillListTile(
@@ -194,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.sm),
 
           Consumer<DietProvider>(
             builder: (context, dietProvider, _) {
@@ -222,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.sm),
 
           // --- Supermercato preferito ---
           PillCard(
@@ -244,7 +249,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.sm),
 
           // --- Timer cottura ---
           PillCard(
@@ -269,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.sm),
 
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, _) => PillCard(
@@ -310,26 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
-
-          PillCard(
-            child: PillListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.privacy_tip, color: Colors.blueGrey, size: 20),
-              ),
-              title: "Privacy Policy",
-              subtitle: "Informativa sulla privacy",
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showPrivacyDialog(context),
-            ),
-          ),
-
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.sm),
 
           PillCard(
             child: PillListTile(
@@ -348,7 +334,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: KyboSpacing.md),
+
+          const PillSectionHeader(title: 'PRIVACY E DATI'),
+
+          PillCard(
+            child: PillListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.privacy_tip, color: Colors.blueGrey, size: 20),
+              ),
+              title: "Privacy Policy",
+              subtitle: "Informativa sulla privacy",
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showPrivacyDialog(context),
+            ),
+          ),
+
+          const SizedBox(height: KyboSpacing.sm),
 
           // [FIX SRV-GDPR1/ST1] Diritti GDPR self-service (portabilità Art.20
           // + cancellazione Art.17): prima esistevano solo lato server/admin,
@@ -370,26 +377,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: KyboSpacing.xl),
 
-          PillCard(
-            child: PillListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: KyboColors.error.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.delete_forever_rounded, color: KyboColors.error, size: 20),
+          // L'eliminazione account era una PillCard identica a "Riavvia
+          // Tutorial": stessa forma, stesso peso, stessa affordance di tap,
+          // distinta solo dal colore dell'icona. Un'azione irreversibile non
+          // puo' somigliare a una innocua. Qui ha un contenitore suo, un
+          // bordo rosso, il perimetro di cosa cancella e un rimando
+          // all'export dei dati, che sta nella sezione sopra.
+          const PillSectionHeader(title: 'ZONA A RISCHIO'),
+
+          Container(
+            padding: const EdgeInsets.all(KyboSpacing.md),
+            decoration: BoxDecoration(
+              color: KyboColors.error.withValues(alpha: 0.06),
+              borderRadius: KyboBorderRadius.large,
+              border: Border.all(
+                color: KyboColors.error.withValues(alpha: 0.35),
               ),
-              title: "Elimina account",
-              subtitle: "Cancella definitivamente account e dati",
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _confirmDeleteAccount(context),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: KyboColors.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: KyboSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        "Elimina account",
+                        style: TextStyle(
+                          color: KyboColors.textPrimary(context),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: KyboSpacing.sm),
+                Text(
+                  "Cancella definitivamente account, diete, allenamenti, "
+                  "chat e premi riscattati. L'operazione non e' reversibile "
+                  "e i dati non sono recuperabili.",
+                  style: TextStyle(
+                    color: KyboColors.textSecondary(context),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: KyboSpacing.xs),
+                Text(
+                  "Se vuoi conservarne una copia, usa prima \"Scarica i miei dati\".",
+                  style: TextStyle(
+                    color: KyboColors.textMuted(context),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: KyboSpacing.md),
+                PillButton(
+                  label: "Elimina account",
+                  icon: Icons.delete_forever_rounded,
+                  expanded: true,
+                  backgroundColor: Colors.transparent,
+                  textColor: KyboColors.error,
+                  borderColor: KyboColors.error,
+                  onPressed: () => _confirmDeleteAccount(context),
+                ),
+              ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: KyboSpacing.md),
 
           Center(
             child: Text(

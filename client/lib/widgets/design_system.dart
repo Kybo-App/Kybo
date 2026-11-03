@@ -182,9 +182,9 @@ class KyboColors {
       isDarkFromContextRead(context) ? textMutedDark : textMutedLight;
 }
 
-// [DEAD 2026-05-30] KyboSpacing — mai usato. I padding/margin sono
-// hardcoded ovunque. Tenuto come reference per standardizzare in futuro.
-/*
+// Scala di spaziatura: griglia da 8px (xs=4 e' il mezzo passo per i gap
+// dentro un singolo controllo). Usata dalla settings; le altre screen hanno
+// ancora padding hardcoded e vanno migrate quando si toccano.
 class KyboSpacing {
   static const double xs = 4;
   static const double sm = 8;
@@ -193,7 +193,6 @@ class KyboSpacing {
   static const double xl = 32;
   static const double xxl = 48;
 }
-*/
 
 class KyboBorderRadius {
   static BorderRadius get pill => BorderRadius.circular(100);
@@ -1053,9 +1052,8 @@ class PillEmptyState extends StatelessWidget {
 }
 */
 
-// [DEAD 2026-05-30] PillSectionHeader — mai usato. Le sezioni hanno
-// header inline ad-hoc nelle screen. Tenuto come standard di design.
-/*
+/// Intestazione di un gruppo di impostazioni. Rende leggibile il confine tra
+/// sezioni in una lista di card altrimenti tutte uguali.
 class PillSectionHeader extends StatelessWidget {
   final String title;
   final Widget? trailing;
@@ -1090,4 +1088,3 @@ class PillSectionHeader extends StatelessWidget {
     );
   }
 }
-*/
