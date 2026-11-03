@@ -26,10 +26,25 @@
   --shadow-large: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 
-  /* Border Radius */
+  /* Border Radius — una sola scala, allineata a KyboBorderRadius dell'app */
   --radius-pill: 100px;
   --radius-large: 24px;
   --radius-medium: 16px;
+  --radius-small: 12px;
+
+  /* Spaziature: griglia da 8px.
+     Prima non esistevano token di spacing e ogni modulo inventava il suo
+     valore: su 33 misure distinte usate nei CSS module, 20 cadevano fuori
+     griglia (0.15rem, 0.35rem, 0.45rem, 0.65rem, 2.2rem...). Chi scrive
+     nuovo CSS parte da qui invece che da un numero a occhio. */
+  --space-1: 0.5rem;   /* 8px  */
+  --space-2: 1rem;     /* 16px */
+  --space-3: 1.5rem;   /* 24px */
+  --space-4: 2rem;     /* 32px */
+  --space-5: 2.5rem;   /* 40px */
+  --space-6: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-12: 6rem;    /* 96px */
 
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -38,7 +53,18 @@
 }
 
 /* Dark Mode */
+/*
+  Il tema scuro e' l'unico raggiunto: layout.tsx fissa data-theme="dark"
+  sull'<html> e non c'e' nessun toggle. Il blocco :root qui sopra resta la
+  palette chiara di riferimento (condivisa con app e admin) ma a runtime non
+  viene mai applicata: da valutare se serve ancora o se va rimossa insieme a
+  un eventuale switch di tema.
+*/
 [data-theme="dark"] {
+  /* Fondo pagina realmente spedito: nero neutro, non il navy #0F172A dell'app
+     Flutter. Era hardcodato su body, quindi fuori dal sistema di token. */
+  --color-canvas: #1a1a1a;
+
   --color-background: #0F172A;
   --color-surface: #1E293B;
   --color-surface-elevated: #334155;
@@ -84,8 +110,11 @@ html.lenis.lenis-scrolling iframe {
 }
 
 body {
-  color: var(--foreground);
-  background: #1a1a1a;
+  /* Era `color: var(--foreground)`: variabile mai definita in nessun file,
+     quindi il testo senza colore proprio ricadeva sul nero di default sopra
+     un fondo #1a1a1a. */
+  color: var(--color-text);
+  background: var(--color-canvas, #1a1a1a);
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
