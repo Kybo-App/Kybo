@@ -268,7 +268,9 @@ class DietApp extends StatelessWidget {
           onPrimary: Colors.white,
           onSecondary: Colors.white,
         ),
-        cardColor: KyboColors.surfaceElevatedDark,
+        // Le card dell'app sono PillCard, che usa KyboColors.surface: nessun
+        // Card() Material in lib/, quindi questo valore non dipingeva nulla.
+        cardColor: KyboColors.surfaceDark,
         appBarTheme: const AppBarTheme(
           backgroundColor: KyboColors.surfaceDark,
           foregroundColor: KyboColors.textPrimaryDark,
@@ -318,7 +320,7 @@ class DietApp extends StatelessWidget {
           ),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: KyboColors.surfaceDark,
+          backgroundColor: KyboColors.surfaceElevatedDark,
           shape: RoundedRectangleBorder(borderRadius: KyboBorderRadius.large),
           titleTextStyle: const TextStyle(
             color: KyboColors.textPrimaryDark,
@@ -328,7 +330,7 @@ class DietApp extends StatelessWidget {
           contentTextStyle: const TextStyle(color: KyboColors.textSecondaryDark),
         ),
         bottomSheetTheme: BottomSheetThemeData(
-          backgroundColor: KyboColors.surfaceDark,
+          backgroundColor: KyboColors.surfaceElevatedDark,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
